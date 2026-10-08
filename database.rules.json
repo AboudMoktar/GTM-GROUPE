@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "groupe1": {
+      "users_v2": {
+        ".read": "auth != null && (!data.exists() || root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true)",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && !root.child('groupe1/users_v2').exists()"
+        }
+      },
+      "sessions": {
+        ".read": "auth != null",
+        "$sid": {
+          ".write": "auth != null"
+        }
+      },
+      "tek": {
+        ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true)",
+        ".write": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true)"
+      },
+      "gadh": {
+        ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)",
+        ".write": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)"
+      },
+      "mgt": {
+        ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true)",
+        ".write": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true)"
+      },
+      "liaison": {
+        ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)",
+        ".write": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)"
+      }
+    }
+  }
+}
