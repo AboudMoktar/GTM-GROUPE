@@ -23,7 +23,7 @@
 const SOCIETES = {
   tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes']},
   gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', modules:['gadh']},
-  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', modules:[]}
+  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];
 let activeSociete = null; // 'tek' | 'gadh' | 'mgt' | null (null = pas encore choisie)
@@ -53,6 +53,7 @@ function modulesDeSociete(soc){
     if(m === 'rh') return canAccessRH();
     if(m === 'gadh') return canAccessGADH();
     if(m === 'commandes') return (typeof canAccessCommandes === 'function' && canAccessCommandes());
+    if(m === 'mgt') return true;
     return false;
   });
 }
@@ -89,7 +90,6 @@ function enterSociete(){
   if(activeSociete && soc.indexOf(activeSociete) < 0) activeSociete = null;
   if(!activeSociete && soc.length === 1 && !isGroupe()) activeSociete = soc[0];
   if(!activeSociete){ renderSocieteSelect(); return; }
-  if(activeSociete === 'mgt'){ renderMgtAVenir(); return; }
   const mods = modulesDeSociete(activeSociete);
   if(activeModule && mods.indexOf(activeModule) >= 0){ renderShell(); return; }
   if(mods.length === 1){ activeModule = mods[0]; renderShell(); return; }
@@ -144,20 +144,6 @@ function renderAucuneSociete(){
   `;
 }
 
-// Société MGT : le module commercial arrive en phase 2.
-function renderMgtAVenir(){
-  document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card" style="max-width:440px;text-align:center;">
-        ${societeLogoHTML('mgt')}
-        <h2 style="margin:0 0 8px;font-size:18px;">Module MGT en préparation</h2>
-        <p style="color:var(--ink-soft);font-size:13px;margin:0 0 20px;">Clients, agenda, offres, parc machines, SAV et factures arrivent dans la prochaine phase.</p>
-        ${peutChangerDeSociete() ? `<button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="switchSociete()">Changer de société</button>` : ''}
-        <button class="btn btn-ghost" style="width:100%;" onclick="logout()">Déconnexion</button>
-      </div>
-    </div>
-  `;
-}
 
 // --- Écran direction : un tableau de bord par société, côte à côte ---
 function directionIndicateurs(soc){
@@ -178,6 +164,15 @@ function directionIndicateurs(soc){
       {label:'Rendement du jour', valeur: val(() => pct(gadhDayTotals(today).rendement))},
       {label:'Présents', valeur: val(() => { const emp = activeGadhEmployees(); const n = emp.filter(([id]) => { const r = resolveGadhDayStatus(id, today); return r.source === 'pointage' && (r.statut === 'present' || r.statut === 'retard'); }).length; return n + ' / ' + emp.length; })},
       {label:'Commandes chez GADH', valeur: val(() => suiviLotsChezGadh())}
+    ];
+  }
+  if(soc === 'mgt'){
+    const k = () => mgtIndicateurs();
+    return [
+      {label:'RDV aujourd\'hui', valeur: val(() => k().rdvJour)},
+      {label:'Devis en attente', valeur: val(() => { const x = k(); return x.devisAttente + ' · ' + fmtDT(x.montantAttente); })},
+      {label:'Projets en cours', valeur: val(() => k().projetsEnCours)},
+      {label:'Clients / prospects', valeur: val(() => { const x = k(); return x.clients + ' / ' + x.prospects; })}
     ];
   }
   return [];
