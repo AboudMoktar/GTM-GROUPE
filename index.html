@@ -375,6 +375,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<!-- SheetJS : lecture du fichier de la pointeuse (ancien format .xls, illisible par ExcelJS) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 /* ====================================================
@@ -2730,6 +2732,7 @@ window.onload = init;
 <script src="./commandes-module.js"></script>
 <script src="./groupe-module.js"></script>
 <script src="./suivi-module.js"></script>
+<script src="./pointeuse-module.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){

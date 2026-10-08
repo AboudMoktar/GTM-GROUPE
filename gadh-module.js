@@ -454,7 +454,8 @@ function renderGadhPointage(container){
   container.innerHTML = `
     <div class="card" style="padding:10px 12px;">
       <div class="field" style="margin:0;"><label>Date</label><input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhAttDate=this.value; nav('gadh-rh')"></div>
-      ${canEdit ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="gadhMarkAllPresent()">Tout marquer Présent</button>` : ''}
+      ${canEdit ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="gadhMarkAllPresent()">Tout marquer Présent</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="ptgOuvrir('gadh')">⏱ Importer la pointeuse (fichier Excel)</button>` : ''}
       <div style="font-size:11px;color:var(--ink-faint);margin-top:8px;">${nbRenseignes}/${emps.length} renseigné(s)</div>
     </div>
     <div class="card" style="padding:4px 12px;">
@@ -481,7 +482,7 @@ function renderGadhPointage(container){
   };
   window.setGadhField = (empId, field, value) => {
     const a = getGadhAttendance(date);
-    a[empId] = {...(a[empId]||{}), [field]:value};
+    a[empId] = {...(a[empId]||{}), [field]:value, src:'manuel'}; // correction à la main : plus écrasée par l'import de la pointeuse
     saveGadhAttendance(date, a);
   };
 }
@@ -512,6 +513,7 @@ function gadhPointageCard(x, canEdit){
             </select>`
           : `<span class="hour-rend ${st?GADH_ATT_STATUS[st].cls:''}" style="font-size:11px;">${st?GADH_ATT_STATUS[st].label:'—'}</span>`}
       </div>
+      ${(st==='present' || st==='retard') && (r.heureEntree || r.heureSortie) ? `<div style="font-size:11px;color:var(--ink-soft);">Pointeuse : entrée ${r.heureEntree||'—'} · sortie ${r.heureSortie||'—'}</div>` : ''}
       ${canEdit && st==='retard' ? `<div class="field" style="margin:0;"><label style="font-size:10px;">Heure réelle d'arrivée</label><input type="time" value="${r.heureReelle||''}" onchange="setGadhField('${id}','heureReelle',this.value)"></div>` : ''}
       ${canEdit && st==='sortie' ? `<div style="display:flex;gap:8px;">
         <div class="field" style="margin:0;flex:1;"><label style="font-size:10px;">Heure de sortie</label><input type="time" value="${r.heureSortie||''}" onchange="setGadhField('${id}','heureSortie',this.value)"></div>
