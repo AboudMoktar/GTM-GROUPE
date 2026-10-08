@@ -1109,6 +1109,7 @@ function logout(){
 }
 
 function navItems(){
+  if(activeModule === 'mgt') return mgtNavItems();
   if(activeModule === 'commandes'){
     return [{tab:'commandes-home', label:'Commandes', icon:ICONS.prodchain, show:true}];
   }
@@ -1148,6 +1149,9 @@ function navItems(){
 }
 
 function appBrandingHTML(){
+  if(activeModule === 'mgt'){
+    return `<div class="logo-wrap" style="align-items:flex-start;"><div class="logo-text" style="color:#2E6B3A;">MGT</div><div class="logo-sub">MACPI · MORGAN TECNICA</div></div>`;
+  }
   if(activeModule === 'gadh'){
     return `<div class="logo-wrap" style="align-items:flex-start;">
       ${ICONS.gadh}
@@ -1195,7 +1199,7 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'rh' ? 'rh-dashboard' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
@@ -1227,6 +1231,7 @@ function nav(tab){
   else if(tab === 'gadh-parametres'){ renderGadhParametres(gadhSectionContainer(main,'Paramètres')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
   else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
+  else if(tab.indexOf('mgt-') === 0){ renderMgt(tab, main); }
   updateNavBadges();
 }
 
@@ -2733,6 +2738,7 @@ window.onload = init;
 <script src="./groupe-module.js"></script>
 <script src="./suivi-module.js"></script>
 <script src="./pointeuse-module.js"></script>
+<script src="./mgt-module.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
