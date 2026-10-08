@@ -89,3 +89,45 @@ function suiviCommandesEnCours(){ return suiviResume().filter(l => l.enCours).le
 function suiviLotsChezGadh(){
   return suiviResume().filter(l => l.enCours && (l.etapes.gadh || 0) > (l.etapes.ret || 0)).length;
 }
+
+// --- Rendement GADH ---
+// La production du jour de la GADH = pièces revenues chez TEK-TREND après
+// assemblage (étape « Retour TEK-TREND » du suivi), par libellé (modèle et
+// couleur). Les clés de référence sont préfixées « pk_ » et nettoyées pour
+// pouvoir servir de clés Firebase (cadences GADH).
+function suiviCleRef(lib){ return 'pk_' + String(lib).replace(/[.#$\/\[\]]/g, '_'); }
+function suiviLignes(){
+  const docs = suiviLireDocs(), lignes = {};
+  Object.keys(docs).forEach(id => {
+    if(id.indexOf('lines-') === 0) (docs[id].lines || []).forEach(a => { lignes[a[0]] = {lot:docs[id].lot, client:a[2], model:a[3], lib:a[4], size:a[5], qty:a[6]}; });
+  });
+  return {docs, lignes};
+}
+// { cle : {lib, model} } pour tous les libellés de la nomenclature et des commandes
+function suiviReferences(){
+  const {docs, lignes} = suiviLignes(), refs = {};
+  ((docs.cfg && docs.cfg.nomen) || []).forEach(n => { refs[suiviCleRef(n[1])] = {lib:n[1], model:n[0]}; });
+  Object.values(lignes).forEach(l => { refs[suiviCleRef(l.lib)] = {lib:l.lib, model:l.model}; });
+  return refs;
+}
+function suiviRetoursParRefDuJour(dateISO){
+  const {docs, lignes} = suiviLignes(), parRef = {};
+  Object.keys(docs).forEach(id => {
+    if(id.indexOf('moves-') !== 0) return;
+    (docs[id].moves || []).forEach(m => {
+      if(m[1] !== dateISO || m[3] !== 'ret') return;
+      const l = lignes[m[2]]; if(!l) return;
+      const k = suiviCleRef(l.lib);
+      parRef[k] = (parRef[k] || 0) + (m[4] || 0);
+    });
+  });
+  Object.keys(parRef).forEach(k => { if(parRef[k] <= 0) delete parRef[k]; });
+  return parRef;
+}
+// Lots en cours vus par la GADH : pièces commandées et pièces déjà retournées.
+function suiviLotsPourGadh(){
+  return suiviResume().filter(l => l.enCours).map(l => ({
+    id:'pk:' + l.lot, numero:l.lot, total:l.qte, retourFait:l.etapes.ret || 0,
+    pct: l.qte > 0 ? Math.min(100, Math.round((l.etapes.ret || 0) / l.qte * 100)) : 0
+  }));
+}
