@@ -1022,7 +1022,7 @@ async function loadProfileAndEnter(fbUser){
         return;
       }
     }
-    currentUser = { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role, societes: profile.societes || {}, groupe: !!profile.groupe, portail: profile.portail || null };
+    currentUser = { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role, societes: profile.societes || {}, groupe: !!profile.groupe, portail: profile.portail || null, profil: profile.profil || null };
     try { window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); } catch(e) {}
     startSessionAndRender();
   }catch(err){
