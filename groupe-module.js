@@ -66,7 +66,7 @@ function firebaseDossierDe(key){
   if(key === 'users_v2' || key === 'sessions') return null;
   if(key.indexOf('gadh_') === 0) return 'gadh';
   if(key.indexOf('mgt_') === 0) return 'mgt';
-  if(key.indexOf('cmd_') === 0 || key === 'prod_references') return 'liaison';
+  if(key.indexOf('cmd_') === 0 || key.indexOf('suivi_') === 0 || key === 'prod_references') return 'liaison';
   return 'tek';
 }
 function firebaseCheminDe(key){
@@ -169,7 +169,7 @@ function directionIndicateurs(soc){
       {label:'Production du jour', valeur: val(() => computeTotals(getDay(today)).totalGeneral)},
       {label:'Rendement du jour', valeur: val(() => { const t = computeTotals(getDay(today)).totalGeneral; const o = getObjForDay(getDay(today)); return pct(o > 0 ? t / o * 100 : null); })},
       {label:'Présents', valeur: val(() => { const emp = activeEmployees(); const n = emp.filter(([id]) => { const r = resolveDayStatus(id, today); return r.source === 'pointage' && r.status === 'present'; }).length; return n + ' / ' + emp.length; })},
-      {label:'Commandes en cours', valeur: val(() => listCmdCommandes().filter(([id]) => !cmdEstCloturee(id)).length)}
+      {label:'Commandes en cours', valeur: val(() => suiviCommandesEnCours())}
     ];
   }
   if(soc === 'gadh'){
@@ -177,7 +177,7 @@ function directionIndicateurs(soc){
       {label:'Pièces retournées du jour', valeur: val(() => gadhDayTotals(today).totalReel)},
       {label:'Rendement du jour', valeur: val(() => pct(gadhDayTotals(today).rendement))},
       {label:'Présents', valeur: val(() => { const emp = activeGadhEmployees(); const n = emp.filter(([id]) => { const r = resolveGadhDayStatus(id, today); return r.source === 'pointage' && (r.statut === 'present' || r.statut === 'retard'); }).length; return n + ' / ' + emp.length; })},
-      {label:'Commandes en cours', valeur: val(() => cmdCommandesEnCoursPourGadh().length)}
+      {label:'Commandes chez GADH', valeur: val(() => suiviLotsChezGadh())}
     ];
   }
   return [];

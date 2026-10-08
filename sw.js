@@ -1,7 +1,7 @@
 // TEK-TREND — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v2';
+const CACHE_NAME = 'groupe-v3';
 
 // Fichiers essentiels de l'application (mêmes dossier que sw.js)
 const APP_SHELL = [
@@ -12,6 +12,8 @@ const APP_SHELL = [
   './prod-module.js',
   './commandes-module.js',
   './groupe-module.js',
+  './suivi-module.js',
+  './suivi-commandes.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
