@@ -360,6 +360,11 @@
   @media (min-width:1024px) and (max-width:1279px){
     main{max-width:960px;}
   }
+  /* Suivi des commandes (suivi-commandes.html dans un cadre, voir suivi-module.js) */
+  .suivi-frame{display:block;width:100%;border:0;border-radius:12px;background:#edf0f4;height:calc(100vh - 122px);height:calc(100dvh - 122px);min-height:460px;}
+  .suivi-frame.suivi-tek{height:calc(100vh - 66px);height:calc(100dvh - 66px);}
+  @media (min-width:900px){ .suivi-frame, .suivi-frame.suivi-tek{height:calc(100vh - 130px);height:calc(100dvh - 130px);} }
+  .bottomnav.bn-seul{display:none;}
 </style>
 </head>
 <body>
@@ -370,6 +375,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<!-- SheetJS : lecture du fichier de la pointeuse (ancien format .xls, illisible par ExcelJS) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 /* ====================================================
@@ -393,7 +400,8 @@ function roleBadgeClass(role){ return role === 'admin' ? 'green' : (role === 'ch
 
 // Mode local (Firebase non configuré) : ancien système, comptes stockés uniquement
 // sur cet appareil (jamais synchronisés). Sert de repli hors-ligne / test.
-const DEFAULT_USERS = [{username:"responsable", password:"123", role:"admin", nom:"Resp. Magasin"},{username:"direction", password:"123", role:"viewer", nom:"Direction"}];
+// groupe:true = direction du groupe (accès aux trois sociétés + vue direction), voir groupe-module.js.
+const DEFAULT_USERS = [{username:"responsable", password:"123", role:"admin", nom:"Resp. Magasin", groupe:true},{username:"direction", password:"123", role:"viewer", nom:"Direction", groupe:true}];
 function getLocalUsers(){
   try { const v = window.localStorage.getItem(CACHE_PREFIX+'local_users'); if(v) return JSON.parse(v); } catch(e) {}
   return DEFAULT_USERS;
@@ -445,9 +453,9 @@ const ICONS = {
 // Pour activer le partage des données entre tous les téléphones/PC :
 // 1. Allez sur https://console.firebase.google.com → créez un projet gratuit.
 // 2. Menu de gauche → "Realtime Database" → "Créer une base de données".
-// 3. Dans l'onglet "Règles", collez : {"rules": {".read": true, ".write": true}}
-//    (⚠️ ceci rend la base ouverte à quiconque connaît son adresse — acceptable
-//    pour des chiffres de production internes, mais à savoir.)
+// 3. Dans l'onglet "Règles", collez le contenu du fichier database.rules.json :
+//    chaque société (tek/, gadh/, mgt/) n'est lisible que par ses comptes, et
+//    seule la direction du groupe gère les comptes.
 // 4. Icône ⚙️ → "Paramètres du projet" → tout en bas "Vos applications" → </> (Web)
 //    → copiez l'objet affiché et collez ses valeurs ci-dessous à la place de
 //    celles qui commencent par "VOTRE_".
@@ -516,38 +524,66 @@ function initFirebase(){
     setSyncBadge('error');
   }
 }
+// Chaque société a son propre dossier dans la base (voir firebaseDossierDe dans
+// groupe-module.js) : on ne s'abonne qu'aux dossiers que le compte peut lire,
+// sinon les règles Firebase refuseraient toute la lecture.
+let fbListenRefs = [];
 function attachFirebaseDataListeners(){
   if(!firebaseReady || !fbRootRef) return;
   setSyncBadge('connecting');
-  fbRootRef.on('value', function(snap){
-    const data = snap.val() || {};
-    Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
-    setSyncBadge('ok');
-    if(!currentUser) return;
-    checkForNewMessages(data);
-    updateNavBadges();
-    if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
-    else if(activeTab === 'saisie' || activeTab === 'sessions'){ /* ne pas interrompre une saisie en cours */ }
-    else if(activeTab === 'messages'){
-      const composer = document.getElementById('msg-text');
-      if(!composer || composer.value.trim() === '') nav('messages');
-    }
-    else if(document.activeElement && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement.tagName)){ /* un champ ou un bouton vient d'être utilisé (formulaire RH/GADH/Production en cours) : ne pas le redessiner sous la personne */ }
-    else if(document.querySelector('[id$="-form-zone"]:not(:empty)')){ /* un panneau de formulaire est actuellement ouvert (ex: création de commande) : le focus se perd entre deux clics de bouton, donc ce contrôle est plus fiable que activeElement seul */ }
-    else { nav(activeTab); }
-  }, function(err){
+  const onError = function(err){
     console.error('Erreur Firebase (lecture) :', err);
     setSyncBadge('error');
+  };
+  fbListenRefs = firebaseDossiersLisibles().map(d => fbRootRef.child(d));
+  fbListenRefs.forEach(function(ref){
+    ref.on('value', function(snap){
+      const data = snap.val() || {};
+      Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
+      onFirebaseData();
+    }, onError);
   });
+  if(isGroupe()){
+    // Liste des comptes, pour l'écran "Comptes & Sessions".
+    const usersRef = fbRootRef.child('users_v2');
+    fbListenRefs.push(usersRef);
+    usersRef.on('value', function(snap){
+      memoryCache[CACHE_PREFIX+'users_v2'] = snap.val() || {};
+      onFirebaseData();
+    }, onError);
+  }
   watchSessions();
 }
+function onFirebaseData(){
+  setSyncBadge('ok');
+  if(!currentUser) return;
+  checkForNewMessages({messages: getJSON('messages', {})});
+  updateNavBadges();
+  if(!document.getElementById('main')){
+    // Pas de module ouvert (choix de société / de module) : seul l'écran direction se rafraîchit.
+    if(directionOuverte) renderDirection();
+    return;
+  }
+  if(activeTab === 'commandes-home'){ fbFirstLoad = false; suiviNotifier(); }
+  else if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
+  else if(activeTab === 'saisie' || activeTab === 'sessions'){ /* ne pas interrompre une saisie en cours */ }
+  else if(activeTab === 'messages'){
+    const composer = document.getElementById('msg-text');
+    if(!composer || composer.value.trim() === '') nav('messages');
+  }
+  else if(document.activeElement && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement.tagName)){ /* un champ ou un bouton vient d'être utilisé (formulaire RH/GADH/Production en cours) : ne pas le redessiner sous la personne */ }
+  else if(document.querySelector('[id$="-form-zone"]:not(:empty)')){ /* un panneau de formulaire est actuellement ouvert (ex: création de commande) : le focus se perd entre deux clics de bouton, donc ce contrôle est plus fiable que activeElement seul */ }
+  else { nav(activeTab); }
+}
 function detachFirebaseDataListeners(){
-  if(fbRootRef){ fbRootRef.off(); fbRootRef.child('sessions').off(); }
+  fbListenRefs.forEach(function(ref){ ref.off(); });
+  fbListenRefs = [];
+  if(fbRootRef){ fbRootRef.child('sessions').off(); }
   fbFirstLoad = true;
 }
 function syncToFirebase(key, value){
   if(!firebaseReady || !fbRootRef) return;
-  fbRootRef.child(key).set(value).then(function(){
+  fbRootRef.child(firebaseCheminDe(key)).set(value).then(function(){
     setSyncBadge('ok');
   }).catch(function(err){
     console.error('Erreur de synchronisation Firebase :', err);
@@ -637,7 +673,7 @@ function endMySession(){
   if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
 }
 function forceLocalLogout(){
-  currentUser = null; mySessionId = null; activeModule = null;
+  currentUser = null; mySessionId = null; activeModule = null; activeSociete = null; directionOuverte = false;
   try { window.sessionStorage.removeItem(CACHE_PREFIX+'user'); window.localStorage.removeItem(CACHE_PREFIX+'sid'); } catch(e) {}
   if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
   detachFirebaseDataListeners();
@@ -913,43 +949,43 @@ function startSessionAndRender(){
 function canAccessRH(){ return currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer'); }
 function canAccessGADH(){ return currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer'); }
 // canAccessCommandes() est défini dans commandes-module.js (même règle : admin ou viewer).
-function enterApp(){
-  const hasChoice = canAccessRH() || canAccessGADH() || (typeof canAccessCommandes==='function' && canAccessCommandes());
-  if(!hasChoice){ activeModule = 'rendement'; renderShell(); }
-  else if(activeModule){ renderShell(); }
-  else { renderModuleSelect(); }
-}
+// Choix de la société puis du module : voir enterSociete dans groupe-module.js.
+function enterApp(){ enterSociete(); }
 window.chooseModule = (mod) => { activeModule = mod; renderShell(); };
-window.switchModule = () => { activeModule = null; renderModuleSelect(); };
+window.switchModule = () => {
+  activeModule = null;
+  if(modulesDeSociete(activeSociete).length > 1) renderModuleSelect();
+  else switchSociete();
+};
+function peutChangerDeModule(){ return modulesDeSociete(activeSociete).length > 1 || peutChangerDeSociete(); }
 function renderModuleSelect(){
+  const mods = modulesDeSociete(activeSociete);
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
       <div class="login-card" style="max-width:440px;">
-        <div class="logo-wrap" style="margin-bottom:20px;">
-          <div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div>
-          <div class="logo-sub">TECHNICAL WEAR</div>
-        </div>
+        ${societeLogoHTML(activeSociete)}
         <h2 style="text-align:center;margin:0 0 4px;font-size:18px;">Quel module voulez-vous ouvrir ?</h2>
         <p style="text-align:center;color:var(--ink-soft);font-size:12.5px;margin:0 0 20px;">Connecté en tant que ${esc(currentUser.nom)}</p>
         <div style="display:flex;flex-direction:column;gap:12px;">
-          <button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;" onclick="chooseModule('rendement')">
+          ${mods.indexOf('rendement')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;" onclick="chooseModule('rendement')">
             <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.dashboard}</span>
             <span><span style="display:block;">Gestion Rendement</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Production, saisie, statistiques</span></span>
-          </button>
-          ${canAccessRH() ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:var(--good);" onclick="chooseModule('rh')">
+          </button>` : ''}
+          ${mods.indexOf('rh')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:var(--good);" onclick="chooseModule('rh')">
             <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.idBadge}</span>
             <span><span style="display:block;">Gestion Ressources Humaines</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Employés, pointage, congés</span></span>
           </button>` : ''}
-          ${canAccessGADH() ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#8E2A5B;" onclick="chooseModule('gadh')">
+          ${mods.indexOf('gadh')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#8E2A5B;" onclick="chooseModule('gadh')">
             <span style="flex-shrink:0;display:flex;align-items:center;">${ICONS.gadh}</span>
             <span><span style="display:block;">GADH Tunisia</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Production, personnel, pointage</span></span>
           </button>` : ''}
-          ${(typeof canAccessCommandes==='function' && canAccessCommandes()) ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#0B2C4D;" onclick="chooseModule('commandes')">
+          ${mods.indexOf('commandes')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#0B2C4D;" onclick="chooseModule('commandes')">
             <span style="width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">📦</span>
-            <span><span style="display:block;">Gestion des Commandes</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Suivi PERCKO : réception → expédition</span></span>
+            <span><span style="display:block;">Suivi des Commandes</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Suivi PERCKO : lots, coupe, GADH, expédition</span></span>
           </button>` : ''}
         </div>
-        <button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="logout()">Déconnexion</button>
+        ${peutChangerDeSociete() ? `<button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="switchSociete()">Changer de société</button>` : ''}
+        <button class="btn btn-ghost" style="width:100%;margin-top:${peutChangerDeSociete() ? '8' : '18'}px;" onclick="logout()">Déconnexion</button>
       </div>
     </div>
   `;
@@ -965,9 +1001,9 @@ async function loadProfileAndEnter(fbUser){
       // Les règles Firebase autorisent toujours à écrire SON PROPRE profil.
       const allSnap = await fbRootRef.child('users_v2').once('value');
       if(!allSnap.exists()){
-        profile = { nom: 'Resp. Magasin', username: (fbUser.email||'').split('@')[0], role: 'admin' };
+        profile = { nom: 'Resp. Magasin', username: (fbUser.email||'').split('@')[0], role: 'admin', groupe: true };
         await fbRootRef.child('users_v2/'+fbUser.uid).set(profile);
-        showToast('Premier compte initialisé en tant que Responsable. Modifiez le nom dans Sessions si besoin.');
+        showToast('Premier compte initialisé en tant que direction du groupe. Modifiez le nom dans Sessions si besoin.');
       } else {
         console.error('Compte authentifié mais profil introuvable dans users_v2/'+fbUser.uid);
         await fbAuth.signOut();
@@ -975,7 +1011,7 @@ async function loadProfileAndEnter(fbUser){
         return;
       }
     }
-    currentUser = { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role };
+    currentUser = { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role, societes: profile.societes || {}, groupe: !!profile.groupe };
     try { window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); } catch(e) {}
     startSessionAndRender();
   }catch(err){
@@ -1066,7 +1102,7 @@ function renderLogin(err){
 function logout(){
   endMySession();
   detachFirebaseDataListeners();
-  currentUser = null; mySessionId = null; activeModule = null;
+  currentUser = null; mySessionId = null; activeModule = null; activeSociete = null; directionOuverte = false;
   try { window.sessionStorage.removeItem(CACHE_PREFIX+'user'); window.localStorage.removeItem(CACHE_PREFIX+'sid'); } catch(e) {}
   if(firebaseConfigured() && fbAuth){ fbAuth.signOut(); /* déclenche onAuthStateChanged -> renderLogin */ }
   else renderLogin('');
@@ -1091,7 +1127,7 @@ function navItems(){
     const items = [
       {tab:'gadh-dashboard', label:'Dashboard', icon:ICONS.dashboard, show:true},
       {tab:'gadh-production', label:'Production', icon:ICONS.saisie, show:true},
-      {tab:'commandes-home', label:'CMD', icon:ICONS.prodchain, show:(typeof canAccessCommandes==='function' && canAccessCommandes())},
+      {tab:'commandes-home', label:'Commandes', icon:ICONS.prodchain, show:(typeof canAccessCommandes==='function' && canAccessCommandes())},
       {tab:'gadh-rh', label:'RH', icon:ICONS.idBadge, show:true},
       {tab:'gadh-historique', label:'Historique', icon:ICONS.historique, show:true},
       {tab:'gadh-stats', label:'Stats', icon:ICONS.stats, show:true},
@@ -1132,7 +1168,7 @@ function renderShell(){
       <nav>${items.map(i=>navBtn(i,'')).join('')}</nav>
       <div class="side-sep"></div>
       <nav>
-        ${(canAccessRH()||canAccessGADH()||(typeof canAccessCommandes==='function' && canAccessCommandes())) ? `<button onclick="switchModule()">${ICONS.switchModule}<span>Changer de module</span></button>` : ''}
+        ${peutChangerDeModule() ? `<button onclick="switchModule()">${ICONS.switchModule}<span>Changer de module</span></button>` : ''}
         <button onclick="logout()" style="color:var(--bad);">${ICONS.logout}<span>Déconnexion</span></button>
       </nav>
     </div>
@@ -1148,12 +1184,12 @@ function renderShell(){
           <span class="uname">${currentUser.nom}</span>
           <span class="user-chevron">${ICONS.chevronDown}</span>
           <span class="role">${roleLabel(currentUser.role)}</span>
-          ${(canAccessRH()||canAccessGADH()||(typeof canAccessCommandes==='function' && canAccessCommandes())) ? `<button onclick="switchModule()" title="Changer de module">${ICONS.switchModule}</button>` : ''}
+          ${peutChangerDeModule() ? `<button onclick="switchModule()" title="Changer de module">${ICONS.switchModule}</button>` : ''}
           <button onclick="logout()" title="Déconnexion">${ICONS.logout}</button>
         </div>
       </div>
       <main id="main"></main>
-      <div class="bottomnav no-print">
+      <div class="bottomnav no-print${items.length <= 1 ? ' bn-seul' : ''}">
         ${items.map(i=>navBtn(i,'')).join('')}
       </div>
     </div>
@@ -1190,7 +1226,7 @@ function nav(tab){
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
   else if(tab === 'gadh-parametres'){ renderGadhParametres(gadhSectionContainer(main,'Paramètres')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
-  else if(tab === 'commandes-home'){ renderCmdModule(main); }
+  else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
   updateNavBadges();
 }
 
@@ -2184,7 +2220,7 @@ function renderSessions(container){
       }).join('')}
     </div>
 
-    ${currentUser.role === 'admin' ? `
+    ${canManageAccounts() ? `
     <div class="card">
       <div class="flex-header" style="margin-bottom:10px;">
         <h3 style="margin:0;">Comptes utilisateurs</h3>
@@ -2195,10 +2231,10 @@ function renderSessions(container){
         <div class="session-row">
           <div>
             <div style="font-weight:700;">${u.nom} <span class="badge ${roleBadgeClass(u.role)}" style="font-size:10px;">${roleLabel(u.role)}</span></div>
-            <div style="font-size:11.5px;color:var(--ink-soft);">Identifiant : ${u.username}</div>
+            <div style="font-size:11.5px;color:var(--ink-soft);">Identifiant : ${u.username} · ${accesLabel(u)}</div>
           </div>
           <div style="display:flex;gap:6px;">
-            ${fbMode ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="showEditRoleForm('${key}')">Modifier le rôle</button>
+            ${fbMode ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="showEditRoleForm('${key}')">Modifier</button>
                         ${(userRows.length > 1 && key !== currentUser.uid) ? `<button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="deleteUserProfile('${key}','${esc(u.nom)}')">Suppr.</button>` : ''}`
                      : `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="showEditUserForm(${key})">Modifier</button>
                         ${userRows.length > 1 ? `<button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="deleteUserAccount(${key})">Suppr.</button>` : ''}`}
@@ -2225,6 +2261,7 @@ function renderSessions(container){
               <option value="admin">Responsable (saisie + administration)</option>
             </select>
           </div>
+          ${societesFieldHTML({})}
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary" style="flex:1;" onclick="createFirebaseAccount()">Créer le compte</button>
             <button class="btn btn-ghost" onclick="document.getElementById('user-form-zone').innerHTML=''">Annuler</button>
@@ -2244,6 +2281,7 @@ function renderSessions(container){
               <option value="admin" ${u.role==='admin'?'selected':''}>Responsable (saisie + administration)</option>
             </select>
           </div>
+          ${societesFieldHTML(u)}
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary" style="flex:1;" onclick="saveRoleEdit('${key}')">Enregistrer</button>
             <button class="btn btn-ghost" onclick="document.getElementById('user-form-zone').innerHTML=''">Annuler</button>
@@ -2266,6 +2304,7 @@ function renderSessions(container){
             <option value="admin" ${u.role==='admin'?'selected':''}>Responsable (saisie + administration)</option>
           </select>
         </div>
+        ${societesFieldHTML(u)}
         <div style="display:flex; gap:8px;">
           <button class="btn btn-primary" style="flex:1;" onclick="saveUserFormLocal(${editing?key:'null'})">${editing?'Enregistrer':'Créer le compte'}</button>
           <button class="btn btn-ghost" onclick="document.getElementById('user-form-zone').innerHTML=''">Annuler</button>
@@ -2284,6 +2323,7 @@ function renderSessions(container){
     const role = document.getElementById('uf-role').value;
     if(!nom || !username){ showToast('Nom et identifiant requis'); return; }
     if(!password || password.length < 6){ showToast('Mot de passe : 6 caractères minimum'); return; }
+    const acces = readSocietesField(); if(!acces) return;
     try{
       let secApp;
       try{ secApp = firebase.app('Secondary'); } catch(e){ secApp = firebase.initializeApp(firebaseConfig, 'Secondary'); }
@@ -2291,7 +2331,7 @@ function renderSessions(container){
       const cred = await secAuth.createUserWithEmailAndPassword(emailForUsername(username), password);
       const uid = cred.user.uid;
       await secAuth.signOut();
-      await fbRootRef.child('users_v2/'+uid).set({ nom, username, role });
+      await fbRootRef.child('users_v2/'+uid).set({ nom, username, role, societes: acces.societes, groupe: acces.groupe });
       showToast('Compte créé avec succès');
       nav('sessions');
     }catch(err){
@@ -2307,9 +2347,10 @@ function renderSessions(container){
     const nom = document.getElementById('uf-nom').value.trim();
     const role = document.getElementById('uf-role').value;
     if(!nom){ showToast('Nom requis'); return; }
+    const acces = readSocietesField(); if(!acces) return;
     try{
-      await fbRootRef.child('users_v2/'+uid).update({ nom, role });
-      if(currentUser.uid === uid){ currentUser.nom = nom; currentUser.role = role; try{ window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); }catch(e){} }
+      await fbRootRef.child('users_v2/'+uid).update({ nom, role, societes: acces.societes, groupe: acces.groupe });
+      if(currentUser.uid === uid){ currentUser.nom = nom; currentUser.role = role; currentUser.societes = acces.societes; currentUser.groupe = acces.groupe; try{ window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); }catch(e){} }
       showToast('Compte mis à jour');
       nav('sessions');
     }catch(err){ console.error(err); showToast("Erreur : vérifiez vos droits d'accès."); }
@@ -2346,13 +2387,14 @@ function renderSessions(container){
     const password = document.getElementById('uf-password').value;
     const role = document.getElementById('uf-role').value;
     if(!nom || !username){ showToast('Nom et identifiant requis'); return; }
+    const acces = readSocietesField(); if(!acces) return;
     let list = getLocalUsers().slice();
     if(editIndex === null){
       if(list.find(x=>x.username===username)){ showToast('Cet identifiant existe déjà'); return; }
       if(!password){ showToast('Mot de passe requis pour un nouveau compte'); return; }
-      list.push({nom, username, password, role});
+      list.push({nom, username, password, role, societes: acces.societes, groupe: acces.groupe});
     } else {
-      list[editIndex] = { ...list[editIndex], nom, role, password: password ? password : list[editIndex].password };
+      list[editIndex] = { ...list[editIndex], nom, role, societes: acces.societes, groupe: acces.groupe, password: password ? password : list[editIndex].password };
     }
     saveLocalUsers(list);
     showToast('Compte enregistré');
@@ -2688,6 +2730,9 @@ window.onload = init;
 <script src="./gadh-module.js"></script>
 <script src="./prod-module.js"></script>
 <script src="./commandes-module.js"></script>
+<script src="./groupe-module.js"></script>
+<script src="./suivi-module.js"></script>
+<script src="./pointeuse-module.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
