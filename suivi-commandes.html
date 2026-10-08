@@ -1,0 +1,1575 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Suivi des commandes</title>
+<!-- GTM-GROUPE : reprise de l'application « Suivi PERCKO », affichée dans un cadre par suivi-module.js.
+     Les données passent par window.parent.grpSuiviStore (getJSON/setJSON du groupe, dossier Firebase liaison/).
+     ?vue=gadh : seules les étapes de la GADH (envoi, assemblage, retour) et la fiche assemblage. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : en-tête fixe (lot, client), contenu défilant, barre d'onglets en bas.
+   Palette : bleu de chauffe (encre), jaune de saisie (comme les cellules jaunes du tableau Excel), vert/rouge pour l'état. */
+:root{
+  --bg:#edf0f4; --card:#ffffff; --ink:#18212f; --mut:#5d6779; --line:#d6dce6;
+  --pri:#1d3557; --pri-ink:#ffffff; --acc:#2a6f97; --edit:#fff3bf; --edit-line:#e7cf6a;
+  --ok:#1b7a3d; --bad:#b3261e; --bad-bg:#fde1de; --head:#1d3557; --sub:#e4eaf3; --tot:#d5e1f1;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --cond:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151e; --card:#18212e; --ink:#e6ebf3; --mut:#9aa6ba; --line:#2b3748;
+  --pri:#6ea8d9; --pri-ink:#0b1420; --acc:#7db7e6; --edit:#4a3f14; --edit-line:#8a7424;
+  --ok:#6fcf8f; --bad:#ff8a80; --bad-bg:#4a1f1c; --head:#25364f; --sub:#212d3e; --tot:#2a3b55; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151e; --card:#18212e; --ink:#e6ebf3; --mut:#9aa6ba; --line:#2b3748;
+  --pri:#6ea8d9; --pri-ink:#0b1420; --acc:#7db7e6; --edit:#4a3f14; --edit-line:#8a7424;
+  --ok:#6fcf8f; --bad:#ff8a80; --bad-bg:#4a1f1c; --head:#25364f; --sub:#212d3e; --tot:#2a3b55; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.4;margin:0}
+*{box-sizing:border-box}
+#app{display:flex;flex-direction:column;height:100%}
+header{padding:10px 16px 8px;background:var(--head);color:#fff;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+header h1{font-size:17px;margin:0;font-weight:600;flex:1 1 100%}
+header label{display:flex;flex-direction:column;font-size:11px;gap:2px;flex:1 1 130px;min-width:0;opacity:.95}
+header select{font:inherit;padding:7px 8px;border-radius:8px;border:0;background:#fff;color:#18212f;min-width:0;width:100%}
+#view{flex:1;overflow-y:auto;padding:14px 16px 24px;-webkit-overflow-scrolling:touch}
+nav{display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;min-width:0;border:0;background:none;color:var(--mut);font:inherit;font-size:12px;padding:9px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button b{font-family:var(--cond);font-size:18px;line-height:1;font-weight:600}
+nav button.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 8px;font-weight:600}
+.mut{color:var(--mut);font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px;flex:1 1 130px;min-width:0}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 9px;min-width:0;width:100%}
+input[type=file]{padding:6px}
+button.btn{font:inherit;font-weight:500;border:1px solid var(--pri);background:var(--pri);color:var(--pri-ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+button.btn.sec{background:transparent;color:var(--pri)}
+button.btn.bad{background:transparent;color:var(--bad);border-color:var(--bad)}
+button.btn.small{padding:5px 10px;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.grid7{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.grid7 label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+.grid7 input{text-align:right}
+.grid7 input:disabled{opacity:.35}
+.ed{background:var(--edit)!important;border-color:var(--edit-line)!important}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+table{border-collapse:collapse;font-family:var(--cond);font-size:14px;width:100%}
+th,td{padding:5px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{background:var(--head);color:#fff;font-weight:500;white-space:normal;line-height:1.15;text-align:center;font-size:12px;vertical-align:bottom}
+td.l,th.l{text-align:left}
+tr.gh td{background:var(--sub);font-weight:600;text-align:left}
+tr.tot td{background:var(--tot);font-weight:600}
+tr.pc td{color:var(--mut);font-size:12px}
+td input{width:62px;padding:4px 5px;text-align:right;font-family:var(--cond);font-size:14px;border-radius:5px}
+td.bad,td.bad input{background:var(--bad-bg)!important;color:var(--bad);font-weight:600}
+td.ok{color:var(--ok);font-weight:600}
+td.sticky,th.sticky{position:sticky;left:0;z-index:1;background:var(--card);text-align:left}
+th.sticky{background:var(--head);z-index:2}
+tr.gh td.sticky{background:var(--sub)}
+tr.tot td.sticky{background:var(--tot)}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.pill.ok{background:rgba(27,122,61,.15);color:var(--ok)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.na{background:var(--sub);color:var(--mut)}
+.ocard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--card)}
+.ocard .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
+.ocard .nm{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ocard .cut{font-family:var(--cond);color:var(--mut);font-size:12px;text-align:right}
+.msg{padding:9px 12px;border-radius:8px;background:var(--sub);margin-top:10px;font-size:13px}
+.msg.err{background:var(--bad-bg);color:var(--bad)}
+.stat{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.stat div{flex:1 1 110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-family:var(--cond);font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--mut)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:#18212f;color:#fff;padding:9px 16px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;z-index:10;font-size:14px}
+#toast.on{opacity:1}
+table td,table th{font-variant-numeric:tabular-nums}
+
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.seg button{font:inherit;font-size:14px;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.seg button.on{background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+details.card>summary{cursor:pointer;font-weight:600}
+.sheetwrap{background:var(--card);border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+table.sheet{width:100%;table-layout:fixed}
+table.sheet th{position:sticky;top:0;z-index:3}
+table.sheet td{white-space:normal;overflow-wrap:break-word;vertical-align:middle;padding:1px 4px}
+table.sheet td.mdl{font-size:11px;color:var(--mut)}
+table.sheet td.lib{font-weight:600;font-size:13px}
+table.sheet td.sz{text-align:center;white-space:nowrap}
+table.sheet tr.gstart td{border-top:2px solid var(--line)}
+table.sheet td input{width:100%;padding:3px 5px;font-size:15px}
+table.sheet td.cut{color:var(--mut);font-size:13px}
+table.sheet tr.ml td{color:var(--acc);font-weight:500}
+table.sheet td.b{font-weight:600}
+.fhead{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+
+.xlwrap{background:#fff;color:#000;border:1px solid var(--line);border-radius:6px;overflow:auto;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.xlwrap.tall{max-height:calc(100vh - 230px);min-height:300px}
+table.xl{border-collapse:collapse;table-layout:fixed;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#000;width:auto}
+table.xl td{white-space:nowrap;overflow:hidden;padding:0 3px;border:0;vertical-align:middle;font-variant-numeric:tabular-nums}
+table.entry{width:354px}
+table.entry th{position:sticky;top:0;z-index:3;background:#fff;color:#c00000;border:2px solid #000;font:700 12px Arial,sans-serif;padding:3px;text-align:center;white-space:nowrap}
+table.entry td{border:1px solid #000;font-size:11px;height:25px}
+table.entry td.mdl{font-size:10px;text-align:center;white-space:normal}
+table.entry td.lib{font-size:10px;text-align:left;white-space:normal;line-height:1.1}
+table.entry td.sz{text-align:center;font-weight:700}
+table.entry td.fr{padding:1px}
+table.entry td.tot{text-align:center;font-size:13px}
+table.entry td input{width:100%;height:22px;padding:0 4px;font:13px Arial,sans-serif;color:#000;background:#fff3bf;border:1px solid #e7cf6a;border-radius:3px;text-align:right}
+table.entry tr.gstart td{border-top:2px solid #000}
+
+header .fixed{background:rgba(255,255,255,.15);border-radius:8px;padding:7px 8px;font-weight:600;letter-spacing:.04em}
+.pill.wip{background:rgba(42,111,151,.16);color:var(--acc)}
+.top2{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.cl{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+.bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+.bar .bl{display:flex;flex-direction:column;font-size:11px;color:var(--mut);line-height:1.15}
+.bar .bl b{font-family:var(--cond);font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.bar .bt{height:6px;background:var(--sub);border-radius:3px;margin-top:3px;overflow:hidden}
+.bar .bt i{display:block;height:100%;background:var(--acc)}
+.bar .bp{font-size:10.5px;color:var(--mut);margin-top:2px}
+table.flux td.fr{padding:2px 3px}
+table.flux td.fr input{width:78px}
+nav button{font-size:11px}
+
+/* ---- finition ---- */
+:root{--shadow:0 1px 2px rgba(20,40,63,.07),0 6px 18px rgba(20,40,63,.06);--radius:14px}
+body{letter-spacing:.005em}
+header{background:linear-gradient(135deg,#12263f 0%,#23466f 100%);padding:12px 16px 12px;gap:10px 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);position:relative;z-index:5}
+header h1{font-size:18px;letter-spacing:.01em}
+header .brand{display:flex;align-items:center;gap:11px;flex:1 1 100%}
+header .logo{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#fff;color:#12263f;font:700 15px var(--cond);letter-spacing:.04em}
+header .sub{font-size:12px;opacity:.75;margin-top:1px}
+header label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;opacity:.8;gap:4px}
+header select{border-radius:10px;padding:8px 10px;font-weight:600;text-transform:none;letter-spacing:0}
+header .fixed{border-radius:10px;padding:8px 10px;background:rgba(255,255,255,.14);font-weight:700;text-transform:none;letter-spacing:.08em}
+.card{border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.card h2{font-size:16px}
+.stat div{border-radius:var(--radius);box-shadow:var(--shadow);border-left:4px solid var(--acc);padding:10px 14px}
+.stat b{font-size:26px;color:var(--pri)}
+.btn{border-radius:10px;min-height:40px;font-weight:600;padding:9px 16px;transition:transform .08s,box-shadow .15s}
+.btn:active{transform:translateY(1px)}
+.btn.small{min-height:34px;padding:6px 12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.seg button{min-height:38px;border-radius:99px;font-weight:500}
+.seg button.on{box-shadow:0 2px 8px rgba(29,53,87,.28)}
+input,select,textarea{border-radius:10px;min-height:40px}
+input:focus,select:focus{border-color:var(--acc)}
+nav{box-shadow:0 -4px 16px rgba(20,40,63,.08)}
+nav button{gap:4px;font-weight:500;position:relative}
+nav button b{display:block;line-height:0}
+nav button b svg{width:23px;height:23px;display:block}
+nav button.on{box-shadow:none;font-weight:600}
+nav button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--pri)}
+.card.ord{border-left:5px solid var(--acc)}
+.card.ord.ok{border-left-color:var(--ok)}
+.card.ord.na{border-left-color:var(--line)}
+.pill{padding:3px 10px;font-size:12px}
+.bar .bt{height:8px;border-radius:4px}
+.bar .bt i{background:linear-gradient(90deg,var(--acc),var(--pri))}
+.cl{margin-top:12px;padding-top:10px}
+.fabcard table.fabt{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px;font-family:var(--font)}
+.fabcard .fabt th{background:var(--head);color:#fff;padding:9px 12px;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+.fabcard .fabt th:first-child{border-radius:10px 0 0 0}.fabcard .fabt th:last-child{border-radius:0 10px 0 0}
+.fabcard .fabt td{padding:9px 12px;font-size:15px;border-bottom:1px solid var(--line);white-space:normal}
+.fabcard .fabt td.b{font-weight:700;font-family:var(--cond);font-size:17px}
+.fabcard .fabt tr.tot td{background:var(--tot);font-weight:700;border-bottom:0}
+.fabcard .fabt tr.tot td:first-child{border-radius:0 0 0 10px}.fabcard .fabt tr.tot td:last-child{border-radius:0 0 10px 0}
+.xlwrap{border-radius:var(--radius);box-shadow:var(--shadow)}
+table.entry th{border-width:1px}
+#view{padding-top:16px}
+@media (min-width:800px){
+  header{padding:12px 28px}header .brand{flex:0 0 auto;margin-right:26px}
+  .stat b{font-size:30px}
+}
+
+/* lisibilité + logo TEK-TREND + précédent/suivant */
+body{font-size:16px}
+.mut{font-size:14px;color:var(--ink);opacity:.78}
+table{font-family:var(--font);font-size:15px;font-weight:500}
+th{font-size:13px;font-weight:600}
+td input{font-family:var(--font);font-size:15px;font-weight:600}
+.card h2{font-size:17px}
+button.btn.small{font-size:14px}
+nav button{font-size:12px;font-weight:500}
+header{background:#1C2430}
+header .tt{display:inline-flex;align-items:baseline;font:800 25px/1 var(--font);letter-spacing:.02em;padding:2px 0}
+header .tek{color:#5BC0F8}header .trd{color:#fff}header .cm{color:#F5C518;margin-left:1px}
+header .sub{font-size:12px;opacity:.85;letter-spacing:.04em}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.pager .mut{flex:1;text-align:center;font-weight:600}
+.pager button{padding:9px 12px}
+.pager button:disabled{opacity:.35;cursor:default}
+.fabcard .fabt td{font-size:16px;font-weight:600}
+
+/* parcours, états, confirmation */
+.step{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:var(--card);width:100%;text-align:left;font:inherit;color:inherit}
+button.step{cursor:pointer}
+.step.on{border-color:var(--pri);box-shadow:inset 0 0 0 2px var(--pri)}
+.step .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--sub);font-weight:700;font-size:13px;flex:none}
+.step.done .n{background:var(--ok);color:#fff}.step.part .n{background:#e0a100;color:#fff}
+.step .nm{flex:1;min-width:0;font-weight:600;font-size:15px;line-height:1.25}
+.step .nm small{display:block;font-weight:400;color:var(--mut);font-size:13px}
+.step .qt{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;font-size:14px}
+.step .mb{height:4px;background:var(--sub);border-radius:3px;margin-top:6px;overflow:hidden}
+.step .mb i{display:block;height:100%;background:var(--ok)}
+.step.part .mb i{background:#e0a100}
+.sbar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--sub)}
+.sbar i{display:block;height:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;padding:3px 10px;border-radius:99px;background:var(--sub)}
+.chip s{width:10px;height:10px;border-radius:50%;display:inline-block}
+.card.confirm{border:2px solid var(--pri)}
+
+.chip.nc{background:var(--bad-bg);color:var(--bad)}
+td input.nc{background:var(--bad-bg)!important;border-color:var(--bad)!important}
+table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;padding:4px 3px}table.flux th{font-size:12px}
+</style>
+
+<div id="app">
+  <header>
+    <div class="brand"><span class="tt"><span class="tek">TEK</span><span class="trd">TREND</span><span class="cm">,</span></span><div><h1>Suivi PERCKO</h1><div class="sub">TECHNICAL WEAR · coupe · assemblage · expédition</div></div></div>
+    <label>Commande (lot)<select id="selLot"></select></label>
+    <label>Client<div class="fixed">PERCKO</div></label>
+  </header>
+  <div id="view"></div>
+  <nav id="tabs"></nav>
+</div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const DEF_NOMEN=[["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XS","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","S","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","M","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","L","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XL","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XXL","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XXXL","Caresse Noir","",0.65,0.33,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XS","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","S","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","M","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","L","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XL","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XXL","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XXXL","Renew Fine Gris","",0.65,0.33,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XS","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","S","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","M","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","L","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XL","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XXL","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XXXL","Caresse Beige","",0.65,0.33,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XS","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","S","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","M","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","L","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XL","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XXL","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XXXL","Caresse Noir","",0.48,0.33,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XS","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","S","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","M","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","L","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XL","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XXL","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XXXL","Caresse Rose","",0.48,0.33,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XS","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","S","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","M","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","L","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XL","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XXL","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XXXL","Caresse Noir","",0.47,0.33,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XS","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","S","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","M","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","L","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XL","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XXL","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XXXL","Caresse Rose","",0.47,0.33,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","S","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","M","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","L","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","XL","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","XXL","Revolut Mild Noir","",0.63,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","XS","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","S","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","M","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","L","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","XL","Revolut Mild Noir","",0.47,0.25,0],["Gilet-H-Noir","Gilet homme noir","XS","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","S","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","M","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","L","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XL","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XXL","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XXXL","Caresse Noir","",0.49,0.45,0],["Gilet-F-Noir","Gilet femme noir","XS","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","S","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","M","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","L","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XL","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XXL","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XXXL","Caresse Noir","",0.45,0.45,0],["Pro Homme","LYNE PRO homme gris","XS","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","S","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","M","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","L","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XL","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XXL","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XXXL","Vita Titanium","",0.41,0.28,0],["Pro Femme","LYNE PRO femme gris","XS","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","S","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","M","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","L","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","XL","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","XXL","Vita Titanium","",0.39,0.28,0],["Flex Homme","LYNE FLEX homme gris","XS","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","S","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","M","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","L","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XXL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XXXL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XS","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","S","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","M","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","L","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XXL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XXXL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26]];
+const DEF_RULES=[["PHARMA-HOMME",100,5,400,10,20],["PHARMA-FEMME COL V",100,5,400,10,20],["PHARMA-FEMME COL ROND",100,5,400,10,20],["Sport-H-Re-Mi",100,5,400,10,20],["Sport-F-Re-Mi",100,5,400,10,20],["Gilet-H-Noir",100,5,400,5,5],["Gilet-F-Noir",100,5,400,5,5],["Pro Homme",201,3,1000000,5,5],["Pro Femme",201,3,1000000,5,5],["Flex Homme",100,5,400,5,5],["Flex Femme",100,5,400,5,5],["Lecture : commande < Seuil 1 -> Marge 1 ; sinon < Seuil 2 -> Marge 2 ; sinon Marge 3. Pro : 3 pcs jusqu'à 200, 5 pcs au-delà.",null,null,null,null,null],["*",100,5,1000000,10,10]];
+
+</script>
+<script>
+"use strict";
+var SZ = ["XS","S","M","L","XL","XXL","XXXL"];
+/* Parcours : 1 Commande reçue · 2 Commande prête (validée) · puis 9 étapes avec quantités (cumul de pièces ayant atteint l'étape) */
+var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour TEK-TREND"],["conf","En confection"],["ctl","Contrôle"],["emb","Emballage"],["pret","Prêt à expédier"],["exp","Expédiée"]];
+var STG_KEYS = STAGES.map(function(x){ return x[0]; });
+var STAGE_SHORT = {cp:"Coupe", gadh:"GADH", asm:"Assemb.", ret:"Retour", conf:"Confec.", ctl:"Contrôle", emb:"Emball.", pret:"Prêt", exp:"Expéd."};
+var STAGE_HELP = {cp:"Quantités coupées par le centre de coupe (partielle ou complète). La coupe peut dépasser la commande (marge).", gadh:"Quantités coupées envoyées à la GADH.", asm:"Pièces reçues et lancées en assemblage à la GADH.", ret:"Pièces assemblées qui reviennent chez TEK-TREND (retour partiel possible).", conf:"Pièces passées en confection.", ctl:"Pièces passées au contrôle.", emb:"Pièces passées à l'emballage.", pret:"Pièces emballées prêtes à expédier (partiel ou complet).", exp:"Pièces expédiées au client PERCKO (partiel ou complet)."};
+var STAGE_STATUS = ["Commande coupée","Envoyée à la GADH","Assemblage à la GADH","Retour vers TEK-TREND","En confection","Contrôle","Emballage","Prêt à expédier","Expédiée"];
+var STATE_NAMES = ["À couper","Coupées","Envoyées à la GADH","En assemblage (GADH)","Retournées TEK-TREND","En confection","Contrôlées conformes","Emballées","Prêtes à expédier","Expédiées"];
+var STATE_COL = ["#9aa6ba","#d9a400","#e07b39","#b5651d","#6aa84f","#2a6f97","#5b8def","#7d5ba6","#2e9d57","#0f5132"];
+/* état actuel d'une ligne : chaque pièce est dans l'état de la dernière étape atteinte */
+function stateVals(cut, s, n){
+  n = n || {};
+  var v = [Math.max(0, cut - (s.cp || 0) - (n.cp || 0))];
+  for (var i = 0; i < STG_KEYS.length; i++){ var a = s[STG_KEYS[i]] || 0, b = i + 1 < STG_KEYS.length ? (s[STG_KEYS[i+1]] || 0) + (n[STG_KEYS[i+1]] || 0) : 0; v.push(Math.max(0, a - b)); }
+  return v;
+}
+function ncTotals(){ var t = {}; S.moves.forEach(function(m){ if (!m.nc) return; (t[m.lineId] = t[m.lineId] || {})[m.stage] = ((t[m.lineId] || {})[m.stage] || 0) + m.nc; }); return t; }
+function lotReady(lot){ var i = S.lots[lot]; if (i && i.ready) return true; if (i) return false; return S.lines.some(function(l){ return l.lot === lot; }) && S.moves.length > 0; }
+function ensureLot(lot){ if (!S.lots[lot]) S.lots[lot] = {received:today(), ready:""}; }
+function lotMonth(lot){ var m = /(\d{4})(\d{2})/.exec(String(lot || "")); if (m && +m[2] >= 1 && +m[2] <= 12) return {y:+m[1], m:+m[2]}; return null; }
+var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}};
+/* ---------- application groupe (cadre) ---------- */
+function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
+var HOST = hostStore();
+var VUE = (/[?&]vue=gadh\b/.test(location.search) || (HOST && HOST.vue() === "gadh")) ? "gadh" : "tek";
+var GADH_STG = ["gadh","asm","ret"];
+var PC = window.innerWidth >= 800;   /* grand écran : tableaux plus lisibles (comme la version PC .exe) */
+var dirty = false;
+var ui = {tab:"dash", lot:"", client:"*"};
+var dbh = null, storageMode = "memoire";
+var lastSaved = {}, saveTimer = null, saving = Promise.resolve();
+var uid = 0;
+function nid(p){ uid++; return p + Date.now().toString(36) + uid.toString(36) + Math.floor(Math.random()*1296).toString(36); }
+
+/* ---------- utilitaires ---------- */
+function cleanTxt(s){ return String(s == null ? "" : s).replace(/ /g," ").replace(/\t/g," ").replace(/\s+/g," ").trim(); }
+function normSize(s){ s = cleanTxt(s).toUpperCase(); if (s === "3XL") return "XXXL"; if (s === "2XL") return "XXL"; return s; }
+function refP(lib,size){ return cleanTxt(lib).replace(/ /g,"-") + "_" + normSize(size); }
+function sizeIdx(s){ var i = SZ.indexOf(s); return i < 0 ? 99 : i; }
+function num(v){ var n = parseInt(v,10); return isNaN(n) ? 0 : n; }
+function r2(x){ return Math.round(x*100)/100; }
+function fmt(n,d){ if (n === null || n === undefined || n === "") return ""; return Number(n).toLocaleString("fr-FR",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+function today(){ var d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function el(tag, props){
+  var e = document.createElement(tag);
+  if (props) Object.keys(props).forEach(function(k){
+    var v = props[k];
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.slice(0,2) === "on") e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v; else e.setAttribute(k, v);
+  });
+  for (var i = 2; i < arguments.length; i++){ var c = arguments[i]; if (c == null) continue;
+    if (Array.isArray(c)) c.forEach(function(x){ if (x != null) e.appendChild(typeof x === "object" ? x : document.createTextNode(String(x))); });
+    else e.appendChild(typeof c === "object" ? c : document.createTextNode(String(c))); }
+  return e;
+}
+var toastT;
+function toast(t){ var x = document.getElementById("toast"); x.textContent = t; x.className = "on"; clearTimeout(toastT); toastT = setTimeout(function(){ x.className = ""; }, 2800); }
+function sortedUnique(a){ return Array.from(new Set(a)).sort(); }
+
+/* ---------- données ---------- */
+function nomIndex(){ var m = {}; S.nomen.forEach(function(n){ m[refP(n.lib,n.size)] = n; }); return m; }
+function libOrder(){ var m = {}, k = 0; S.nomen.forEach(function(n){ if (!(n.lib in m)) m[n.lib] = k++; }); return m; }
+function modelOf(lib){ for (var i = 0; i < S.nomen.length; i++) if (S.nomen[i].lib === lib) return S.nomen[i].model; return ""; }
+function libList(){ var seen = {}, out = []; S.nomen.forEach(function(n){ if (!seen[n.lib]){ seen[n.lib] = {lib:n.lib, model:n.model, sizes:[]}; out.push(seen[n.lib]); } seen[n.lib].sizes.push(n.size); }); return out; }
+function cutQty(q, model){
+  var r = null, i;
+  for (i = 0; i < S.rules.length; i++) if (S.rules[i].model.toLowerCase() === String(model).toLowerCase()){ r = S.rules[i]; break; }
+  if (!r) for (i = 0; i < S.rules.length; i++) if (S.rules[i].model === "*") r = S.rules[i];
+  if (!r) return q;
+  if (q < r.s1) return q + r.m1;
+  if (q < r.s2) return q + r.m2;
+  return q + r.m3;
+}
+function filtered(lot, client){
+  var lo = libOrder();
+  return S.lines.filter(function(l){ return (!lot || l.lot === lot) && (!client || client === "*" || l.client === client); })
+   .sort(function(a,b){
+     if (a.lot !== b.lot) return a.lot < b.lot ? -1 : 1;
+     var ia = a.lib in lo ? lo[a.lib] : 1000, ib = b.lib in lo ? lo[b.lib] : 1000;
+     if (ia !== ib) return ia - ib;
+     if (a.lib !== b.lib) return a.lib < b.lib ? -1 : 1;
+     if (a.client !== b.client) return a.client < b.client ? -1 : 1;
+     return sizeIdx(a.size) - sizeIdx(b.size);
+   });
+}
+function stageTotals(){ var t = {}; S.moves.forEach(function(m){ (t[m.lineId] = t[m.lineId] || {})[m.stage] = ((t[m.lineId] || {})[m.stage] || 0) + m.qty; }); return t; }
+function findLine(lot, client, lib, size){ for (var i = 0; i < S.lines.length; i++){ var l = S.lines[i]; if (l.lot === lot && l.client === client && l.lib === lib && l.size === size) return l; } return null; }
+function lineById(id){ for (var i = 0; i < S.lines.length; i++) if (S.lines[i].id === id) return S.lines[i]; return null; }
+
+function setLine(lot, year, client, lib, size, qty){
+  lot = cleanTxt(lot); client = cleanTxt(client).toUpperCase(); lib = cleanTxt(lib); size = normSize(size);
+  if (!lot || !client || !lib || !size) throw new Error("Lot, client, libellé et taille sont obligatoires.");
+  if (qty < 0) throw new Error("Quantité négative impossible.");
+  var l = findLine(lot, client, lib, size);
+  if (!l){ if (qty === 0) return; ensureLot(lot); S.lines.push({id:nid("L"), lot:lot, year:year||0, client:client, model:modelOf(lib), lib:lib, size:size, qty:qty}); return; }
+  if (qty === 0){
+    if (S.moves.some(function(m){ return m.lineId === l.id; })) throw new Error("Des mouvements existent pour cette ligne : supprimez-les d'abord (onglet Flux).");
+    S.lines = S.lines.filter(function(x){ return x.id !== l.id; }); return;
+  }
+  l.qty = qty; if (year) l.year = year;
+}
+
+/* ---------- sauvegarde (base de données de la page, sinon mémoire du téléphone) ---------- */
+function safeId(s){ return String(s).replace(/[^A-Za-z0-9_-]/g,"_"); }
+function desiredDocs(){
+  var d = {};
+  d.cfg = {nomen: S.nomen.map(function(n){ return [n.model,n.lib,n.size,n.t1,n.t2,n.cc,n.ca,n.ca2]; }),
+           rules: S.rules.map(function(r){ return [r.model,r.s1,r.m1,r.s2,r.m2,r.m3]; }), stock: S.stock, lots: S.lots, ver: 2};
+  var lots = sortedUnique(S.lines.map(function(l){ return l.lot; }));
+  lots.forEach(function(lot){
+    var ls = S.lines.filter(function(l){ return l.lot === lot; });
+    var ids = {}; ls.forEach(function(l){ ids[l.id] = 1; });
+    d["lines-"+safeId(lot)] = {lot:lot, lines: ls.map(function(l){ return [l.id,l.year,l.client,l.model,l.lib,l.size,l.qty,l.cc ? 1 : 0]; })};
+    var ms = S.moves.filter(function(m){ return ids[m.lineId]; });
+    for (var k = 0; k * 1200 < ms.length; k++)
+      d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ return [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; })};
+  });
+  return d;
+}
+function persist(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
+function flush(){
+  var want = desiredDocs(), ops = [];
+  if (HOST){
+    var ch = {}, n = 0;
+    Object.keys(want).forEach(function(id){ var js = JSON.stringify(want[id]); if (lastSaved[id] !== js){ ch[id] = want[id]; lastSaved[id] = js; n++; } });
+    Object.keys(lastSaved).forEach(function(id){ if (!(id in want)){ ch[id] = null; delete lastSaved[id]; n++; } });
+    if (n) HOST.ecrireDocs(ch);
+    return Promise.resolve();
+  }
+  if (dbh){
+    Object.keys(want).forEach(function(id){ var js = JSON.stringify(want[id]); if (lastSaved[id] !== js){ ops.push([id, js]); } });
+    Object.keys(lastSaved).forEach(function(id){ if (!(id in want)) ops.push([id, null]); });
+    var p = Promise.resolve();
+    ops.forEach(function(o){ p = p.then(function(){
+      var ref = dbh.doc("pk/" + o[0]);
+      if (o[1] === null) return ref.delete().then(function(){ delete lastSaved[o[0]]; });
+      return ref.set(JSON.parse(o[1])).then(function(){ lastSaved[o[0]] = o[1]; });
+    }); });
+    return p;
+  }
+  try { localStorage.setItem("percko_v1", JSON.stringify(want)); } catch (e) { throw new Error("mémoire du téléphone indisponible"); }
+  return Promise.resolve();
+}
+function applyDocs(docs){
+  var lines = [], moves = [], ver = 0;
+  S.nomen = []; S.rules = []; S.stock = {}; S.lots = {};
+  Object.keys(docs).forEach(function(id){
+    var d = docs[id];
+    if (id === "cfg"){
+      S.nomen = (d.nomen || []).map(function(a){ return {model:a[0],lib:a[1],size:a[2],t1:a[3],t2:a[4],cc:a[5],ca:a[6],ca2:a[7]}; });
+      S.rules = (d.rules || []).map(function(a){ return {model:a[0],s1:a[1],m1:a[2],s2:a[3],m2:a[4],m3:a[5]}; });
+      S.stock = d.stock || {}; S.lots = d.lots || {}; ver = d.ver || 0;
+    } else if (id.indexOf("lines-") === 0){
+      (d.lines || []).forEach(function(a){ lines.push({id:a[0],lot:d.lot,year:a[1],client:a[2],model:a[3],lib:a[4],size:a[5],qty:a[6],cc:a[7] ? 1 : 0}); });
+    } else if (id.indexOf("moves-") === 0){
+      (d.moves || []).forEach(function(a){ moves.push({id:a[0],date:a[1],lineId:a[2],stage:a[3],qty:a[4],note:a[5],nc:a[6] || 0}); });
+    }
+  });
+  S.lines = lines; S.moves = moves;
+  if (ver < 2 && moves.length){   /* ancienne version : 5 étapes -> 9 étapes */
+    var add = [];
+    S.moves.forEach(function(m){
+      var ns = m.stage === "gadh" ? "cp" : m.stage === "ass" ? "asm" : m.stage === "ctl" ? "conf" : m.stage === "emb" ? "pret" : "";
+      if (m.stage === "ass") m.stage = "ret";
+      if (ns) add.push({id:nid("M"), date:m.date, lineId:m.lineId, stage:ns, qty:m.qty, note:m.note || ""});
+    });
+    S.moves = S.moves.concat(add); setTimeout(persist, 0);
+  }
+}
+function defaults(){
+  S.nomen = DEF_NOMEN.map(function(a){ return {model:a[0],lib:a[1],size:a[2],t1:a[3],t2:a[4],cc:a[5],ca:a[6],ca2:a[7]}; });
+  S.rules = DEF_RULES.map(function(a){ return {model:a[0],s1:a[1],m1:a[2],s2:a[3],m2:a[4],m3:a[5]}; });
+  S.stock = {};
+}
+function loadHost(){
+  var docs = HOST.lireDocs();
+  lastSaved = {}; Object.keys(docs).forEach(function(id){ lastSaved[id] = JSON.stringify(docs[id]); });
+  defaults(); if (Object.keys(docs).length) applyDocs(docs); if (!docs.cfg) defaults();
+}
+/* appelé par l'application groupe à chaque mise à jour (autre appareil) ; on ne redessine pas sous une saisie en cours */
+window.suiviRecharger = function(){
+  if (!HOST || dirty || ui.pend) return;
+  var a = document.activeElement; if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+  var before = JSON.stringify(lastSaved); loadHost();
+  if (JSON.stringify(lastSaved) !== before) render(true);
+};
+function load(){
+  if (HOST){ storageMode = "groupe"; loadHost(); return Promise.resolve(); }
+  defaults();
+  var useLocal = function(){
+    storageMode = "telephone";
+    try { var raw = localStorage.getItem("percko_v1"); if (raw){ var docs = JSON.parse(raw); applyDocs(docs); } } catch (e) {}
+  };
+  if (!(window.claude && window.claude.use)){ useLocal(); return Promise.resolve(); }
+  return window.claude.use("db").then(function(db){
+    if (!db){ useLocal(); return; }
+    return db.collection("pk").get().then(function(snap){
+      dbh = db; storageMode = "base";
+      var docs = {};
+      snap.docs.forEach(function(d){ docs[d.id] = d.data(); lastSaved[d.id] = JSON.stringify(d.data()); });
+      if (docs.cfg || Object.keys(docs).length) applyDocs(docs);
+      if (!docs.cfg){ defaults(); }
+    }).catch(function(){ dbh = null; useLocal(); });
+  }).catch(function(){ useLocal(); });
+}
+
+/* ---------- import Excel ---------- */
+function upperHead(s){ return cleanTxt(s).toUpperCase().replace(/[ÉÈÊ]/g,"E"); }
+function parseQty(v){ if (v === "" || v == null) return null; var n = parseFloat(String(v).replace(",",".")); return isNaN(n) ? null : Math.round(n); }
+/* sheets : [{name, rows:[[...]]}] ; renvoie un compte rendu */
+function importOrder(sheets, lotForce){
+  var lot = "", year = 0, res = [], unknown = {}, nb = 0, nom = nomIndex();
+  sheets.forEach(function(sh){
+    if (sh.name.toUpperCase().indexOf("COMMANDE") !== 0) return;
+    var rows = sh.rows, hdr = -1, i, c;
+    for (i = 0; i < rows.length && i < 25; i++) if (upperHead(rows[i][1]) === "LIBELLE"){ hdr = i; break; }
+    if (hdr < 0){ res.push({name:sh.name, skipped:"entête LIBELLE introuvable"}); return; }
+    var cT = -1, cF = -1;
+    for (c = 0; c < 14; c++){ var h = upperHead(rows[hdr][c]); if (h === "TAILLE") cT = c; if (h === "FR" || h === "QUANTITE" || h === "QTE") cF = c; }
+    if (cT < 0 || cF < 0){ res.push({name:sh.name, skipped:"colonnes TAILLE / Quantité introuvables"}); return; }
+    var fl = "", fy = 0;
+    for (i = 0; i < hdr; i++) for (c = 0; c < 14; c++){
+      var u = upperHead(rows[i][c]);
+      if ((u === "LOT" || u === "LOT/REF") && rows[i+1]) fl = cleanTxt(rows[i+1][c]);
+      if (u === "ANNEE" && rows[i+1]) fy = parseInt(cleanTxt(rows[i+1][c]),10) || 0;
+    }
+    if (!fl) fl = cleanTxt(lotForce);
+    if (!fl){ res.push({name:sh.name, skipped:"numéro de lot introuvable"}); return; }
+    if (!lot){ lot = fl; year = fy; } else if (fl !== lot){ res.push({name:sh.name, skipped:"autre lot (" + fl + ")"}); return; }
+    var client = cleanTxt(sh.name.toUpperCase().replace(/^COMMANDE/,"")).toUpperCase() || "PERCKO";
+    var agg = {}, order = [], model = "";
+    for (i = hdr + 1; i < rows.length; i++){
+      var row = rows[i];
+      if (cleanTxt(row[0])) model = cleanTxt(row[0]);
+      var lib = cleanTxt(row[1]), sz = normSize(row[cT]), q = parseQty(row[cF]);
+      if (!lib || !sz || q === null || q <= 0) continue;
+      var k = lib + "|" + sz;
+      if (agg[k]) agg[k].q += q; else { agg[k] = {lib:lib, sz:sz, q:q, model:model}; order.push(k); }
+    }
+    var s = {name:sh.name, client:client, created:0, updated:0};
+    order.forEach(function(k){
+      var e = agg[k];
+      if (findLine(lot, client, e.lib, e.sz)) s.updated++; else s.created++;
+      if (!nom[refP(e.lib, e.sz)]) unknown[e.lib + " " + e.sz] = 1;
+      setLine(lot, year, client, e.lib, e.sz, e.q);
+      var l = findLine(lot, client, e.lib, e.sz); if (l && !l.model) l.model = e.model;
+      nb++;
+    });
+    res.push(s);
+  });
+  if (!nb) throw new Error("Aucune quantité trouvée (feuilles COMMANDE vides ou format différent).");
+  return {lot:lot, year:year, sheets:res, unknown:Object.keys(unknown).sort()};
+}
+function readWorkbook(file){
+  return new Promise(function(resolve, reject){
+    if (!window.XLSX){ reject(new Error("Lecture Excel indisponible (bibliothèque non chargée). Vérifiez la connexion.")); return; }
+    var fr = new FileReader();
+    fr.onload = function(){
+      try {
+        var wb = XLSX.read(fr.result, {type:"array"});
+        resolve(wb.SheetNames.map(function(n){ return {name:n, rows:XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:"", raw:true})}; }));
+      } catch (e) { reject(new Error("Fichier Excel illisible (format .xlsx attendu).")); }
+    };
+    fr.onerror = function(){ reject(new Error("Lecture du fichier impossible.")); };
+    fr.readAsArrayBuffer(file);
+  });
+}
+function importNomen(sheets){
+  for (var s = 0; s < sheets.length; s++){
+    var rows = sheets[s].rows;
+    for (var hi = 0; hi < rows.length && hi < 10; hi++){
+      var col = {};
+      rows[hi].forEach(function(v, c){ col[upperHead(v).replace(/ /g,"_")] = c; });
+      if (!("LIBELLE" in col) || !("TAILLE" in col) || !("MODELE" in col)) continue;
+      var out = [];
+      var nf = function(r,k){ return k in col ? (parseFloat(String(r[col[k]]).replace(",",".")) || 0) : 0; };
+      var tx = function(r,k){ return k in col ? cleanTxt(r[col[k]]) : ""; };
+      for (var i = hi + 1; i < rows.length; i++){
+        var r = rows[i], lib = cleanTxt(r[col.LIBELLE]);
+        if (!lib) continue;
+        out.push({model:cleanTxt(r[col.MODELE]), lib:lib, size:normSize(r[col.TAILLE]), t1:tx(r,"TISSU_1"), t2:tx(r,"TISSU_2"), cc:nf(r,"CONSO_COUPE_M"), ca:nf(r,"CONSO_ASSEMBLAGE_M"), ca2:nf(r,"CONSO_ASSEMBLAGE_T2_M")});
+      }
+      if (out.length) return out;
+    }
+  }
+  throw new Error("Entêtes attendus : Modèle, Libellé, Taille, Tissu_1, Tissu_2, Conso_Coupe_m, Conso_Assemblage_m, Conso_Assemblage_T2_m");
+}
+
+/* ---------- calculs ---------- */
+function conso(lot, client){
+  var nom = nomIndex(), rows = [], fab = {};
+  filtered(lot, client).forEach(function(l){
+    var cut = cutQty(l.qty, l.model), n = nom[refP(l.lib, l.size)];
+    var r = {client:l.client, model:l.model, lib:l.lib, size:l.size, qty:l.qty, cut:cut, known:!!n, t1:"", t2:"", cc:0, ca:0, ca2:0, needC:0, needA:0, needA2:0};
+    if (n){
+      r.t1 = n.t1; r.t2 = n.t2; r.cc = n.cc; r.ca = n.ca; r.ca2 = n.ca2;
+      r.needC = r2(cut*n.cc); r.needA = r2(cut*n.ca); r.needA2 = r2(cut*n.ca2);
+      if (n.t1){ var v = fab[n.t1] || (fab[n.t1] = [0,0]); v[0] += cut*n.cc; v[1] += cut*n.ca; }
+      if (n.t2){ var w = fab[n.t2] || (fab[n.t2] = [0,0]); w[1] += cut*n.ca2; }
+    }
+    rows.push(r);
+  });
+  var fabs = Object.keys(fab).sort().map(function(k){
+    var f = {fabric:k, coupe:r2(fab[k][0]), ass:r2(fab[k][1])}; f.total = r2(f.coupe + f.ass);
+    if (k in S.stock){ f.stock = S.stock[k]; f.solde = r2(S.stock[k] - f.total); f.statut = f.solde < 0 ? "MANQUE" : "OK"; } else f.statut = "Stock à saisir";
+    return f;
+  });
+  return {rows:rows, fabs:fabs};
+}
+function suivi(lot, client){
+  var tot = stageTotals(), ncT = ncTotals();
+  return filtered(lot, client).map(function(l){
+    var s = {}; STAGES.forEach(function(st){ s[st[0]] = (tot[l.id] || {})[st[0]] || 0; }); var n = ncT[l.id] || {};
+    return {id:l.id, lot:l.lot, client:l.client, model:l.model, lib:l.lib, size:l.size, fr:l.qty, cut:cutQty(l.qty, l.model), cutE:l.cc ? (s.cp + (n.cp || 0)) : cutQty(l.qty, l.model), s:s, n:n, rest:Math.max(0, l.qty - s.exp)};
+  });
+}
+/* Règle : seule la coupe peut dépasser la commande ; chaque étape suivante ne dépasse pas l'étape précédente. Le « reste » se compare toujours à la quantité commandée. */
+var CHAIN = STG_KEYS;
+function chainErrFor(t, l, n){
+  n = n || {};
+  for (var i = 1; i < CHAIN.length; i++){ var k = CHAIN[i], used = (t[k] || 0) + (n[k] || 0); if (used > (t[CHAIN[i-1]] || 0)) return l.lib + " " + l.size + " : « " + stageName(k) + " » (" + (t[k] || 0) + (n[k] ? " + " + n[k] + " NC" : "") + ") dépasserait « " + stageName(CHAIN[i-1]) + " » (" + (t[CHAIN[i-1]] || 0) + ")"; }
+  return "";
+}
+function stageName(k){ for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === k) return STAGES[i][1]; return k; }
+function checkMoves(newMoves, removeId){
+  var tot = {}, nc = {}, ids = {};
+  function add(m){ (tot[m.lineId] = tot[m.lineId] || {})[m.stage] = ((tot[m.lineId] || {})[m.stage] || 0) + (m.qty || 0); (nc[m.lineId] = nc[m.lineId] || {})[m.stage] = ((nc[m.lineId] || {})[m.stage] || 0) + (m.nc || 0); }
+  S.moves.forEach(function(m){ if (m.id === removeId){ ids[m.lineId] = 1; return; } add(m); });
+  newMoves.forEach(function(m){ add(m); ids[m.lineId] = 1; });
+  var errs = []; Object.keys(ids).forEach(function(id){ var l = lineById(id); if (!l) return; var e = chainErrFor(tot[id] || {}, l, nc[id] || {}); if (e) errs.push(e); });
+  if (errs.length) throw new Error(errs[0] + (errs.length > 1 ? " (+" + (errs.length - 1) + " autre(s))" : ""));
+}
+function setStageTotal(id, stage, total){
+  if (total < 0) throw new Error("Quantité négative impossible.");
+  var cur = (stageTotals()[id] || {})[stage] || 0, d = total - cur;
+  if (d !== 0) checkMoves([{lineId:id, stage:stage, qty:d}]);
+  if (d !== 0) S.moves.push({id:nid("M"), date:today(), lineId:id, stage:stage, qty:d, nc:0, note:"Correction du cumul"});
+}
+function addMoves(stage, date, lot, client, lib, qty, note){
+  var tot = stageTotals(), ops = [], errs = [];
+  Object.keys(qty).forEach(function(sz){
+    var q = qty[sz]; if (!q) return;
+    var l = findLine(lot, client, lib, normSize(sz));
+    if (!l){ errs.push("taille " + sz + " : non commandée pour ce libellé et ce client"); return; }
+    if (((tot[l.id] || {})[stage] || 0) + q < 0){ errs.push("taille " + sz + " : correction supérieure au cumul"); return; }
+    ops.push([l.id, q]);
+  });
+  if (errs.length) throw new Error(errs.join(" ; "));
+  if (!ops.length) throw new Error("Aucune quantité saisie.");
+  checkMoves(ops.map(function(o){ return {lineId:o[0], stage:stage, qty:o[1]}; }));
+  ops.forEach(function(o){ S.moves.push({id:nid("M"), date:date || today(), lineId:o[0], stage:stage, qty:o[1], note:note || ""}); });
+  return ops.length;
+}
+
+/* ---------- export Excel ---------- */
+function saveXlsx(filename, sheets){
+  var out = sheets.map(function(sh, i){
+    var n = (sh.cols || []).length; sh.rows.forEach(function(r){ n = Math.max(n, r.length); });
+    var g = {cols:[], rows:[], merges:[]}; for (var k = 0; k < n; k++) g.cols.push((sh.cols && sh.cols[k]) || 14);
+    sh.rows.forEach(function(row){ var cells = []; row.forEach(function(v, ci){ cells[ci] = {v:v, st:(v === "" || v === null || v === undefined) ? {sz:10} : {sz:10, bd:"t"}}; }); g.rows.push({h:15, cells:cells}); });
+    return {name:sh.name, grid:g, first:i === 0};
+  });
+  saveFile(filename, xlsxBuild(out));
+}
+function saveFile(filename, data){
+  if (!(window.claude && window.claude.use)){
+    try {
+      var blob = new Blob([data], {type:/\.xlsx$/.test(filename) ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : /\.pdf$/.test(filename) ? "application/pdf" : "application/octet-stream"});
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast("Fichier téléchargé : " + filename);
+    } catch (e) { toast("Téléchargement impossible ici."); }
+    return;
+  }
+  window.claude.use("downloads").then(function(dl){
+    if (!dl){ toast("Téléchargement indisponible ici."); return; }
+    return dl.save({filename:filename, data:data}).then(function(){ toast("Fichier enregistré"); }, function(e){ if (e && e.code !== "cancelled") toast("Enregistrement refusé ou impossible."); });
+  });
+}
+/* dates des mouvements par ligne et par étape : [["06/10", 300], ["08/10", 320]] (plusieurs dates possibles par étape) */
+function dmy(d){ var p = String(d || "").split("-"); return p.length === 3 ? p[2] + "/" + p[1] + (p[0] !== String(new Date().getFullYear()) ? "/" + p[0].slice(2) : "") : String(d || ""); }
+function stageDates(lot){
+  var by = {};
+  S.moves.forEach(function(m){ var l = lineById(m.lineId); if (!l || l.lot !== lot) return; var o = ((by[m.lineId] = by[m.lineId] || {})[m.stage] = by[m.lineId][m.stage] || {}); var e = o[m.date] || (o[m.date] = [0, 0]); e[0] += m.qty; e[1] += (m.nc || 0); });
+  var out = {};
+  Object.keys(by).forEach(function(id){ out[id] = {}; Object.keys(by[id]).forEach(function(st){ out[id][st] = Object.keys(by[id][st]).sort().filter(function(d){ return by[id][st][d][0] !== 0 || by[id][st][d][1] !== 0; }).map(function(d){ return [dmy(d), by[id][st][d][0], by[id][st][d][1]]; }); }); });
+  return out;
+}
+/* tableau « Flux d'une commande » : même mise en forme que votre fichier (fusions Model / Total, colonne libellé colorée) */
+var SG_HEAD = ["Coupées","Envoyées à la GADH","Assemblage (GADH)","Retour TEK-TREND","En confection","Contrôlées","Emballées","Prêtes à expédier","Expédiées"];
+var SG_BG = ["F2F2F2","FFE699","F8CBAD","F4B084","C6E0B4","BDD7EE","DDEBF7","D9D2E9","C6EFCE","A9D08E"];
+/* mode "q" : cumul par étape · "s" : situation (état actuel des pièces) · "d" : dates des étapes */
+function fluxGrid(lot, mode){
+  mode = mode || "q";
+  var rows = suivi(lot, "*"), year = 0, dts = stageDates(lot);
+  S.lines.forEach(function(l){ if (l.lot === lot) year = l.year; });
+  var heads = mode === "q" ? ["Commande Coupe"].concat(SG_HEAD) : mode === "s" ? STATE_NAMES : mode === "n" ? SG_HEAD.map(function(h){ return "NC — " + h; }) : SG_HEAD.map(function(h){ return "Dates — " + h; });
+  var nv = heads.length, NC = 5 + nv + 1, g = {cols:[22,34,8,10,10], rows:[], merges:[], landscape:true};
+  for (var k = 0; k < nv; k++) g.cols.push(mode === "d" ? 15 : 12.5); g.cols.push(12);
+  var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
+  var title = mode === "q" ? "Flux d'une commande" : mode === "s" ? "Situation des pièces (état actuel)" : mode === "n" ? "Pièces non conformes (NC) par étape" : "Dates des étapes";
+  var H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"};
+  gset(g, 0, 0, title, {b:1, sz:11, al:"l", bd:"t"}); gset(g, 0, 1, "", {bd:"t"}); gmerge(g, 0, 0, 0, 1);
+  gset(g, 0, NC - 2, "ANNEE", {b:1, sz:10, al:"c", bd:"t"}); gset(g, 0, NC - 1, year ? String(year) : "", {b:1, sz:10, al:"c", bd:"t"});
+  gset(g, 1, 0, "Commande :", {sz:10, al:"l", bd:"t"}); gset(g, 1, 1, "", {bd:"t"}); gmerge(g, 1, 0, 1, 1);
+  gset(g, 1, 2, "LOT/REF", {b:1, sz:10, al:"c", bd:"t"}); gset(g, 1, 3, lot || "", {b:1, sz:11, al:"c", bd:"t"}); gset(g, 1, 4, "", {bd:"t"}); gmerge(g, 1, 3, 1, 4);
+  g.rows[0].h = 18; g.rows[1].h = 16;
+  ["Model","LIBELLE","Taille","Quantité","Total"].concat(heads).concat(["Client"]).forEach(function(h, i){ gset(g, 3, i, h, H); });
+  g.rows[3].h = 42; g.sticky = 4;
+  var libTot = {}; rows.forEach(function(x){ var kk = x.lib + "|" + x.client; libTot[kk] = (libTot[kk] || 0) + x.fr; });
+  var r = 4, mTop = null, mModel = null, lTop = null, lKey = null, sums = []; for (k = 0; k < nv; k++) sums.push(0);
+  var tq = 0;
+  rows.forEach(function(x){
+    var m = fmm[x.lib], lk = x.lib + "|" + x.client;
+    var nm = m ? {sz:10, fg:m[6], bg:m[5], al:"l", bd:"t", wrap:1} : {sz:10, al:"l", bd:"t", wrap:1};
+    if (x.model !== mModel){ if (mTop !== null) gmerge(g, mTop, 0, r - 1, 0); mTop = r; mModel = x.model; }
+    if (lk !== lKey){ if (lTop !== null) gmerge(g, lTop, 4, r - 1, 4); lTop = r; lKey = lk; }
+    gset(g, r, 0, r === mTop ? x.model : "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
+    gset(g, r, 1, x.lib, nm); gset(g, r, 2, x.size, {b:1, sz:10, al:"c", bd:"t"});
+    gset(g, r, 3, x.fr, {sz:11, al:"c", bd:"t"}); gset(g, r, 4, r === lTop ? libTot[lk] : "", {b:1, sz:11, al:"c", bd:"t"});
+    var vals = mode === "q" ? [x.cut].concat(STG_KEYS.map(function(kk){ return x.s[kk]; })) : mode === "s" ? stateVals(x.cutE, x.s, x.n) : mode === "n" ? STG_KEYS.map(function(kk){ return x.n[kk] || 0; }) : null, mx = 1;
+    for (k = 0; k < nv; k++){
+      if (vals){ var vv = vals[k]; sums[k] += vv; var st = {sz:11, al:"c", bd:"t"}; if (mode === "s" && vv) { st.bg = SG_BG[k]; st.b = 1; } if (mode === "n" && vv) { st.bg = "F4B6B6"; st.b = 1; } gset(g, r, 5 + k, (mode === "s" || mode === "n") && !vv ? "" : vv, st); }
+      else { var d = (dts[x.id] || {})[STG_KEYS[k]] || []; mx = Math.max(mx, d.length); gset(g, r, 5 + k, d.map(function(e){ return e[0] + " : " + e[1] + (e[2] ? " (NC " + e[2] + ")" : ""); }).join("\n"), {sz:9, al:"c", bd:"t", wrap:1}); }
+    }
+    gset(g, r, NC - 1, x.client, {sz:10, al:"c", bd:"t"});
+    g.rows[r].h = 15 * mx; tq += x.fr; r++;
+  });
+  if (mTop !== null) gmerge(g, mTop, 0, r - 1, 0);
+  if (lTop !== null) gmerge(g, lTop, 4, r - 1, 4);
+  var RT = {b:1, sz:10, fg:"FF0000", al:"c", bd:"t"};
+  for (var c = 0; c < NC; c++) gset(g, r, c, "", RT);
+  gset(g, r, 0, "TOTAL", RT); gset(g, r, 3, tq, RT);
+  if (mode !== "d") for (k = 0; k < nv; k++) gset(g, r, 5 + k, sums[k], RT);
+  g.rows[r].h = 16; g.isFlux = true;
+  return g;
+}
+function fluxSheets(lot){ return [{name:"Flux", grid:fluxGrid(lot, "q"), first:1}, {name:"Situation", grid:fluxGrid(lot, "s")}, {name:"NC", grid:fluxGrid(lot, "n")}, {name:"Dates", grid:fluxGrid(lot, "d")}]; }
+function exportFlux(lot, base, pdf){
+  var f = base + "_" + lot + "_" + today().replace(/-/g,"");
+  if (pdf) saveFile(f + ".pdf", pdfBuild(fluxSheets(lot).map(function(x){ return x.grid; })));
+  else saveFile(f + ".xlsx", xlsxBuild(fluxSheets(lot)));
+}
+function exportSuivi(){ exportFlux(ui.lot, "Flux", false); }
+function exportSuiviPdf(){ exportFlux(ui.lot, "Flux", true); }
+function exportFiches(){
+  var sheets = [{name:"PROGES", grid:ficheGrid(ui.lot, ui.client, "c"), first:1}, {name:"GADH", grid:ficheGrid(ui.lot, ui.client, "a")}];
+  saveFile("Fiches_" + ui.lot + "_" + today().replace(/-/g,"") + ".xlsx", xlsxBuild(sheets));
+}
+function exportFichesPdf(){
+  saveFile("Fiches_" + ui.lot + "_" + today().replace(/-/g,"") + ".pdf", pdfBuild([ficheGrid(ui.lot, ui.client, "c"), ficheGrid(ui.lot, ui.client, "a")]));
+}
+function exportCommande(client, year){
+  saveFile("COMMANDE_" + client + "_" + ui.lot + ".xlsx", xlsxBuild([{name:"COMMANDE " + client, grid:commandeGrid(ui.lot, year, client), first:1}]));
+}
+
+/* ---------- Mise en forme « tableau Excel » : une grille (cellules, fusions, styles) servant à l'écran ET à l'export .xlsx ---------- */
+/* clé nomenclature, code patronage, model, nom (fiche), couleur, fond nom, texte nom, fond couleur, texte couleur, groupe fusion A/B, groupe fusion Tissu */
+var FM = [
+ ["PHARMA_HOMME COL V NOIR","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V NOIR","Noir","595959","FFFFFF","000000","FFFFFF",0,0],
+ ["PHARMA_HOMME COL V SABLE","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V SABLE","BEIGE","DEDC86","000000","DEDC86","000000",0,1],
+ ["PHARMA_HOMME COL V GRIS","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V GRIS","GRIS","D9D9D9","000000","D9D9D9","000000",0,2],
+ ["PHARMA_FEMME COL V NOIR","PHARMA_FEMME COL V","PHARMA_FEMME COL V","PHARMA_FEMME COL_V NOIR","Noir","595959","FFFFFF","000000","FFFFFF",1,3],
+ ["PHARMA_FEMME COL V ROSE POUDRE","PHARMA_FEMME COL V","PHARMA_FEMME COL V","PHARMA_FEMME COL_V ROSE","ROSE","FFC0CB","000000","FFC0CB","000000",1,4],
+ ["PHARMA_FEMME COL ROND NOIR","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","Noir","595959","FFFFFF","000000","FFFFFF",2,5],
+ ["PHARMA_FEMME COL ROND ROSE POUDRE","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND ROSE","ROSE","FFC0CB","000000","FFC0CB","000000",2,6],
+ ["Tee-shirt Sport homme noir","Sport-H-Re-Mi","Sport-H-Re-Mi","Tee-shirt Sport homme noir","Noir","595959","FFFFFF","000000","FFFFFF",3,7],
+ ["Tee-shirt Sport femme noir","Sport-F-Re-Mi","Sport-F-Re-Mi","Tee-shirt Sport femme noir","Noir","595959","FFFFFF","000000","FFFFFF",4,8],
+ ["Gilet homme noir","Medilyne Homme","Gilet-H-Noir","Gilet homme noir","Noir","595959","FFFFFF","000000","FFFFFF",5,9],
+ ["Gilet femme noir","Medilyne Femme","Gilet-F-Noir","Gilet femme noir","Noir","595959","FFFFFF","000000","FFFFFF",6,9],
+ ["LYNE PRO homme gris","Gilet Homme","Pro Homme","LYNE PRO homme gris","Gris","666666","FFFFFF","666666","FFFFFF",7,10],
+ ["LYNE PRO femme gris","Gilet Femme","Pro Femme","LYNE PRO femme gris","Gris","666666","FFFFFF","666666","FFFFFF",8,10],
+ ["LYNE FLEX homme gris","Medilyne Homme","Flex Homme","LYNE FLEX homme gris","Cloud","D9D9D9","000000","D9D9D9","000000",9,11],
+ ["LYNE FLEX femme gris","Medilyne Femme","Flex Femme","LYNE FLEX femme gris","Cloud","D9D9D9","000000","D9D9D9","000000",10,11]
+];
+var G_COLS = [19.7,19.7,37.6,13.3,7,7.5,9,19,3,19,12.6];   /* largeurs (caractères Excel) colonnes A..K */
+function mkGrid(ncols){ return {cols:G_COLS.slice(0, ncols), rows:[], merges:[]}; }
+function gset(g, r, c, v, st){
+  while (g.rows.length <= r) g.rows.push({h:15, cells:[]});
+  g.rows[r].cells[c] = {v:v, st:st || {}};
+}
+function gmerge(g, r1, c1, r2, c2){ if (r1 === r2 && c1 === c2) return; g.merges.push([r1,c1,r2,c2]); }
+function roundv(x){ return Math.round(x*100)/100; }
+
+/* fiche de commande pour un centre : kind "c" = coupe (PROGES), "a" = assemblage (GADH) */
+function ficheGrid(lot, client, kind){
+  var c = conso(lot, client), by = {}, nom = nomIndex();
+  c.rows.forEach(function(r){ var b = by[r.lib] || (by[r.lib] = {sizes:{}, tot:0, ml1:0, ml2:0}); b.sizes[r.size] = (b.sizes[r.size] || 0) + r.cut; b.tot += r.cut; b.ml1 += kind === "c" ? r.needC : r.needA; b.ml2 += kind === "a" ? r.needA2 : 0; });
+  var libs = libList(), blocks = [], used = {};
+  FM.forEach(function(m){ var li = libs.filter(function(l){ return l.lib === m[0]; })[0]; if (li){ blocks.push({m:m, li:li}); used[m[0]] = 1; } });
+  var gx = 100;
+  libs.forEach(function(li){ if (!used[li.lib]) blocks.push({m:[li.lib, li.model, li.model, li.lib, "", "FFFFFF","000000","FFFFFF","000000", gx, gx++], li:li}); });
+  var g = mkGrid(8), RED = "FF0000", GREEN = "00B050";
+  var name = kind === "c" ? "PROGES" : "GADH";
+  var T = {b:1, sz:11, fg:GREEN, al:"c", bd:"m"};
+  gset(g, 0, 0, "Commande", T); gset(g, 0, 1, "", T); gmerge(g, 0, 0, 0, 1);
+  gset(g, 0, 2, lot || "", T);
+  gset(g, 0, 3, "Consommation Tissu : " + name, T); for (var k = 4; k <= 7; k++) gset(g, 0, k, "", T); gmerge(g, 0, 3, 0, 7);
+  g.rows[0].h = 18; gset(g, 1, 0, "", null); g.rows[1].h = 4.5;
+  var HD = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"};
+  ["Code Patronage","Model","Nom","Couleur","Taille","Qté","Conso Bistrech","Nomenclature: Tissu"].forEach(function(h, i){ gset(g, 2, i, h, HD); });
+  g.rows[2].h = 26.25; g.sticky = 3;
+  var r = 3, fab = {}, forder = [], blockTop = [], gsA = {}, gsH = {};
+  blocks.forEach(function(b, bi){
+    var m = b.m, li = b.li, d = by[li.lib] || {sizes:{}, tot:0, ml1:0, ml2:0}, n = li.sizes.length, top = r;
+    var n1 = nom[refP(li.lib, li.sizes[0])] || {t1:"", t2:"", cc:0, ca:0, ca2:0};
+    var t1 = n1.t1, t2 = kind === "a" ? n1.t2 : "";
+    var conv = 0;
+    if (kind === "c") conv = n1.cc; else if (d.tot) conv = d.ml1 / d.tot;
+    li.sizes.forEach(function(s, i){
+      var rr = r + i;
+      gset(g, rr, 2, m[3], {sz:10, fg:m[6], bg:m[5], al:"l", bd:"t"});
+      gset(g, rr, 3, m[4], {sz:11, fg:m[8], bg:m[7], al:"c", bd:"t"});
+      gset(g, rr, 4, s, {b:1, sz:10, al:"c", bd:"t"});
+      gset(g, rr, 5, d.sizes[s] ? d.sizes[s] : "", {sz:11, al:"c", bd:"t"});
+      gset(g, rr, 6, i === 0 && conv ? roundv(conv) : "", {sz:11, al:"c", bd:"t"});
+      g.rows[rr].h = 14.1;
+    });
+    var tr = r + n, RT = {b:1, sz:10, fg:RED, al:"c", bd:"t"};
+    gset(g, tr, 2, "", RT); gset(g, tr, 3, "", RT); gset(g, tr, 4, "", RT);
+    gset(g, tr, 5, d.tot || "", RT); gset(g, tr, 6, d.ml1 ? roundv(d.ml1) : "", RT); g.rows[tr].h = 14.1;
+    var htxt = t1 ? (t1 + (t2 ? " + " + t2 : "")) : "";
+    blockTop.push({top:top, end:tr, m:m, htxt:htxt});
+    function add(f, v){ if (!f) return; if (!(f in fab)){ fab[f] = 0; forder.push(f); } fab[f] += v; }
+    add(t1, d.ml1); add(t2, d.ml2);
+    r = tr + 1;
+  });
+  /* fusions : Code Patronage + Model par groupe, Tissu par groupe */
+  var gA = {}, gH = {};
+  blockTop.forEach(function(b){
+    var a = gA[b.m[9]] || (gA[b.m[9]] = {top:b.top, end:b.end, code:b.m[1], model:b.m[2]}); a.end = b.end;
+    var h = gH[b.m[10]] || (gH[b.m[10]] = {top:b.top, end:b.end, txt:b.htxt}); h.end = b.end;
+  });
+  Object.keys(gA).forEach(function(k){ var a = gA[k], S1 = {b:1, sz:11, al:"c", bd:"t"};
+    for (var rr = a.top; rr <= a.end; rr++){ gset(g, rr, 0, rr === a.top ? a.code : "", S1); gset(g, rr, 1, rr === a.top ? a.model : "", S1); }
+    gmerge(g, a.top, 0, a.end, 0); gmerge(g, a.top, 1, a.end, 1); });
+  Object.keys(gH).forEach(function(k){ var h = gH[k], S2 = {b:1, sz:10, al:"c", wrap:1, bd:"t"};
+    for (var rr = h.top; rr <= h.end; rr++) gset(g, rr, 7, rr === h.top ? h.txt : "", S2);
+    gmerge(g, h.top, 7, h.end, 7); });
+  /* Besoin total en tissu : tableau sous la fiche (colonnes C:D) */
+  var bt0 = r + 1, TT = {b:1, sz:11, fg:"FFFFFF", bg:"1D3557", al:"c", bd:"t"}, TH = {b:1, sz:10, fg:"C00000", al:"c", bd:"t"};
+  g.screenRows = r;
+  gset(g, bt0, 2, "Consommation totale en tissu", TT); gset(g, bt0, 3, "", TT); gmerge(g, bt0, 2, bt0, 3);
+  gset(g, bt0 + 1, 2, "Réf (tissu)", TH); gset(g, bt0 + 1, 3, "Qté (ML)", TH);
+  var sumML = 0;
+  forder.forEach(function(f, i){ gset(g, bt0 + 2 + i, 2, f, {b:1, sz:10, al:"l", bd:"t"}); gset(g, bt0 + 2 + i, 3, roundv(fab[f]), {sz:11, al:"c", bd:"t"}); sumML += fab[f]; });
+  var bt1 = bt0 + 2 + forder.length;
+  gset(g, bt1, 2, "TOTAL", {b:1, sz:10, fg:"FF0000", al:"l", bd:"t"}); gset(g, bt1, 3, roundv(sumML), {b:1, sz:11, fg:"FF0000", al:"c", bd:"t"});
+  g.keep = [bt0, bt1]; g.sumML = roundv(sumML);
+  g.fabs = forder.map(function(f){ return [f, roundv(fab[f])]; });
+  g.name = name; g.isFiche = true;
+  return g;
+}
+
+/* feuille « COMMANDE <CLIENT> » au format du fichier PERCKO */
+var MOIS = ["JANVIER","FÉVRIER","MARS","AVRIL","MAI","JUIN","JUILLET","AOÛT","SEPTEMBRE","OCTOBRE","NOVEMBRE","DÉCEMBRE"];
+function commandeGrid(lot, year, client){
+  var g = {cols:[24,34,8,8,9], rows:[], merges:[]}, B = {b:1, sz:11, al:"c", bd:"t"}, libs = clientLibs(lot, client);
+  gset(g, 0, 0, "Commande: " + MOIS[(lotMonth(lot) ? lotMonth(lot).m - 1 : new Date().getMonth())], {b:1, sz:11}); gset(g, 0, 3, "LOT", B); gset(g, 0, 4, "ANNEE", B);
+  gset(g, 1, 3, lot || "", B); gset(g, 1, 4, year ? String(year) : "", B);
+  ["Model","LIBELLE","Taille","Quantité","Total"].forEach(function(h, i){ gset(g, 3, i, h, {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}); });
+  var r = 4, pm = null, tops = {}, all = libs, mtop = null;
+  all.forEach(function(li){
+    var top = r, tot = 0;
+    li.sizes.forEach(function(s, i){
+      var ln = findLine(lot, client, li.lib, s), q = ln ? ln.qty : 0; tot += q;
+      gset(g, r, 1, li.lib, {sz:10, al:"l", bd:"t"}); gset(g, r, 2, s, {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 3, q || "", {sz:11, al:"c", bd:"t"});
+      gset(g, r, 0, "", {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 4, "", {b:1, sz:11, al:"c", bd:"t"}); r++;
+    });
+    g.rows[top].cells[4].v = tot || 0; gmerge(g, top, 4, r - 1, 4);
+    if (li.model !== pm){ mtop = top; g.rows[top].cells[0].v = li.model; pm = li.model; tops[top] = r - 1; }
+    else { tops[mtop] = r - 1; }
+  });
+  Object.keys(tops).forEach(function(t){ gmerge(g, +t, 0, tops[t], 0); });
+  return g;
+}
+
+/* ---------- rendu écran ---------- */
+function gridHTML(g){
+  var mAt = {}, cov = {}, noSticky = true, tbl = el("table", {class:"xl"}), cg = el("colgroup");
+  g.merges.forEach(function(m){ mAt[m[0] + "," + m[1]] = m; for (var r = m[0]; r <= m[2]; r++) for (var c = m[1]; c <= m[3]; c++) if (r !== m[0] || c !== m[1]) cov[r + "," + c] = 1; });
+  g.cols.forEach(function(w, i){ cg.appendChild(el("col", {style:"width:" + Math.round((g.isFiche && i < 2 && !PC ? 15 : w) * (PC ? 7 : 5.8) + 4) + "px"})); });
+  tbl.appendChild(cg);
+  var tb = el("tbody"), top = 0;
+  g.rows.forEach(function(row, ri){
+    if (g.screenRows && ri >= g.screenRows) return;
+    var tr = el("tr", {style:"height:" + Math.round(row.h * 1.3) + "px"});
+    for (var c = 0; c < g.cols.length; c++){
+      if (cov[ri + "," + c]) continue;
+      var cell = row.cells[c], st = cell ? cell.st : {}, td = el("td");
+      var m = mAt[ri + "," + c];
+      if (m){ if (m[2] > m[0]) td.rowSpan = m[2] - m[0] + 1; if (m[3] > m[1]) td.colSpan = m[3] - m[1] + 1; }
+      if (cell){
+        td.textContent = cell.v === null || cell.v === undefined ? "" : (typeof cell.v === "number" ? fmt(cell.v, cell.v % 1 ? 2 : 0) : String(cell.v));
+        var css = "font-size:" + Math.round((st.sz || 10) * (PC ? 1.3 : 1.1)) + "px;";
+        if (st.b) css += "font-weight:700;";
+        css += "color:#" + (st.fg || "000000") + ";";
+        if (st.bg) css += "background:#" + st.bg + ";";
+        css += "text-align:" + (st.al === "l" ? "left" : st.al === "r" ? "right" : "center") + ";";
+        if (st.bd) css += "border:" + (st.bd === "m" ? "2px" : "1px") + " solid #000;";
+        if (st.wrap || (g.isFiche && c < 2)) css += "white-space:" + (/\n/.test(String(cell.v)) ? "pre-line" : "normal") + ";overflow-wrap:break-word;";
+        if (!noSticky && g.sticky && ri < g.sticky) css += "position:sticky;z-index:3;box-shadow:0 -2px 0 0 #fff;top:" + (ri === 0 ? 0 : ri === 1 ? 24 : 30) + "px;" + (st.bg ? "" : "background:#fff;");
+        td.setAttribute("style", css);
+      }
+      if (!noSticky && !cell && g.sticky && ri < g.sticky) td.setAttribute("style", "position:sticky;z-index:3;box-shadow:0 -2px 0 0 #fff;top:" + (ri === 0 ? 0 : ri === 1 ? 24 : 30) + "px;background:#fff");
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  return tbl;
+}
+
+/* ---------- écriture PDF (A4, polices standard Helvetica, sans bibliothèque) ---------- */
+var HN = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+var HB = HN.slice();
+(function(){ var up = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", ub = [722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611], lo = "abcdefghijklmnopqrstuvwxyz", lb = [556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500];
+  for (var i = 0; i < 26; i++){ HB[up.charCodeAt(i) - 32] = ub[i]; HB[lo.charCodeAt(i) - 32] = lb[i]; } })();
+function pdfW(t, size, bold){ var w = 0, tb = bold ? HB : HN; t = String(t).normalize("NFD").replace(/[̀-ͯ]/g, ""); for (var i = 0; i < t.length; i++){ var c = t.charCodeAt(i) - 32; w += (c >= 0 && c < 95 ? tb[c] : 556); } return w * size / 1000; }
+function pdfTxt(t){ return String(t).replace(/[^\x20-\xFF]/g, "?").replace(/[\\()]/g, "\\$&"); }
+function pdfRGB(h){ h = h || "000000"; return (parseInt(h.slice(0,2),16)/255).toFixed(3) + " " + (parseInt(h.slice(2,4),16)/255).toFixed(3) + " " + (parseInt(h.slice(4,6),16)/255).toFixed(3); }
+function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à la suite */
+  var PW0 = 595.28, PH0 = 841.89, M = 28, pages = [], PW = PW0, PH = PH0;
+  function range(a, b){ var o = []; for (var i = a; i < b; i++) o.push(i); return o; }
+  grids.forEach(function(g){
+    PW = g.landscape ? PH0 : PW0; PH = g.landscape ? PW0 : PH0;
+    var colPt = g.cols.map(function(w){ return w * 5.35; }), total = 0; colPt.forEach(function(w){ total += w; });
+    var sc = Math.min(1.15, (PW - 2 * M) / total), x0 = M + ((PW - 2 * M) - total * sc) / 2;
+    var cx = [0]; colPt.forEach(function(w, i){ cx.push(cx[i] + w * sc); });
+    var rh = g.rows.map(function(r){ return r.h * sc * 1.05; }), nh = g.sticky || 0;
+    var hdrH = 0; for (var i = 0; i < nh; i++) hdrH += rh[i];
+    function legal(r){ for (var k = 0; k < g.merges.length; k++){ var m = g.merges[k]; if (m[0] < r && r <= m[2]) return false; } if (g.keep && g.keep[0] < r && r <= g.keep[1]) return false; return true; }
+    var start = nh;
+    while (start < g.rows.length){
+      var avail = PH - 2 * M - hdrH, used = 0, end = start, lastLegal = -1;
+      while (end < g.rows.length && used + rh[end] <= avail){ used += rh[end]; end++; if (end >= g.rows.length || legal(end)) lastLegal = end; }
+      if (end < g.rows.length) end = lastLegal > start ? lastLegal : Math.max(end, start + 1);
+      pages.push({g:g, rows:range(0, nh).concat(range(start, end)), cx:cx, x0:x0, sc:sc, rh:rh, PW:PW, PH:PH});
+      start = end;
+    }
+  });
+  var contents = [];
+  pages.forEach(function(p){
+    var g = p.g, c = "", y = p.PH - M, pos = {}, cov = {}, mAt = {};
+    g.merges.forEach(function(m){ mAt[m[0] + "," + m[1]] = m; for (var r = m[0]; r <= m[2]; r++) for (var cc = m[1]; cc <= m[3]; cc++) if (r !== m[0] || cc !== m[1]) cov[r + "," + cc] = 1; });
+    p.rows.forEach(function(ri){ pos[ri] = y; y -= p.rh[ri]; });
+    p.rows.forEach(function(ri){
+      var row = g.rows[ri];
+      for (var ci = 0; ci < g.cols.length; ci++){
+        var cell = row.cells[ci]; if (!cell || cov[ri + "," + ci]) continue;
+        var st = cell.st || {}, m = mAt[ri + "," + ci], r2e = m ? m[2] : ri, c2e = m ? m[3] : ci;
+        if (!(r2e in pos)) r2e = ri;
+        var x = p.x0 + p.cx[ci], w = p.cx[c2e + 1] - p.cx[ci], top = pos[ri], h = top - (pos[r2e] - p.rh[r2e]);
+        if (st.bg) c += pdfRGB(st.bg) + " rg " + x.toFixed(2) + " " + (top - h).toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re f\n";
+        if (st.bd) c += "0 0 0 RG " + (st.bd === "m" ? "1.2" : "0.45") + " w " + x.toFixed(2) + " " + (top - h).toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re S\n";
+        var v = cell.v; if (v === "" || v === null || v === undefined) continue;
+        var txt = typeof v === "number" ? fmt(v, v % 1 ? 2 : 0).replace(/[  ]/g, " ") : String(v);
+        var size = (st.sz || 10) * p.sc * 0.92, bold = !!st.b, lines = txt.split("\n");
+        if (lines.length === 1 && pdfW(txt, size, bold) > w - 4 && (st.wrap || ci < 2)){
+          lines = []; var cur = "";
+          txt.split(/(?<=[ _-])/).forEach(function(wd){ if (cur && pdfW(cur + wd, size, bold) > w - 4){ lines.push(cur.trim()); cur = wd; } else cur += wd; });
+          if (cur) lines.push(cur.trim());
+        }
+        var lh = size * 1.12, block = lines.length * lh, ty = top - h / 2 + block / 2 - size * 0.82;
+        c += "q " + x.toFixed(2) + " " + (top - h).toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re W n BT /" + (bold ? "F2" : "F1") + " " + size.toFixed(2) + " Tf " + pdfRGB(st.fg) + " rg\n";
+        lines.forEach(function(ln, k){
+          var tw = pdfW(ln, size, bold), tx = st.al === "l" ? x + 3 : st.al === "r" ? x + w - 3 - tw : x + (w - tw) / 2;
+          c += "1 0 0 1 " + tx.toFixed(2) + " " + (ty - k * lh).toFixed(2) + " Tm (" + pdfTxt(ln) + ") Tj\n";
+        });
+        c += "ET Q\n";
+      }
+    });
+    contents.push(c);
+  });
+  var n = pages.length, out = "%PDF-1.4\n", offs = [], i;
+  function obj(id, body){ offs[id] = out.length; out += id + " 0 obj\n" + body + "\nendobj\n"; }
+  obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  var kids = []; for (i = 0; i < n; i++) kids.push((5 + 2 * i) + " 0 R");
+  obj(2, "<< /Type /Pages /Kids [" + kids.join(" ") + "] /Count " + n + " >>");
+  obj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  obj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  for (i = 0; i < n; i++){
+    obj(5 + 2 * i, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + pages[i].PW + " " + pages[i].PH + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents " + (6 + 2 * i) + " 0 R >>");
+    obj(6 + 2 * i, "<< /Length " + contents[i].length + " >>\nstream\n" + contents[i] + "endstream");
+  }
+  var xr = out.length, cnt = 5 + 2 * n;
+  out += "xref\n0 " + cnt + "\n0000000000 65535 f \n";
+  for (i = 1; i < cnt; i++) out += ("0000000000" + offs[i]).slice(-10) + " 00000 n \n";
+  out += "trailer\n<< /Size " + cnt + " /Root 1 0 R >>\nstartxref\n" + xr + "\n%%EOF";
+  var u = new Uint8Array(out.length); for (i = 0; i < out.length; i++) u[i] = out.charCodeAt(i) & 255;
+  return u;
+}
+
+/* ---------- écriture .xlsx (zip sans compression, styles, fusions) ---------- */
+var CRCT = (function(){ var t = [], c, n, k; for (n = 0; n < 256; n++){ c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b){ var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRCT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files){
+  var enc = new TextEncoder(), parts = [], cd = [], off = 0;
+  function u16(n){ return [n & 255, (n >>> 8) & 255]; } function u32(n){ return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+  files.forEach(function(f){
+    var nb = enc.encode(f.name), db = enc.encode(f.data), crc = crc32(db);
+    var lh = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(db.length), u32(db.length), u16(nb.length), u16(0));
+    parts.push(new Uint8Array(lh), nb, db);
+    cd.push([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(db.length), u32(db.length), u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off)), Array.prototype.slice.call(nb));
+    off += lh.length + nb.length + db.length;
+  });
+  var cdLen = 0; cd.forEach(function(a){ cdLen += a.length; });
+  var flat = []; cd.forEach(function(a){ flat = flat.concat(a); });
+  parts.push(new Uint8Array(flat));
+  parts.push(new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cdLen), u32(off), u16(0))));
+  var total = 0; parts.forEach(function(p){ total += p.length; });
+  var out = new Uint8Array(total), o = 0; parts.forEach(function(p){ out.set(p, o); o += p.length; });
+  return out;
+}
+function xesc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function colName(i){ var s = ""; i++; while (i > 0){ var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
+  var fonts = [], fills = [], xfs = [], fk = {}, flk = {}, xk = {};
+  function fontId(st){ var k = (st.sz || 10) + "|" + (st.b ? 1 : 0) + "|" + (st.fg || "000000"); if (!(k in fk)){ fk[k] = fonts.length; fonts.push('<font>' + (st.b ? '<b/>' : '') + '<sz val="' + (st.sz || 10) + '"/><color rgb="FF' + (st.fg || "000000") + '"/><name val="Arial"/><family val="2"/></font>'); } return fk[k]; }
+  function fillId(st){ if (!st.bg) return 0; if (!(st.bg in flk)){ flk[st.bg] = fills.length + 2; fills.push('<fill><patternFill patternType="solid"><fgColor rgb="FF' + st.bg + '"/><bgColor indexed="64"/></patternFill></fill>'); } return flk[st.bg]; }
+  function xf(st){
+    var k = JSON.stringify([st.sz, st.b, st.fg, st.bg, st.al, st.wrap, st.bd]);
+    if (!(k in xk)){ xk[k] = xfs.length + 1;
+      var bd = st.bd === "m" ? 2 : st.bd === "t" ? 1 : 0, al = st.al === "l" ? "left" : st.al === "r" ? "right" : st.al === "c" ? "center" : "general";
+      xfs.push('<xf numFmtId="0" fontId="' + fontId(st) + '" fillId="' + fillId(st) + '" borderId="' + bd + '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="' + al + '" vertical="center"' + (st.wrap ? ' wrapText="1"' : '') + '/></xf>'); }
+    return xk[k];
+  }
+  fontId({sz:10});  /* police 0 = défaut */
+  var sheetXml = sheets.map(function(sh){
+    var g = sh.grid, x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"' + (sh.first ? ' tabSelected="1"' : '') + '>' + (g.sticky ? '<pane ySplit="' + g.sticky + '" topLeftCell="A' + (g.sticky + 1) + '" activePane="bottomLeft" state="frozen"/>' : '') + '</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>';
+    g.cols.forEach(function(w, i){ x += '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; });
+    x += '</cols><sheetData>';
+    g.rows.forEach(function(row, ri){
+      x += '<row r="' + (ri + 1) + '" ht="' + row.h + '" customHeight="1">';
+      for (var c = 0; c < g.cols.length; c++){
+        var cell = row.cells[c]; if (!cell) continue;
+        var ref = colName(c) + (ri + 1), s = xf(cell.st), v = cell.v;
+        if (v === "" || v === null || v === undefined) x += '<c r="' + ref + '" s="' + s + '"/>';
+        else if (typeof v === "number") x += '<c r="' + ref + '" s="' + s + '"><v>' + v + '</v></c>';
+        else x += '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' + xesc(v) + '</t></is></c>';
+      }
+      x += '</row>';
+    });
+    x += '</sheetData>';
+    if (g.merges.length){ x += '<mergeCells count="' + g.merges.length + '">'; g.merges.forEach(function(m){ x += '<mergeCell ref="' + colName(m[1]) + (m[0] + 1) + ':' + colName(m[3]) + (m[2] + 1) + '"/>'; }); x += '</mergeCells>'; }
+    return x + '<pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/></worksheet>';
+  });
+  var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="' + fonts.length + '">' + fonts.join("") + '</fonts><fills count="' + (fills.length + 2) + '"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' + fills.join("") + '</fills>' +
+    '<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border><border><left style="medium"><color auto="1"/></left><right style="medium"><color auto="1"/></right><top style="medium"><color auto="1"/></top><bottom style="medium"><color auto="1"/></bottom><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + (xfs.length + 1) + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' + xfs.join("") + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  var files = [
+    {name:"[Content_Types].xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + sheets.map(function(s, i){ return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join("") + '</Types>'},
+    {name:"_rels/.rels", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:"xl/workbook.xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + sheets.map(function(s, i){ return '<sheet name="' + xesc(s.name.replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 31)) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join("") + '</sheets></workbook>'},
+    {name:"xl/_rels/workbook.xml.rels", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map(function(s, i){ return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join("") + '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
+    {name:"xl/styles.xml", data:styles}
+  ];
+  sheetXml.forEach(function(x, i){ files.push({name:"xl/worksheets/sheet" + (i + 1) + ".xml", data:x}); });
+  return zipStore(files);
+}
+
+/* ---------- interface ---------- */
+function refreshSelectors(){
+  var lots = sortedUnique(S.lines.map(function(l){ return l.lot; }).concat(ui.lot ? [ui.lot] : []));
+  var sl = document.getElementById("selLot"); sl.innerHTML = "";
+  if (!lots.length) sl.appendChild(el("option", {value:"", text:"(aucun lot)"}));
+  lots.forEach(function(x){ sl.appendChild(el("option", {value:x, text:x})); });
+  if (lots.indexOf(ui.lot) < 0) ui.lot = lots.length ? lots[lots.length-1] : "";
+  sl.value = ui.lot;
+  ui.client = "*";
+}
+var ICONS = {
+  dash:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  cmd:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M8.5 12h7M8.5 16h5"/>',
+  fiche:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  suivi:'<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
+  flux:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  arch:'<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
+  reg:'<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>'
+};
+var TABS = [["dash","Tableau","▦"],["cmd","Commandes","1"],["fiche","Fiches","2"],["suivi","Suivi","3"],["flux","Flux","4"],["arch","Archive","▣"],["reg","Réglages","⚙"]];
+function tabIcon(k){ var b = el("b"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICONS[k] + "</svg>"; return b; }
+if (VUE === "gadh") TABS = [["dash","Tableau","▦"],["flux","Flux","4"],["fiche","Fiche GADH","2"],["suivi","Suivi","3"],["arch","Archive","▣"]];
+function drawTabs(){
+  var t = document.getElementById("tabs"); t.innerHTML = "";
+  TABS.forEach(function(x){ t.appendChild(el("button", {class:ui.tab === x[0] ? "on" : "", onclick:function(){ ui.tab = x[0]; render(); }}, tabIcon(x[0]), el("span", {text:x[1]}))); });
+}
+function render(keepScroll){
+  var v = document.getElementById("view");
+  var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(".tw"), function(e){ return [e.scrollLeft, e.scrollTop]; });
+  refreshSelectors(); drawTabs(); v.innerHTML = "";
+  ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, arch:vArch, reg:vReg})[ui.tab](v);
+  if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(".tw"), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
+  else v.scrollTop = 0;
+}
+function commit(fn, okMsg){
+  try { fn(); } catch (e) { toast(e.message); var m = document.getElementById("view"); render(true); return false; }
+  persist(); if (okMsg) toast(okMsg); render(true); return true;
+}
+function sizeGrid(prefix, sizes){
+  var g = el("div", {class:"grid7"});
+  SZ.forEach(function(s){
+    var ok = !sizes || sizes.indexOf(s) >= 0;
+    var i = el("input", {type:"number", inputmode:"numeric", min:"0", id:prefix + s});
+    if (!ok){ i.disabled = true; i.title = "Taille absente de la nomenclature"; }
+    g.appendChild(el("label", {text:s}, i));
+  });
+  return g;
+}
+function sel(options, value, id){
+  var s = el("select", id ? {id:id} : null);
+  options.forEach(function(o){ s.appendChild(el("option", {value:o[0], text:o[1]})); });
+  if (value != null) s.value = value;
+  return s;
+}
+function confirmBtn(label, cls, action){
+  var armed = false, t;
+  var b = el("button", {class:"btn small " + cls, text:label, onclick:function(){
+    if (!armed){ armed = true; b.textContent = "Confirmer ?"; t = setTimeout(function(){ armed = false; b.textContent = label; }, 3000); return; }
+    clearTimeout(t); action();
+  }});
+  return b;
+}
+
+/* Une commande ALLOGA ne contient que PHARMA-HOMME col V noir (S→XXXL) et PHARMA-FEMME col V noir (XS→XXL) */
+var ALLOGA_ONLY = {"PHARMA_HOMME COL V NOIR":["S","M","L","XL","XXL","XXXL"], "PHARMA_FEMME COL V NOIR":["XS","S","M","L","XL","XXL"]};
+function clientLibs(lot, cli){
+  var libs = libList().map(function(l){ return {lib:l.lib, model:l.model, sizes:l.sizes.slice()}; });
+  if (cli === "ALLOGA") libs = libs.filter(function(l){ return l.lib in ALLOGA_ONLY; }).map(function(l){ l.sizes = l.sizes.filter(function(s){ return ALLOGA_ONLY[l.lib].indexOf(s) >= 0; }); return l; });
+  var by = {}; libs.forEach(function(l){ by[l.lib] = l; });
+  S.lines.forEach(function(x){            /* lignes déjà saisies : toujours affichées */
+    if (x.lot !== lot || x.client !== cli) return;
+    var l = by[x.lib]; if (!l){ l = by[x.lib] = {lib:x.lib, model:x.model, sizes:[]}; libs.push(l); }
+    if (l.sizes.indexOf(x.size) < 0){ l.sizes.push(x.size); l.sizes.sort(function(a,b){ return sizeIdx(a) - sizeIdx(b); }); }
+  });
+  return libs;
+}
+/* --- 1. Commandes : la feuille « COMMANDE <CLIENT> » du fichier PERCKO (Model fusionné, LIBELLE, Taille, Quantité, Total) ; seule la colonne Quantité se saisit --- */
+function vCmd(v){
+var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat(["NEOLYS","ALLOGA"]));
+  if (!ui.cmdClient) ui.cmdClient = (ui.client !== "*" && ui.client) ? ui.client : "NEOLYS";
+  var cli = ui.cmdClient, libs = clientLibs(ui.lot, cli);
+
+  var res = el("div", {class:"importres"});
+  var file = el("input", {type:"file", accept:".xlsx,.xlsm", id:"fImport"});
+  v.appendChild(el("details", {class:"card"}, el("summary", {text:"Importer un fichier de commande PERCKO (Excel)"}),
+    el("p", {class:"mut", text:"Feuilles « COMMANDE NEOLYS » / « COMMANDE ALLOGA » (Model, LIBELLE, Taille, Quantité ou FR, lot en en-tête). Réimporter met à jour les quantités."}),
+    file, el("p", null, el("button", {class:"btn", text:"Importer", onclick:function(){
+      if (!file.files.length){ toast("Choisissez un fichier .xlsx"); return; }
+      readWorkbook(file.files[0]).then(function(sheets){
+        var r; try { r = importOrder(sheets, ""); } catch (e) { toast(e.message); res.innerHTML = ""; res.appendChild(el("div", {class:"msg err", text:e.message})); return; }
+        persist(); ui.lot = r.lot; ui.client = "*"; render();
+        var box = el("div", {class:"msg"}, "Lot " + r.lot + " importé.");
+        r.sheets.forEach(function(s){ box.appendChild(el("div", {text:"• " + s.name + " : " + (s.skipped ? "ignorée (" + s.skipped + ")" : s.created + " créée(s), " + s.updated + " mise(s) à jour")})); });
+        if (r.unknown.length) box.appendChild(el("div", {class:"msg err", text:"Absents de la nomenclature : " + r.unknown.join(", ")}));
+        var holder = document.getElementById("view").querySelector(".importres"); if (holder){ holder.innerHTML = ""; holder.appendChild(box); }
+      }).catch(function(e){ toast(e.message); });
+    }})), res));
+
+  var yr = (S.lines.filter(function(l){ return l.lot === ui.lot; })[0] || {}).year || (lotMonth(ui.lot) ? lotMonth(ui.lot).y : new Date().getFullYear());
+  var iLot = el("input", {id:"mLot", value:ui.lot, placeholder:"PK202610-1"});
+  iLot.addEventListener("change", function(){ ui.lot = cleanTxt(iLot.value); render(); });
+  var iYear = el("input", {id:"mYear", type:"number", inputmode:"numeric", value:yr});
+  iYear.addEventListener("change", function(){ S.lines.forEach(function(l){ if (l.lot === ui.lot) l.year = num(iYear.value); }); persist(); });
+  var seg = el("div", {class:"seg"});
+  clients.forEach(function(c){ seg.appendChild(el("button", {class:c === cli ? "on" : "", text:c, onclick:function(){ ui.cmdClient = c; render(); }})); });
+  var lm = lotMonth(ui.lot);
+  v.appendChild(el("div", {class:"card"}, el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"ANNEE"}, iYear)),
+    el("div", {class:"mut", style:"margin-top:6px", text:lm ? "Commande : " + MOIS[lm.m - 1] + " " + lm.y + " (mois n° " + lm.m + " lu dans le lot)" : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202610-1 = octobre 2026)."}),
+    el("div", {style:"margin-top:10px"}, el("div", {class:"mut", text:"COMMANDE :"}), seg),
+    el("div", {style:"margin-top:8px"}, el("button", {class:"btn sec small", text:"Exporter la commande " + cli + " en Excel", onclick:function(){ exportCommande(cli, num(iYear.value)); }}))));
+
+  var stat = el("div", {class:"stat"});
+  v.appendChild(stat);
+  var t = el("table", {class:"xl entry"}), tb = el("tbody"), groups = [], inputs = [];
+  var cg = el("colgroup"); (PC ? [90,300,60,90,70] : [52,172,36,54,40]).forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
+  t.appendChild(el("thead", null, el("tr", null, ["Model","LIBELLE","Taille","Quantité","Total"].map(function(h){ return el("th", {text:h}); }))));
+  /* nombre de lignes par modèle consécutif (cellule Model fusionnée) */
+  var span = {}, mstart = {}, prevM = null, cur = null;
+  libs.forEach(function(li, i){ if (li.model !== prevM){ cur = i; mstart[i] = 1; span[i] = 0; prevM = li.model; } span[cur] += li.sizes.length; });
+  libs.forEach(function(li, gi){
+    var g = {li:li, cells:[], tot:null};
+    g.tot = el("td", {class:"tot b", rowspan:String(li.sizes.length)});
+    li.sizes.forEach(function(s, i){
+      var ln = findLine(ui.lot, cli, li.lib, s);
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", value:ln ? ln.qty : "", enterkeyhint:"next"});
+      var tr = el("tr", {class:i === 0 ? "gstart" : ""});
+      if (i === 0 && mstart[gi]) tr.appendChild(el("td", {class:"mdl b", rowspan:String(span[gi]), text:li.model}));
+      tr.appendChild(el("td", {class:"lib", text:li.lib}));
+      tr.appendChild(el("td", {class:"sz", text:s}));
+      tr.appendChild(el("td", {class:"fr"}, inp));
+      if (i === 0) tr.appendChild(g.tot);
+      tb.appendChild(tr);
+      g.cells.push({inp:inp, size:s}); inputs.push(inp);
+      inp.addEventListener("change", function(){
+        try { if (!ui.lot) throw new Error("Saisissez d'abord le lot."); setLine(ui.lot, num(iYear.value), cli, li.lib, s, num(inp.value)); }
+        catch (e) { toast(e.message); var l2 = findLine(ui.lot, cli, li.lib, s); inp.value = l2 ? l2.qty : ""; return; }
+        persist(); upd();
+      });
+      inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var k = inputs.indexOf(inp); if (inputs[k+1]) inputs[k+1].focus(); else inp.blur(); } });
+      inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+    });
+    groups.push(g);
+  });
+  t.appendChild(tb); v.appendChild(el("div", {class:"xlwrap"}, t));
+  function upd(){
+    var gf = 0, gc = 0;
+    groups.forEach(function(g){
+      var tf = 0, tc = 0;
+      g.cells.forEach(function(c){ var ln = findLine(ui.lot, cli, g.li.lib, c.size), q = ln ? ln.qty : 0; tf += q; if (q) tc += cutQty(q, g.li.model); });
+      g.tot.textContent = tf ? fmt(tf) : "0"; gf += tf; gc += tc;
+    });
+    stat.innerHTML = "";
+    stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées · " + cli})));
+    stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));
+  }
+  upd();
+  if (ui.lot && filtered(ui.lot, "*").length){
+    var ready = lotReady(ui.lot), info = S.lots[ui.lot] || {}, vc = el("div", {class:"card" + (ready ? "" : " confirm")});
+    var cc = conso(ui.lot, "*"), perCli = {}, unk = {};
+    cc.rows.forEach(function(r){ var o = perCli[r.client] || (perCli[r.client] = {q:0, c:0}); o.q += r.qty; o.c += r.cut; if (!r.known) unk[r.lib + " " + r.size] = 1; });
+    vc.appendChild(el("h2", {text:ready ? "Commande validée" : "Vérification de la commande " + ui.lot}));
+    Object.keys(perCli).sort().forEach(function(c){ vc.appendChild(el("div", {class:"mut", text:c + " : " + fmt(perCli[c].q) + " pièces commandées → " + fmt(perCli[c].c) + " à couper (avec marge)"})); });
+    if (Object.keys(unk).length) vc.appendChild(el("div", {class:"msg err", text:"Absents de la nomenclature (consommation non calculée) : " + Object.keys(unk).join(", ")}));
+    if (ready){
+      vc.appendChild(el("p", {class:"mut", text:"Validée le " + dmy(info.ready || "") + " — fiches de consommation disponibles."}));
+      vc.appendChild(el("div", {class:"actions"}, el("button", {class:"btn", text:"Voir les fiches de consommation", onclick:function(){ ui.tab = "fiche"; ui.fiche = "c"; render(); }}),
+        confirmBtn("Rouvrir pour modifier", "sec", function(){ commit(function(){ if (S.moves.some(function(m){ var l = lineById(m.lineId); return l && l.lot === ui.lot; })) throw new Error("Des étapes sont déjà enregistrées : impossible de rouvrir."); ensureLot(ui.lot); S.lots[ui.lot].ready = ""; }, "Commande rouverte"); })));
+    } else {
+      vc.appendChild(el("p", {class:"mut", text:"Relisez les quantités ci-dessus (tous les clients du lot). Quand tout est correct, validez pour calculer les consommations de coupe et d'assemblage."}));
+      vc.appendChild(el("button", {class:"btn", text:"✔ Valider la commande et calculer les consommations", onclick:function(){ validateLot(ui.lot); }}));
+    }
+    v.appendChild(vc);
+  }
+  if (ui.lot) v.appendChild(el("p", {style:"text-align:right"}, confirmBtn("Supprimer la commande " + cli + " du lot", "bad", function(){
+    commit(function(){ var ids = {}; S.lines.forEach(function(l){ if (l.lot === ui.lot && l.client === cli) ids[l.id] = 1; });
+      S.lines = S.lines.filter(function(l){ return !ids[l.id]; }); S.moves = S.moves.filter(function(m){ return !ids[m.lineId]; }); }, "Commande supprimée");
+  })));
+}
+
+/* --- 2. Fiches de commande : coupe (PROGES) et assemblage (GADH), même présentation que les feuilles de votre tableau --- */
+function gateCard(){
+  var l = filtered(ui.lot, "*");
+  return el("div", {class:"card"}, el("h2", {text:"Commande à valider"}), el("p", {class:"mut", text:l.length ? "Vérifiez les quantités dans l'onglet Commandes, puis validez : les consommations (coupe et assemblage) seront alors calculées." : "Aucune commande pour ce lot."}),
+    el("button", {class:"btn", text:"Aller vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }}));
+}
+function vFiches(v){
+  if (!lotReady(ui.lot)){ v.appendChild(gateCard()); return; }
+  if (!ui.fiche) ui.fiche = "c";
+  if (VUE === "gadh") ui.fiche = "a";
+  var seg = el("div", {class:"seg"});
+  [["c","Coupe (PROGES)"],["a","Assemblage (GADH)"],["t","Total & stock"]].forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.fiche = x[0]; render(); }})); });
+  if (VUE !== "gadh"){ v.appendChild(seg);
+  v.appendChild(pager(["c","a","t"], ui.fiche, function(k){ ui.fiche = k; render(); }, {c:"Coupe (PROGES)", a:"Assemblage (GADH)", t:"Total & stock"}[ui.fiche])); }
+  v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Exporter en Excel", onclick:exportFiches}), el("button", {class:"btn sec", text:"Exporter en PDF", onclick:exportFichesPdf})));
+  if (ui.fiche === "t") return vTotal(v);
+  var g = ficheGrid(ui.lot, ui.client, ui.fiche);
+  var tbl = gridHTML(g);
+  v.appendChild(el("div", {class:"xlwrap tall"}, tbl));
+  var fb = el("div", {class:"card fabcard"}, el("h2", {text:"Consommation totale en tissu"}), el("div", {class:"mut", text:"Fiche " + (ui.fiche === "c" ? "coupe (PROGES)" : "assemblage (GADH)") + " — lot " + (ui.lot || "—")}));
+  var ft = el("table", {class:"fabt"}), fbody = el("tbody");
+  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}))));
+  (g.fabs || []).forEach(function(f){ fbody.appendChild(el("tr", null, el("td", {class:"l", text:f[0]}), el("td", {class:"b", text:fmt(f[1], 1)}))); });
+  fbody.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(g.sumML || 0, 1)})));
+  ft.appendChild(fbody); fb.appendChild(ft);
+  v.appendChild(fb);
+}
+function fabTable(title, sub, fabs, key){
+  var fb = el("div", {class:"card fabcard"}, el("h2", {text:title}), el("div", {class:"mut", text:sub}));
+  var ft = el("table", {class:"fabt"}), tb = el("tbody"), sum = 0;
+  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}))));
+  fabs.forEach(function(f){ if (!f[key]) return; sum += f[key]; tb.appendChild(el("tr", null, el("td", {class:"l", text:f.fabric}), el("td", {class:"b", text:fmt(f[key], 1)}))); });
+  if (!sum) tb.appendChild(el("tr", null, el("td", {class:"l", text:"Aucune consommation"}), el("td")));
+  tb.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(sum, 1)})));
+  ft.appendChild(tb); fb.appendChild(ft); return fb;
+}
+function vTotal(v){
+  var c = conso(ui.lot, ui.client);
+  if (!c.fabs.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande, ou références absentes de la nomenclature."}))); return; }
+  v.appendChild(fabTable("Coupe (PROGES) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "coupe"));
+  v.appendChild(fabTable("Assemblage (GADH) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "ass"));
+  var card = el("div", {class:"card"}, el("h2", {text:"Stock de tissu (coupe + assemblage)"}));
+  var t = el("table"), tb = el("tbody"), tt = 0;
+  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Tissu"}), el("th", {text:"Besoin"}), el("th", {text:"Stock réel"}), el("th", {text:"Solde"}), el("th", {text:"Statut"}))));
+  c.fabs.forEach(function(f){
+    var inp = el("input", {type:"number", inputmode:"decimal", step:"0.1", class:"ed", value:f.stock === undefined ? "" : f.stock});
+    inp.addEventListener("change", function(){ commit(function(){ if (inp.value === "") delete S.stock[f.fabric]; else S.stock[f.fabric] = parseFloat(inp.value.replace(",", ".")) || 0; }); });
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:f.fabric}), el("td", {text:fmt(f.total,1), style:"font-weight:600"}), el("td", null, inp), el("td", {text:f.solde === undefined ? "" : fmt(f.solde,1)}),
+      el("td", null, el("span", {class:"pill " + (f.statut === "MANQUE" ? "bad" : f.statut === "OK" ? "ok" : "na"), text:f.statut}))));
+    tt += f.total;
+  });
+  tb.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(tt,1)}), el("td"), el("td"), el("td")));
+  t.appendChild(tb); card.appendChild(el("div", {class:"tw"}, t));
+  card.appendChild(el("p", {class:"mut", text:"Saisissez le stock réel (cases jaunes) pour obtenir le solde."}));
+  v.appendChild(card);
+}
+function pager(list, cur, setter, label){
+  var i = list.indexOf(cur), n = list.length;
+  var bp = el("button", {class:"btn sec", text:"◀ Précédent", onclick:function(){ if (i > 0) setter(list[i-1]); }}), bn = el("button", {class:"btn sec", text:"Suivant ▶", onclick:function(){ if (i < n - 1) setter(list[i+1]); }});
+  if (i <= 0) bp.disabled = true; if (i >= n - 1) bn.disabled = true;
+  return el("div", {class:"pager"}, bp, el("span", {class:"mut", text:label || ((i + 1) + " / " + n)}), bn);
+}
+/* --- 3. Suivi --- */
+function vSuivi(v){
+  var rows = suivi(ui.lot, ui.client);
+  if (!ui.smode || ui.smode === "v" || (VUE === "gadh" && ui.smode === "e")) ui.smode = "q";
+  var sm = el("div", {class:"seg"});
+  [["q","Flux"],["s","Situation"],["n","NC"],["d","Dates"]].concat(VUE === "gadh" ? [] : [["e","Corriger"]]).forEach(function(x){ sm.appendChild(el("button", {class:ui.smode === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.smode = x[0]; render(); }})); });
+  v.appendChild(sm);
+  v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Exporter en Excel", onclick:exportSuivi}), el("button", {class:"btn sec", text:"Exporter en PDF", onclick:exportSuiviPdf})));
+  if (!rows.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande pour ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
+  var tot = {fr:0, cut:0, rest:0}; STAGES.forEach(function(s){ tot[s[0]] = 0; });
+  rows.forEach(function(r){ tot.fr += r.fr; tot.cut += r.cut; tot.rest += r.rest; STAGES.forEach(function(s){ tot[s[0]] += r.s[s[0]]; }); });
+  v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:fmt(tot.fr)}), el("span", {text:"commandées"})), el("div", null, el("b", {text:fmt(tot.exp)}), el("span", {text:"expédiées"})), el("div", null, el("b", {text:fmt(tot.rest)}), el("span", {text:"reste à livrer"}))));
+  if (ui.smode !== "e"){
+    v.appendChild(el("div", {class:"xlwrap tall"}, gridHTML(fluxGrid(ui.lot, ui.smode))));
+    v.appendChild(el("p", {class:"mut", text:ui.smode === "s" ? "Situation : où se trouvent les pièces à cet instant (chaque pièce est dans l'état de la dernière étape atteinte)." : ui.smode === "n" ? "Pièces non conformes (NC) trouvées à chaque étape : elles ne passent pas à l'étape suivante." : ui.smode === "d" ? "Dates de chaque étape, avec la quantité traitée à chaque date (et les NC)." : "Cumul des pièces ayant atteint chaque étape. Reste à livrer = quantité commandée − expédiées (jamais négatif). Pour corriger un cumul, choisissez « Corriger »."}));
+    return;
+  }
+  var t = el("table"), tb = el("tbody");
+  t.appendChild(el("thead", null, el("tr", null, ["Taille","Quantité","Cmde coupe"].concat(STAGES.map(function(s){ return s[1]; })).concat(["Reste"]).map(function(h, i){ return el("th", {class:i === 0 ? "l sticky" : "", text:h}); }))));
+  var pl = "";
+  rows.forEach(function(r){
+    var lk = r.lib + "|" + r.client;
+    if (lk !== pl){
+      pl = lk; var lt = 0; rows.forEach(function(x){ if (x.lib === r.lib && x.client === r.client) lt += x.fr; });
+      tb.appendChild(el("tr", {class:"gh"}, el("td", {class:"sticky", text:r.lib}), el("td", {colspan:"8", text:r.model + " · " + r.client + " · total " + fmt(lt)})));
+    }
+    var tr = el("tr");
+    tr.appendChild(el("td", {class:"l sticky", text:r.size})); tr.appendChild(el("td", {text:fmt(r.fr)})); tr.appendChild(el("td", {text:fmt(r.cut)}));
+    var prev = 1e9;
+    STAGES.forEach(function(s){
+      var val = r.s[s[0]], td = el("td", {class:val > prev ? "bad" : ""});
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", value:val});
+      inp.addEventListener("change", function(){ commit(function(){ setStageTotal(r.id, s[0], num(inp.value)); }); });
+      td.appendChild(inp); tr.appendChild(td); prev = val;
+    });
+    var rest = r.rest; tr.appendChild(el("td", {class:rest > 0 ? "" : "ok", text:fmt(rest)}));
+    tb.appendChild(tr);
+  });
+  var tt = el("tr", {class:"tot"}, el("td", {class:"l sticky", text:"TOTAL"}), el("td", {text:fmt(tot.fr)}), el("td", {text:fmt(tot.cut)}));
+  STAGES.forEach(function(s){ tt.appendChild(el("td", {text:fmt(tot[s[0]])})); }); tt.appendChild(el("td", {text:fmt(tot.rest)})); tb.appendChild(tt);
+  var tp = el("tr", {class:"pc"}, el("td", {class:"l sticky", text:"% de la quantité commandée"}), el("td"), el("td", {text:tot.fr ? Math.round(tot.cut/tot.fr*1000)/10 + " %" : ""}));
+  STAGES.forEach(function(s){ tp.appendChild(el("td", {text:tot.fr ? Math.min(100, Math.round(tot[s[0]]/tot.fr*1000)/10) + " %" : ""})); }); tp.appendChild(el("td")); tb.appendChild(tp);
+  t.appendChild(tb);
+  v.appendChild(el("div", {class:"tw", style:"max-height:66vh"}, t));
+  v.appendChild(el("p", {class:"mut", text:"Les cases jaunes sont les cumuls : touchez une case pour la corriger (notée dans le journal). Une étape ne peut pas dépasser la précédente (la coupe peut dépasser la commande)."}));
+}
+
+/* --- 4. Flux : parcours de la commande, passage d'une étape à la suivante --- */
+function stagePrev(stage){ var i = STG_KEYS.indexOf(stage); return i > 0 ? STG_KEYS[i-1] : null; }
+function sumStates(lines, tot){
+  var ncT = ncTotals(), A = {q:0, cut:0, ord:0, rest:0, t:{}, sv:[], nc:{}, ncTot:0}, i; STG_KEYS.forEach(function(k){ A.t[k] = 0; A.nc[k] = 0; }); for (i = 0; i < 10; i++) A.sv.push(0);
+  lines.forEach(function(l){
+    var t = tot[l.id] || {}, n = ncT[l.id] || {}, ord = cutQty(l.qty, l.model), eff = l.cc ? (t.cp || 0) + (n.cp || 0) : ord;
+    A.q += l.qty; A.ord += ord; A.cut += eff; A.rest += Math.max(0, l.qty - (t.exp || 0));
+    STG_KEYS.forEach(function(k){ A.t[k] += t[k] || 0; A.nc[k] += n[k] || 0; A.ncTot += n[k] || 0; }); stateVals(eff, t, n).forEach(function(x, j){ A.sv[j] += x; });
+  });
+  return A;
+}
+function stateBar(sv, nc){
+  var tot = 0, ncTot = 0; sv.forEach(function(x){ tot += x; }); if (nc) STG_KEYS.forEach(function(k){ ncTot += nc[k] || 0; });
+  var w = el("div", {class:"stbox"}), bar = el("div", {class:"sbar"}), chips = el("div", {class:"chips"});
+  sv.forEach(function(x, i){ if (!x) return; bar.appendChild(el("i", {style:"width:" + (x / tot * 100) + "%;background:" + STATE_COL[i]})); chips.appendChild(el("span", {class:"chip"}, el("s", {style:"background:" + STATE_COL[i]}), STATE_NAMES[i] + " : ", el("b", {text:fmt(x)}))); });
+  if (ncTot) chips.appendChild(el("span", {class:"chip nc"}, el("s", {style:"background:#c0392b"}), "Non conformes (NC) : ", el("b", {text:fmt(ncTot)})));
+  if (!tot && !ncTot) return el("div", {class:"mut", text:"Aucune pièce."});
+  if (tot) w.appendChild(bar); w.appendChild(chips);
+  if (ncTot){ var dt = []; STAGES.forEach(function(st){ if (nc[st[0]]) dt.push(st[1] + " " + nc[st[0]]); }); w.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:"NC par étape : " + dt.join(" · ")})); }
+  return w;
+}
+function validateLot(lot){
+  var ok = commit(function(){ ensureLot(lot); S.lots[lot].ready = today(); });
+  if (ok){ toast("Commande validée : consommations calculées"); ui.tab = "fiche"; ui.fiche = "c"; render(); }
+}
+function vFlux(v){
+  var lot = ui.lot, lines = filtered(lot, "*");
+  if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
+  if (!ui.stage || STG_KEYS.indexOf(ui.stage) < 0) ui.stage = "cp";
+  if (VUE === "gadh" && GADH_STG.indexOf(ui.stage) < 0) ui.stage = "gadh";
+  if (!ui.fcli) ui.fcli = "*";
+  if (!ui.fv) ui.fv = {};
+  var clients = sortedUnique(lines.map(function(l){ return l.client; }));
+  if (ui.fcli !== "*" && clients.indexOf(ui.fcli) < 0) ui.fcli = "*";
+  var stage = ui.stage, si = STG_KEYS.indexOf(stage), prevS = stagePrev(stage), tot = stageTotals(), names = {}; STAGES.forEach(function(s){ names[s[0]] = s[1]; });
+  var ready = lotReady(lot), info = S.lots[lot] || {};
+  var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
+  var A = sumStates(rows, tot);
+  function goStage(k){ ui.stage = k; ui.fv = {}; ui.pend = null; render(); }
+  var sc = el("div", {class:"seg"});
+  [["*","Toutes les commandes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
+  v.appendChild(sc);
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Où sont mes pièces ?"}), el("div", {class:"mut", style:"margin-bottom:8px", text:fmt(A.q) + " pièces commandées · " + fmt(A.ord) + " à couper (ordre de coupe) · reste à livrer " + fmt(A.rest)}), stateBar(A.sv, A.nc)));
+  /* parcours */
+  var pc = el("div", {class:"card"}, el("h2", {text:"Parcours de la commande — lot " + lot}));
+  function step(n, label, sub, cls, right, onclick, on, pct){
+    var b = el(onclick ? "button" : "div", {class:"step " + cls + (on ? " on" : "")}, el("span", {class:"n", text:cls === "done" && !right ? "✓" : String(n)}),
+      el("span", {class:"nm"}, label, sub ? el("small", {text:sub}) : null, pct !== undefined ? el("div", {class:"mb"}, el("i", {style:"width:" + pct + "%"})) : null), right ? el("span", {class:"qt", text:right}) : null);
+    if (onclick) b.addEventListener("click", onclick);
+    return b;
+  }
+  pc.appendChild(step(1, "Commande reçue", info.received ? "le " + dmy(info.received) : "", "done", ""));
+  pc.appendChild(step(2, "Commande prête — à envoyer au centre de coupe", ready ? "validée le " + dmy(info.ready || "") : "à vérifier puis valider par TEK-TREND (onglet Commandes)", ready ? "done" : "todo", "", (ready || VUE === "gadh") ? null : function(){ ui.tab = "cmd"; render(); }));
+  STAGES.forEach(function(s, i){
+    var t = A.t[s[0]], target = i === 0 ? A.cut : A.q, pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
+    pc.appendChild(step(i + 3, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
+  });
+  v.appendChild(pc);
+
+  /* passage d'étape */
+  var iDate = el("input", {type:"date", id:"fDate", value:ui.fdate || today()}); iDate.addEventListener("change", function(){ ui.fdate = iDate.value; });
+  var note = el("input", {id:"fNote", placeholder:"BL, remarque…", value:ui.fnote || ""}); note.addEventListener("change", function(){ ui.fnote = note.value; });
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Étape " + (si + 3) + " — " + names[stage]}), pager(VUE === "gadh" ? GADH_STG : STG_KEYS, stage, goStage, "Étape " + (si + 3) + " / 11"),
+    el("p", {class:"mut", style:"margin:4px 0 8px", text:STAGE_HELP[stage]}),
+    el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note)),
+    el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
+  if (!ready) v.appendChild(el("div", {class:"msg err", style:"margin-bottom:10px"}, "Commande non validée : " + (VUE === "gadh" ? "TEK-TREND doit la valider avant les étapes. " : "validez-la dans l'onglet Commandes avant de lancer les étapes. "), VUE === "gadh" ? null : el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
+  var ncT = ncTotals(), inputs = [], pl = "", tb = el("tbody"), items = [], capped = stage !== "cp";
+  rows.forEach(function(l){
+    var t = tot[l.id] || {}, n = ncT[l.id] || {}, base = prevS ? (t[prevS] || 0) : cutQty(l.qty, l.model), done = (t[stage] || 0) + (n[stage] || 0);
+    items.push({l:l, base:base, done:done, disp:(!prevS && l.cc) ? 0 : Math.max(0, base - done)});
+  });
+  items.forEach(function(it){
+    var l = it.l, lk = l.lib + "|" + l.client, key = l.id + stage, keyN = key + "n";
+    if (lk !== pl){ pl = lk; tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"6", text:l.lib + " · " + l.client}))); }
+    var ncv = keyN in ui.fv ? ui.fv[keyN] : 0;
+    var val = key in ui.fv ? ui.fv[key] : (capped ? Math.max(0, it.disp - ncv) : it.disp);
+    var inp = el("input", {type:"number", inputmode:"numeric", class:"ed", value:val === 0 ? "" : val, enterkeyhint:"next"});
+    var inpN = el("input", {type:"number", inputmode:"numeric", class:"ed nc", value:ncv ? ncv : "", placeholder:"0", enterkeyhint:"next"});
+    function chk(){ var q = num(inp.value), n = num(inpN.value); if (capped){ if (n > it.disp){ n = it.disp; inpN.value = n; } if (q > it.disp - n) inp.value = Math.max(0, it.disp - n) || ""; } }
+    inp.addEventListener("input", chk); chk();
+    inpN.addEventListener("input", function(){ var n = num(inpN.value); if (capped && n > it.disp){ n = it.disp; inpN.value = n; } if (!(key in ui.fv) && capped) inp.value = Math.max(0, it.disp - n) || ""; chk(); });
+    inp.addEventListener("change", function(){ chk(); ui.fv[key] = num(inp.value); ui.pend = null; });
+    inpN.addEventListener("change", function(){ ui.fv[keyN] = num(inpN.value); ui.pend = null; });
+    [inp, inpN].forEach(function(x){
+      x.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var k = inputs.indexOf(x); if (inputs[k+1]) inputs[k+1].focus(); else x.blur(); } });
+      x.addEventListener("focus", function(){ try { x.select(); } catch (e) {} });
+      inputs.push(x);
+    });
+    it.inp = inp; it.inpN = inpN; it.keyN = keyN;
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:l.size + (!prevS && l.cc ? " ✔" : "")}), el("td", {text:fmt(it.base)}), el("td", {text:fmt(it.done)}), el("td", {class:"b", text:fmt(it.disp)}), el("td", {class:"fr"}, inp), el("td", {class:"fr"}, inpN)));
+  });
+  var t = el("table", {class:"flux"});
+  t.appendChild(el("thead", null, el("tr", null, [["Taille","l"],[prevS ? names[prevS] : "Ordre coupe",""],["Déjà passé",""],["Disponible",""],["Conformes",""],["NC",""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(tb);
+  function gather(){ var nm = [], tq = 0, tn = 0; items.forEach(function(it){ var q = num(it.inp.value), n = num(it.inpN.value); if (!q && !n) return; nm.push({id:nid("M"), date:iDate.value || today(), lineId:it.l.id, stage:stage, qty:q, nc:n, note:note.value || ""}); tq += q; tn += n; }); return {nm:nm, tq:tq, tn:tn}; }
+  function ask(next){
+    if (!ready){ toast("Validez d'abord la commande (onglet Commandes)."); return; }
+    var g = gather(); if (!g.nm.length){ toast("Aucune quantité à valider."); return; }
+    try { checkMoves(g.nm); } catch (e) { toast(e.message); return; }
+    ui.pend = {stage:stage, next:next, n:g.nm.length, tq:g.tq, tn:g.tn, date:iDate.value || today()}; render(true);
+  }
+  function doIt(){
+    var g = gather(), next = ui.pend && ui.pend.next;
+    var ok = commit(function(){ if (!g.nm.length) throw new Error("Aucune quantité à valider."); checkMoves(g.nm); g.nm.forEach(function(m){ S.moves.push(m); }); ui.fv = {}; ui.pend = null; if (next && si < STG_KEYS.length - 1) ui.stage = STG_KEYS[si + 1]; });
+    if (ok){ toast(names[stage] + " : " + fmt(g.tq) + " conformes" + (g.tn ? " + " + fmt(g.tn) + " NC" : "")); if (next) render(); }
+  }
+  if (ui.pend && ui.pend.stage === stage) v.appendChild(el("div", {class:"card confirm"}, el("h2", {text:"Confirmer le passage ?"}), el("p", {style:"margin:0 0 10px"}, el("b", {text:fmt(ui.pend.tq) + " pièces conformes"}), (ui.pend.tn ? " + " : ""), ui.pend.tn ? el("b", {text:fmt(ui.pend.tn) + " NC", style:"color:var(--bad)"}) : null, " (" + ui.pend.n + " ligne(s)) → « " + names[stage] + " » le " + dmy(ui.pend.date) + "."),
+    el("div", {class:"actions"}, el("button", {class:"btn", text:"Confirmer", onclick:doIt}), el("button", {class:"btn sec", text:"Annuler", onclick:function(){ ui.pend = null; render(true); }}))));
+  v.appendChild(el("div", {class:"actions"},
+    el("button", {class:"btn", text:"Valider l'étape", onclick:function(){ ask(false); }}),
+    el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
+    el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
+    el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }})));
+  if (stage === "cp" && VUE !== "gadh"){
+    var anyClosed = rows.some(function(l){ return l.cc; });
+    v.appendChild(el("div", {class:"actions"},
+      confirmBtn("Clôturer la coupe (écart accepté)", "sec", function(){ commit(function(){ rows.forEach(function(l){ var tt = tot[l.id] || {}, nn = ncT[l.id] || {}; if ((tt.cp || 0) + (nn.cp || 0) > 0) l.cc = 1; }); }, "Coupe clôturée : plus rien à couper pour ces lignes"); }),
+      anyClosed ? confirmBtn("Rouvrir la coupe", "sec", function(){ commit(function(){ rows.forEach(function(l){ l.cc = 0; }); }, "Coupe rouverte"); }) : null));
+  }
+  v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
+  v.appendChild(el("p", {class:"mut", text:stage === "cp" ? "La coupe peut couper plus ou moins que l'ordre de coupe : « Clôturer la coupe » accepte l'écart. Saisissez les pièces non conformes (NC) dans la colonne NC." : "Conformes + NC ne peuvent pas dépasser le disponible. Si vous saisissez des NC, les conformes se réduisent automatiquement. À l'emballage, la quantité proposée est celle qui est sortie du contrôle (conformes uniquement)."}));
+
+  var jr = el("div", {class:"card"}, el("h2", {text:"Derniers mouvements"})), shown = 0;
+  for (var i = S.moves.length - 1; i >= 0 && shown < 40; i--){
+    (function(m){
+      var l = lineById(m.lineId); if (!l || l.lot !== lot) return;
+      shown++;
+      jr.appendChild(el("div", {class:"ocard", style:"padding:8px 10px;margin-bottom:8px"},
+        el("div", {class:"top", style:"margin-bottom:4px"}, el("div", {class:"nm", text:l.lib + " · " + l.size}), el("div", {style:"font-family:var(--cond);font-weight:600;color:" + (m.qty < 0 ? "var(--bad)" : "var(--ink)"), text:(m.qty > 0 ? "+" : "") + m.qty + (m.nc ? " · NC " + m.nc : "")})),
+        el("div", {class:"mut", text:l.client + " · " + (names[m.stage] || m.stage) + (m.note ? " · " + m.note : "")}),
+        (function(){ var di = el("input", {type:"date", value:m.date, style:"margin-top:4px;max-width:170px"}); di.addEventListener("change", function(){ if (!di.value) return; m.date = di.value; persist(); toast("Date modifiée"); }); return di; })(),
+        el("div", {style:"text-align:right;margin-top:4px"}, confirmBtn("Annuler", "bad", function(){ commit(function(){ checkMoves([], m.id); S.moves = S.moves.filter(function(x){ return x.id !== m.id; }); }, "Mouvement annulé"); }))));
+    })(S.moves[i]);
+  }
+  if (!shown) jr.appendChild(el("p", {class:"mut", text:"Aucun mouvement enregistré."}));
+  v.appendChild(jr);
+}
+
+/* --- 0. Tableau de bord : commandes en cours et leur statut --- */
+function statusOf(C){
+  if (!C.q) return {txt:"—", cls:"na", done:false};
+  if (C.rest === 0) return {txt:"Terminée", cls:"ok", done:true};
+  if (C.closed) return {txt:"Clôturée (écart " + fmt(C.rest) + ")", cls:"ok", done:true};
+  var hi = -1; STG_KEYS.forEach(function(k, i){ if ((C.t[k] || 0) > 0) hi = i; });
+  if (hi < 0) return C.ready ? {txt:"Prête — à envoyer au centre de coupe", cls:"wip", done:false} : {txt:"Reçue — à vérifier et valider", cls:"na", done:false};
+  var full = C.t[STG_KEYS[hi]] >= (hi === 0 ? C.cut : C.q);
+  return {txt:STAGE_STATUS[hi] + (full ? " (complète)" : " (partielle)"), cls:"wip", done:false};
+}
+function dashData(){
+  var tot = stageTotals(), lots = {};
+  S.lines.forEach(function(l){ var L = lots[l.lot] || (lots[l.lot] = {lot:l.lot, year:l.year, lines:[], byc:{}}); L.lines.push(l); (L.byc[l.client] = L.byc[l.client] || []).push(l); });
+  return Object.keys(lots).sort().reverse().map(function(k){
+    var L = lots[k], ready = lotReady(k), info = S.lots[k] || {};
+    var cl = Object.keys(L.byc).sort().map(function(c){ var C = sumStates(L.byc[c], tot); C.client = c; C.ready = ready; C.closed = !!info.closed; C.st = statusOf(C); return C; });
+    var all = sumStates(L.lines, tot); all.ready = ready; all.closed = !!info.closed;
+    return {lot:L.lot, year:L.year, ready:ready, received:info.received, clients:cl, all:all, st:statusOf(all)};
+  });
+}
+function vDash(v){
+  var data = dashData();
+  if (!data.length){
+    v.appendChild(el("div", {class:"card"}, el("h2", {text:"Aucune commande"}), el("p", {class:"mut", text:"Importez la commande PERCKO ou saisissez-la dans l'onglet Commandes : elle apparaîtra ici avec son statut."}),
+      VUE === "gadh" ? null : el("button", {class:"btn", text:"Aller aux commandes", onclick:function(){ ui.tab = "cmd"; render(); }})));
+    return;
+  }
+  var run = data.filter(function(d){ return !d.st.done; }), fin = data.filter(function(d){ return d.st.done; });
+  var rest = 0; run.forEach(function(d){ rest += d.all.rest; });
+  v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:String(run.length)}), el("span", {text:"commande(s) en cours"})), el("div", null, el("b", {text:fmt(rest)}), el("span", {text:"pièces restant à expédier"}))));
+  function card(d){
+    var c = el("div", {class:"card ord " + d.st.cls});
+    c.appendChild(el("div", {class:"top2"}, el("div", null, el("h2", {style:"margin:0", text:d.lot}), el("div", {class:"mut", text:"PERCKO" + (d.year ? " · " + d.year : "") + " · " + fmt(d.all.q) + " pièces" + (d.received ? " · reçue le " + dmy(d.received) : "")})), el("span", {class:"pill " + d.st.cls, text:d.st.txt})));
+    c.appendChild(el("div", {class:"cl"}, el("div", {class:"mut", style:"margin-bottom:6px", text:"Où sont les pièces ?"}), stateBar(d.all.sv, d.all.nc)));
+    if (d.clients.length > 1) d.clients.forEach(function(C){
+      c.appendChild(el("div", {class:"cl"}, el("div", {class:"top2"}, el("b", {text:C.client}), el("span", {class:"mut", text:fmt(C.q) + " pièces · reste " + fmt(C.rest)}), el("span", {class:"pill " + C.st.cls, text:C.st.txt}))));
+    });
+    var bt = el("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"});
+    if (!d.ready && VUE !== "gadh") bt.appendChild(el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.lot = d.lot; ui.tab = "cmd"; render(); }}));
+    bt.appendChild(el("button", {class:"btn small" + (d.ready ? "" : " sec"), text:"Faire avancer", onclick:function(){ ui.lot = d.lot; ui.tab = "flux"; ui.fv = {}; render(); }}));
+    if (VUE !== "gadh" && d.ready && d.all.rest > 0 && d.all.t.exp > 0) bt.appendChild(confirmBtn("Clôturer avec écart", "sec", function(){ commit(function(){ ensureLot(d.lot); S.lots[d.lot].closed = today(); }, "Commande clôturée avec écart"); }));
+    bt.appendChild(el("button", {class:"btn small sec", text:"Suivi", onclick:function(){ ui.lot = d.lot; ui.tab = "suivi"; render(); }}));
+    bt.appendChild(el("button", {class:"btn small sec", text:"Fiches", onclick:function(){ ui.lot = d.lot; ui.tab = "fiche"; render(); }}));
+    c.appendChild(bt);
+    return c;
+  }
+  if (run.length) { v.appendChild(el("h2", {style:"font-size:15px;margin:4px 0 8px", text:"Commandes en cours"})); run.forEach(function(d){ v.appendChild(card(d)); }); }
+  else v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande en cours : tout est expédié."})));
+  if (fin.length) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", style:"margin:0 0 8px", text:fin.length + " commande(s) terminée(s) archivée(s)."}), el("button", {class:"btn small sec", text:"Ouvrir l'archive", onclick:function(){ ui.tab = "arch"; render(); }})));
+}
+
+/* --- Archive : commandes terminées, même format que le suivi --- */
+function lastShip(lot){ var d = ""; S.moves.forEach(function(m){ var l = lineById(m.lineId); if (l && l.lot === lot && m.stage === "exp" && m.date > d) d = m.date; }); return d; }
+function vArch(v){
+  var fin = dashData().filter(function(d){ return d.st.done; });
+  if (!fin.length){ v.appendChild(el("div", {class:"card"}, el("h2", {text:"Archive vide"}), el("p", {class:"mut", text:"Les commandes entièrement expédiées (reste à livrer = 0) arrivent ici automatiquement."}))); return; }
+  var lots = fin.map(function(d){ return d.lot; });
+  if (lots.indexOf(ui.alot) < 0) ui.alot = lots[0];
+  var d = fin.filter(function(x){ return x.lot === ui.alot; })[0];
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Commandes terminées (" + fin.length + ")"}), (function(){ var sl = el("select"); fin.forEach(function(x){ var o = el("option", {value:x.lot, text:x.lot + " — " + fmt(x.all.q) + " pièces · expédiée le " + dmy(lastShip(x.lot))}); sl.appendChild(o); }); sl.value = ui.alot; sl.addEventListener("change", function(){ ui.alot = sl.value; render(); }); return sl; })(), pager(lots, ui.alot, function(k){ ui.alot = k; render(); })));
+  v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Exporter en Excel", onclick:function(){ exportFlux(ui.alot, "Archive", false); }}), el("button", {class:"btn sec", text:"Exporter en PDF", onclick:function(){ exportFlux(ui.alot, "Archive", true); }})));
+  var closedI = S.lots[ui.alot] && S.lots[ui.alot].closed;
+  if (closedI && VUE !== "gadh") v.appendChild(el("div", {class:"msg", text:"Clôturée le " + dmy(closedI) + " avec un écart de " + fmt(d.all.rest) + " pièce(s) sur la quantité commandée. ", }, confirmBtn("Rouvrir la commande", "sec", function(){ commit(function(){ S.lots[ui.alot].closed = ""; }, "Commande rouverte"); })));
+  if (!ui.amode) ui.amode = "q";
+  var am = el("div", {class:"seg"});
+  [["q","Flux"],["s","Situation"],["n","NC"],["d","Dates"]].forEach(function(x){ am.appendChild(el("button", {class:ui.amode === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.amode = x[0]; render(); }})); });
+  v.appendChild(am);
+  v.appendChild(el("div", {class:"xlwrap tall"}, gridHTML(fluxGrid(ui.alot, ui.amode))));
+  v.appendChild(el("p", {class:"mut", text:"Commande archivée : même tableau que le suivi, avec les dates de chaque étape (plusieurs dates possibles par étape)."}));
+}
+/* --- Réglages --- */
+function vReg(v){
+  var mode = storageMode === "groupe" ? "Données partagées dans l'application du groupe (TEK-TREND et GADH), synchronisées sur tous les appareils." : storageMode === "base" ? "Données conservées dans votre espace (disponibles sur tous vos appareils connectés)." : "Données conservées seulement dans la mémoire de ce téléphone. Faites des sauvegardes.";
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Enregistrement"}), el("p", {class:"mut", text:mode}),
+    el("p", null, el("button", {class:"btn sec", text:"Télécharger une sauvegarde", onclick:function(){ saveFile("sauvegarde_percko_" + today().replace(/-/g,"") + ".json", JSON.stringify(desiredDocs())); }})),
+    el("label", {class:"mut", text:"Restaurer une sauvegarde (.json)"}), el("input", {type:"file", accept:".json", id:"fRestore"}),
+    el("p", null, confirmBtn("Restaurer", "bad", function(){
+      var f = document.getElementById("fRestore").files[0]; if (!f){ toast("Choisissez un fichier .json"); return; }
+      var rd = new FileReader(); rd.onload = function(){ try { applyDocs(JSON.parse(rd.result)); } catch (e) { toast("Sauvegarde invalide"); return; } persist(); toast("Sauvegarde restaurée"); render(); }; rd.readAsText(f);
+    }))));
+  var c1 = el("div", {class:"card"}, el("h2", {text:"Marges de coupe par modèle"}), el("p", {class:"mut", text:"Commande < seuil 1 : + marge 1 ; sinon < seuil 2 : + marge 2 ; sinon + marge 3. La ligne * vaut pour les modèles non listés."}));
+  var t1 = el("table"), tb1 = el("tbody");
+  t1.appendChild(el("thead", null, el("tr", null, ["Modèle","Seuil 1","Marge 1","Seuil 2","Marge 2","Marge 3",""].map(function(h, i){ return el("th", {class:i === 0 ? "l sticky" : "", text:h}); }))));
+  function ruleRow(r){
+    var tr = el("tr"), ins = {};
+    ins.model = el("input", {value:r.model, style:"width:150px;text-align:left"}); tr.appendChild(el("td", {class:"l sticky"}, ins.model));
+    ["s1","m1","s2","m2","m3"].forEach(function(k){ ins[k] = el("input", {type:"number", value:r[k]}); ins[k].className = "ed"; tr.appendChild(el("td", null, ins[k])); });
+    tr.appendChild(el("td", null, el("button", {class:"btn small bad", text:"×", onclick:function(){ tb1.removeChild(tr); }})));
+    tr._get = function(){ return {model:cleanTxt(ins.model.value), s1:num(ins.s1.value), m1:num(ins.m1.value), s2:num(ins.s2.value), m2:num(ins.m2.value), m3:num(ins.m3.value)}; };
+    return tr;
+  }
+  S.rules.forEach(function(r){ tb1.appendChild(ruleRow(r)); }); t1.appendChild(tb1);
+  c1.appendChild(el("div", {class:"tw"}, t1));
+  c1.appendChild(el("p", null, el("button", {class:"btn sec small", text:"+ Ajouter un modèle", onclick:function(){ tb1.appendChild(ruleRow({model:"", s1:100, m1:5, s2:400, m2:10, m3:20})); }}), " ",
+    el("button", {class:"btn small", text:"Enregistrer les marges", onclick:function(){ S.rules = Array.prototype.map.call(tb1.children, function(tr){ return tr._get(); }).filter(function(r){ return r.model; }); persist(); toast("Marges enregistrées"); }})));
+  v.appendChild(c1);
+
+  var c2 = el("div", {class:"card"}, el("h2", {text:"Nomenclature : tissus et consommations (m par pièce)"}));
+  var nf = el("input", {type:"file", accept:".xlsx", id:"fNomen"});
+  c2.appendChild(nf);
+  c2.appendChild(el("p", {class:"mut", text:"Import Excel : entêtes Modèle, Libellé, Taille, Tissu_1, Tissu_2, Conso_Coupe_m, Conso_Assemblage_m, Conso_Assemblage_T2_m. Remplace toute la nomenclature."}));
+  c2.appendChild(el("p", null, confirmBtn("Importer la nomenclature", "sec", function(){
+    if (!nf.files.length){ toast("Choisissez un fichier .xlsx"); return; }
+    readWorkbook(nf.files[0]).then(function(sh){ var n = importNomen(sh); S.nomen = n; S.lines.forEach(function(l){ var m = modelOf(l.lib); if (m) l.model = m; }); persist(); toast(n.length + " lignes importées"); render(); }).catch(function(e){ toast(e.message); });
+  })));
+  var filt = el("input", {placeholder:"Filtrer par libellé…", id:"nFilt"});
+  c2.appendChild(filt);
+  var t2 = el("table"), tb2 = el("tbody");
+  t2.appendChild(el("thead", null, el("tr", null, ["Libellé","Taille","Modèle","Tissu 1","Tissu 2","Coupe","Assem.","Ass. T2",""].map(function(h, i){ return el("th", {class:i === 0 ? "l sticky" : "", text:h}); }))));
+  function nRow(n){
+    var tr = el("tr"), ins = {};
+    [["lib",210,"sticky"],["size",50],["model",130],["t1",110],["t2",110]].forEach(function(f){ ins[f[0]] = el("input", {value:n[f[0]] || "", style:"width:" + f[1] + "px;text-align:left"}); tr.appendChild(el("td", {class:"l " + (f[2] || "")}, ins[f[0]])); });
+    ["cc","ca","ca2"].forEach(function(k){ ins[k] = el("input", {type:"number", step:"0.01", value:n[k] || 0, style:"width:70px", class:"ed"}); tr.appendChild(el("td", null, ins[k])); });
+    tr.appendChild(el("td", null, el("button", {class:"btn small bad", text:"×", onclick:function(){ tb2.removeChild(tr); }})));
+    tr._get = function(){ return {model:cleanTxt(ins.model.value), lib:cleanTxt(ins.lib.value), size:normSize(ins.size.value), t1:cleanTxt(ins.t1.value), t2:cleanTxt(ins.t2.value), cc:parseFloat(ins.cc.value) || 0, ca:parseFloat(ins.ca.value) || 0, ca2:parseFloat(ins.ca2.value) || 0}; };
+    tr._lib = (n.lib || "").toLowerCase();
+    return tr;
+  }
+  S.nomen.forEach(function(n){ tb2.appendChild(nRow(n)); }); t2.appendChild(tb2);
+  filt.addEventListener("input", function(){ var q = filt.value.toLowerCase(); Array.prototype.forEach.call(tb2.children, function(tr){ tr.style.display = (tr.querySelector("input").value.toLowerCase().indexOf(q) >= 0) ? "" : "none"; }); });
+  c2.appendChild(el("div", {class:"tw", style:"max-height:55vh;margin-top:8px"}, t2));
+  c2.appendChild(el("p", null, el("button", {class:"btn sec small", text:"+ Ajouter une ligne", onclick:function(){ tb2.appendChild(nRow({})); }}), " ",
+    el("button", {class:"btn small", text:"Enregistrer la nomenclature", onclick:function(){
+      S.nomen = Array.prototype.map.call(tb2.children, function(tr){ return tr._get(); }).filter(function(r){ return r.lib && r.size; });
+      S.lines.forEach(function(l){ var m = modelOf(l.lib); if (m) l.model = m; });
+      persist(); toast("Nomenclature enregistrée");
+    }})));
+  v.appendChild(c2);
+}
+
+/* ---------- démarrage ---------- */
+if (VUE === "gadh"){ var hb = document.querySelector("header .brand"); if (hb) hb.innerHTML = '<span class="tt"><span class="trd">GADH</span><span class="cm">,</span></span><div><h1>Commandes TEK-TREND</h1><div class="sub">envoi à la GADH · assemblage · retour</div></div>'; }
+document.getElementById("selLot").addEventListener("change", function(e){ ui.lot = e.target.value; render(); });
+render();
+load().then(function(){ render(); });
+</script>
+
+</body></html>

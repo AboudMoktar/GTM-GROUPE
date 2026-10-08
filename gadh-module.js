@@ -42,8 +42,17 @@ const GADH_ABSENCE_TYPES = { conge: {label:'Congé', cls:'excellent'}, maladie: 
 function getGadhCadences(){ return getJSON('gadh_cadences', {}); }
 function saveGadhCadences(map){ setJSON('gadh_cadences', map); }
 function gadhCadencePourRef(rk){ return parseFloat(getGadhCadences()[rk]) || 0; }
-function cmdRefsCatalogue(){ return (typeof cmdActiveReferences==='function') ? cmdActiveReferences() : []; }
-function gadhRefName(rk){ return (typeof cmdRefName==='function') ? cmdRefName(rk) : rk; }
+// Références : celles du suivi des commandes PERCKO (clés « pk_… », voir
+// suivi-module.js), plus celles de l'ancien module Commandes s'il en reste.
+function cmdRefsCatalogue(){
+  const anciennes = (typeof cmdActiveReferences==='function') ? cmdActiveReferences() : [];
+  const suivi = (typeof suiviReferences==='function') ? Object.keys(suiviReferences()) : [];
+  return suivi.concat(anciennes.filter(rk => suivi.indexOf(rk) < 0));
+}
+function gadhRefName(rk){
+  if(String(rk).indexOf('pk_') === 0 && typeof suiviReferences==='function'){ const r = suiviReferences()[rk]; if(r) return r.lib; }
+  return (typeof cmdRefName==='function') ? cmdRefName(rk) : rk;
+}
 
 // --- Données : Plannings (horaires dynamiques par période) ---
 function getGadhPlannings(){ return getJSON('gadh_plannings', {}); }
@@ -112,7 +121,8 @@ function cmdRetourGadhDuJour(dateISO){
 // la production de GADH avec le MÊME référentiel que l'onglet CMD, sans aucune
 // saisie manuelle : { [refKey CMD] : quantité retournée ce jour-là }.
 function cmdRetourGadhParRefDuJour(dateISO){
-  const parRef = {};
+  // Retours saisis dans le suivi des commandes PERCKO (étape « Retour TEK-TREND »).
+  const parRef = (typeof suiviRetoursParRefDuJour==='function') ? suiviRetoursParRefDuJour(dateISO) : {};
   if(typeof getCmdCommandes !== 'function' || typeof getCmdSaisies !== 'function') return parRef;
   Object.keys(getCmdCommandes()).forEach(cmdId => {
     const jour = getCmdSaisies(cmdId)[dateISO];
@@ -146,8 +156,9 @@ function gadhDayTotals(dateISO){
 // par rapport au total reçu (commandé) de la commande — indépendant de la date
 // choisie sur le tableau de bord, c'est un état global d'avancement.
 function cmdCommandesEnCoursPourGadh(){
-  if(typeof listCmdCommandes!=='function' || typeof cmdCumuls!=='function' || typeof cmdCell!=='function' || typeof cmdEstCloturee!=='function') return [];
-  return listCmdCommandes()
+  const suivi = (typeof suiviLotsPourGadh==='function') ? suiviLotsPourGadh() : [];
+  if(typeof listCmdCommandes!=='function' || typeof cmdCumuls!=='function' || typeof cmdCell!=='function' || typeof cmdEstCloturee!=='function') return suivi;
+  return suivi.concat(listCmdCommandes()
     .filter(([id]) => !cmdEstCloturee(id))
     .map(([id, cmd]) => {
       const cum = cmdCumuls(id);
@@ -157,7 +168,7 @@ function cmdCommandesEnCoursPourGadh(){
         retourFait += cmdCell(cum, rk, t).retour||0;
       }));
       return {id, numero: cmd.numero, total, retourFait, pct: total>0 ? Math.min(100, Math.round(retourFait/total*100)) : 0};
-    })
+    }))
     .sort((a,b) => b.pct - a.pct);
 }
 
@@ -454,7 +465,8 @@ function renderGadhPointage(container){
   container.innerHTML = `
     <div class="card" style="padding:10px 12px;">
       <div class="field" style="margin:0;"><label>Date</label><input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhAttDate=this.value; nav('gadh-rh')"></div>
-      ${canEdit ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="gadhMarkAllPresent()">Tout marquer Présent</button>` : ''}
+      ${canEdit ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="gadhMarkAllPresent()">Tout marquer Présent</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="ptgOuvrir('gadh')">⏱ Importer la pointeuse (fichier Excel)</button>` : ''}
       <div style="font-size:11px;color:var(--ink-faint);margin-top:8px;">${nbRenseignes}/${emps.length} renseigné(s)</div>
     </div>
     <div class="card" style="padding:4px 12px;">
@@ -481,7 +493,7 @@ function renderGadhPointage(container){
   };
   window.setGadhField = (empId, field, value) => {
     const a = getGadhAttendance(date);
-    a[empId] = {...(a[empId]||{}), [field]:value};
+    a[empId] = {...(a[empId]||{}), [field]:value, src:'manuel'}; // correction à la main : plus écrasée par l'import de la pointeuse
     saveGadhAttendance(date, a);
   };
 }
@@ -512,6 +524,7 @@ function gadhPointageCard(x, canEdit){
             </select>`
           : `<span class="hour-rend ${st?GADH_ATT_STATUS[st].cls:''}" style="font-size:11px;">${st?GADH_ATT_STATUS[st].label:'—'}</span>`}
       </div>
+      ${(st==='present' || st==='retard') && (r.heureEntree || r.heureSortie) ? `<div style="font-size:11px;color:var(--ink-soft);">Pointeuse : entrée ${r.heureEntree||'—'} · sortie ${r.heureSortie||'—'}</div>` : ''}
       ${canEdit && st==='retard' ? `<div class="field" style="margin:0;"><label style="font-size:10px;">Heure réelle d'arrivée</label><input type="time" value="${r.heureReelle||''}" onchange="setGadhField('${id}','heureReelle',this.value)"></div>` : ''}
       ${canEdit && st==='sortie' ? `<div style="display:flex;gap:8px;">
         <div class="field" style="margin:0;flex:1;"><label style="font-size:10px;">Heure de sortie</label><input type="time" value="${r.heureSortie||''}" onchange="setGadhField('${id}','heureSortie',this.value)"></div>

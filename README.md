@@ -1,8 +1,8 @@
-# Plateforme groupe TEK-TREND · GADH TUNISIA · MGT
+# GTM Groupe — plateforme TEK-TREND · GADH TUNISIA · MGT
 
-Copie de l'application TEK-TREND Atelier (version v32 du 2026-10-07), servant de base au projet groupe.
-L'application d'origine (tek-trend-atelier) reste en service et n'est pas modifiée.
+Application web (PWA) publiée avec GitHub Pages, données et comptes sur Firebase (projet `gtm-groupe`).
 
-Cette copie n'est reliée à aucune base de données : la configuration Firebase contient des valeurs
-"VOTRE_..." et l'application fonctionne en local sur chaque appareil tant qu'un nouveau projet
-Firebase de test n'est pas renseigné dans index.html.
+- `index.html` + `*-module.js` : l'application
+- `firebase-config.js` : configuration Firebase (clés publiques, la sécurité vient des règles)
+- `database.rules.json` : règles de sécurité de la base (à coller dans Firebase > Realtime Database > Règles)
+- `DEPLOIEMENT.md` : guide de mise en ligne
