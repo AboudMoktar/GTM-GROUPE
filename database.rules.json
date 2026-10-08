@@ -1,0 +1,69 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "groupe1": {
+      "users_v2": {
+        ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || !data.exists())",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && ((root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true) || (!root.child('groupe1/users_v2').exists() && auth.uid === $uid))"
+        }
+      },
+      "sessions": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists()",
+        "$sid": {
+          ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && (!newData.exists() || newData.child('username').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val())"
+        }
+      },
+      "tek": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true)",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')",
+        "messages": {
+          ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true)"
+        }
+      },
+      "gadh": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')"
+      },
+      "liaison": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true)",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')"
+      },
+      "mgt": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true)",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')",
+        "mgt_demandes": {
+          "$id": {
+            ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).child('portail/type').val() === 'mgt' && !data.exists() && newData.child('clientId').val() === root.child('groupe1/users_v2/'+auth.uid).child('portail/clientId').val() && newData.child('statut').val() === 'attente'"
+          }
+        }
+      },
+      "audit": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true",
+        "j": {
+          "$jour": {
+            "$id": {
+              ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (newData.child('un').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val() || (!newData.exists() && data.child('un').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val()))"
+            }
+          }
+        }
+      },
+      "portail": {
+        "mgt": {
+          "$cid": {
+            ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).child('portail/type').val() === 'mgt' && root.child('groupe1/users_v2/'+auth.uid).child('portail/clientId').val() === $cid",
+            ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')"
+          }
+        },
+        "percko": {
+          "$d": {
+            ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).child('portail/type').val() === 'percko' && ((root.child('groupe1/users_v2/'+auth.uid).child('portail/clients').exists() && root.child('groupe1/users_v2/'+auth.uid).child('portail/clients/'+$d).val() === true) || (!root.child('groupe1/users_v2/'+auth.uid).child('portail/clients').exists() && $d === 'tous'))",
+            ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/tek').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/gadh').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')"
+          }
+        }
+      }
+    }
+  }
+}

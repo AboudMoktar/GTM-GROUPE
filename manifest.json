@@ -1,27 +1,21 @@
 {
-  "name": "Groupe TEK-TREND GADH MGT",
-  "short_name": "Groupe",
-  "description": "Plateforme groupe TEK-TREND, GADH TUNISIA et MGT",
-  "id": "./",
+  "name": "GTM Groupe",
+  "short_name": "GTM",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "lang": "fr",
-  "background_color": "#FFFFFF",
+  "background_color": "#1C2430",
   "theme_color": "#1C2430",
+  "lang": "fr",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }
