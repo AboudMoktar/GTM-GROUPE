@@ -21,7 +21,7 @@
 // dans database.rules.json.
 
 const SOCIETES = {
-  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes','machines','factures']},
+  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes','factures']},
   gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', modules:['gadh','machines','factures']},
   mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', modules:['mgt']}
 };
