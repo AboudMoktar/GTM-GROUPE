@@ -129,11 +129,21 @@ window.renderSocieteSelect = function(){
     <span><span style="display:block;">Administration</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Comptes, sessions, maintenance</span></span></button>`);
 };
 
+// Champ mot de passe avec bouton « afficher ».
+function profilsChampMdp(label, id){
+  return `<div class="field"><label>${label}</label><div style="display:flex;gap:6px;"><input id="${id}" type="password" autocomplete="new-password" style="flex:1;min-width:0;">
+    <button type="button" class="btn btn-ghost" style="padding:0 14px;font-size:12.5px;" onclick="profilsAfficherMdp('${id}', this)">Afficher</button></div></div>`;
+}
+window.profilsAfficherMdp = (id, btn) => {
+  const e = document.getElementById(id); if(!e) return;
+  const vu = e.type === 'text'; e.type = vu ? 'password' : 'text'; btn.textContent = vu ? 'Afficher' : 'Masquer';
+};
+
 // --- Mon mot de passe (tous les comptes) ---
 window.profilsMonCompte = () => {
   mgtModal('Mon compte', `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">${esc(currentUser.nom)} (${esc(currentUser.username)}) · ${esc(profilLabel())}</p>
-    ${firebaseConfigured() ? mgtChamp('Mot de passe actuel', 'mypw-current', '', 'password') : ''}
-    ${mgtChamp('Nouveau mot de passe (6 caractères minimum)', 'mypw-new', '', 'password')}
+    ${firebaseConfigured() ? profilsChampMdp('Mot de passe actuel', 'mypw-current') : ''}
+    ${profilsChampMdp('Nouveau mot de passe (6 caractères minimum)', 'mypw-new')}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsChangerMdp()">Changer mon mot de passe</button>`);
 };
 window.profilsChangerMdp = async () => {
@@ -204,7 +214,7 @@ window.profilsFormCompte = (uid) => {
   const moi = uid && uid === currentUser.uid;
   mgtModal(uid ? 'Modifier le compte' : 'Nouveau compte', `
     ${mgtChamp('Nom affiché', 'uf-nom', u.nom)}
-    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (sans espace, ex : secretaire)', 'uf-username', '')}${mgtChamp('Mot de passe (6 caractères minimum)', 'uf-password', '', 'password')}`}
+    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (sans espace, ex : secretaire)', 'uf-username', '')}${profilsChampMdp('Mot de passe (6 caractères minimum)', 'uf-password')}`}
     ${moi ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Vous ne pouvez pas changer votre propre profil.</div>` : profilsChampsAccesHTML(u)}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsSauverCompte('${uid || ''}')">${uid ? 'Enregistrer' : 'Créer le compte'}</button>`);
   profilsMajForm();
