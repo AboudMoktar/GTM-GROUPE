@@ -13,6 +13,8 @@
 //  secretaire_gadh  Secrétaire GADH      RH + facturation
 //  resp_gadh        Responsable GADH     rendement + commandes à l'assemblage
 //  agent_chaine     Agent chaîne         saisie des rendements par heure
+//  secretaire_mgt   Secrétaire MGT       facturation et devis
+//  technico_mgt     Technico-commercial MGT  tout dans MGT
 //
 // acces[société][module] = '*' (tout) ou liste d'onglets. Société absente de
 // acces = tous les modules de la société.
@@ -27,9 +29,11 @@ const PROFILS = {
   secretaire_tek:  {label:'Secrétaire TEK-TREND', role:'admin', groupe:false, societes:{tek:true}, acces:{tek:{rh:'*', factures:'*'}}, aide:'RH et facturation TEK-TREND'},
   secretaire_gadh: {label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-rh'], factures:'*'}}, aide:'RH et facturation GADH'},
   resp_gadh:       {label:'Responsable GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-dashboard', 'gadh-production', 'gadh-prodchain', 'commandes-home', 'gadh-historique', 'gadh-stats']}}, aide:'Rendement et commandes à l\'assemblage'},
-  agent_chaine:    {label:'Agent chaîne TEK-TREND', role:'chef_chaine', groupe:false, societes:{tek:true}, acces:{tek:{rendement:['dashboard', 'saisie']}}, aide:'Saisie des rendements par heure'}
+  agent_chaine:    {label:'Agent chaîne TEK-TREND', role:'chef_chaine', groupe:false, societes:{tek:true}, acces:{tek:{rendement:['dashboard', 'saisie']}}, aide:'Saisie des rendements par heure'}  ,
+  secretaire_mgt:  {label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true}, acces:{mgt:{mgt:['mgt-devis', 'mgt-devis-edit', 'fact-liste', 'fact-clients', 'fact-edit', 'fact-params']}}, aide:'Facturation et devis MGT'},
+  technico_mgt:    {label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true}, aide:'Tout dans MGT (clients, offres, planning, devis, SAV, factures)'}
 };
-const PROFILS_ORDRE = ['direction', 'sysadmin', 'responsable', 'secretaire_tek', 'secretaire_gadh', 'resp_gadh', 'agent_chaine'];
+const PROFILS_ORDRE = ['direction', 'sysadmin', 'responsable', 'secretaire_tek', 'secretaire_gadh', 'resp_gadh', 'agent_chaine', 'secretaire_mgt', 'technico_mgt'];
 
 function profilDe(u){ u = u || currentUser; return (u && u.profil && PROFILS[u.profil]) || null; }
 function profilLabel(u){
@@ -65,7 +69,8 @@ function profilOngletAutorise(tab){
 const profilsNavItemsOrigine = window.navItems;
 window.navItems = function(){
   if(activeModule === 'admin') return profilsAdminItems();
-  return profilsNavItemsOrigine().filter(i => i.tab !== 'sessions' && profilOngletAutorise(i.tab));
+  return profilsNavItemsOrigine().map(i => (i.tab === 'mgt-offres' && !profilOngletAutorise('mgt-offres') && profilOngletAutorise('mgt-devis')) ? Object.assign({}, i, {tab:'mgt-devis', label:'Devis'}) : i)
+    .filter(i => i.tab !== 'sessions' && profilOngletAutorise(i.tab));
 };
 const profilsNavOrigine = window.nav;
 window.nav = function(tab){
@@ -80,7 +85,13 @@ window.nav = function(tab){
     const premier = navItems()[0];
     if(premier && premier.tab !== tab) tab = premier.tab;
   }
-  return profilsNavOrigine(tab);
+  const r = profilsNavOrigine(tab);
+  // Barre d'onglets Offres / Projets / Devis / CA : ne garde que les onglets permis.
+  document.querySelectorAll('.mgt-onglets button').forEach(b => {
+    const m = /nav\('([^']+)'\)/.exec(b.getAttribute('onclick') || '');
+    if(m && !profilOngletAutorise(m[1])) b.remove();
+  });
+  return r;
 };
 
 // --- Administration : espace à part, hors des modules ---
