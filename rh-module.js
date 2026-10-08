@@ -204,6 +204,13 @@ function computeRetardHours(a){
   const blocs = blocsComplets + (reste > 5 ? 1 : 0);
   return blocs * 0.5;
 }
+// Départ avant la fin de journée prévue par les horaires (Params) : signalé, sans
+// retenue automatique.
+function departAnticipe(a){
+  if(!a || !a.out) return false;
+  const slots = getSlotsForDate(a.dateISO || getTodayISO());
+  return slots.length > 0 && hhmmToMin(a.out) < slots[slots.length-1].end;
+}
 function autorisationDureeH(auth){
   if(!auth || !auth.sortie || !auth.retour) return 0;
   return Math.max(0, (hhmmToMin(auth.retour) - hhmmToMin(auth.sortie))/60);
@@ -232,7 +239,7 @@ function resolveDayStatus(empId, dateISO){
   const att = getAttendance(dateISO);
   const a = att[empId];
   if(a && a.status){
-    return {source:'pointage', status:a.status, in:a.in||'', autorisations:a.autorisations||[], dateISO};
+    return {source:'pointage', status:a.status, in:a.in||'', out:a.out||'', src:a.src||'', autorisations:a.autorisations||[], dateISO};
   }
   return {source:null, dateISO};
 }
@@ -850,7 +857,8 @@ function renderRHPointage(container, canEdit){
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" style="flex:1;padding:9px 6px;font-size:12px;" onclick="markAllPresent()">Tout marquer Présent</button>
         <button class="btn btn-ghost" style="flex:1;padding:9px 6px;font-size:12px;" onclick="resetDay()">Réinitialiser</button>
-      </div>` : ''}
+      </div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px 6px;font-size:12px;" onclick="ptgOuvrir('tek')">⏱ Importer la pointeuse (fichier Excel)</button>` : ''}
       <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:700;color:${complete?'var(--good)':'var(--warn)'};">
         ${!journeeCommencee ? 'La journée n\'a pas encore commencé (début '+minToHHMM(getRefStartMin(date))+')' : (complete ? '✓ Journée complète' : '⚠ '+nonRenseigne.length+' salarié(s) non renseigné(s)')}
         <span style="color:var(--ink-faint);font-weight:600;">· ${nbRenseignes}/${emps.length} renseignés</span>
@@ -918,7 +926,7 @@ function renderRHPointage(container, canEdit){
   };
   window.setAttendanceField = (empId, field, value) => {
     const a = getAttendance(date);
-    a[empId] = {...(a[empId]||{}), [field]:value};
+    a[empId] = {...(a[empId]||{}), [field]:value, src:'manuel'}; // une correction à la main n'est plus écrasée par l'import de la pointeuse
     saveAttendance(date, a);
     nav('rh-pointage');
   };
@@ -976,7 +984,10 @@ function rhPointageCard(x, canEdit){
       ${st==='present' ? (canEdit ? `
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <div class="field" style="margin:0;"><label style="font-size:10px;">Heure d'arrivée</label><input type="time" value="${r.in||''}" onchange="setAttendanceField('${id}','in',this.value)"></div>
+        <div class="field" style="margin:0;"><label style="font-size:10px;">Heure de départ</label><input type="time" value="${r.out||''}" onchange="setAttendanceField('${id}','out',this.value)"></div>
         ${retard>0 ? `<div style="font-size:11px;color:var(--warn);font-weight:700;">Retard ${fmtH(retard)}</div>` : ''}
+        ${departAnticipe(r) ? `<div style="font-size:11px;color:var(--warn);font-weight:700;">Départ anticipé</div>` : ''}
+        ${r.src==='pointeuse' ? `<span class="hour-rend" style="font-size:9.5px;">Pointeuse</span>` : ''}
       </div>
       <div>
         ${auths.map((au,i) => `
@@ -992,7 +1003,7 @@ function rhPointageCard(x, canEdit){
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="addAutorisation('${id}')">+ Autorisation (sortie/retour)</button>
       </div>
       ` : `
-      ${r.in ? `<div style="font-size:11px;color:var(--ink-soft);">Arrivée ${r.in}${retard>0?' · Retard '+fmtH(retard):''}</div>` : ''}
+      ${r.in ? `<div style="font-size:11px;color:var(--ink-soft);">Arrivée ${r.in}${retard>0?' · Retard '+fmtH(retard):''}${r.out?' · Départ '+r.out+(departAnticipe(r)?' (anticipé)':''):''}</div>` : ''}
       ${auths.filter(au=>au.sortie&&au.retour).map(au => `<div style="font-size:11px;color:var(--ink-soft);">Autorisation ${au.sortie}→${au.retour} (${fmtH(autorisationDureeH(au))})</div>`).join('')}
       `) : ''}
     </div>
