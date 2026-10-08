@@ -21,8 +21,8 @@
 // dans database.rules.json.
 
 const SOCIETES = {
-  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes']},
-  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', modules:['gadh']},
+  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes','factures']},
+  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', modules:['gadh','factures']},
   mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];
@@ -54,6 +54,7 @@ function modulesDeSociete(soc){
     if(m === 'gadh') return canAccessGADH();
     if(m === 'commandes') return (typeof canAccessCommandes === 'function' && canAccessCommandes());
     if(m === 'mgt') return true;
+    if(m === 'factures') return canAccessFactures();
     return false;
   });
 }
@@ -150,12 +151,15 @@ function directionIndicateurs(soc){
   const today = getTodayISO();
   const val = (fn) => { try { const v = fn(); return (v === null || v === undefined || Number.isNaN(v)) ? '—' : v; } catch(e){ console.error('Indicateur direction', soc, e); return '—'; } };
   const pct = (v) => (typeof v === 'number') ? Math.round(v) + ' %' : '—';
+  // Factures émises non réglées (et combien sont en retard).
+  const aEncaisser = (s) => ({label:'À encaisser', large:true, valeur: val(() => { const f = factIndicateurs(s); return fmtDT(f.aEncaisser) + (f.retard ? ' · ' + f.retard + ' en retard' : ''); })});
   if(soc === 'tek'){
     return [
       {label:'Production du jour', valeur: val(() => computeTotals(getDay(today)).totalGeneral)},
       {label:'Rendement du jour', valeur: val(() => { const t = computeTotals(getDay(today)).totalGeneral; const o = getObjForDay(getDay(today)); return pct(o > 0 ? t / o * 100 : null); })},
       {label:'Présents', valeur: val(() => { const emp = activeEmployees(); const n = emp.filter(([id]) => { const r = resolveDayStatus(id, today); return r.source === 'pointage' && r.status === 'present'; }).length; return n + ' / ' + emp.length; })},
-      {label:'Commandes en cours', valeur: val(() => suiviCommandesEnCours())}
+      {label:'Commandes en cours', valeur: val(() => suiviCommandesEnCours())},
+      aEncaisser('tek')
     ];
   }
   if(soc === 'gadh'){
@@ -163,7 +167,8 @@ function directionIndicateurs(soc){
       {label:'Pièces retournées du jour', valeur: val(() => gadhDayTotals(today).totalReel)},
       {label:'Rendement du jour', valeur: val(() => pct(gadhDayTotals(today).rendement))},
       {label:'Présents', valeur: val(() => { const emp = activeGadhEmployees(); const n = emp.filter(([id]) => { const r = resolveGadhDayStatus(id, today); return r.source === 'pointage' && (r.statut === 'present' || r.statut === 'retard'); }).length; return n + ' / ' + emp.length; })},
-      {label:'Commandes chez GADH', valeur: val(() => suiviLotsChezGadh())}
+      {label:'Commandes chez GADH', valeur: val(() => suiviLotsChezGadh())},
+      aEncaisser('gadh')
     ];
   }
   if(soc === 'mgt'){
@@ -172,7 +177,8 @@ function directionIndicateurs(soc){
       {label:'RDV aujourd\'hui', valeur: val(() => k().rdvJour)},
       {label:'Devis en attente', valeur: val(() => { const x = k(); return x.devisAttente + ' · ' + fmtDT(x.montantAttente); })},
       {label:'Projets en cours', valeur: val(() => k().projetsEnCours)},
-      {label:'Clients / prospects', valeur: val(() => { const x = k(); return x.clients + ' / ' + x.prospects; })}
+      {label:'Tickets SAV ouverts', valeur: val(() => { const x = savIndicateurs(); return x.ticketsActifs + (x.machinesArret ? ' · ' + x.machinesArret + ' à l\'arrêt' : ''); })},
+      aEncaisser('mgt')
     ];
   }
   return [];
@@ -190,7 +196,7 @@ function renderDirection(){
           <span style="font-size:11.5px;color:var(--ink-soft);">${SOCIETES[soc].sous}</span>
         </div>
         ${ind.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-          ${ind.map(i => `<div style="border:1px solid var(--border);border-radius:11px;padding:10px;">
+          ${ind.map(i => `<div style="border:1px solid var(--border);border-radius:11px;padding:10px;${i.large ? 'grid-column:1 / -1;' : ''}">
             <div style="font-size:11px;color:var(--ink-soft);font-weight:700;">${i.label}</div>
             <div style="font-family:var(--mono);font-size:20px;font-weight:800;margin-top:4px;">${esc(String(i.valeur))}</div>
           </div>`).join('')}

@@ -12,7 +12,8 @@
 //  - mgt_devis     : {numero, version, date, validite, clientId, projetId, objet, lignes:[{designation, qte, pu, remise}], tva, statut, conditions}
 //  - mgt_projets   : {clientId, titre, etape, montant, dateCible, notes}
 //  - mgt_parametres: coordonnées MGT imprimées sur les devis, TVA par défaut
-//  - mgt_compteurs : {devis: {2026: 3}} — numérotation DV-2026-003 par année
+//  - mgt_compteurs : {devis: {2026: 3}, sav: {…}} — numérotation DV-2026-003 par année
+// SAV (tickets, pièces, contrats) : voir mgt-sav-module.js ; factures : factures-module.js.
 // Droits : Responsable et Chef de chaîne modifient, Direction consulte.
 
 const MGT_TYPES_RDV = {
@@ -61,13 +62,15 @@ function devisTotaux(d){
   const tva = ht * (Number(d.tva) || 0) / 100;
   return {ht, tva, ttc: ht + tva};
 }
-function mgtProchainNumero(annee){
+// Numérotation par année : DV-2026-001 (devis), SAV-2026-001 (tickets)…
+function mgtNumero(type, prefixe, annee){
   const c = getJSON('mgt_compteurs', {}) || {};
-  const dv = c.devis || {};
+  const dv = c[type] || {};
   dv[annee] = (dv[annee] || 0) + 1;
-  c.devis = dv; setJSON('mgt_compteurs', c);
-  return 'DV-' + annee + '-' + String(dv[annee]).padStart(3, '0');
+  c[type] = dv; setJSON('mgt_compteurs', c);
+  return prefixe + '-' + annee + '-' + String(dv[annee]).padStart(3, '0');
 }
+function mgtProchainNumero(annee){ return mgtNumero('devis', 'DV', annee); }
 function garantieActive(m){ return !!(m.finGarantie && m.finGarantie >= getTodayISO()); }
 
 // --- Indicateurs (tableau de bord MGT et écran direction) ---
@@ -98,9 +101,9 @@ function mgtNavItems(){
     {tab:'mgt-dashboard', label:'Tableau', icon:ICONS.dashboard, show:true},
     {tab:'mgt-clients', label:'Clients', icon:ICONS.team, show:true},
     {tab:'mgt-agenda', label:'Agenda', icon:ICONS.calendarCheck, show:true},
-    {tab:'mgt-devis', label:'Devis', icon:ICONS.export, show:true},
-    {tab:'mgt-projets', label:'Projets', icon:ICONS.target, show:true},
-    {tab:'mgt-parc', label:'Parc', icon:ICONS.factory, show:true},
+    {tab:'mgt-devis', label:'Ventes', icon:ICONS.target, show:true},
+    {tab:'mgt-sav', label:'SAV', icon:ICONS.wrench, show:true},
+    {tab:'fact-liste', label:'Factures', icon:ICONS.invoice, show:true},
     {tab:'mgt-parametres', label:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
   ].filter(i => i.show);
 }
@@ -108,10 +111,20 @@ function mgtSection(container, titre, actions){
   container.innerHTML = `<div class="flex-header"><h2>${titre}</h2>${actions ? `<div class="actions">${actions}</div>` : ''}</div><div id="mgt-body"></div>`;
   return document.getElementById('mgt-body');
 }
+// Onglets regroupés sous un même bouton de navigation (barre d'onglets en haut de l'écran).
+const MGT_GROUPES = {
+  ventes: {racine:'mgt-devis', onglets:[['mgt-devis', 'Devis'], ['mgt-projets', 'Projets']]},
+  sav:    {racine:'mgt-sav', onglets:[['mgt-sav', 'Tickets'], ['mgt-parc', 'Parc'], ['mgt-pieces', 'Pièces'], ['mgt-contrats', 'Contrats']]}
+};
+const MGT_PARENT = {'mgt-projets':'mgt-devis', 'mgt-devis-edit':'mgt-devis', 'mgt-fiche':'mgt-clients',
+  'mgt-parc':'mgt-sav', 'mgt-pieces':'mgt-sav', 'mgt-contrats':'mgt-sav', 'mgt-ticket':'mgt-sav'};
 function renderMgt(tab, main){
   ({'mgt-dashboard':renderMgtDashboard, 'mgt-clients':renderMgtClients, 'mgt-fiche':renderMgtFiche, 'mgt-agenda':renderMgtAgenda,
     'mgt-devis':renderMgtDevis, 'mgt-devis-edit':renderMgtDevisEdit, 'mgt-projets':renderMgtProjets, 'mgt-parc':renderMgtParc,
+    'mgt-sav':renderSavTickets, 'mgt-ticket':renderSavTicket, 'mgt-pieces':renderSavPieces, 'mgt-contrats':renderSavContrats,
     'mgt-parametres':renderMgtParametres})[tab](main);
+  const g = Object.values(MGT_GROUPES).find(x => x.onglets.some(o => o[0] === tab));
+  if(g) main.insertAdjacentHTML('afterbegin', `<div class="mgt-onglets no-print">${g.onglets.map(([t, l]) => `<button class="${t === tab ? 'actif' : ''}" onclick="nav('${t}')">${l}</button>`).join('')}</div>`);
 }
 
 // --- Fenêtre modale ---
@@ -142,7 +155,7 @@ function mgtOptionsClients(vide){
 // ============================================================
 function renderMgtDashboard(main){
   const b = mgtSection(main, ICONS.dashboard + ' Tableau de bord MGT');
-  const k = mgtIndicateurs(), today = getTodayISO();
+  const k = mgtIndicateurs(), s = savIndicateurs(), f = factIndicateurs('mgt'), today = getTodayISO();
   const agenda = Object.entries(mgtGet('agenda'));
   const duJour = agenda.filter(([, a]) => a.date === today).sort((x, y) => (x[1].heure || '').localeCompare(y[1].heure || ''));
   const retard = agenda.filter(([, a]) => !a.fait && a.date < today).sort((x, y) => x[1].date.localeCompare(y[1].date));
@@ -160,6 +173,16 @@ function renderMgtDashboard(main){
       ${tuile(k.projetsEnCours, 'Projets en cours', '', 'mgt-projets')}
       ${tuile(k.sousGarantie + '/' + k.machines, 'Machines sous garantie', '', 'mgt-parc')}
     </div>
+    <div class="kpi-mini-grid">
+      ${tuile(s.ticketsActifs, 'Tickets SAV ouverts', s.urgents ? 'hour-rend bad' : '', 'mgt-sav')}
+      ${tuile(s.machinesArret, 'Machines à l\'arrêt', s.machinesArret ? 'hour-rend bad' : '', 'mgt-sav')}
+      ${tuile(s.piecesSousSeuil, 'Pièces à commander', s.piecesSousSeuil ? 'hour-rend warn' : '', 'mgt-pieces')}
+      ${tuile(s.contratsARenouveler, 'Contrats à renouveler', s.contratsARenouveler ? 'hour-rend warn' : '', 'mgt-contrats')}
+    </div>
+    <div class="kpi-mini-grid" style="grid-template-columns:repeat(2,1fr);">
+      ${tuile(fmtDT(f.aEncaisser).replace(' DT', ''), 'DT à encaisser', '', 'fact-liste')}
+      ${tuile(f.retard, 'Factures en retard', f.retard ? 'hour-rend bad' : '', 'fact-liste')}
+    </div>
     <div class="card">
       <h3 style="margin:0 0 8px;font-size:14px;">Agenda du jour</h3>
       ${duJour.length ? duJour.map(([id, a]) => mgtLigneAgenda(id, a)).join('') : buildEmptyState('Rien de prévu aujourd\'hui')}
@@ -172,6 +195,7 @@ function renderMgtDashboard(main){
 // ============================================================
 let mgtFiltreClients = {q:'', type:'tous'};
 let mgtFicheId = null;
+window.mgtOuvrirFiche = (id) => { mgtFicheId = id; nav('mgt-fiche'); };
 function renderMgtClients(main){
   const b = mgtSection(main, ICONS.team + ' Clients', canEditMgt() ? `<button class="btn btn-primary" onclick="mgtFormClient()">+ Client</button>` : '');
   const f = mgtFiltreClients, all = Object.entries(mgtGet('clients')).sort((a, c) => (a[1].nom || '').localeCompare(c[1].nom || ''));
@@ -284,7 +308,9 @@ function renderMgtFiche(main){
     </div>
     <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><h3 style="margin:0;font-size:14px;">Parc machines</h3>${ed ? `<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="mgtFormMachine(null, '${id}')">+ Machine</button>` : ''}</div>
       ${machines.length ? machines.map(([mid, m]) => mgtLigneMachine(mid, m, false)).join('') : `<div style="font-size:12px;color:var(--ink-faint);padding:8px 0;">Aucune machine installée</div>`}
-    </div>`;
+    </div>
+    ${savCarteClient(id)}
+    ${factCarteClient('mgt', id)}`;
 }
 
 // ============================================================
@@ -387,7 +413,8 @@ window.mgtFormMachine = (id, clientId) => {
     ${mgtSelect('État', 'mm-statut', Object.entries(MGT_STATUTS_MACHINE), m.statut || 'service')}
     ${mgtZone('Notes', 'mm-notes', m.notes)}
     <button class="btn btn-primary" style="width:100%;" onclick="mgtSauverMachine('${id || ''}')">Enregistrer</button>
-    ${id ? `<button class="btn btn-ghost" style="width:100%;margin-top:8px;color:var(--bad);" onclick="mgtSupprimerMachine('${id}')">Supprimer</button>` : ''}`);
+    ${id ? `<button class="btn btn-ghost" style="width:100%;margin-top:8px;" onclick="mgtFermer(); savFormTicket(null, '${m.clientId}', '${id}')">Ouvrir un ticket SAV</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px;color:var(--bad);" onclick="mgtSupprimerMachine('${id}')">Supprimer</button>` : ''}`);
 };
 window.mgtSauverMachine = (id) => {
   const clientId = mgtVal('mm-client'); if(!clientId){ showToast('Choisissez le client'); return; }
@@ -512,6 +539,7 @@ function renderMgtDevisEdit(main){
       </div>
     </div>
     <div class="card">${mgtZone('Conditions (imprimées sur le devis)', 'md-conditions', d.conditions).replace('<textarea', `<textarea ${dis} onchange="mgtMajDevis('conditions', this.value)"`)}</div>
+    ${d.statut === 'accepte' && (d.factureId || canEditMgt()) ? `<button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="${d.factureId ? `factOuvrir('${d.factureId}')` : `factDepuisDevis('${id}')`}">${d.factureId ? 'Voir la facture' : 'Facturer ce devis'}</button>` : ''}
     ${canEditMgt() ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-ghost" style="flex:1;" onclick="mgtNouvelleVersion('${id}')">Nouvelle version</button>
       <button class="btn btn-ghost" style="flex:1;color:var(--bad);" onclick="mgtSupprimerDevis('${id}')">Supprimer</button>
@@ -607,6 +635,9 @@ window.mgtSauverParams = () => {
     .mgt-ligne-nums label{font-size:10.5px;font-weight:700;color:var(--ink-soft);display:flex;flex-direction:column;gap:3px;}
     .mgt-ligne-nums .mgt-in{padding:7px 8px;font-size:14px;}
     .mgt-ligne-tot{grid-column:1 / -1;text-align:right;font-weight:800;font-size:13.5px;}
+    .mgt-onglets{display:flex;gap:4px;margin:0 0 12px;padding:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;overflow-x:auto;}
+    .mgt-onglets button{flex:1;border:0;background:none;padding:8px 10px;border-radius:9px;font:inherit;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+    .mgt-onglets button.actif{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
     @media (min-width:700px){ .mgt-ligne-nums{grid-template-columns:80px 140px 90px 1fr;} .mgt-ligne-tot{grid-column:auto;padding-bottom:8px;} }
   `;
   document.head.appendChild(s);

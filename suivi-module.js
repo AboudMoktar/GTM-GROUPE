@@ -131,3 +131,22 @@ function suiviLotsPourGadh(){
     pct: l.qte > 0 ? Math.min(100, Math.round((l.etapes.ret || 0) / l.qte * 100)) : 0
   }));
 }
+
+// --- Facturation ---
+// Quantités d'une étape (« ret » : retours GADH → TEK, « exp » : expéditions
+// PERCKO) entre deux dates incluses, par libellé : { cle : {lib, model, qte} }.
+function suiviMouvementsParRef(etape, du, au){
+  const {docs, lignes} = suiviLignes(), parRef = {};
+  Object.keys(docs).forEach(id => {
+    if(id.indexOf('moves-') !== 0) return;
+    (docs[id].moves || []).forEach(m => {
+      if(m[3] !== etape || m[1] < du || m[1] > au) return;
+      const l = lignes[m[2]]; if(!l) return;
+      const k = suiviCleRef(l.lib);
+      const r = parRef[k] || (parRef[k] = {lib:l.lib, model:l.model, qte:0});
+      r.qte += (m[4] || 0);
+    });
+  });
+  Object.keys(parRef).forEach(k => { if(parRef[k].qte <= 0) delete parRef[k]; });
+  return parRef;
+}
