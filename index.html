@@ -360,6 +360,11 @@
   @media (min-width:1024px) and (max-width:1279px){
     main{max-width:960px;}
   }
+  /* Suivi des commandes (suivi-commandes.html dans un cadre, voir suivi-module.js) */
+  .suivi-frame{display:block;width:100%;border:0;border-radius:12px;background:#edf0f4;height:calc(100vh - 122px);height:calc(100dvh - 122px);min-height:460px;}
+  .suivi-frame.suivi-tek{height:calc(100vh - 66px);height:calc(100dvh - 66px);}
+  @media (min-width:900px){ .suivi-frame, .suivi-frame.suivi-tek{height:calc(100vh - 130px);height:calc(100dvh - 130px);} }
+  .bottomnav.bn-seul{display:none;}
 </style>
 </head>
 <body>
@@ -557,7 +562,8 @@ function onFirebaseData(){
     if(directionOuverte) renderDirection();
     return;
   }
-  if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
+  if(activeTab === 'commandes-home'){ fbFirstLoad = false; suiviNotifier(); }
+  else if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
   else if(activeTab === 'saisie' || activeTab === 'sessions'){ /* ne pas interrompre une saisie en cours */ }
   else if(activeTab === 'messages'){
     const composer = document.getElementById('msg-text');
@@ -973,7 +979,7 @@ function renderModuleSelect(){
           </button>` : ''}
           ${mods.indexOf('commandes')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#0B2C4D;" onclick="chooseModule('commandes')">
             <span style="width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">📦</span>
-            <span><span style="display:block;">Gestion des Commandes</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Suivi PERCKO : réception → expédition</span></span>
+            <span><span style="display:block;">Suivi des Commandes</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Suivi PERCKO : lots, coupe, GADH, expédition</span></span>
           </button>` : ''}
         </div>
         ${peutChangerDeSociete() ? `<button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="switchSociete()">Changer de société</button>` : ''}
@@ -1119,7 +1125,7 @@ function navItems(){
     const items = [
       {tab:'gadh-dashboard', label:'Dashboard', icon:ICONS.dashboard, show:true},
       {tab:'gadh-production', label:'Production', icon:ICONS.saisie, show:true},
-      {tab:'commandes-home', label:'CMD', icon:ICONS.prodchain, show:(typeof canAccessCommandes==='function' && canAccessCommandes())},
+      {tab:'commandes-home', label:'Commandes', icon:ICONS.prodchain, show:(typeof canAccessCommandes==='function' && canAccessCommandes())},
       {tab:'gadh-rh', label:'RH', icon:ICONS.idBadge, show:true},
       {tab:'gadh-historique', label:'Historique', icon:ICONS.historique, show:true},
       {tab:'gadh-stats', label:'Stats', icon:ICONS.stats, show:true},
@@ -1181,7 +1187,7 @@ function renderShell(){
         </div>
       </div>
       <main id="main"></main>
-      <div class="bottomnav no-print">
+      <div class="bottomnav no-print${items.length <= 1 ? ' bn-seul' : ''}">
         ${items.map(i=>navBtn(i,'')).join('')}
       </div>
     </div>
@@ -1218,7 +1224,7 @@ function nav(tab){
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
   else if(tab === 'gadh-parametres'){ renderGadhParametres(gadhSectionContainer(main,'Paramètres')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
-  else if(tab === 'commandes-home'){ renderCmdModule(main); }
+  else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
   updateNavBadges();
 }
 
@@ -2723,6 +2729,7 @@ window.onload = init;
 <script src="./prod-module.js"></script>
 <script src="./commandes-module.js"></script>
 <script src="./groupe-module.js"></script>
+<script src="./suivi-module.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
