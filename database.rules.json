@@ -7,7 +7,7 @@
         ".read": "auth != null && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || !data.exists())",
         "$uid": {
           ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && ((root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true) || (!root.child('groupe1/users_v2').exists() && auth.uid === $uid))"
+          ".write": "auth != null && ((root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true && (!root.child('groupe1/users_v2/'+auth.uid).child('profil').exists() || root.child('groupe1/users_v2/'+auth.uid).child('profil').val() === 'sysadmin')) || (!root.child('groupe1/users_v2').exists() && auth.uid === $uid))"
         }
       },
       "sessions": {
