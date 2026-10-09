@@ -1,4 +1,6 @@
 // MGT — écran d'accueil en grille de tuiles (comme le CRM d'origine), Recherche et Listing.
+// Logo officiel, chargé depuis le site de MGT (remplacé par le texte « m.g.t » s'il est indisponible).
+const ACCUEIL_LOGO = 'https://www.macpi-tunisia.com/assets/img/logo.png';
 const ACCUEIL_TUILES = [
   ['mgt-projets',   'Projets',               'box'],
   ['mgt-offres',    'Offres en cours',       'invoice'],
@@ -37,8 +39,8 @@ window.renderMgtDashboard = function(main){
   }).join('');
   main.innerHTML = `
     <div class="card" style="padding:18px 16px 8px;border-radius:22px;">
-      <div style="display:inline-block;padding:10px 18px;border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.08);margin-bottom:14px;">
-        <span style="font-size:30px;font-weight:900;letter-spacing:-1px;color:#E8400B;">m.g.t</span><span style="font-size:9px;font-weight:800;color:#E8400B;margin-left:2px;">SARL</span></div>
+      <div style="display:inline-block;padding:10px 18px;border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.08);margin-bottom:14px;background:#fff;">
+        <img src="${ACCUEIL_LOGO}" alt="MGT Tunisie" style="display:block;height:48px;max-width:200px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:30px;font-weight:900;letter-spacing:-1px;color:#E8400B;&quot;>m.g.t</span>'"></div>
       <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--ink-soft);">MGT SARL</div>
       <div style="font-size:24px;font-weight:800;margin:4px 0 6px;">CRM — Base clients</div>
       <div style="font-size:14px;color:var(--ink-soft);margin-bottom:14px;">Suivi commercial, offres, projets, SAV et facturation.</div>
