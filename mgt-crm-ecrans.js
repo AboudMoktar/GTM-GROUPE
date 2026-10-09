@@ -316,7 +316,7 @@ function crmLigneOffre(cid, o, i, ed){
     <div style="flex:1;min-width:0;"><b style="font-size:13px;">${esc(o.machine || o.type || 'Offre')}</b> ${o.marque ? '<span style="font-size:11px;color:var(--ink-soft);">' + esc(o.marque) + '</span>' : ''}
     <div style="font-size:11.5px;color:var(--ink-soft);">${crmMontant(crmOffreMontant(o), o.devise === 'EUR' || !o.devise ? '€' : o.devise)} · ${crmOffreProba(o)} % · ${esc(o.status || 'En attente')}${o.sentDate ? ' · envoyée ' + crmDateFr(o.sentDate) : ''}</div>
     ${rel ? `<div style="margin-top:2px;">${crmBadge(CRM_RELANCE_TXT[rel] + ' ' + crmDateFr(o.reminder), rel === 'proche' ? 'warn' : 'bad')}</div>` : ''}</div>
-    <div>${crmBadge(val.label, val.cls)}</div></div>`;
+    <div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">${crmBadge(val.label, val.cls)}${ed ? '<span class="btn btn-ghost" style="padding:2px 10px;font-size:11px;">Modifier</span>' : ''}</div></div>`;
 }
 function renderMgtFiche(main){
   const id = mgtFicheId, c = crmClients()[id];
@@ -458,7 +458,7 @@ function renderOffresListe(){
         <div style="flex:1;min-width:0;"><b style="font-size:13.5px;">${esc(x.c.nom)}</b>
         <div style="font-size:11.5px;color:var(--ink-soft);">${esc(x.o.machine || x.o.type || 'Offre')}${x.o.marque ? ' · ' + esc(x.o.marque) : ''} · ${crmMontant(crmOffreMontant(x.o), dev(x) === 'EUR' ? '€' : dev(x))} · ${crmOffreProba(x.o)} %</div>
         <div style="font-size:11px;color:var(--ink-faint);">${esc(x.o.status || 'En attente')}${x.o.commercial ? ' · ' + esc(x.o.commercial) : ''}${crmOffreEnvoi(x.o) ? ' · envoyée ' + crmDateFr(crmOffreEnvoi(x.o)) : ''}</div></div>
-        <div style="text-align:right;display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${crmBadge(val.label, val.cls)}${rel ? crmBadge(CRM_RELANCE_TXT[rel], rel === 'proche' ? 'warn' : 'bad') : ''}</div></div>`;
+        <div style="text-align:right;display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${crmBadge(val.label, val.cls)}${rel ? crmBadge(CRM_RELANCE_TXT[rel], rel === 'proche' ? 'warn' : 'bad') : ''}${crmEd() ? '<span class="btn btn-ghost" style="padding:2px 10px;font-size:11px;">Modifier</span>' : ''}</div></div>`;
     }).join('') : buildEmptyState('Aucune offre')}</div>${l.length > 100 ? crmVide('100 premières offres affichées') : ''}`;
 }
 function renderMgtOffres(main){
