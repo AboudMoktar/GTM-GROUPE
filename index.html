@@ -76,6 +76,16 @@
   .topbar .tek::after{content:'';position:absolute;left:1px;bottom:-5px;width:22px;height:8px;border-bottom:3px solid #FFC833;border-radius:50%;transform:rotate(-8deg);}
   .topbar .trend{color:#fff;}
   .topbar .logo-sub{color:rgba(255,255,255,.55);}
+  .user-chip .user-menu-btn:hover,.user-chip .user-menu-btn:focus{background:rgba(255,255,255,.26);color:#fff;}
+  .user-chip .user-menu-btn{display:flex;align-items:center;gap:6px;padding:5px 9px;}
+  .user-chip .user-menu-btn .uname{max-width:130px;overflow:hidden;text-overflow:ellipsis;}
+  @media (max-width:700px){ .user-chip .user-extra{display:none;} .user-chip .user-menu-btn .uname{max-width:92px;} .topbar .logo-wrap img{height:28px !important;max-width:96px !important;} }
+  body{overflow-x:hidden;}
+  #user-menu{position:fixed;top:64px;right:10px;z-index:80;min-width:240px;max-width:calc(100vw - 20px);background:#fff;color:#111827;border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 34px rgba(15,31,61,.22);padding:8px;}
+  #user-menu .um-tete{padding:10px 12px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+  #user-menu .um-nom{font-weight:800;font-size:14.5px;}#user-menu .um-role{font-size:12px;color:#5B6678;margin-top:2px;}
+  #user-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:none;background:none;border-radius:9px;font:inherit;font-size:14px;font-weight:600;color:#111827;cursor:pointer;text-align:left;}
+  #user-menu button:hover{background:#F1F4F8;}#user-menu button svg{width:18px;height:18px;}#user-menu button.um-bad{color:#B42318;}
   .user-chip{display:flex;align-items:center;gap:6px;font-size:12.5px;flex-shrink:0;}
   .sync-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
   .sync-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
@@ -1207,13 +1217,15 @@ function renderShell(){
             <span id="sync-time" class="sync-time"></span>
           </div>
           ${typeof notifCloche === 'function' ? notifCloche() : ''}
-          <span class="user-avatar-ic">${ICONS.userAvatar}</span>
-          <span class="uname">${currentUser.nom}</span>
-          <span class="user-chevron">${ICONS.chevronDown}</span>
+          <button class="user-menu-btn" onclick="menuUtilisateur(event)" aria-label="Menu du compte">
+            <span class="user-avatar-ic">${ICONS.userAvatar}</span>
+            <span class="uname">${esc(currentUser.nom)}</span>
+            <span class="user-chevron">${ICONS.chevronDown}</span>
+          </button>
           <span class="role">${typeof profilLabel === 'function' ? profilLabel(currentUser) : roleLabel(currentUser.role)}</span>
-          <button onclick="profilsMonCompte()" title="Mon mot de passe">🔑</button>
-          ${peutChangerDeModule() ? `<button onclick="switchModule()" title="Changer de module">${ICONS.switchModule}</button>` : ''}
-          <button onclick="logout()" title="Déconnexion">${ICONS.logout}</button>
+          <button class="user-extra" onclick="profilsMonCompte()" title="Mon mot de passe">🔑</button>
+          ${peutChangerDeModule() ? `<button class="user-extra" onclick="switchModule()" title="Changer de module">${ICONS.switchModule}</button>` : ''}
+          <button class="user-extra" onclick="logout()" title="Déconnexion">${ICONS.logout}</button>
         </div>
       </div>
       <main id="main"></main>

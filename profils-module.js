@@ -303,3 +303,23 @@ window.profilsSauvegarde = () => {
     <textarea id="crm-export" rows="10" class="mgt-in" readonly style="font-family:var(--mono);font-size:11px;">${esc(JSON.stringify({app:'GTM Groupe', exportedAt:new Date().toISOString(), donnees:dump}))}</textarea>
     <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="crmCopierExport()">Copier tout</button>`);
 };
+
+
+// --- Menu du compte (nom + flèche, en haut à droite) ---
+window.menuUtilisateur = (e) => {
+  if(e) e.stopPropagation();
+  const ex = document.getElementById('user-menu');
+  if(ex){ ex.remove(); return; }
+  const m = document.createElement('div');
+  m.id = 'user-menu';
+  const role = typeof profilLabel === 'function' ? profilLabel(currentUser) : roleLabel(currentUser.role);
+  const item = (icone, texte, action, cls) => `<button class="${cls || ''}" onclick="menuUtilisateurFermer(); ${action}">${icone}<span>${texte}</span></button>`;
+  m.innerHTML = `<div class="um-tete"><div class="um-nom">${esc(currentUser.nom)}</div><div class="um-role">${esc(role)}</div></div>
+    ${item('<span style="font-size:16px;">🔑</span>', 'Changer mon mot de passe', 'profilsMonCompte()')}
+    ${typeof peutChangerDeModule === 'function' && peutChangerDeModule() ? item(ICONS.switchModule, 'Changer de module', 'switchModule()') : ''}
+    ${typeof peutChangerDeSociete === 'function' && peutChangerDeSociete() ? item(ICONS.switchModule, 'Changer de société', 'switchSociete()') : ''}
+    ${item(ICONS.logout, 'Déconnexion', 'logout()', 'um-bad')}`;
+  document.body.appendChild(m);
+  setTimeout(() => document.addEventListener('click', menuUtilisateurFermer, {once:true}), 0);
+};
+window.menuUtilisateurFermer = () => { const m = document.getElementById('user-menu'); if(m) m.remove(); };
