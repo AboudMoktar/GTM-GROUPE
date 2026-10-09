@@ -1,7 +1,7 @@
 // TEK-TREND — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v21';
+const CACHE_NAME = 'groupe-v22';
 
 // Fichiers essentiels de l'application (mêmes dossier que sw.js)
 const APP_SHELL = [
@@ -43,6 +43,11 @@ self.addEventListener('activate', function(event){
   );
 });
 
+// Scripts et feuilles de style du site : réseau d'abord, pour que chaque mise à jour s'applique dès l'ouverture suivante.
+function isSiteCode(request){
+  const url = new URL(request.url);
+  return url.origin === self.location.origin && /\.(js|css|json|html)$/.test(url.pathname);
+}
 function isAppShellDocument(request){
   // La page principale (index.html / "./") doit toujours être la plus fraîche
   // possible : on la traite différemment des icônes/scripts qui, eux, peuvent
@@ -59,7 +64,7 @@ self.addEventListener('fetch', function(event){
   // Garantit que toute mise à jour publiée s'affiche dès la prochaine ouverture,
   // sans avoir besoin de rouvrir l'app une seconde fois. Le cache ne sert que
   // de secours si l'appareil est hors connexion.
-  if(isAppShellDocument(event.request)){
+  if(isAppShellDocument(event.request) || isSiteCode(event.request)){
     event.respondWith(
       fetch(event.request).then(function(response){
         if(response && response.ok){
