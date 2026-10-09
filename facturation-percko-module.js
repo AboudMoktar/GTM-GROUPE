@@ -230,40 +230,88 @@ window.percSauverCatalogue = (silencieux) => {
   if(!silencieux) showToast('Catalogue enregistré');
 };
 
-// --- Impression au modèle TEK-TREND ---
+// --- Toute facture TEK-TREND est une facture PERCKO au modèle papier (euros, TVA 0) ---
+const percCreerOrigine = window.factCreer;
+window.factCreer = function(soc, data){
+  data = data || {};
+  if(soc === 'tek' && data.type !== 'avoir' && !data.percko){
+    data = Object.assign({devise:'EUR', tva:0, timbre:0, echeance:getTodayISO(), notes:'', percko:{destination:'', codeClient:'', livraison:'', transport:'', colis:'', poidsBrut:'', poidsNet:'', valeurMatiere:'', composition:''}}, data);
+  }
+  return percCreerOrigine(soc, data);
+};
+const percNouvelleOrigine = window.factNouvelle;
+window.factNouvelle = function(){
+  if(factSoc() !== 'tek') return percNouvelleOrigine();
+  const R = percReglages();
+  mgtModal('Nouvelle facture', `<p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Destination de la livraison (reprend l'adresse et le n° client) :</p>`
+    + Object.keys(R.dest).map(k => `<button class="btn btn-ghost" style="width:100%;margin-bottom:8px;" onclick="percNouvelleDest('${k}')">${esc(k)}</button>`).join('')
+    + `<button class="btn btn-ghost" style="width:100%;" onclick="percNouvelleDest('')">Autre (adresse à saisir)</button>`);
+};
+window.percNouvelleDest = (k) => {
+  const R = percReglages(), D = k ? R.dest[k] : null, cl = Object.keys(factClients('tek'));
+  mgtFermer();
+  factOuvrir(factCreer('tek', {clientId:cl[0] || '', lignes:[{ref:'', designation:'', qte:1, pu:0, remise:0}],
+    percko:{destination:k, codeClient:D ? D.code : '', livraison:D ? D.livraison : '', transport:D ? D.transport || '' : '', colis:'', poidsBrut:'', poidsNet:'', valeurMatiere:'', composition:''}}));
+};
+// Les anciens brouillons TEK-TREND (sans détails d'expédition) reçoivent aussi la carte « Expédition ».
+const percEditOrigine2 = window.renderFactEdit;
+window.renderFactEdit = function(main){
+  const f = factSoc() === 'tek' ? factToutes('tek')[factId] : null;
+  if(f && !f.percko && f.type !== 'avoir' && f.statut === 'brouillon'){
+    const l = factToutes('tek'); l[factId].percko = {destination:'', codeClient:'', livraison:'', transport:'', colis:'', poidsBrut:'', poidsNet:'', valeurMatiere:'', composition:''}; factEnregistrer('tek', l);
+  }
+  return percEditOrigine2(main);
+};
+
+// --- Impression au modèle TEK-TREND (en-tête, cadre du tableau et bas de page identiques aux factures papier) ---
 const percImprimerOrigine = window.factImprimer;
 window.factImprimer = function(id, relance){
-  const f = factListe(factSoc())[id];
-  if(relance || !f || !f.percko) return percImprimerOrigine(id, relance);
-  const P = factParams('tek'), S = {raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:P.adresse || PERC_SOCIETE.adresse, mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email};
-  const p = f.percko, t = factTotaux(f), nl = (s) => esc(s || '').replace(/\n/g, '<br>');
-  const lignes = (f.lignes || []).map(l => `<tr><td>${esc(l.ref || '')}</td><td>${nl(l.designation)}</td><td class="n">${l.qte !== '' ? percN(l.qte, 3) : ''}</td><td class="n">${percN(l.pu, 2)}</td><td class="n">${l.remise ? percN(l.remise, 2) : ''}</td><td class="n">${l.remise ? percN(Number(l.qte) * Number(l.pu) * Number(l.remise) / 100, 2) : ''}</td><td class="n">${percN(factMontantLigne(l), 2)}</td><td class="c">0</td></tr>`).join('');
-  const notes = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition ? '\n' + p.composition : '',
-    (p.colis !== '' || p.poidsBrut !== '' || p.poidsNet !== '') ? '\n' + [p.colis !== '' ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut !== '' ? 'Poids Brut::' + p.poidsBrut + ' KG' : '', p.poidsNet !== '' ? 'Poids Net::' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : ''].filter(Boolean).join('\n');
-  const tete = `<div class="entete"><div class="soc"><b>${esc(S.raison)}</b><br><b>${nl(S.adresse).replace(/<br>/, '<br>')}</b><br><b>MF :${esc(S.mf)}</b><br><br><b>${esc(S.email)}</b><br><span class="tel">Tél : ${esc(S.tel)}</span></div>
-    <div class="boites"><div class="b3"><div><span>Facture N°</span><b>${esc(f.numero || 'BROUILLON')}</b></div><div><span>Date</span><b>${mgtDate(f.date)}</b></div><div><span>Client</span><b>${esc(p.codeClient || '')}</b></div></div>
-    <div class="adr"><b>${nl(p.livraison)}</b></div></div></div>`;
-  const css = `@page{size:A4;margin:10mm} body{font:11px Arial,Helvetica,sans-serif;color:#000;margin:0;} table.page{width:100%;border-collapse:collapse;} table.page>thead>tr>td,table.page>tbody>tr>td{padding:0;border:none;}
-    .entete{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px;} .soc{width:44%;font-size:11px;line-height:1.5;} .soc .tel{font-weight:normal;} .boites{width:52%;}
-    .b3{display:flex;gap:6px;} .b3>div{flex:1;border:1px solid #333;border-radius:6px;text-align:center;} .b3 span{display:block;background:#eee;font-weight:bold;border-bottom:1px solid #333;border-radius:5px 5px 0 0;padding:2px;} .b3 b{display:block;padding:3px;font-weight:normal;}
-    .adr{margin:26px 0 0 14px;padding:12px 14px;line-height:1.7;border:1px solid transparent;position:relative;} .adr::before,.adr::after{content:'';position:absolute;width:14px;height:14px;border:1.5px solid #000;} .adr::before{top:0;left:0;border-right:none;border-bottom:none;} .adr::after{bottom:0;right:0;border-left:none;border-top:none;}
-    table.l{width:100%;border-collapse:collapse;border:1px solid #000;} table.l th{background:#eee;border:1px solid #000;padding:4px;font-size:10.5px;} table.l td{border-left:1px solid #000;border-right:1px solid #000;padding:2px 4px;vertical-align:top;font-size:11px;} table.l td.n{text-align:right;white-space:nowrap;} table.l td.c{text-align:center;}
-    table.l tr{page-break-inside:avoid;} table.l tbody tr:last-child td{border-bottom:1px solid #000;}
-    .pied{display:flex;justify-content:space-between;gap:20px;margin-top:14px;page-break-inside:avoid;} .pied table{border-collapse:collapse;} .pied th{background:#eee;border:1px solid #000;padding:3px 8px;} .pied td{border:1px solid #000;padding:3px 8px;text-align:right;}
-    .tot{min-width:300px;} .tot div{display:flex;justify-content:space-between;border:1px solid #000;border-top:none;padding:3px 8px;} .tot div:first-child{border-top:1px solid #000;} .tot b{font-weight:bold;}
-    .payable{margin:14px 0 10px;} .legal{font-size:9px;line-height:1.4;margin-top:10px;} .brouillon{position:fixed;top:40%;left:0;right:0;text-align:center;font-size:90px;color:rgba(200,0,0,.12);transform:rotate(-25deg);}`;
-  const e2 = (x) => percN(x, 2);
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(f.numero || 'Brouillon')}</title><style>${css}</style></head><body>
-    ${f.statut !== 'emise' ? '<div class="brouillon">BROUILLON</div>' : ''}
-    <table class="page"><thead><tr><td>${tete}</td></tr></thead><tbody><tr><td>
-      <table class="l"><thead><tr><th style="width:12%;">Référence</th><th>Désignation</th><th style="width:9%;">Quantité</th><th style="width:8%;">P.U. HT</th><th style="width:6%;">% REM</th><th style="width:9%;">Remise HT</th><th style="width:11%;">Montant HT</th><th style="width:5%;">TVA</th></tr></thead>
-      <tbody>${lignes}${notes ? `<tr><td>ART0002</td><td>${nl(notes)}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>` : ''}<tr><td style="height:40px;"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
-      ${p.transport ? `<div style="margin-top:8px;"><b>MODE DE TRANSPORT :${esc(p.transport)}</b></div>` : ''}
-      <div class="pied"><table><tr><th>Code</th><th>Base HT</th><th>Taux TVA</th><th>Montant TVA</th></tr><tr><td>0</td><td>${e2(t.ht)}</td><td></td><td></td></tr></table>
-        <div class="tot"><div><span>Total HT</span><b>${e2(t.ht)}</b></div><div><span>Net HT</span><b>${e2(t.ht)}</b></div><div><span>Total TVA</span><b></b></div><div><span>Total TTC</span><b>${e2(t.ttc)}</b></div><div><span>NET A PAYER</span><b>${e2(t.ttc)}</b></div></div></div>
-      <div class="payable">Facture payable le ${mgtDate(f.echeance || f.date)} pour la somme de ${e2(t.ttc)} Euros.</div>
-      <div class="legal">Pénalités de retard (taux annuel) : 8,00% - Escompte pour paiement anticipé (taux mensuel) : 1,50%<br>RESERVE DE PROPRIETE : Nous nous réservons la propriété des marchandises jusqu'au paiement du prix par l'acheteur. Notre droit de revendication porte aussi bien sur les marchandises que sur leur prix si elles ont déjà été revendues (Loi du 12 mai 1980).</div>
-    </td></tr></tbody></table><script>window.onload=function(){window.print();}<\/script></body></html>`;
+  const soc = factSoc(), f = factListe(soc)[id];
+  if(relance || soc !== 'tek' || !f) return percImprimerOrigine(id, relance);
+  const P = factParams('tek'), eur = f.devise === 'EUR', d = eur ? 2 : 3;
+  const S = {raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:P.adresse || PERC_SOCIETE.adresse, mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email};
+  const p = f.percko || {}, t = factTotaux(f), nl = (x) => esc(x || '').replace(/\n/g, '<br>');
+  const cli = f.statut === 'emise' && f.client ? f.client : (factClients('tek')[f.clientId] || {nom:''});
+  const livraison = p.livraison || [cli.nom, cli.adresse].filter(Boolean).join('\n');
+  const rows = (f.lignes || []).map(l => `<tr><td>${esc(l.ref || '')}</td><td>${nl(l.designation)}</td><td class="n">${percN(l.qte, 3)}</td><td class="n">${percN(l.pu, d)}</td><td class="n">${l.remise ? percN(l.remise, 2) : ''}</td><td class="n">${l.remise ? percN(Number(l.qte) * Number(l.pu) * Number(l.remise) / 100, d) : ''}</td><td class="n">${percN(factMontantLigne(l), d)}</td><td class="c">0</td></tr>`);
+  const note = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition ? '\n' + p.composition : '',
+    (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) || (p.poidsNet !== '' && p.poidsNet != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut::' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net::' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : ''].filter(Boolean).join('\n');
+  if(note) rows.push(`<tr><td>ART0002</td><td>${nl(note)}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);
+  if(p.transport) rows.push(`<tr><td></td><td style="padding-top:12px;">MODE DE TRANSPORT :${esc(p.transport)}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
+  const ent = `<div class="soc"><b>${esc(S.raison)}</b><b>${esc(S.adresse.split('\n')[0] || '')}</b><b>MF :${esc(S.mf)}</b><b>${esc(S.email)}</b><b>${esc(S.adresse.split('\n').slice(1).join(' '))}</b><span>Tél &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;${esc(S.tel)}</span></div>
+    <div class="b3"><div><span>${f.type === 'avoir' ? 'Avoir N°' : 'Facture N°'}</span><b>${esc(f.numero || 'BROUILLON')}</b></div><div><span>Date</span><b>${mgtDate(f.date)}</b></div><div><span>Client</span><b>${esc(p.codeClient || '')}</b></div></div>
+    <div class="adr"><i></i><i></i><i></i><i></i><b>${nl(livraison)}</b></div>`;
+  const e2 = (x) => percN(x, d), unite = eur ? 'Euros' : 'Dinars';
+  const pied = `<div class="p1"><table class="code"><tr><th>Code</th><th>Base HT</th><th>Taux TVA</th><th>Montant TVA</th></tr><tr><td>0</td><td class="n">${e2(t.ht)}</td><td></td><td></td></tr></table>
+    <div class="tot"><div><span>Total HT</span><em>${e2(t.ht)}</em></div><div><span><b>Net HT</b></span><em><b>${e2(t.ht)}</b></em></div><div><span>Total TVA</span><em>${t.tva ? e2(t.tva) : ''}</em></div><div><span>Total TTC</span><em>${e2(t.ttc)}</em></div><div class="np"><span><b>NET A PAYER</b></span><em><b>${e2(t.ttc)}</b></em></div></div></div>
+    <div class="pay">Facture payable le ${mgtDate(f.echeance || f.date)} pour la somme de ${e2(t.ttc)} ${unite}.</div>
+    <div class="legal">Pénalités de retard (taux annuel) : 8,00% - Escompte pour paiement anticipé (taux mensuel) : 1,50%<br><br><b>RESERVE DE PROPRIETE :</b> Nous nous réservons la propriété des marchandises jusqu'au paiement du prix par l'acheteur. Notre droit de revendication porte aussi bien sur les marchandises que sur leur prix si elles ont déjà été revendues (Loi du 12 mai 1980).</div>`;
+  const thead = `<thead><tr><th style="width:12.5%;">Référence</th><th style="width:27%;">Désignation</th><th style="width:8%;">Quantité</th><th style="width:12%;">P.U. HT</th><th style="width:8%;">% REM</th><th style="width:12%;">Remise HT</th><th style="width:14.5%;">Montant HT</th><th style="width:6%;">TVA</th></tr></thead>`;
+  const css = `@page{size:A4;margin:0} *{box-sizing:border-box} html,body{margin:0;padding:0;background:#fff} body{font:11.5px Arial,Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .pg{position:relative;width:210mm;height:296.5mm;overflow:hidden;page-break-after:always;} .pg:last-child{page-break-after:auto;}
+    .ent{position:absolute;left:8mm;top:7mm;width:194mm;height:80mm;} .soc{position:absolute;left:0;top:0;width:88mm;height:72mm;background:linear-gradient(#efefef,#f9f9f9 80%,#fff);padding:1mm 1.5mm;line-height:6.4mm;} .soc b,.soc span{display:block;font-size:11.5px;} .soc span{font-size:11.5px;}
+    .b3{position:absolute;left:92mm;top:0;width:102mm;display:flex;gap:2.4mm;} .b3>div{flex:1;border:1.4px solid #000;border-radius:7px;text-align:center;height:13mm;overflow:hidden;} .b3 span{display:block;background:#efefef;font-weight:bold;border-bottom:1.4px solid #000;padding:1.3mm 0;font-size:12px;} .b3 b{display:block;padding:1.5mm 0;font-size:11.5px;}
+    .adr{position:absolute;left:92mm;top:40mm;width:96mm;height:40mm;padding:3.5mm 4mm;line-height:6.4mm;} .adr b{font-size:11.5px;} .adr i{position:absolute;width:5mm;height:5mm;border:1.5px solid #000;} .adr i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0} .adr i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0} .adr i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0} .adr i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+    .cadre{position:absolute;left:8mm;top:88mm;width:194mm;border:1.4px solid #000;border-radius:7px;overflow:hidden;} table.l{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;} table.l th{background:#efefef;border-bottom:1.4px solid #000;border-left:1.4px solid #000;padding:1.4mm 1mm;font-size:12px;height:6.5mm;} table.l th:first-child{border-left:0}
+    table.l td{border-left:1.4px solid #000;padding:.4mm 1.3mm;vertical-align:top;font-size:12px;line-height:3.7mm;} table.l td:first-child{border-left:0} table.l td.n{text-align:right;white-space:nowrap} table.l td.c{text-align:center} table.l tr.fill td{height:auto}
+    .bas{position:absolute;left:8mm;top:205mm;width:194mm;} .p1{display:flex;justify-content:space-between;align-items:flex-start;} table.code{border-collapse:separate;border-spacing:0;border:1.4px solid #000;border-radius:6px;overflow:hidden;width:86mm;} table.code th{background:#efefef;border-left:1.4px solid #000;border-bottom:1.4px solid #000;padding:1.2mm;font-size:12px;} table.code td{border-left:1.4px solid #000;padding:1.2mm;font-size:12px;height:6mm;} table.code th:first-child,table.code td:first-child{border-left:0;text-align:center} table.code td.n{text-align:right}
+    .tot{width:88mm;border:1.4px solid #000;border-radius:6px;overflow:hidden;} .tot div{display:flex;border-top:1px solid #000;} .tot div:first-child{border-top:0} .tot span{flex:0 0 48%;background:#efefef;padding:1.5mm;font-size:12px;} .tot em{flex:1;font-style:normal;text-align:right;padding:1.5mm 1mm;font-size:12px;} .tot .np{border-top:1.4px solid #000}
+    .pay{margin-top:20mm;font-size:12px;letter-spacing:.2px;} .legal{margin-top:12mm;font-size:8.5px;line-height:1.35;} .brouillon{position:absolute;top:120mm;left:0;right:0;text-align:center;font-size:90px;color:rgba(200,0,0,.12);transform:rotate(-25deg);pointer-events:none;z-index:5}
+    #mesure{position:absolute;left:-9999px;top:0;width:194mm;visibility:hidden}`;
+  const donnees = JSON.stringify({rows, ent, pied, thead, brouillon:f.statut !== 'emise'}).replace(/</g, '\\u003c');
+  const script = `(function(){
+    var D=${donnees}, mm=96/25.4, capN=(275-88-6.5)*mm, capF=(203-88-6.5)*mm, i, h=[];
+    var m=document.getElementById('mesure'); m.innerHTML='<div class="cadre" style="position:static;"><table class="l">'+D.thead+'<tbody>'+D.rows.join('')+'</tbody></table></div>';
+    var trs=m.querySelectorAll('tbody tr'); for(i=0;i<trs.length;i++) h.push(trs[i].getBoundingClientRect().height);
+    var pages=[[]], cur=0, k;
+    for(i=0;i<D.rows.length;i++){ if(cur+h[i]>capN && pages[pages.length-1].length){ pages.push([]); cur=0; } pages[pages.length-1].push(i); cur+=h[i]; }
+    var last=pages[pages.length-1], tot=last.reduce(function(s,j){return s+h[j];},0);
+    if(tot>capF){ var j=last.pop(); if(!last.length) pages.pop(); pages.push([j]); }
+    var out=''; pages.forEach(function(pg,n){ var fin=n===pages.length-1, bas=fin?203:275;
+      out+='<div class="pg">'+(D.brouillon?'<div class="brouillon">BROUILLON</div>':'')+'<div class="ent">'+D.ent+'</div><div class="cadre" style="height:'+(bas-88)+'mm;"><table class="l">'+D.thead+'<tbody>'+pg.map(function(j){return D.rows[j];}).join('')+'<tr class="fill"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div>'+(fin?'<div class="bas">'+D.pied+'</div>':'')+'</div>'; });
+    document.body.insertAdjacentHTML('beforeend', out); m.remove(); setTimeout(function(){window.print();}, 250);
+  })();`;
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(f.numero || 'Brouillon')}</title><style>${css}</style></head><body><div id="mesure"></div><script>${script}<\/script></body></html>`;
   const w = window.open('', '_blank');
   if(!w){ showToast('Autorisez les fenêtres pop-up pour imprimer'); return; }
   w.document.open(); w.document.write(html); w.document.close();
