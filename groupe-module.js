@@ -184,8 +184,8 @@ function directionIndicateurs(soc){
   if(soc === 'mgt'){
     const k = () => mgtIndicateurs();
     return [
-      {label:'RDV aujourd\'hui', valeur: val(() => k().rdvJour)},
-      {label:'Devis en attente', valeur: val(() => { const x = k(); return x.devisAttente + ' · ' + fmtDT(x.montantAttente); })},
+      {label:'Actions aujourd\'hui', valeur: val(() => k().rdvJour)},
+      {label:'Offres en cours', valeur: val(() => { const x = k(); return x.offresEnCours + ' · pipeline ' + Math.round(x.pipeline).toLocaleString('fr-FR'); })},
       {label:'Projets en cours', valeur: val(() => k().projetsEnCours)},
       {label:'Tickets SAV ouverts', valeur: val(() => { const x = savIndicateurs(); return x.ticketsActifs + (x.machinesArret ? ' · ' + x.machinesArret + ' à l\'arrêt' : ''); })},
       aEncaisser('mgt')

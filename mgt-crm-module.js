@@ -130,7 +130,8 @@ function crmActionsGenerees(id, c){
   if(n.date || n.type || n.comment || n.responsible)
     out.push(Object.assign({}, base, {date:crmISO(n.date), type:n.type || 'visite', priority:n.priority || 'Moyenne', status:n.status || 'En attente', objective:n.comment || 'Prochaine action obligatoire', commercial:n.responsible || '', source:'obligatoire'}));
   const f = crmFrequenceVisite(c);
-  if(f){
+  // Jamais visité : on ne génère la visite automatique que pour les clients A (sinon des centaines d'actions « aujourd'hui »).
+  if(f && (crmDate(crmDerniereVisite(c).date) || crmLettre(c) === 'A')){
     const lv = crmDerniereVisite(c), ref = crmDate(lv.date);
     out.push(Object.assign({}, base, {date:crmISO(ref ? crmPlusJours(lv.date, f) : crmAujourdhui()), type:'visite', priority:crmPrioriteAuto(c), objective:'Visite périodique automatique tous les ' + f + ' jours', source:'auto-visite'}));
   }
@@ -166,7 +167,9 @@ function crmAlertes(){
   const al = [], actions = crmToutesActions({generees:false});
   Object.entries(mgtGet('clients')).forEach(([id, c]) => {
     if(crmEstProspect(c)) return;
-    const depuis = crmJoursSansVisite(c);
+    const depuis = crmJoursSansVisite(c), lettre = crmLettre(c);
+    if(lettre !== 'A' && lettre !== 'B' && depuis === null) { /* client C/D jamais visité : pas d'alerte */ }
+    else
     if(depuis === null || depuis > 120) al.push({niveau:'crit', clientId:id, titre:'Client sans visite depuis ' + (depuis === null ? 'longtemps' : depuis + ' jours'), detail:'Planifier une visite terrain.'});
     crmOffres(c).forEach(o => {
       const d = crmJoursAvant(o.reminder);
@@ -251,9 +254,14 @@ if(crmNotifSocieteOrigine){
 function crmProjets(){
   const out = [];
   Object.entries(mgtGet('clients')).forEach(([id, c]) => {
+    const liees = new Set(crmTableau(c.projets).map(p => p && String(p.offerRef || '').trim()).filter(Boolean));
+    const indexLies = new Set(crmTableau(c.projets).map(p => (p && p.offreId !== undefined && p.offreId !== null && p.offreId !== '') ? Number(p.offreId) : -1));
     crmOffres(c).forEach((o, i) => {
+      if(liees.has(String(o.offerId || '').trim()) && o.offerId) return;
+      const ri = crmTableau(c.offres).indexOf(o);
+      if(indexLies.has(ri)) return;
       if(crmOffreMontant(o) > CRM_SEUIL_PROJET && !crmOffrePerdue(o) && crmOffreActive(o) !== false)
-        out.push({cle:id + '|o|' + i, clientId:id, c, origine:'auto', nom:(c.nom || 'Client') + ' - ' + (o.machine || o.type || 'Offre'), montant:crmOffreMontant(o), devise:o.devise || 'EUR', marque:o.marque || '', avancement:crmNombre(o.avancement), index:i});
+        out.push({cle:id + '|o|' + ri, clientId:id, c, origine:'auto', nom:(c.nom || 'Client') + ' - ' + (o.machine || o.type || 'Offre'), montant:crmOffreMontant(o), devise:o.devise || 'EUR', marque:o.marque || '', avancement:crmNombre(o.avancement), index:ri});
     });
     crmTableau(c.projets).forEach((p, i) => {
       if(p) out.push({cle:id + '|p|' + i, clientId:id, c, origine:'manuel', nom:p.nom || 'Projet', montant:crmNombre(p.montantHT), devise:'EUR', marque:'', avancement:crmNombre(p.avancement), index:i});
@@ -290,20 +298,27 @@ if(typeof MGT_MARQUES !== 'undefined' && MGT_MARQUES.indexOf('Lotus') < 0) MGT_M
 // ------------------------------------------------------------
 // Import / export d'une sauvegarde du CRM (JSON « version 3 »)
 // ------------------------------------------------------------
+// Les PDF et photos joints (data:…base64) ne sont pas copiés dans la base partagée :
+// ils la rendraient très lente et dépasseraient vite le quota gratuit.
+function crmAllegerPiecesJointes(x){
+  const o = Object.assign({}, x);
+  ['pdfData', 'photoData'].forEach(k => { if(o[k] && String(o[k]).length > 2000){ o[k] = ''; o[k === 'pdfData' ? 'pdfOmis' : 'photoOmise'] = true; } });
+  return o;
+}
 function crmConvertirClient(src){
   const g = (k) => { const v = src[k]; return v == null ? '' : String(v).trim(); };
   const id = 'crm' + String(g('ID') || crmNouvelId('x')).replace(/[.#$\[\]\/\s]/g, '_');
   const statut = crmNorm(g('Statut commercial'));
   const rec = {
-    nom:g('Societe') || 'Sans nom', type:statut.includes('prospect') ? 'prospect' : 'client',
+    nom:g('Societe') || 'Sans nom', type:'prospect',
     ville:g('Ville / Delegation'), region:g('Gouvernorat / Zone'), activite:g('Activite'), typeClient:g('Type client'), groupe:g('Groupe client'),
     importance:g('Importance'), priorite:g('Priorite action'), effectif:g('Effectif'), statutCommercial:g('Statut commercial'), zone:g('Zone'),
     tel:g('Telephone(s)'), email:g('Email(s)'), contactPrincipal:g('Responsable / Contact'), notes:g('Notes'), adresse:'',
     frequenceVisite:String(src.VisitFrequency || src.FrequenceVisite || 'auto'),
     contacts:crmTableau(src.Contacts).filter(x => x && (x.name || x.position || x.email || x.mobile)).map(x => ({nom:x.name || '', fonction:x.position || '', tel:x.mobile || '', email:x.email || '', cle:!!x.key})),
     visites:crmTableau(src.Visites).filter(x => x && (x.date || x.note)).map(x => ({date:crmISO(x.date) || x.date || '', note:x.note || ''})),
-    offres:crmTableau(src.Offres).filter(x => x && typeof x === 'object').map(x => Object.assign({}, x)),
-    planning:crmTableau(src.Planning).filter(x => x && typeof x === 'object').map(x => Object.assign({id:crmNouvelId('e')}, x)),
+    offres:crmTableau(src.Offres).filter(x => x && typeof x === 'object').map(x => crmAllegerPiecesJointes(x)),
+    planning:crmTableau(src.Planning).filter(x => x && typeof x === 'object').map(x => crmAllegerPiecesJointes(Object.assign({id:crmNouvelId('e')}, x))),
     factures:crmTableau(src.Factures).filter(x => x && typeof x === 'object').map(x => Object.assign({}, x)),
     projets:crmTableau(src.Projets).filter(x => x && typeof x === 'object').map(x => Object.assign({}, x)),
     importeLe:getTodayISO()
@@ -313,6 +328,9 @@ function crmConvertirClient(src){
   const na = src.NextAction;
   if(na && typeof na === 'object' && (na.date || na.type || na.comment || na.responsible))
     rec.prochaineAction = {type:na.type || '', date:crmISO(na.date) || na.date || '', priority:na.priority || 'Moyenne', responsible:na.responsible || '', status:na.status || 'En attente', comment:na.comment || ''};
+  if(/^[A-D]/i.test(rec.importance) === false) rec.importance = '';
+  // Le CRM n'a pas de case client/prospect : « client » = type client renseigné, client installé, machine ou facture.
+  if(/^client/i.test(rec.typeClient) || statut.includes('client installe') || crmTableau(src.Machines).length || rec.factures.length) rec.type = 'client';
   if(!rec.contacts.length && rec.contactPrincipal) rec.contacts.push({nom:rec.contactPrincipal, fonction:'', tel:'', email:'', cle:true});
   const machines = crmTableau(src.Machines).filter(m => m && (m.commercial || m.model || m.serial)).map((m, i) => ({
     cle:'mcrm' + id.slice(3) + '_' + i, v:{clientId:id, marque:crmMarqueDe(m.commercial + ' ' + m.model), modele:m.model || m.commercial || '', serie:m.serial || '', dateInstallation:m.year ? String(m.year).replace(/\D/g, '').slice(0, 4) + '-01-01' : '', finGarantie:'', statut:'service', notes:(m.commercial && m.commercial !== m.model) ? 'Nom commercial : ' + m.commercial : ''}
