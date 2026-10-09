@@ -226,7 +226,7 @@ const CRM_FORMS = {
     ['avancement', 'Avancement projet (0-200 %)', 'number'], ['progress', 'État d\'avancement'], ['result', 'Résultat'], ['note', 'Note', 'area']],
     obligatoire:'amount', defaut:() => ({type:'Machine', devise:'EUR', status:'En attente', sentDate:getTodayISO(), commercial:crmCommercial(), probability:'50', validation:'EN ATTENTE'})},
   planning:{titre:'action', champs:[
-    ['date', 'Date *', 'date'], ['type', 'Type', 'select', CRM_TYPES_ACTION], ['priority', 'Priorité', 'select', CRM_PRIORITES], ['status', 'Statut', 'select', CRM_STATUTS_ACTION],
+    ['date', 'Date *', 'date'], ['heure', 'Heure (vide = toute la journée)', 'time'], ['duree', 'Durée', 'select', [['', 'Non précisée (1 h)'], ['15', '15 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 h'], ['90', '1 h 30'], ['120', '2 h'], ['180', '3 h'], ['240', '4 h']]], ['type', 'Type', 'select', CRM_TYPES_ACTION], ['priority', 'Priorité', 'select', CRM_PRIORITES], ['status', 'Statut', 'select', CRM_STATUTS_ACTION],
     ['objective', 'Objectif', 'area'], ['commercial', 'Commercial'], ['relanceDate', 'Date de relance', 'date'], ['motif', 'Motif (si reporté)']],
     obligatoire:'date', defaut:() => ({date:getTodayISO(), type:'visite', priority:'Moyenne', status:'En attente', commercial:crmCommercial()})},
   factures:{titre:'facture', champs:[
