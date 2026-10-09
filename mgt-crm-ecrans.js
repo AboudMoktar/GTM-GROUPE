@@ -95,14 +95,15 @@ const CRM_PAGE = 25;
 const CRM_SEGMENTS = [['', 'Tous'], ['sansvisite', 'Sans visite 90 j'], ['offre', 'Offre active'], ['relance', 'À relancer'], ['asansaction', 'A sans action'], ['chaud', 'Projet chaud']];
 function crmClientsFiltres(){
   const f = crmFiltre, q = crmNorm(f.q);
-  let l = Object.entries(crmClients()).filter(([, c]) => {
+  const idx = q ? crmIndexRecherche() : null;
+  let l = Object.entries(crmClients()).filter(([id, c]) => {
     if(f.type === 'client' && crmEstProspect(c)) return false;
     if(f.type === 'prospect' && !crmEstProspect(c)) return false;
     if(f.imp && crmLettre(c) !== f.imp) return false;
     if(f.region && (c.region || '') !== f.region) return false;
     if(f.typeClient && (c.typeClient || '') !== f.typeClient) return false;
     if(f.groupe && (c.groupe || '') !== f.groupe) return false;
-    if(q && !crmNorm([c.nom, c.ville, c.region, c.activite, c.tel, c.email, c.contactPrincipal].concat(crmContacts(c).map(x => x.nom)).join(' ')).includes(q)) return false;
+    if(q && !idx.get(id).includes(q)) return false;
     return true;
   });
   const seg = f.segment;
@@ -144,7 +145,20 @@ window.crmRafraichirListe = () => {
     }).join('') : buildEmptyState('Aucun client', 'Modifiez les filtres ou importez votre base CRM dans Params.')}</div>
     ${pages > 1 ? `<div style="display:flex;align-items:center;gap:8px;justify-content:center;margin:8px 0;"><button class="btn btn-ghost" ${f.page ? '' : 'disabled'} onclick="crmFiltre.page--; crmRafraichirListe()">‹</button><span style="font-size:12.5px;">Page ${f.page + 1} / ${pages}</span><button class="btn btn-ghost" ${f.page < pages - 1 ? '' : 'disabled'} onclick="crmFiltre.page++; crmRafraichirListe()">›</button></div>` : ''}`;
 };
-window.crmFiltrer = (cle, val) => { crmFiltre[cle] = val; crmFiltre.page = 0; crmRafraichirListe(); };
+let crmDelai = null;
+window.crmFiltrer = (cle, val) => {
+  crmFiltre[cle] = val; crmFiltre.page = 0;
+  clearTimeout(crmDelai);
+  if(cle === 'q') crmDelai = setTimeout(crmRafraichirListe, 220); else crmRafraichirListe();
+};
+// Texte de recherche de chaque client, calculé une seule fois (tant que les clients ne changent pas).
+function crmIndexRecherche(){
+  return crmMemo('recherche', () => {
+    const m = new Map();
+    Object.entries(crmClients()).forEach(([id, c]) => m.set(id, crmNorm([c.nom, c.ville, c.region, c.activite, c.tel, c.email, c.contactPrincipal].concat(crmContacts(c).map(x => x.nom)).join(' '))));
+    return m;
+  });
+}
 function renderMgtClients(main){
   const b = mgtSection(main, ICONS.team + ' Clients', crmEd() ? `<button class="btn btn-primary" onclick="crmFormClient()">+ Client</button>` : '');
   const f = crmFiltre;

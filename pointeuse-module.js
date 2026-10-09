@@ -44,6 +44,7 @@ function ptgDate(v){
 // Lit le fichier et renvoie les lignes : {matricule, prenom, nom, date, entree, sortie, debut, fin, departement}
 function ptgLireFichier(file){
   return new Promise((resolve, reject) => {
+    chargerBib('xlsx').catch(() => {}).then(() => {
     if(!window.XLSX){ reject(new Error('Lecture Excel indisponible (bibliothèque non chargée). Vérifiez la connexion internet.')); return; }
     const fr = new FileReader();
     fr.onload = () => {
@@ -74,6 +75,7 @@ function ptgLireFichier(file){
     };
     fr.onerror = () => reject(new Error('Lecture du fichier impossible.'));
     fr.readAsArrayBuffer(file);
+    });
   });
 }
 

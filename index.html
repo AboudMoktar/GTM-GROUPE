@@ -381,9 +381,22 @@
   window.addEventListener('resize',mesurer); window.addEventListener('load',mesurer); document.addEventListener('DOMContentLoaded',mesurer);
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<!-- SheetJS : lecture du fichier de la pointeuse (ancien format .xls, illisible par ExcelJS) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Bibliothèques Excel (≈ 1,8 Mo) : chargées seulement au premier export / import, pas au démarrage.
+var BIBS = {exceljs:'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+var bibsPromesses = {};
+function chargerBib(nom){
+  var test = nom === 'exceljs' ? function(){ return typeof ExcelJS !== 'undefined'; } : function(){ return typeof XLSX !== 'undefined'; };
+  if(test()) return Promise.resolve();
+  if(bibsPromesses[nom]) return bibsPromesses[nom];
+  bibsPromesses[nom] = new Promise(function(ok, ko){
+    var sc = document.createElement('script'); sc.src = BIBS[nom];
+    sc.onload = ok; sc.onerror = function(){ delete bibsPromesses[nom]; ko(new Error('Bibliothèque indisponible')); };
+    document.head.appendChild(sc);
+  });
+  return bibsPromesses[nom];
+}
+</script>
 
 <script>
 /* ====================================================
@@ -2591,6 +2604,7 @@ function renderMessages(container){
 
 // --- EXPORT EXCEL DE LA PÉRIODE (multi-feuilles + graphique) ---
 window.exportPeriodExcel = async () => {
+  try { await chargerBib('exceljs'); } catch(e) {}
   if(typeof ExcelJS === 'undefined'){
     showToast("Bibliothèque Excel indisponible — vérifiez votre connexion internet et réessayez.");
     return;
@@ -2769,6 +2783,7 @@ window.onload = init;
 <script src="./mgt-crm-module.js"></script>
 <script src="./mgt-crm-ecrans.js"></script>
 <script src="./mgt-fichiers-module.js"></script>
+<script src="./mgt-export-module.js"></script>
 <script src="./profils-module.js"></script>
 <script>
 if(false){
