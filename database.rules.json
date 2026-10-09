@@ -40,6 +40,13 @@
           }
         }
       },
+      "fichiers": {
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true)",
+        "$fid": {
+          ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')",
+          ".validate": "newData.isString() && newData.val().length < 9000000"
+        }
+      },
       "audit": {
         ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true",
         "j": {
