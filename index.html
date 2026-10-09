@@ -1178,18 +1178,10 @@ function navItems(){
 }
 
 function appBrandingHTML(){
-  if(activeModule === 'mgt'){
-    return `<div class="logo-wrap" style="align-items:flex-start;"><div class="logo-text" style="color:#2E6B3A;">MGT</div><div class="logo-sub">MACPI · MORGAN TECNICA</div></div>`;
-  }
-  if(activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')){
-    return `<div class="logo-wrap" style="align-items:flex-start;">
-      ${ICONS.gadh}
-    </div>`;
-  }
-  return `<div class="logo-wrap" style="align-items:flex-start;">
-    <div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div>
-    <div class="logo-sub">TECHNICAL WEAR</div>
-  </div>`;
+  // Logo officiel de la société, sur une pastille blanche (lisible sur la barre bleu nuit comme sur la barre latérale).
+  const soc = (activeModule === 'mgt') ? 'mgt'
+    : (activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
+  return `<div class="logo-wrap" style="align-items:flex-start;"><span style="display:inline-flex;align-items:center;background:#fff;border-radius:9px;padding:3px 9px;">${societeLogo(soc, 34, societeMot(soc), 120)}</span></div>`;
 }
 function renderShell(){
   const items = navItems();
