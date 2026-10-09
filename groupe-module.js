@@ -21,9 +21,9 @@
 // dans database.rules.json.
 
 const SOCIETES = {
-  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', modules:['rendement','rh','commandes','factures']},
-  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', modules:['gadh','machines','factures']},
-  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', modules:['mgt']}
+  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', modules:['rendement','rh','commandes','factures']},
+  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', logo:'./logo-gadh.png', modules:['gadh','machines','factures']},
+  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', logo:'./logo-mgt.png', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];
 let activeSociete = null; // 'tek' | 'gadh' | 'mgt' | null (null = pas encore choisie)
@@ -114,6 +114,18 @@ function societeLogoHTML(soc){
   return `<div class="logo-wrap" style="margin-bottom:20px;"><div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div><div class="logo-sub">TECHNICAL WEAR</div></div>`;
 }
 
+
+// Logo d'une société (fichier logo-<société>.png à la racine). Si le fichier est absent, on affiche le repli.
+function logoRepli(img){ const r = img.getAttribute('data-repli') || ''; img.outerHTML = r; }
+function societeMot(k){
+  if(k === 'tek') return '<span style="font-weight:900;font-size:16px;letter-spacing:-.5px;white-space:nowrap;"><span style="color:var(--accent);">TEK</span> <span style="color:#111;">TREND</span></span>';
+  if(k === 'gadh') return '<span style="font-weight:900;font-size:17px;letter-spacing:.5px;color:'+SOCIETES.gadh.couleur+';white-space:nowrap;">GADH</span>';
+  return '<span style="font-weight:900;font-size:17px;color:'+SOCIETES[k].couleur+';">'+SOCIETES[k].nom+'</span>';
+}
+function societeLogo(k, hauteur, repli, largeur){
+  const l = SOCIETES[k] && SOCIETES[k].logo; if(!l) return repli;
+  return `<img src="${l}" alt="${SOCIETES[k].nom}" data-repli="${esc(repli)}" onerror="logoRepli(this)" style="display:block;height:${hauteur}px;max-width:${largeur || 160}px;object-fit:contain;">`;
+}
 function renderSocieteSelect(){
   const soc = userSocietes();
   document.getElementById('app').innerHTML = `
@@ -131,7 +143,7 @@ function renderSocieteSelect(){
             <span><span style="display:block;">Vue direction</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Les trois tableaux de bord sur un seul écran</span></span>
           </button>` : ''}
           ${soc.map(k => `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:${SOCIETES[k].couleur};" onclick="chooseSociete('${k}')">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.factory}</span>
+            <span style="width:100px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:11px;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 30, societeMot(k), 84)}</span>
             <span><span style="display:block;">${SOCIETES[k].nom}</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">${SOCIETES[k].sous}</span></span>
           </button>`).join('')}
         </div>
@@ -206,7 +218,7 @@ function renderDirection(){
     return `
       <div class="card" style="border-top:4px solid ${SOCIETES[soc].couleur};padding:16px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px;">
-          <h3 style="margin:0;font-size:16px;">${SOCIETES[soc].nom}</h3>
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:10px;">${societeLogo(soc, 30, '', 110)}<span>${SOCIETES[soc].nom}</span></h3>
           <span style="font-size:11.5px;color:var(--ink-soft);">${SOCIETES[soc].sous}</span>
         </div>
         ${ind.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
