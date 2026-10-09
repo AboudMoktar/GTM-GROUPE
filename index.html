@@ -14,6 +14,7 @@
 <title>GTM Groupe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("gtm_theme")==="dark"?"dark":"light");}catch(e){}</script>
 <style>
   :root{
     --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#F6F8FA; --surface-3:#EEF2F6;
@@ -1229,6 +1230,7 @@ function renderShell(){
             <span id="sync-time" class="sync-time"></span>
           </div>
           ${typeof notifCloche === 'function' ? notifCloche() : ''}
+          <button class="theme-btn" onclick="themeBasculer()" aria-label="Thème"></button>
           <button class="user-menu-btn" onclick="menuUtilisateur(event)" aria-label="Menu du compte">
             <span class="user-avatar-ic">${ICONS.userAvatar}</span>
             <span class="uname">${esc(currentUser.nom)}</span>
@@ -2804,6 +2806,7 @@ window.onload = init;
 <script src="./mgt-export-module.js"></script>
 <script src="./mgt-accueil-module.js"></script>
 <script src="./profils-module.js"></script>
+<script src="./theme-nav-module.js"></script>
 <script src="./nav-historique-module.js"></script>
 <script>
 if(false){
