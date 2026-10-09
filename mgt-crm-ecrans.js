@@ -12,7 +12,7 @@ function crmCarte(titre, contenu, action){
   return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><h3 style="margin:0;font-size:14px;">${titre}</h3>${action || ''}</div>${contenu}</div>`;
 }
 function crmBadge(txt, cls){ return `<span class="hour-rend ${cls || ''}" style="font-size:11px;">${esc(txt)}</span>`; }
-function crmNomClient(id){ const c = mgtGet('clients')[id]; return c ? (c.nom || '—') : '—'; }
+function crmNomClient(id){ const c = crmClients()[id]; return c ? (c.nom || '—') : '—'; }
 function crmOuvrir(id){ mgtFicheId = id; nav('mgt-fiche'); }
 window.crmOuvrir = crmOuvrir;
 function crmListeBrute(c, champ){ return crmTableau(c[champ]); }
@@ -42,7 +42,7 @@ function crmLigneAction(a, opts){
 function renderMgtDashboard(main){
   const b = mgtSection(main, ICONS.dashboard + ' Pilotage MGT');
   const k = mgtIndicateurs(), s = savIndicateurs(), f = factIndicateurs('mgt'), auj = getTodayISO();
-  const clients = Object.entries(mgtGet('clients')), actions = crmActionsAPlanifier();
+  const clients = Object.entries(crmClients()), actions = crmActionsAPlanifier();
   const duJour = actions.filter(a => crmISO(a.date) === auj), retard = actions.filter(a => crmActionJours(a) < 0).sort((x, y) => crmDate(x.date) - crmDate(y.date));
   const semaine = actions.filter(a => { const d = crmActionJours(a); return d > 0 && d <= 7; }).sort((x, y) => crmDate(x.date) - crmDate(y.date));
   const offres = clients.flatMap(([, c]) => crmOffres(c)), enCours = offres.filter(crmOffreEnCours);
@@ -95,7 +95,7 @@ const CRM_PAGE = 25;
 const CRM_SEGMENTS = [['', 'Tous'], ['sansvisite', 'Sans visite 90 j'], ['offre', 'Offre active'], ['relance', 'À relancer'], ['asansaction', 'A sans action'], ['chaud', 'Projet chaud']];
 function crmClientsFiltres(){
   const f = crmFiltre, q = crmNorm(f.q);
-  let l = Object.entries(mgtGet('clients')).filter(([, c]) => {
+  let l = Object.entries(crmClients()).filter(([, c]) => {
     if(f.type === 'client' && crmEstProspect(c)) return false;
     if(f.type === 'prospect' && !crmEstProspect(c)) return false;
     if(f.imp && crmLettre(c) !== f.imp) return false;
@@ -124,7 +124,7 @@ function crmClientsFiltres(){
   return l;
 }
 function crmValeursDistinctes(champ){
-  return Array.from(new Set(Object.values(mgtGet('clients')).map(c => c[champ]).filter(Boolean))).sort();
+  return Array.from(new Set(Object.values(crmClients()).map(c => c[champ]).filter(Boolean))).sort();
 }
 window.crmRafraichirListe = () => {
   const zone = document.getElementById('crm-liste'); if(!zone) return;
@@ -168,7 +168,7 @@ function renderMgtClients(main){
 
 // ---------- formulaire client ----------
 window.crmFormClient = (id) => {
-  const c = id ? mgtGet('clients')[id] : {type:'prospect'};
+  const c = id ? crmClients()[id] : {type:'prospect'};
   mgtModal(id ? 'Modifier le client' : 'Nouveau client', `
     ${mgtChamp('Raison sociale *', 'cc-nom', c.nom)}
     ${mgtSelect('Type', 'cc-type', [['prospect', 'Prospect'], ['client', 'Client']], c.type || 'prospect')}
@@ -222,7 +222,7 @@ const CRM_FORMS = {
 };
 window.crmForm = (champ, cid, idx) => {
   const def = CRM_FORMS[champ];
-  const cur = (cid && idx != null && idx !== 'null') ? (crmListeBrute(mgtGet('clients')[cid] || {}, champ)[idx] || {}) : def.defaut();
+  const cur = (cid && idx != null && idx !== 'null') ? (crmListeBrute(crmClients()[cid] || {}, champ)[idx] || {}) : def.defaut();
   const edition = cid && idx != null && idx !== 'null';
   const champs = def.champs.map(([k, label, type, opts]) => {
     const id = 'cf-' + k, v = cur[k];
@@ -265,7 +265,7 @@ window.crmSupprimerElement = (champ, cid, idx) => {
   nav(activeTab === 'mgt-fiche' || activeTab === 'mgt-agenda' || activeTab === 'mgt-offres' || activeTab === 'mgt-ca' || activeTab === 'mgt-projets' ? activeTab : 'mgt-fiche');
 };
 window.crmFormProchaine = (cid) => {
-  const n = (mgtGet('clients')[cid] || {}).prochaineAction || {};
+  const n = (crmClients()[cid] || {}).prochaineAction || {};
   mgtModal('Prochaine action obligatoire', `
     ${mgtSelect('Type', 'cn-type', crmChoix(CRM_TYPES_ACTION, n.type || 'visite'), n.type || 'visite')}
     ${mgtChamp('Date', 'cn-date', crmISO(n.date) || n.date || '', 'date')}
@@ -305,7 +305,7 @@ function crmLigneOffre(cid, o, i, ed){
     <div>${crmBadge(val.label, val.cls)}</div></div>`;
 }
 function renderMgtFiche(main){
-  const id = mgtFicheId, c = mgtGet('clients')[id];
+  const id = mgtFicheId, c = crmClients()[id];
   if(!c){ nav('mgt-clients'); return; }
   const ed = crmEd();
   const b = mgtSection(main, `<span style="cursor:pointer;" onclick="nav('mgt-clients')">‹</span> ${esc(c.nom)}`, ed ? `<button class="btn btn-ghost" onclick="crmFormClient('${id}')">Modifier</button>` : '');
@@ -359,8 +359,8 @@ let crmPl = {filtre:'7j', vue:'liste', mois:'', jour:''};
 const CRM_FILTRES_PL = [['auj', 'Aujourd\'hui'], ['retard', 'En retard'], ['7j', '7 jours'], ['avenir', 'À venir'], ['faites', 'Terminées'], ['reportees', 'Reportées']];
 function crmLigneAgenda(a){
   const d = crmActionJours(a), manuel = a.source === 'manuel', ed = crmEd();
-  const idx = manuel ? crmTableau(mgtGet('clients')[a.clientId].planning).findIndex(x => x && x.id && x.id === a.id) : -1;
-  const i2 = manuel && idx < 0 ? crmTableau(mgtGet('clients')[a.clientId].planning).findIndex(x => x && x.date === a.date && x.objective === a.objective) : idx;
+  const idx = manuel ? crmTableau(crmClients()[a.clientId].planning).findIndex(x => x && x.id && x.id === a.id) : -1;
+  const i2 = manuel && idx < 0 ? crmTableau(crmClients()[a.clientId].planning).findIndex(x => x && x.date === a.date && x.objective === a.objective) : idx;
   const cls = crmActionFaite(a) ? 'good' : d < 0 && crmActionAPlanifier(a) ? 'bad' : d === 0 ? 'warn' : '';
   return `<div class="session-row" style="align-items:flex-start;">
     <div style="flex:1;min-width:0;cursor:pointer;" onclick="${manuel && ed && i2 >= 0 ? `crmForm('planning','${a.clientId}',${i2})` : `crmOuvrir('${a.clientId}')`}">
@@ -417,7 +417,7 @@ function crmCalendrier(actions){
 let crmFO = {q:'', marque:'', validation:'', etat:'cours', tri:'relance'};
 function crmToutesOffres(){
   const out = [];
-  Object.entries(mgtGet('clients')).forEach(([id, c]) => crmTableau(c.offres).forEach((o, i) => { if(o && typeof o === 'object') out.push({o, i, clientId:id, c}); }));
+  Object.entries(crmClients()).forEach(([id, c]) => crmTableau(c.offres).forEach((o, i) => { if(o && typeof o === 'object') out.push({o, i, clientId:id, c}); }));
   return out;
 }
 window.crmFiltrerOffres = (cle, val) => { crmFO[cle] = val; renderOffresListe(); };

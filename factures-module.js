@@ -50,7 +50,7 @@ function factParams(soc){
 function factClients(soc){
   if(soc === 'mgt'){
     const o = {};
-    Object.entries(mgtGet('clients')).forEach(([id, c]) => { o[id] = {nom:c.nom, adresse:[c.adresse, c.ville].filter(Boolean).join(', '), mf:c.mf || '', email:c.email || ''}; });
+    Object.entries(crmClients()).forEach(([id, c]) => { o[id] = {nom:c.nom, adresse:[c.adresse, c.ville].filter(Boolean).join(', '), mf:c.mf || '', email:c.email || ''}; });
     return o;
   }
   const l = getJSON(factCle(soc, 'fact_clients'), {}) || {};

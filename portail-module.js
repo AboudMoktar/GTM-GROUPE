@@ -128,7 +128,7 @@ function portailProjectionPercko(dest){
 }
 
 function portailProjectionMgt(clientId){
-  const c = mgtGet('clients')[clientId];
+  const c = crmClients()[clientId];
   const machines = Object.entries(mgtGet('machines')).filter(([, m]) => m.clientId === clientId && m.statut !== 'retiree')
     .map(([id, m]) => ({id, marque:m.marque || '', modele:m.modele || '', serie:m.serie || '', dateInstallation:m.dateInstallation || '', finGarantie:m.finGarantie || '', statut:m.statut || 'service'}));
   const tickets = Object.values(mgtGet('tickets')).filter(t => t.clientId === clientId)
@@ -170,7 +170,7 @@ function portailPublier(){
   if(!portailPeutPublier()) return;
   const soc = userSocietes(), travaux = [];
   if(soc.indexOf('mgt') >= 0){
-    Object.entries(mgtGet('clients')).filter(([, c]) => c.type !== 'prospect').forEach(([id]) => travaux.push(['mgt/' + id, 'portail_proj_mgt', () => portailProjectionMgt(id)]));
+    Object.entries(crmClients()).filter(([, c]) => c.type !== 'prospect').forEach(([id]) => travaux.push(['mgt/' + id, 'portail_proj_mgt', () => portailProjectionMgt(id)]));
   }
   if(soc.indexOf('tek') >= 0 || soc.indexOf('gadh') >= 0){
     ['tous'].concat(PORTAIL_DESTINATAIRES).forEach(d => travaux.push(['percko/' + d, 'portail_proj_' + d, () => portailProjectionPercko(d)]));

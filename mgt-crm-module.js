@@ -141,31 +141,52 @@ function crmActionsGenerees(id, c){
   });
   return out;
 }
+
+// ---- Performance : lecture sans copie + résultats mémorisés tant que les clients ne changent pas ----
+function crmClients(){
+  const k = CACHE_PREFIX + 'mgt_clients';
+  if(memoryCache[k] === undefined) getJSON('mgt_clients', {});
+  return memoryCache[k] || {};
+}
+const crmMemoStore = {};
+function crmMemo(nom, fn){
+  const ref = crmClients(), jour = getTodayISO(), m = crmMemoStore[nom];
+  if(m && m.ref === ref && m.jour === jour) return m.val;
+  const val = fn(); crmMemoStore[nom] = {ref, jour, val}; return val;
+}
 // Toutes les actions de tous les clients, avec leur client.
 function crmToutesActions(opts){
   opts = opts || {};
+  return crmMemo('actions' + (opts.generees === false ? '0' : '1'), () => crmToutesActionsCalc(opts)).slice();
+}
+function crmToutesActionsCalc(opts){
   const out = [];
-  Object.entries(mgtGet('clients')).forEach(([id, c]) => {
+  Object.entries(crmClients()).forEach(([id, c]) => {
     crmPlanning(c).forEach(a => out.push(Object.assign({}, a, {clientId:id, c, source:'manuel'})));
     if(opts.generees !== false) crmActionsGenerees(id, c).forEach(a => out.push(a));
   });
   return out.filter(a => crmDate(crmActionDate(a)));
 }
-function crmActionsAPlanifier(){ return crmToutesActions().filter(crmActionAPlanifier); }
+function crmActionsAPlanifier(){ return crmMemo('aplanifier', () => crmToutesActions().filter(crmActionAPlanifier)).slice(); }
 function crmProchaineAction(id, c){
   const l = crmPlanning(c).map(a => Object.assign({}, a, {clientId:id, c})).concat(crmActionsGenerees(id, c)).filter(a => crmActionAPlanifier(a) && crmDate(crmActionDate(a)));
   return l.sort((a, b) => crmDate(crmActionDate(a)) - crmDate(crmActionDate(b)))[0] || null;
 }
-function crmAActionAVenir(id, c){ return crmActionsAPlanifier().some(a => a.clientId === id && crmActionJours(a) >= 0); }
+function crmAActionAVenir(id, c){
+  const s = crmMemo('avenir', () => { const r = new Set(); crmActionsAPlanifier().forEach(a => { if(crmActionJours(a) >= 0) r.add(a.clientId); }); return r; });
+  return s.has(id);
+}
 function crmProjetChaud(c){
   const mots = /projet|machine|coupe|opportunite|invest|achat|besoin/i;
   return crmOffres(c).some(o => crmOffreEnCours(o) && (crmNorm(o.acceptance).includes('eleve') || mots.test([o.progress, o.note, o.type].join(' ')))) || crmPlanning(c).some(a => mots.test(a.objective || ''));
 }
 
 // Alertes (même règles que le CRM)
-function crmAlertes(){
-  const al = [], actions = crmToutesActions({generees:false});
-  Object.entries(mgtGet('clients')).forEach(([id, c]) => {
+function crmAlertes(){ return crmMemo('alertes', crmAlertesCalc).slice(); }
+function crmAlertesCalc(){
+  const al = [], actions = crmToutesActions({generees:false}), parClient = {};
+  actions.forEach(a => { (parClient[a.clientId] = parClient[a.clientId] || []).push(a); });
+  Object.entries(crmClients()).forEach(([id, c]) => {
     if(crmEstProspect(c)) return;
     const depuis = crmJoursSansVisite(c), lettre = crmLettre(c);
     if(lettre !== 'A' && lettre !== 'B' && depuis === null) { /* client C/D jamais visité : pas d'alerte */ }
@@ -175,7 +196,7 @@ function crmAlertes(){
       const d = crmJoursAvant(o.reminder);
       if(crmOffreActive(o) && d !== null && d < -30) al.push({niveau:'crit', clientId:id, titre:'Offre sans relance depuis ' + Math.abs(d) + ' jours', detail:o.type || 'Offre active'});
     });
-    actions.filter(a => a.clientId === id).forEach(a => {
+    (parClient[id] || []).forEach(a => {
       const d = crmActionJours(a), t = crmNorm(a.type);
       if(crmActionReportee(a)) al.push({niveau:'warn', clientId:id, titre:'Visite / action reportée', detail:a.objective || a.type || ''});
       if(!crmActionAPlanifier(a)) return;
@@ -193,7 +214,7 @@ function crmAlertes(){
 // Écriture fiche par fiche (Firebase : mgt/mgt_clients/<id>)
 // ------------------------------------------------------------
 function crmEnregistrerClient(id, rec){
-  const avant = mgtGet('clients'), apres = JSON.parse(JSON.stringify(avant));
+  const avant = crmClients(), apres = JSON.parse(JSON.stringify(avant));
   if(rec === null) delete apres[id]; else { rec.majLe = getTodayISO(); apres[id] = rec; }
   const plein = CACHE_PREFIX + 'mgt_clients';
   memoryCache[plein] = apres;
@@ -209,7 +230,7 @@ function crmEnregistrerClient(id, rec){
 }
 // Modifie une fiche : fn reçoit une copie, la sauvegarde est automatique.
 function crmModifier(id, fn){
-  const cur = mgtGet('clients')[id]; if(!cur) return null;
+  const cur = crmClients()[id]; if(!cur) return null;
   const rec = JSON.parse(JSON.stringify(cur));
   fn(rec);
   crmEnregistrerClient(id, rec);
@@ -223,7 +244,7 @@ const crmIndicateursOrigine = window.mgtIndicateurs;
 window.mgtIndicateurs = function(){
   const k = crmIndicateursOrigine();
   try {
-    const clients = Object.values(mgtGet('clients')), auj = getTodayISO();
+    const clients = Object.values(crmClients()), auj = getTodayISO();
     const actions = crmActionsAPlanifier();
     const offres = clients.flatMap(c => crmOffres(c));
     k.rdvJour = actions.filter(a => crmISO(a.date) === auj).length;
@@ -251,9 +272,10 @@ if(crmNotifSocieteOrigine){
 // ------------------------------------------------------------
 // Projets (offres de plus de 20 000 HTVA, avancement 0 à 200 %)
 // ------------------------------------------------------------
-function crmProjets(){
+function crmProjets(){ return crmMemo('projets', crmProjetsCalc).slice(); }
+function crmProjetsCalc(){
   const out = [];
-  Object.entries(mgtGet('clients')).forEach(([id, c]) => {
+  Object.entries(crmClients()).forEach(([id, c]) => {
     const liees = new Set(crmTableau(c.projets).map(p => p && String(p.offerRef || '').trim()).filter(Boolean));
     const indexLies = new Set(crmTableau(c.projets).map(p => (p && p.offreId !== undefined && p.offreId !== null && p.offreId !== '') ? Number(p.offreId) : -1));
     crmOffres(c).forEach((o, i) => {
@@ -276,7 +298,7 @@ function crmProjets(){
 // ------------------------------------------------------------
 function crmToutesFactures(){
   const out = [];
-  Object.entries(mgtGet('clients')).forEach(([id, c]) => crmFactures(c).forEach((f, i) => out.push(Object.assign({}, f, {clientId:id, nomClient:c.nom || '—', index:i}))));
+  Object.entries(crmClients()).forEach(([id, c]) => crmFactures(c).forEach((f, i) => out.push(Object.assign({}, f, {clientId:id, nomClient:c.nom || '—', index:i}))));
   return out;
 }
 function crmSommeParDevise(list, getMontant, getDevise){
@@ -341,7 +363,7 @@ function crmConvertirClient(src){
 function crmImporter(data){
   const liste = Array.isArray(data) ? data : crmTableau(data && data.clients);
   if(!liste.length) throw new Error('Aucun client dans ce fichier');
-  const avant = mgtGet('clients'), clients = JSON.parse(JSON.stringify(avant)), machines = JSON.parse(JSON.stringify(mgtGet('machines')));
+  const avant = crmClients(), clients = JSON.parse(JSON.stringify(avant)), machines = JSON.parse(JSON.stringify(mgtGet('machines')));
   let nouveaux = 0, misAJour = 0, nbMachines = 0;
   liste.forEach(src => {
     if(!src || typeof src !== 'object' || src._deleted_at) return;
@@ -355,7 +377,7 @@ function crmImporter(data){
   return {clients:liste.length, nouveaux, misAJour, machines:nbMachines};
 }
 function crmExporterJSON(){
-  const parc = mgtGet('machines'), clients = Object.entries(mgtGet('clients')).map(([id, c]) => Object.assign({id}, c, {machines:Object.values(parc).filter(m => m.clientId === id)}));
+  const parc = mgtGet('machines'), clients = Object.entries(crmClients()).map(([id, c]) => Object.assign({id}, c, {machines:Object.values(parc).filter(m => m.clientId === id)}));
   return JSON.stringify({app:'GTM - MGT clients', version:1, exportedAt:new Date().toISOString(), clients}, null, 1);
 }
 window.crmChoisirFichier = () => { const e = document.getElementById('crm-fichier'); if(e) e.click(); };
