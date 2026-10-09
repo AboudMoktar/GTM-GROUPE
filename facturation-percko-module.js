@@ -134,8 +134,8 @@ window.renderFactEdit = function(main){
   const soc = factSoc(), f = factToutes(soc)[factId];
   window.__devEUR = !!(f && f.devise === 'EUR');
   try { percEditOrigine(main); } finally { window.__devEUR = false; }
+  if(soc === 'tek') main.querySelectorAll('div').forEach(d => { if(!d.children.length && /dinar/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
   if(!f || !f.percko) return;
-  main.querySelectorAll('div').forEach(d => { if(!d.children.length && /dinar/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
   window.__devEUR = true;
   const ed = canEditFact(soc) && f.statut === 'brouillon', dis = ed ? '' : 'disabled', p = f.percko, R = percReglages();
   const champ = (label, k, type, extra) => `<div style="flex:1;min-width:120px;">${mgtChamp(label, 'pk-' + k, p[k], type || 'text', `${dis} ${extra || ''} onchange="percMaj('${k}', this.value)"`)}</div>`;
@@ -268,7 +268,7 @@ const percImprimerOrigine = window.factImprimer;
 window.factImprimer = function(id, relance){
   const soc = factSoc(), f = factListe(soc)[id];
   if(relance || soc !== 'tek' || !f) return percImprimerOrigine(id, relance);
-  const P = factParams('tek'), eur = f.devise === 'EUR', d = eur ? 2 : 3;
+  const P = factParams('tek'), eur = true, d = 2;
   const S = {raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:P.adresse || PERC_SOCIETE.adresse, mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email};
   const p = f.percko || {}, t = factTotaux(f), nl = (x) => esc(x || '').replace(/\n/g, '<br>');
   const cli = f.statut === 'emise' && f.client ? f.client : (factClients('tek')[f.clientId] || {nom:''});
