@@ -109,9 +109,8 @@ window.switchSociete = () => { directionOuverte = false; activeSociete = null; a
 function peutChangerDeSociete(){ return isGroupe() || userSocietes().length > 1; }
 
 function societeLogoHTML(soc){
-  if(soc === 'gadh') return `<div class="logo-wrap" style="margin-bottom:20px;">${ICONS.gadh}</div>`;
-  if(soc === 'mgt') return `<div class="logo-wrap" style="margin-bottom:20px;"><div class="logo-text"><span class="tek" style="color:${SOCIETES.mgt.couleur};">MGT</span></div><div class="logo-sub">MACHINES · SAV</div></div>`;
-  return `<div class="logo-wrap" style="margin-bottom:20px;"><div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div><div class="logo-sub">TECHNICAL WEAR</div></div>`;
+  const S = SOCIETES[soc]; if(!S) return '';
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;">${societeLogo(soc, 78, societeMot(soc), 260)}<div style="width:64px;height:4px;border-radius:2px;background:${societeBande(soc, 90)};"></div></div>`;
 }
 
 
@@ -136,9 +135,9 @@ function renderSocieteSelect(){
   const soc = userSocietes();
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
-      <div class="login-card" style="max-width:440px;">
+      <div class="login-card" style="max-width:560px;">
         <div class="logo-wrap" style="margin-bottom:20px;">
-          <div class="logo-text"><span class="tek">GROUPE</span></div>
+          <div class="logo-text" style="font-size:26px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
           <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
         </div>
         <h2 style="text-align:center;margin:0 0 4px;font-size:18px;">Quelle société voulez-vous ouvrir ?</h2>
@@ -299,6 +298,12 @@ function readSocietesField(){
     + '.soc-logo{display:flex;align-items:center;justify-content:center;width:118px;flex-shrink:0;padding:12px 10px;}'
     + '.soc-txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 8px 14px 14px;}'
     + '.soc-nom{font-size:16px;font-weight:800;color:#111827;letter-spacing:.2px;}.soc-sous{font-size:12px;color:#5B6678;line-height:1.35;}'
+    + '.mod-ico{display:flex;align-items:center;justify-content:center;width:84px;flex-shrink:0;}.mod-ico svg{width:30px;height:30px;}'
+    + '.lb-chip img{max-width:100% !important;height:auto !important;max-height:46px;}'
+    + '.login-large{max-width:520px !important;}'
+    + '.login-split{padding:0 !important;max-width:430px !important;overflow:hidden;}.login-brand{background:linear-gradient(150deg,#0F1F3D 0%,#173A63 100%);color:#fff;padding:26px 24px;text-align:center;}.lb-titre{font-size:28px;font-weight:900;letter-spacing:1px;}.lb-titre span{color:#8FB8E8;}.lb-sous{font-size:13px;opacity:.8;margin:4px 0 18px;}.lb-logos{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}.lb-chip{display:flex;align-items:center;justify-content:center;width:98px;height:64px;background:#fff;border-radius:12px;padding:6px 8px;box-sizing:border-box;}.lb-pied{display:none;font-size:11px;letter-spacing:2px;opacity:.6;margin-top:22px;}.login-cote{padding:26px 28px 30px;}.lc-titre{margin:0 0 4px;font-size:22px;}.lc-sous{margin:0 0 18px;color:var(--ink-soft);font-size:13.5px;}'
+    + '@media (min-width:900px){.login-wrap{width:100%;flex:1 1 100%;}.login-split{display:grid;grid-template-columns:1.05fr 1fr;max-width:900px !important;min-height:520px;border-radius:22px !important;box-shadow:0 20px 50px rgba(15,31,61,.18) !important;}.login-brand{display:flex;flex-direction:column;justify-content:center;padding:44px 36px;}.lb-titre{font-size:40px;}.lb-logos{flex-direction:column;align-items:center;gap:12px;}.lb-chip{width:210px;height:84px;}.lb-pied{display:block;}.login-cote{display:flex;flex-direction:column;justify-content:center;padding:44px 48px;}.lc-titre{font-size:28px;}}'
+    + '@media (min-width:1024px){.login-wrap{width:100%;flex:1 1 100%;}}'
     + '.soc-fleche{display:flex;align-items:center;padding:0 16px 0 4px;font-size:26px;color:#9AA4B5;}';
   document.head.appendChild(st);
 })();

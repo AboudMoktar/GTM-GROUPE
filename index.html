@@ -985,35 +985,24 @@ function renderModuleSelect(){
   const mods = modulesDeSociete(activeSociete);
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
-      <div class="login-card" style="max-width:440px;">
+      <div class="login-card login-large">
         ${societeLogoHTML(activeSociete)}
         <h2 style="text-align:center;margin:0 0 4px;font-size:18px;">Quel module voulez-vous ouvrir ?</h2>
         <p style="text-align:center;color:var(--ink-soft);font-size:12.5px;margin:0 0 20px;">Connecté en tant que ${esc(currentUser.nom)}</p>
         <div style="display:flex;flex-direction:column;gap:12px;">
-          ${mods.indexOf('rendement')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;" onclick="chooseModule('rendement')">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.dashboard}</span>
-            <span><span style="display:block;">Gestion Rendement</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Production, saisie, statistiques</span></span>
-          </button>` : ''}
-          ${mods.indexOf('rh')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:var(--good);" onclick="chooseModule('rh')">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.idBadge}</span>
-            <span><span style="display:block;">Gestion Ressources Humaines</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Employés, pointage, congés</span></span>
-          </button>` : ''}
-          ${mods.indexOf('gadh')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#8E2A5B;" onclick="chooseModule('gadh')">
-            <span style="flex-shrink:0;display:flex;align-items:center;">${ICONS.gadh}</span>
-            <span><span style="display:block;">GADH Tunisia</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Production, personnel, pointage</span></span>
-          </button>` : ''}
-          ${mods.indexOf('commandes')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#0B2C4D;" onclick="chooseModule('commandes')">
-            <span style="width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">📦</span>
-            <span><span style="display:block;">Suivi des Commandes</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Suivi PERCKO : lots, coupe, GADH, expédition</span></span>
-          </button>` : ''}
-          ${mods.indexOf('machines')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#7A4B12;" onclick="chooseModule('machines')">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.wrench}</span>
-            <span><span style="display:block;">Machines et arrêts</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Presses, découpe laser : pannes et disponibilité</span></span>
-          </button>` : ''}
-          ${mods.indexOf('factures')>=0 ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#5B4A1E;" onclick="chooseModule('factures')">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.invoice}</span>
-            <span><span style="display:block;">Facturation</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Factures, avoirs, paiements, relances</span></span>
-          </button>` : ''}
+          ${[
+            ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
+            ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
+            ['gadh', ICONS.gadh, 'GADH Tunisia', 'Production, personnel, pointage'],
+            ['commandes', '<span style="font-size:24px;line-height:1;">📦</span>', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
+            ['machines', ICONS.wrench, 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
+            ['factures', ICONS.invoice, 'Facturation', 'Factures, avoirs, paiements, relances']
+          ].filter(m => mods.indexOf(m[0]) >= 0).map(m => `<button class="soc-card" style="--m:${(SOCIETES[activeSociete] || SOCIETES.tek).marque[0]};" onclick="chooseModule('${m[0]}')">
+            <span class="soc-bande" style="background:${societeBande(activeSociete in SOCIETES ? activeSociete : 'tek')};"></span>
+            <span class="mod-ico" style="background:${(SOCIETES[activeSociete] || SOCIETES.tek).teinte};color:${(SOCIETES[activeSociete] || SOCIETES.tek).marque[0]};">${m[1]}</span>
+            <span class="soc-txt"><span class="soc-nom">${m[2]}</span><span class="soc-sous">${m[3]}</span></span>
+            <span class="soc-fleche">›</span>
+          </button>`).join('')}
         </div>
         ${peutChangerDeSociete() ? `<button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="switchSociete()">Changer de société</button>` : ''}
         <button class="btn btn-ghost" style="width:100%;margin-top:${peutChangerDeSociete() ? '8' : '18'}px;" onclick="logout()">Déconnexion</button>
@@ -1069,14 +1058,18 @@ function init(){
 function renderLogin(err){
   document.getElementById('app').innerHTML = `
   <div class="login-wrap">
-    <div class="login-card">
-      <div class="logo-wrap" style="margin-bottom:16px;">
-        <div class="logo-text" style="font-size:30px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
-        <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 22px;">
-        ${['tek', 'gadh', 'mgt'].map(k => `<span style="display:flex;align-items:center;justify-content:center;width:96px;height:58px;border:1px solid var(--border);border-radius:11px;background:#fff;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 48, societeMot(k).replace('font-size:16px', 'font-size:13px').replace('font-size:17px', 'font-size:14px'), 78)}</span>`).join('')}
-      </div>
+    <div class="login-card login-split">
+      <aside class="login-brand">
+        <div class="lb-titre">GTM <span>GROUPE</span></div>
+        <div class="lb-sous">Plateforme de gestion du groupe</div>
+        <div class="lb-logos">
+          ${['tek', 'gadh', 'mgt'].map(k => `<span class="lb-chip">${societeLogo(k, 52, societeMot(k), 120)}</span>`).join('')}
+        </div>
+        <div class="lb-pied">TEK-TREND · GADH TUNISIA · MGT</div>
+      </aside>
+      <section class="login-cote">
+      <h2 class="lc-titre">Connexion</h2>
+      <p class="lc-sous">Accédez à votre espace de travail.</p>
       <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
       <form id="login-form">
         <div class="field"><label>Utilisateur</label><input type="text" id="login-user" required autocomplete="username"></div>
@@ -1089,6 +1082,7 @@ function renderLogin(err){
         </div>
         <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
       </form>
+      </section>
     </div>
   </div>`;
   window.togglePwVisibility = () => {
