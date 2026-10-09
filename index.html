@@ -345,6 +345,7 @@
   /* --- DESKTOP (≥1024px) : sidebar + mise en page large ---       */
   /* Placé en fin de feuille de style pour l'emporter sur les       */
   /* règles de base (.sidebar, .bottomnav) à spécificité CSS égale. */
+  @media (min-width:900px){ #app > .login-wrap{width:100%;flex:1 1 100%;max-width:100%;} }
   @media (min-width:1024px){
     #app{flex-direction:row;}
     .topbar{position:fixed;top:0;left:220px;right:0;z-index:15;}
