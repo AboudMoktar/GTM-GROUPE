@@ -30,9 +30,6 @@ function accueilTuileAutorisee(tab){
 const accueilDashboardOrigine = window.renderMgtDashboard;
 window.renderMgtDashboard = function(main){
   const clients = Object.values(crmClients()), auj = getTodayISO();
-  const nbA = clients.filter(c => crmLettre(c) === 'A').length;
-  const nbAuj = crmActionsAPlanifier().filter(a => crmISO(a.date) === auj).length;
-  const stat = (v, l) => `<div class="card" style="margin:0 0 10px;padding:14px 18px;border-radius:18px;"><div style="font-size:30px;font-weight:700;line-height:1.1;">${v}</div><div style="font-size:13px;letter-spacing:1.5px;text-transform:uppercase;margin-top:6px;">${l}</div></div>`;
   const tuiles = ACCUEIL_TUILES.filter(t => accueilTuileAutorisee(t[0])).map(t => {
     const actif = t[0] === 'mgt-projets' ? '' : '';
     return `<button class="acc-tuile" onclick="nav('${t[0]}')"><span class="acc-ico">${accueilIcone(t[0], t[2])}</span><span class="acc-lib">${t[1]}</span></button>`;
@@ -44,11 +41,10 @@ window.renderMgtDashboard = function(main){
       <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--ink-soft);">MGT SARL</div>
       <div style="font-size:24px;font-weight:800;margin:4px 0 6px;">CRM — Base clients</div>
       <div style="font-size:14px;color:var(--ink-soft);margin-bottom:14px;">Suivi commercial, offres, projets, SAV et facturation.</div>
-      <div class="acc-stats">
-      ${stat(clients.length.toLocaleString('fr-FR'), 'Total clients')}
-      ${stat(nbAuj, 'Actions aujourd\'hui')}
-      ${stat(nbA, 'Priorité A')}
-      </div>
+      <form class="acc-rech" onsubmit="accueilLancerRecherche(event)" style="margin-bottom:12px;">
+        <input id="acc-rech-q" class="mgt-in" type="search" enterkeyhint="search" placeholder="Rechercher un client, une machine, une facture…" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Rechercher</button>
+      </form>
     </div>
     <div style="text-align:center;font-size:20px;font-weight:800;margin:16px 0 4px;">Tous les modules</div>
     <div style="text-align:center;font-size:13px;color:var(--ink-soft);margin-bottom:12px;">Sélectionnez directement l'espace de travail souhaité.</div>
@@ -137,8 +133,18 @@ let accueilRecDelai = null;
 function renderMgtRecherche(main){
   const b = mgtSection(main, 'Recherche');
   b.innerHTML = `<div class="card" style="padding:10px 12px;"><input id="rec-q" class="mgt-in" placeholder="Client, contact, machine, n° de série, facture, offre…" oninput="accueilRechercher(this.value)" autocomplete="off"></div><div id="rec-res"></div>`;
-  const q = document.getElementById('rec-q'); if(q) q.focus();
+  const q = document.getElementById('rec-q');
+  if(q){
+    if(window.accueilRecInit){ q.value = window.accueilRecInit; window.accueilRecInit = ''; accueilRechercherMaintenant(q.value); }
+    q.focus();
+  }
 }
+window.accueilLancerRecherche = (e) => {
+  e.preventDefault();
+  const el = document.getElementById('acc-rech-q');
+  window.accueilRecInit = el ? el.value.trim() : '';
+  nav('mgt-recherche');
+};
 window.accueilRechercher = (v) => { clearTimeout(accueilRecDelai); accueilRecDelai = setTimeout(() => accueilRechercherMaintenant(v), 200); };
 function accueilRechercherMaintenant(v){
   const zone = document.getElementById('rec-res'); if(!zone) return;
@@ -196,6 +202,7 @@ window.mgtNavItems = function(){ return accueilNavItemsOrigine().map(i => i.tab 
     + '.acc-ico{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:#FDEDE6;border:1px solid #F6C9B8;color:#E8400B;}'
     + '.acc-ico svg{width:28px;height:28px;}'
     + '@media (min-width:700px){.acc-grille{grid-template-columns:repeat(4,1fr);}}'
+    + '.acc-rech{display:flex;gap:8px;}.acc-rech input{flex:1;min-width:0;}'
     + '@media (min-width:700px){.acc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}.acc-stats .card{margin:0 !important;}}'
     + '.pil-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:22px 0 12px;}.pil-titre{font-size:18px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;flex:1;min-width:200px;}.pil-rech{flex:1;min-width:220px;max-width:420px;}'
     + '.pil-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px;}'

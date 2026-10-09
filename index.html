@@ -528,6 +528,18 @@ function setSyncBadge(state){
   }
 }
 
+// Clic sur le badge : état détaillé + resynchronisation forcée.
+function syncBadgeClic(){
+  if(!firebaseConfigured()){ showToast('Mode local : Firebase non configuré.'); return; }
+  if(!navigator.onLine){ showToast('Pas de connexion internet. Les données restent en local.'); return; }
+  if(!firebaseReady){ showToast('Connexion impossible. Rechargez la page.'); return; }
+  showToast('Resynchronisation…');
+  try{ fbListenRefs.forEach(r => { try{ r.off(); }catch(e){} }); }catch(e){}
+  fbListenRefs = [];
+  try{ fbRootRef.child('sessions').off(); }catch(e){}
+  attachFirebaseDataListeners();
+}
+window.addEventListener('online', () => { if(firebaseReady && fbAuth && fbAuth.currentUser && !fbListenRefs.length) attachFirebaseDataListeners(); });
 let fbAuth = null;
 function initFirebase(){
   if(!firebaseConfigured()){
@@ -1213,7 +1225,7 @@ function renderShell(){
         ${appBrandingHTML()}
         <div class="user-chip">
           <div class="sync-wrap">
-            <span id="sync-badge" class="sync-badge sync-off">Mode local</span>
+            <span id="sync-badge" class="sync-badge sync-off" role="button" tabindex="0" title="Resynchroniser" onclick="syncBadgeClic()" style="cursor:pointer;">Mode local</span>
             <span id="sync-time" class="sync-time"></span>
           </div>
           ${typeof notifCloche === 'function' ? notifCloche() : ''}
