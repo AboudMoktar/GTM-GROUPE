@@ -167,7 +167,7 @@ window.percAjouterFrais = (i) => { const x = percReglages().frais[i]; if(!x) ret
 
 // Devise, numéro et libellés propres aux factures PERCKO.
 const percFmtDT = window.fmtDT;
-window.fmtDT = function(n){ return window.__devEUR ? percN(n, 2) + ' €' : percFmtDT(n); };
+window.fmtDT = function(n){ return (window.__devEUR || (typeof activeSociete !== 'undefined' && activeSociete === 'tek' && activeModule === 'factures')) ? percN(n, 2) + ' €' : percFmtDT(n); };
 const percLigneOrigine = window.factLigne;
 window.factLigne = function(id, f, toutes, avecClient){
   window.__devEUR = f.devise === 'EUR';
@@ -316,3 +316,12 @@ window.factImprimer = function(id, relance){
   if(!w){ showToast('Autorisez les fenêtres pop-up pour imprimer'); return; }
   w.document.open(); w.document.write(html); w.document.close();
 };
+
+// TEK-TREND facture en euros : on remplace les libellés « DT » des écrans de facturation.
+const percListe2 = window.renderFactListe;
+window.renderFactListe = function(main){
+  percListe2(main);
+  if(factSoc() === 'tek') document.querySelectorAll('#mgt-body .kpi-mini div').forEach(d => { if(!d.children.length) d.textContent = d.textContent.replace(/^DT /, '€ ').replace(' DT', ' €'); });
+};
+const percPaiement = window.factFormPaiement;
+window.factFormPaiement = function(id){ percPaiement(id); if(factSoc() === 'tek'){ const l = document.querySelector('#fp-montant'); if(l && l.previousElementSibling) l.previousElementSibling.textContent = 'Montant (€)'; } };
