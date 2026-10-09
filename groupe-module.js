@@ -21,9 +21,9 @@
 // dans database.rules.json.
 
 const SOCIETES = {
-  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', modules:['rendement','rh','commandes','factures']},
-  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', logo:'./logo-gadh.png', modules:['gadh','machines','factures']},
-  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', logo:'./logo-mgt.png', modules:['mgt']}
+  tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', marque:['#0A5C6A', '#0F1F3A'], teinte:'#EEF6F7', modules:['rendement','rh','commandes','factures']},
+  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', logo:'./logo-gadh.png', marque:['#8B1F4B', '#CFA824', '#058A9E'], teinte:'#FAF3F6', modules:['gadh','machines','factures']},
+  mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', logo:'./logo-mgt.png', marque:['#FF6A13', '#FF6A13'], teinte:'#FFF4EC', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];
 let activeSociete = null; // 'tek' | 'gadh' | 'mgt' | null (null = pas encore choisie)
@@ -117,6 +117,12 @@ function societeLogoHTML(soc){
 
 // Logo d'une société (fichier logo-<société>.png à la racine). Si le fichier est absent, on affiche le repli.
 function logoRepli(img){ const r = img.getAttribute('data-repli') || ''; img.outerHTML = r; }
+// Bande verticale aux couleurs du logo de la société.
+function societeBande(k, angle){
+  const m = (SOCIETES[k] && SOCIETES[k].marque) || [SOCIETES[k].couleur];
+  const seg = 100 / m.length;
+  return 'linear-gradient(' + (angle || 180) + 'deg,' + m.map((c, i) => c + ' ' + (i * seg) + '%,' + c + ' ' + ((i + 1) * seg) + '%').join(',') + ')';
+}
 function societeMot(k){
   if(k === 'tek') return '<span style="font-weight:900;font-size:16px;letter-spacing:-.5px;white-space:nowrap;"><span style="color:var(--accent);">TEK</span> <span style="color:#111;">TREND</span></span>';
   if(k === 'gadh') return '<span style="font-weight:900;font-size:17px;letter-spacing:.5px;color:'+SOCIETES.gadh.couleur+';white-space:nowrap;">GADH</span>';
@@ -142,9 +148,11 @@ function renderSocieteSelect(){
             <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.crown}</span>
             <span><span style="display:block;">Vue direction</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Les trois tableaux de bord sur un seul écran</span></span>
           </button>` : ''}
-          ${soc.map(k => `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:${SOCIETES[k].couleur};" onclick="chooseSociete('${k}')">
-            <span style="width:100px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:11px;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 46, societeMot(k), 84)}</span>
-            <span><span style="display:block;">${SOCIETES[k].nom}</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">${SOCIETES[k].sous}</span></span>
+          ${soc.map(k => `<button class="soc-card" style="--m:${SOCIETES[k].marque[0]};" onclick="chooseSociete('${k}')">
+            <span class="soc-bande" style="background:${societeBande(k)};"></span>
+            <span class="soc-logo" style="background:${SOCIETES[k].teinte};">${societeLogo(k, 54, societeMot(k), 104)}</span>
+            <span class="soc-txt"><span class="soc-nom">${SOCIETES[k].nom}</span><span class="soc-sous">${SOCIETES[k].sous}</span></span>
+            <span class="soc-fleche">›</span>
           </button>`).join('')}
         </div>
         <button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="logout()">Déconnexion</button>
@@ -216,8 +224,10 @@ function renderDirection(){
   const carte = (soc) => {
     const ind = directionIndicateurs(soc);
     return `
-      <div class="card" style="border-top:4px solid ${SOCIETES[soc].couleur};padding:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="height:6px;background:${societeBande(soc, 90)};"></div>
+        <div style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:-16px -16px 14px;padding:12px 16px;background:${SOCIETES[soc].teinte};border-bottom:1px solid var(--border);">
           <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:10px;">${societeLogo(soc, 42, '', 120)}<span>${SOCIETES[soc].nom}</span></h3>
           <span style="font-size:11.5px;color:var(--ink-soft);">${SOCIETES[soc].sous}</span>
         </div>
@@ -228,6 +238,7 @@ function renderDirection(){
           </div>`).join('')}
         </div>` : `<p style="font-size:13px;color:var(--ink-soft);margin:0;">Module en préparation (phase 2).</p>`}
         <button class="btn btn-ghost" style="width:100%;margin-top:12px;" onclick="chooseSociete('${soc}')">Ouvrir ${SOCIETES[soc].nom}</button>
+        </div>
       </div>`;
   };
   document.getElementById('app').innerHTML = `
@@ -278,3 +289,16 @@ function readSocietesField(){
   if(!groupe && Object.keys(societes).length === 0){ showToast('Choisissez au moins une société'); return null; }
   return {societes, groupe, portail:null};
 }
+
+// Cartes de choix de société : inspirées des couleurs de chaque logo.
+(function(){
+  const st = document.createElement('style');
+  st.textContent = '.soc-card{display:flex;align-items:stretch;width:100%;padding:0;border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden;cursor:pointer;text-align:left;font:inherit;box-shadow:0 2px 8px rgba(15,31,61,.06);transition:transform .12s,box-shadow .12s,border-color .12s;}'
+    + '.soc-card:hover{box-shadow:0 6px 18px rgba(15,31,61,.12);border-color:var(--m);}.soc-card:active{transform:scale(.985);}'
+    + '.soc-bande{width:7px;flex-shrink:0;}'
+    + '.soc-logo{display:flex;align-items:center;justify-content:center;width:118px;flex-shrink:0;padding:12px 10px;}'
+    + '.soc-txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 8px 14px 14px;}'
+    + '.soc-nom{font-size:16px;font-weight:800;color:#111827;letter-spacing:.2px;}.soc-sous{font-size:12px;color:#5B6678;line-height:1.35;}'
+    + '.soc-fleche{display:flex;align-items:center;padding:0 16px 0 4px;font-size:26px;color:#9AA4B5;}';
+  document.head.appendChild(st);
+})();
