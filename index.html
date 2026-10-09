@@ -555,7 +555,9 @@ function attachFirebaseDataListeners(){
   }
   watchSessions();
 }
-function onFirebaseData(){
+let fbDebounce = null;
+function onFirebaseData(){ clearTimeout(fbDebounce); fbDebounce = setTimeout(onFirebaseDataMaintenant, 350); }
+function onFirebaseDataMaintenant(){
   setSyncBadge('ok');
   if(!currentUser) return;
   checkForNewMessages({messages: getJSON('messages', {})});

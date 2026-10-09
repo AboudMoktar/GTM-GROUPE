@@ -125,7 +125,7 @@ const fichiersFormOrigine = window.crmForm;
 window.crmForm = function(champ, cid, idx){
   fichiersFormOrigine(champ, cid, idx);
   if(champ !== 'offres' || !cid || idx == null || idx === 'null') return;
-  const o = crmTableau((mgtGet('clients')[cid] || {}).offres)[idx] || {};
+  const o = crmTableau((crmClients()[cid] || {}).offres)[idx] || {};
   const feuille = document.querySelector('#mgt-modal-zone .modal-sheet'); if(!feuille) return;
   feuille.insertAdjacentHTML('beforeend', `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
     <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;">FICHIER JOINT (PDF ou photo)</div>
@@ -142,7 +142,7 @@ window.crmForm = function(champ, cid, idx){
 const fichiersFicheOrigine = window.renderMgtFiche;
 window.renderMgtFiche = function(main){
   fichiersFicheOrigine(main);
-  const id = mgtFicheId, c = mgtGet('clients')[id], zone = document.getElementById('mgt-body'); if(!c || !zone) return;
+  const id = mgtFicheId, c = crmClients()[id], zone = document.getElementById('mgt-body'); if(!c || !zone) return;
   const docs = crmTableau(c.documents), ed = canEditMgt();
   const carte = crmCarte('Documents (' + docs.length + ')', docs.length ? docs.map((d, i) => d ? `<div class="session-row">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="fichierVoir('${d.fid}', '${esc(d.nom || 'Document')}')"><b style="font-size:13px;">📎 ${esc(d.nom || 'Document')}</b><div style="font-size:11.5px;color:var(--ink-soft);">${crmDateFr(d.date)}</div></div>
@@ -184,7 +184,7 @@ window.fichiersImporterPieces = (input) => {
     if(!taches.length){ etat('Aucun PDF trouvé dans ce fichier.'); input.value = ''; return; }
     let ok = 0, deja = 0, absents = 0, erreurs = 0;
     for(let n = 0; n < taches.length; n++){
-      const t = taches[n], client = mgtGet('clients')[t.cid];
+      const t = taches[n], client = crmClients()[t.cid];
       etat('Envoi ' + (n + 1) + ' / ' + taches.length + '…');
       const offre = client && crmTableau(client.offres)[t.i];
       if(!offre){ absents++; continue; }

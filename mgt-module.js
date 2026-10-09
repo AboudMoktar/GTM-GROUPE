@@ -50,7 +50,7 @@ function mgtParams(){
     conditions:'Paiement : 30 % à la commande, solde à la livraison.\nDélai de livraison : à confirmer.'}, getJSON('mgt_parametres', {}) || {});
 }
 function canEditMgt(){ return !!currentUser && currentUser.role !== 'viewer'; }
-function mgtClientNom(id){ const c = mgtGet('clients')[id]; return c ? c.nom : '—'; }
+function mgtClientNom(id){ const c = crmClients()[id]; return c ? c.nom : '—'; }
 function fmtDT(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3}) + ' DT'; }
 function mgtDate(d){ return d ? d.split('-').reverse().join('/') : '—'; }
 function mgtAddDays(d, n){ const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return toISODateLocal(x); }
@@ -76,7 +76,7 @@ function garantieActive(m){ return !!(m.finGarantie && m.finGarantie >= getToday
 // --- Indicateurs (tableau de bord MGT et écran direction) ---
 function mgtIndicateurs(){
   const today = getTodayISO();
-  const clients = Object.values(mgtGet('clients'));
+  const clients = Object.values(crmClients());
   const agenda = Object.values(mgtGet('agenda'));
   const devis = Object.values(mgtGet('devis'));
   const projets = Object.values(mgtGet('projets'));
