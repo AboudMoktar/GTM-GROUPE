@@ -348,7 +348,12 @@
   @media (min-width:1024px){
     #app{flex-direction:row;}
     .topbar{position:fixed;top:0;left:220px;right:0;z-index:15;}
-    .sidebar{display:flex;}
+    .sidebar{display:flex;background:#0F1F3D;border-right:none;}
+    .sidebar .side-logo{background:#fff;margin:0 12px 18px;border-radius:12px;padding:10px 12px;}
+    .sidebar nav button{color:#B8C4DA;}
+    .sidebar nav button:hover{background:rgba(255,255,255,.08);color:#fff;}
+    .sidebar nav button.active{background:rgba(255,255,255,.14);color:#fff;}
+    .sidebar .side-sep{background:rgba(255,255,255,.15);}
     .bottomnav{display:none;}
     .app-body{margin-left:220px;width:calc(100% - 220px);display:flex;flex-direction:column;min-height:100vh;}
     main{max-width:1180px;padding:88px 32px 40px;}
@@ -1070,7 +1075,7 @@ function renderLogin(err){
         <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 22px;">
-        ${['tek', 'gadh', 'mgt'].map(k => `<span style="display:flex;align-items:center;justify-content:center;width:96px;height:42px;border:1px solid var(--border);border-radius:11px;background:#fff;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 28, societeMot(k).replace('font-size:16px', 'font-size:13px').replace('font-size:17px', 'font-size:14px'), 78)}</span>`).join('')}
+        ${['tek', 'gadh', 'mgt'].map(k => `<span style="display:flex;align-items:center;justify-content:center;width:96px;height:58px;border:1px solid var(--border);border-radius:11px;background:#fff;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 48, societeMot(k).replace('font-size:16px', 'font-size:13px').replace('font-size:17px', 'font-size:14px'), 78)}</span>`).join('')}
       </div>
       <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
       <form id="login-form">

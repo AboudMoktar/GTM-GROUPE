@@ -143,7 +143,7 @@ function renderSocieteSelect(){
             <span><span style="display:block;">Vue direction</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Les trois tableaux de bord sur un seul écran</span></span>
           </button>` : ''}
           ${soc.map(k => `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:${SOCIETES[k].couleur};" onclick="chooseSociete('${k}')">
-            <span style="width:100px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:11px;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 30, societeMot(k), 84)}</span>
+            <span style="width:100px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:11px;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 46, societeMot(k), 84)}</span>
             <span><span style="display:block;">${SOCIETES[k].nom}</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">${SOCIETES[k].sous}</span></span>
           </button>`).join('')}
         </div>
@@ -218,7 +218,7 @@ function renderDirection(){
     return `
       <div class="card" style="border-top:4px solid ${SOCIETES[soc].couleur};padding:16px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px;">
-          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:10px;">${societeLogo(soc, 30, '', 110)}<span>${SOCIETES[soc].nom}</span></h3>
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:10px;">${societeLogo(soc, 42, '', 120)}<span>${SOCIETES[soc].nom}</span></h3>
           <span style="font-size:11.5px;color:var(--ink-soft);">${SOCIETES[soc].sous}</span>
         </div>
         ${ind.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
