@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="TEK-TREND">
+<meta name="apple-mobile-web-app-title" content="GTM Groupe">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1C2430">
 <link rel="manifest" href="./manifest.json">
@@ -1065,10 +1065,12 @@ function renderLogin(err){
   document.getElementById('app').innerHTML = `
   <div class="login-wrap">
     <div class="login-card">
-      <div class="logo-wrap" style="margin-bottom:24px;">
-        <div class="logo-tt"><span class="t-blue">T</span><span class="t-black">T</span></div>
-        <div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div>
-        <div class="logo-sub">TECHNICAL WEAR</div>
+      <div class="logo-wrap" style="margin-bottom:16px;">
+        <div class="logo-text" style="font-size:30px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
+        <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 22px;">
+        ${['tek', 'gadh', 'mgt'].map(k => `<span style="display:flex;align-items:center;justify-content:center;width:96px;height:42px;border:1px solid var(--border);border-radius:11px;background:#fff;padding:4px 8px;box-sizing:border-box;">${societeLogo(k, 28, societeMot(k).replace('font-size:16px', 'font-size:13px').replace('font-size:17px', 'font-size:14px'), 78)}</span>`).join('')}
       </div>
       <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
       <form id="login-form">
