@@ -1130,6 +1130,14 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
 
   var stat = el("div", {class:"stat"});
   v.appendChild(stat);
+  var okLot = ui.lot && lotReady(ui.lot);
+  v.appendChild(el("div", {class:"card", style:"position:sticky;top:0;z-index:5;padding:10px 12px"},
+    okLot ? el("div", {class:"mut", text:"✔ Commande validée : consommations calculées."}) :
+    el("button", {class:"btn", style:"width:100%", text:"✔ Vérification faite : valider et calculer les consommations", onclick:function(){
+      if (!ui.lot){ toast("Saisissez d'abord le lot."); return; }
+      if (!filtered(ui.lot, "*").length){ toast("Aucune quantité saisie pour ce lot."); return; }
+      validateLot(ui.lot);
+    }})));
   var t = el("table", {class:"xl entry"}), tb = el("tbody"), groups = [], inputs = [];
   var cg = el("colgroup"); (PC ? [90,300,60,90,70] : [52,172,36,54,40]).forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
   t.appendChild(el("thead", null, el("tr", null, ["Model","LIBELLE","Taille","Quantité","Total"].map(function(h){ return el("th", {text:h}); }))));
