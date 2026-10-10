@@ -1,70 +1,113 @@
-// Module « Suivi chaîne » (TEK-TREND) : même principe que Rendement — Tableau, Fiche (saisie), Historique, Stats, Paramètres.
-// S'appuie sur la fiche chaîne (fiche-chaine-module.js) : fcJour, fcCalcul, fcOuvrieres, fcParams…
+// Module « Suivi chaîne » (TEK-TREND) : Tableau, Fiche (saisie), Historique, Stats, Rapports, Params.
+// Logique : pièces de la chaîne = dernier poste ; objectif de la chaîne = poste goulot (voir fcTotaux dans fiche-chaine-module.js).
 (function(){
-const SC_TABS = ['chaine-tableau', 'fiche-chaine', 'chaine-historique', 'chaine-stats', 'chaine-params'];
-let scDu = null, scAu = null;
-const isoMoins = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return toISODateLocal(d); };
+let scMode = '7j', scDu = null, scAu = null, scRType = 'chaine-jours';
+const iso = (d) => toISODateLocal(d);
+const isoMoins = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const scJf = (d) => d.split('-').reverse().join('/');
+const scMin5 = () => isoMoins(1826);
+// ---------- Période : jour / 7 jours / ce mois / personnalisé (jusqu'à 5 ans) ----------
+function scRange(){
+  const t = getTodayISO();
+  if(scMode === 'jour'){ const j = scAu || t; return {du:j, au:j}; }
+  if(scMode === '7j') return {du:isoMoins(6), au:t};
+  if(scMode === 'mois') return {du:t.slice(0, 8) + '01', au:t};
+  return {du:scDu || isoMoins(29), au:scAu || t};
+}
+function scLibelle(r){ return r.du === r.au ? scJf(r.du) : scJf(r.du) + ' au ' + scJf(r.au); }
+function scBarre(page){
+  const r = scRange(), t = getTodayISO(), mini = scMin5();
+  const b = (k, l) => `<button class="btn ${scMode === k ? 'btn-primary' : 'btn-ghost'} fc-btn" onclick="scModeSet('${k}','${page}')">${l}</button>`;
+  return `<div class="sc-bar">${b('jour', 'Jour')}${b('7j', '7 jours')}${b('mois', 'Ce mois')}${b('perso', 'Personnalisé')}
+    ${scMode === 'jour' ? `<input type="date" value="${r.au}" min="${mini}" max="${t}" onchange="scDatesSet(this.value,this.value,'${page}')">` : ''}
+    ${scMode === 'perso' ? `<label>Du <input type="date" value="${r.du}" min="${mini}" max="${r.au}" onchange="scDatesSet(this.value,null,'${page}')"></label><label>Au <input type="date" value="${r.au}" min="${r.du}" max="${t}" onchange="scDatesSet(null,this.value,'${page}')"></label>` : ''}
+    <span class="sc-per">${scLibelle(r)}</span></div>`;
+}
+window.scModeSet = function(m, page){ const r = scRange(); scMode = m; if(m === 'perso'){ scDu = r.du; scAu = r.au; } if(m === 'jour') scAu = r.au; nav(page); };
+window.scDatesSet = function(du, au, page){ if(du) scDu = du; if(au) scAu = au; if(scMode === 'jour'){ scAu = du || au; } else { if(!scDu) scDu = isoMoins(29); if(!scAu) scAu = getTodayISO(); if(scDu > scAu){ if(du) scAu = scDu; else scDu = scAu; } } nav(page); };
+// ---------- Données ----------
 function scTotalJour(date){
   const slots = getSlotsForDate(date); if(!slots.length) return null;
-  const jour = fcJour(date), ouv = fcOuvrieres(); let q = 0, o = 0, p = 0, saisi = false, pres = 0; const lignes = [];
-  ouv.forEach(([id, e]) => { const c = fcCalcul(id, e, date, jour); q += c.qty; o += c.obj; p += c.pertes; if(c.det.some(d => d.saisi)) saisi = true; if(c.etat.cls === 'good' || c.etat.cls === 'warn') pres++; lignes.push({id, nom:e.nom, c}); });
-  return {date, q, o, p, saisi, pres, n:ouv.length, rend:o > 0 ? q / o * 100 : null, lignes};
+  const jour = fcJour(date), T = fcTotaux(date, jour);
+  return Object.assign({date, saisi:T.calc.some(x => x.c.det.some(d => d.saisi))}, T);
 }
-function scPeriode(n){ const out = []; for(let i = 0; i < n; i++){ const t = scTotalJour(isoMoins(i)); if(t && t.saisi) out.push(t); } return out; }
-// Plage libre jusqu'à 5 ans en arrière
-function scPlageInit(){ if(!scAu) scAu = getTodayISO(); if(!scDu) scDu = isoMoins(29); }
-function scPlage(du, au){ const out = []; const d = new Date(au + 'T00:00:00'), f = new Date(du + 'T00:00:00'); for(; d >= f; d.setDate(d.getDate() - 1)){ const t = scTotalJour(toISODateLocal(d)); if(t && t.saisi) out.push(t); } return out; }
-function scBarrePlage(page){
-  scPlageInit(); const mini = isoMoins(1826), pre = [['7 j', 6], ['30 j', 29], ['3 mois', 90], ['1 an', 364], ['5 ans', 1825]];
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;"><label style="font-size:12px;">Du <input type="date" value="${scDu}" min="${mini}" max="${scAu}" onchange="scPlageSet(this.value,null,'${page}')"></label><label style="font-size:12px;">Au <input type="date" value="${scAu}" min="${scDu}" max="${getTodayISO()}" onchange="scPlageSet(null,this.value,'${page}')"></label>${pre.map(x => `<button class="btn btn-ghost fc-btn" onclick="scPlageSet(isoMoinsG(${x[1]}),getTodayISO(),'${page}')">${x[0]}</button>`).join('')}</div>`;
+function scPlage(du, au){ const out = [], d = new Date(au + 'T00:00:00'), f = new Date(du + 'T00:00:00'); for(; d >= f; d.setDate(d.getDate() - 1)){ const k = iso(d); if(!getJSON('fc_' + k, null)) continue; const t = scTotalJour(k); if(t && t.saisi) out.push(t); } return out; }
+function scAgg(du, au){
+  const jours = scPlage(du, au), ouv = {}, postes = {}, pertes = [], motifs = {};
+  const tot = jours.reduce((t, j) => ({q:t.q + j.q, o:t.o + j.o, p:t.p + j.p}), {q:0, o:0, p:0});
+  jours.forEach(j => { j.calc.forEach(x => {
+    if(x.c.det.some(d => d.saisi)){ const a = ouv[x.id] || (ouv[x.id] = {nom:x.e.nom, poste:x.poste, j:0, q:0, o:0, p:0}); a.poste = x.poste; a.j++; a.q += x.c.qty; a.o += x.c.obj; a.p += x.c.pertes;
+      const b = postes[x.poste] || (postes[x.poste] = {nom:x.poste, ids:{}, q:0, o:0, p:0}); b.ids[x.id] = 1; b.q += x.c.qty; b.o += x.c.obj; b.p += x.c.pertes; }
+    x.c.listePertes.forEach(l => { const m = l.motif || 'Autre', mn = parseInt(l.min) || 0; motifs[m] = (motifs[m] || 0) + mn; pertes.push([scJf(j.date), x.e.nom, x.poste, mn, m, l.note || '']); }); }); });
+  return {jours, tot, ouv:Object.values(ouv), postes:Object.values(postes), pertes, motifs};
 }
-window.isoMoinsG = isoMoins;
-window.scPlageSet = function(du, au, page){ if(du) scDu = du; if(au) scAu = au; if(scDu > scAu) scDu = scAu; nav(page); };
-const scJf = (d) => d.split('-').reverse().join('/');
+const scPct = (q, o) => o > 0 ? Math.round(q / o * 100) : '';
+function scRapport(type, du, au){
+  const A = scAgg(du, au), per = scLibelle({du, au}), T = A.tot;
+  const resume = [['Période', per], ['Jours saisis', A.jours.length], ['Pièces chaîne', T.q], ['Objectif chaîne', T.o], ['Rendement', T.o ? Math.round(T.q / T.o * 100) + ' %' : '—'], ['Pertes', T.p + ' min']];
+  const nom = (k) => 'suivi_chaine_' + k + '_' + du + '_' + au;
+  if(type === 'chaine-jours') return {titre:'Suivi chaîne — Journalier — ' + per, fichier:nom('jours'), entetes:['Date', 'Pièces (dernier poste)', 'Objectif chaîne (goulot)', 'Goulot', 'Rendement %', 'Pertes (min)', 'Présentes', 'Ouvrières'],
+    lignes:A.jours.map(j => [scJf(j.date), j.q, j.o, j.goulot ? j.goulot.nom : '', scPct(j.q, j.o), j.p, j.pres, j.n]), resume};
+  if(type === 'chaine-ouv') return {titre:'Suivi chaîne — Par ouvrière — ' + per, fichier:nom('ouvrieres'), entetes:['Ouvrière', 'Poste', 'Jours', 'Pièces', 'Objectif', 'Rendement %', 'Pertes (min)'],
+    lignes:A.ouv.sort((a, b) => (b.o ? b.q / b.o : 0) - (a.o ? a.q / a.o : 0)).map(a => [a.nom, a.poste, a.j, a.q, a.o, scPct(a.q, a.o), a.p]), resume};
+  if(type === 'chaine-postes') return {titre:'Suivi chaîne — Par poste — ' + per, fichier:nom('postes'), entetes:['Poste', 'Ouvrières', 'Pièces', 'Objectif', 'Rendement %', 'Pertes (min)'],
+    lignes:A.postes.map(b => [b.nom, Object.keys(b.ids).length, b.q, b.o, scPct(b.q, b.o), b.p]), resume};
+  if(type === 'chaine-pertes') return {titre:'Suivi chaîne — Pertes et arrêts — ' + per, fichier:nom('pertes'), entetes:['Date', 'Ouvrière', 'Poste', 'Minutes', 'Motif', 'Précision'], lignes:A.pertes,
+    resume:resume.concat(Object.entries(A.motifs).map(([k, v]) => ['Motif ' + k, v + ' min']))};
+  return null;
+}
+const scRrOrigine = window.rrDonnees;
+window.rrDonnees = function(type, debut, fin, empId){ return (typeof type === 'string' && type.indexOf('chaine-') === 0) ? scRapport(type, debut, fin) : scRrOrigine(type, debut, fin, empId); };
 const scTitre = (t, extra) => `<div class="flex-header" style="margin-bottom:10px;"><h2 style="margin:0;">${t}</h2>${extra || ''}</div>`;
-
+const scBarreLigne = (nom, txt, pct) => `<div class="dd-lot"><div style="width:${Math.max(3, Math.min(100, pct))}%"></div><span style="color:var(--ink);text-shadow:none;">${esc(nom)}</span><b>${txt}</b></div>`;
+const tonR = (r) => r === null ? 'nul' : (r >= 90 ? 'ok' : r >= 70 ? 'warn' : 'bad');
+function scKpisPeriode(A){
+  const T = A.tot, r = T.o ? Math.round(T.q / T.o * 100) : null;
+  return `<div class="kp-grid" style="margin-bottom:12px;">${fcKpi('Jours saisis', A.jours.length, '', 'info', 'users')}${fcKpi('Pièces chaîne', T.q, 'dernier poste', 'info', 'box')}${fcKpi('Rendement', r === null ? '—' : r + ' %', 'pièces / objectif goulot', tonR(r), 'trend', r === null ? 0 : r)}${fcKpi('Pertes', T.p + ' min', '', T.p ? 'warn' : 'nul', 'clock')}</div>`;
+}
+// ---------- Écrans ----------
 function renderChaineTableau(m){
-  const today = getTodayISO(), t = scTotalJour(today), per = scPeriode(14).reverse();
+  const today = getTodayISO(), t = scTotalJour(today), per = scPlage(isoMoins(13), today).reverse();
   if(!t){ m.innerHTML = `<div class="card">${scTitre('Suivi chaîne')}${buildEmptyState('Jour non travaillé', 'Aucun créneau programmé aujourd\'hui.')}</div>`; return; }
-  const r = t.rend === null ? null : Math.round(t.rend);
-  const cl = t.lignes.filter(x => x.c.obj > 0).sort((a, b) => (b.c.rend || 0) - (a.c.rend || 0));
-  const bar = (x) => { const v = x.c.rend === null ? 0 : Math.round(x.c.rend); return `<div class="dd-lot"><div style="width:${Math.max(Math.min(v, 100), 3)}%"></div><span style="color:var(--ink);text-shadow:none;">${esc(x.nom)}</span><b>${x.c.qty}/${x.c.obj} · ${v} %</b></div>`; };
+  const cl = t.calc.filter(x => x.c.obj > 0).sort((a, b) => (b.c.rend || 0) - (a.c.rend || 0));
   const maxv = Math.max(1, ...per.map(p => Math.max(p.q, p.o)));
-  const graphe = per.length ? `<div style="display:flex;align-items:flex-end;gap:5px;height:130px;">${per.map(p => `<div style="flex:1;text-align:center;font-size:9px;color:var(--ink-soft);"><div style="height:100px;display:flex;align-items:flex-end;justify-content:center;gap:2px;"><i style="width:45%;background:#0A5C6A;height:${Math.round(p.q / maxv * 100)}%;border-radius:3px 3px 0 0;" title="Pièces ${p.q}"></i><i style="width:45%;background:var(--surface-3);height:${Math.round(p.o / maxv * 100)}%;border-radius:3px 3px 0 0;" title="Objectif ${p.o}"></i></div>${p.date.slice(8)}/${p.date.slice(5, 7)}</div>`).join('')}</div><div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">■ Pièces · ■ Objectif (gris)</div>` : buildEmptyState('Pas encore de saisie', 'Les jours saisis dans la Fiche apparaîtront ici.');
-  m.innerHTML = `<div class="card">${scTitre('Suivi chaîne — aujourd\'hui', `<button class="btn btn-primary" onclick="fcDate=null;nav('fiche-chaine')">Saisir la fiche</button>`)}
-    <div class="dd-g4" style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));">
-      ${ddBoite(t.q, 'Pièces produites', 'ok')}${ddBoite(t.o, 'Objectif ajusté', 'nul')}${ddBoite(r === null ? '—' : r + ' %', 'Rendement', r === null ? 'nul' : (r >= 70 ? 'ok' : 'bad'))}${ddBoite(t.p + ' min', 'Pertes / arrêts', t.p ? 'bad' : 'nul')}${ddBoite(t.pres + '/' + t.n, 'Ouvrières présentes', 'ok')}
-    </div></div>
-    <div class="card" style="margin-top:12px;">${scTitre('Par ouvrière (aujourd\'hui)')}${cl.length ? cl.map(bar).join('') : buildEmptyState('Aucune donnée', 'Aucune ouvrière avec objectif aujourd\'hui.')}</div>
-    <div class="card" style="margin-top:12px;">${scTitre('14 derniers jours saisis')}${graphe}</div>`;
+  const graphe = per.length ? `<div style="display:flex;align-items:flex-end;gap:5px;height:130px;">${per.map(p => `<div style="flex:1;text-align:center;font-size:9px;color:var(--ink-soft);"><div style="height:100px;display:flex;align-items:flex-end;justify-content:center;gap:2px;"><i style="width:45%;background:#2563EB;height:${Math.round(p.q / maxv * 100)}%;border-radius:4px 4px 0 0;" title="Pièces ${p.q}"></i><i style="width:45%;background:var(--surface-3);height:${Math.round(p.o / maxv * 100)}%;border-radius:4px 4px 0 0;" title="Objectif ${p.o}"></i></div>${p.date.slice(8)}/${p.date.slice(5, 7)}</div>`).join('')}</div><div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">Bleu : pièces · Gris : objectif</div>` : buildEmptyState('Pas encore de saisie', 'Les jours saisis dans la Fiche apparaîtront ici.');
+  m.innerHTML = `<div class="card">${scTitre('Suivi chaîne — aujourd\'hui', `<button class="btn btn-primary" onclick="fcDate=null;nav('fiche-chaine')">Saisir la fiche</button>`)}${fcKpisHTML(t)}</div>
+    <div class="card" style="margin-top:12px;">${scTitre('Par ouvrière (aujourd\'hui)')}${cl.length ? cl.map(x => scBarreLigne(x.e.nom + ' · ' + x.poste, x.c.qty + '/' + x.c.obj + ' · ' + Math.round(x.c.rend || 0) + ' %', x.c.rend || 0)).join('') : buildEmptyState('Aucune donnée', 'Aucune ouvrière avec objectif aujourd\'hui.')}</div>
+    <div class="card" style="margin-top:12px;">${scTitre('14 derniers jours')}${graphe}</div>`;
 }
-
 function renderChaineHistorique(m){
-  scPlageInit(); const l = scPlage(scDu, scAu);
-  m.innerHTML = `<div class="card">${scTitre('Historique')}${scBarrePlage('chaine-historique')}${l.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Date</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th><th>Présentes</th><th></th></tr></thead><tbody>${l.map(t => `<tr><td><b>${scJf(t.date)}</b></td><td class="fc-tot">${t.q}</td><td>${t.o}</td><td><span class="hour-rend ${fcCls(t.rend)}">${fcPct(t.rend)}</span></td><td>${t.p} min</td><td>${t.pres}/${t.n}</td><td><button class="btn btn-ghost fc-btn" onclick="fcDate='${t.date}';nav('fiche-chaine')">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune saisie', 'Aucune fiche enregistrée sur cette période.')}</div>`;
+  const r = scRange(), l = scPlage(r.du, r.au);
+  m.innerHTML = `<div class="card">${scTitre('Historique')}${scBarre('chaine-historique')}${l.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Date</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th><th>Présentes</th><th></th></tr></thead><tbody>${l.map(t => `<tr><td><b>${scJf(t.date)}</b></td><td class="fc-tot">${t.q}</td><td>${t.o}</td><td><span class="hour-rend ${fcCls(t.rend)}">${fcPct(t.rend)}</span></td><td>${t.p} min</td><td>${t.pres}/${t.n}</td><td><button class="btn btn-ghost fc-btn" onclick="fcDate='${t.date}';nav('fiche-chaine')">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune saisie', 'Aucune fiche enregistrée sur cette période.')}</div>`;
 }
-
 function renderChaineStats(m){
-  scPlageInit(); const l = scPlage(scDu, scAu), par = {}, motifs = {};
-  l.forEach(t => t.lignes.forEach(x => { const a = par[x.id] || (par[x.id] = {nom:x.nom, q:0, o:0, p:0, j:0}); if(x.c.det.some(d => d.saisi)){ a.q += x.c.qty; a.o += x.c.obj; a.p += x.c.pertes; a.j++; } x.c.listePertes.forEach(p => { const k = p.motif || 'Autre'; motifs[k] = (motifs[k] || 0) + (parseInt(p.min) || 0); }); }));
-  const rows = Object.values(par).filter(a => a.j).sort((a, b) => (b.o ? b.q / b.o : 0) - (a.o ? a.q / a.o : 0));
-  const T = l.reduce((t, x) => ({q:t.q + x.q, o:t.o + x.o, p:t.p + x.p}), {q:0, o:0, p:0});
-  const mt = Object.entries(motifs).sort((a, b) => b[1] - a[1]), mmax = mt.length ? mt[0][1] : 1;
-  m.innerHTML = `<div class="card">${scTitre('Statistiques')}${scBarrePlage('chaine-stats')}
-    <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:12px;">${ddBoite(l.length, 'Jours saisis', 'ok')}${ddBoite(T.q, 'Pièces', 'ok')}${ddBoite(T.o ? Math.round(T.q / T.o * 100) + ' %' : '—', 'Rendement moyen', 'ok')}${ddBoite(T.p + ' min', 'Pertes', T.p ? 'bad' : 'nul')}</div>
-    ${rows.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Ouvrière</th><th>Jours</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th></tr></thead><tbody>${rows.map(a => `<tr><td class="fc-nom"><b>${esc(a.nom)}</b></td><td>${a.j}</td><td class="fc-tot">${a.q}</td><td>${a.o}</td><td><span class="hour-rend ${fcCls(a.o ? a.q / a.o * 100 : null)}">${fcPct(a.o ? a.q / a.o * 100 : null)}</span></td><td>${a.p} min</td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}</div>
-    <div class="card" style="margin-top:12px;">${scTitre('Pertes par motif')}${mt.length ? mt.map(([k, v]) => `<div class="dd-lot"><div style="width:${Math.max(3, Math.round(v / mmax * 100))}%"></div><span style="color:var(--ink);text-shadow:none;">${esc(k)}</span><b>${v} min</b></div>`).join('') : buildEmptyState('Aucune perte', 'Aucune perte saisie sur la période.')}</div>`;
+  const r = scRange(), A = scAgg(r.du, r.au), mt = Object.entries(A.motifs).sort((a, b) => b[1] - a[1]), mmax = mt.length ? mt[0][1] : 1;
+  const ouv = A.ouv.sort((a, b) => (b.o ? b.q / b.o : 0) - (a.o ? a.q / a.o : 0)), rt = (q, o) => o ? q / o * 100 : null;
+  m.innerHTML = `<div class="card">${scTitre('Statistiques')}${scBarre('chaine-stats')}${scKpisPeriode(A)}
+    ${A.postes.length ? `<div class="table-wrap" style="margin-bottom:12px;"><table class="fc-t"><thead><tr><th style="text-align:left;">Poste</th><th>Ouvrières</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th></tr></thead><tbody>${A.postes.map(b => `<tr><td class="fc-nom"><b>${esc(b.nom)}</b></td><td>${Object.keys(b.ids).length}</td><td class="fc-tot">${b.q}</td><td>${b.o}</td><td><span class="hour-rend ${fcCls(rt(b.q, b.o))}">${fcPct(rt(b.q, b.o))}</span></td><td>${b.p} min</td></tr>`).join('')}</tbody></table></div>` : ''}
+    ${ouv.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th style="text-align:left;">Ouvrière</th><th>Poste</th><th>Jours</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th></tr></thead><tbody>${ouv.map(a => `<tr><td class="fc-nom"><b>${esc(a.nom)}</b></td><td>${esc(a.poste)}</td><td>${a.j}</td><td class="fc-tot">${a.q}</td><td>${a.o}</td><td><span class="hour-rend ${fcCls(rt(a.q, a.o))}">${fcPct(rt(a.q, a.o))}</span></td><td>${a.p} min</td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}</div>
+    <div class="card" style="margin-top:12px;">${scTitre('Pertes par motif')}${mt.length ? mt.map(([k, v]) => scBarreLigne(k, v + ' min', v / mmax * 100)).join('') : buildEmptyState('Aucune perte', 'Aucune perte saisie sur la période.')}</div>`;
 }
-
+const SC_TYPES = [['chaine-jours', 'Journalier'], ['chaine-ouv', 'Par ouvrière'], ['chaine-postes', 'Par poste'], ['chaine-pertes', 'Pertes / arrêts'], ['chaine', 'Détail par heure (1 jour)']];
+window.scRTypeSet = (t) => { scRType = t; nav('chaine-rapports'); };
+function renderChaineRapports(m){
+  const r = scRange(); if(scRType === 'chaine' && r.du !== r.au) scRType = 'chaine-jours';
+  const D = rrDonnees(scRType, r.du, r.au), args = `'${scRType}','${r.du}','${r.au}'`, MAX = 300;
+  m.innerHTML = `<div class="card">${scTitre('Rapports', `<span><button class="btn btn-primary" onclick="rrExcel(${args})">Excel</button> <button class="btn btn-primary" onclick="rrPdf(${args})">PDF</button></span>`)}${scBarre('chaine-rapports')}
+    <div class="rr-types" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${SC_TYPES.filter(x => x[0] !== 'chaine' || r.du === r.au).map(([k, l]) => `<button class="btn ${scRType === k ? 'btn-primary' : 'btn-ghost'} fc-btn" onclick="scRTypeSet('${k}')">${l}</button>`).join('')}</div>
+    ${D ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${D.resume.map(x => esc(x[0]) + ' : <b>' + esc(String(x[1])) + '</b>').join(' · ')}</div>
+    ${D.lignes.length ? `<div class="fc-scroll"><table class="fc-t"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${D.lignes.slice(0, MAX).map(l => `<tr>${l.map((v, i) => `<td${i === 0 ? ' style="text-align:left;"' : ''}>${v === null || v === undefined ? '' : esc(String(v))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${D.lignes.length > MAX ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${MAX} premières lignes affichées sur ${D.lignes.length} : l'export Excel / PDF contient tout.</div>` : ''}` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}` : ''}</div>`;
+}
 function renderChaineParams(m){
   const p = fcParams(), actifs = activeEmployees(), ch = p.chain, ok = currentUser.role === 'admin';
-  m.innerHTML = `<div class="card">${scTitre('Paramètres de la chaîne')}<p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Cochez les ouvrières de la chaîne de confection et fixez l'objectif par heure de chacune (par défaut : objectif horaire général).</p>
-    <div class="table-wrap"><table class="fc-t"><thead><tr><th>Dans la chaîne</th><th>Ouvrière</th><th>Poste</th><th>Objectif / h</th></tr></thead><tbody>${actifs.map(([id, e]) => `<tr><td><input type="checkbox" ${(!ch || !ch.length || ch.indexOf(id) >= 0) ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="scChaineToggle('${id}',this.checked)"></td><td class="fc-nom"><b>${esc(e.nom)}</b></td><td>${esc(e.poste || '')}</td><td><input class="fc-objh" type="number" min="0" step="0.5" value="${fcObjH(id)}" ${ok ? '' : 'disabled'} onchange="scObjSet('${id}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>`;
+  m.innerHTML = `<div class="card">${scTitre('Paramètres de la chaîne', ok ? `<button class="btn btn-ghost" onclick="fcPostes()">Ordre des postes</button>` : '')}<div id="fc-zone"></div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Pour chaque ouvrière : appartient-elle à la chaîne, son poste et sa cadence (pièces/heure). Les pièces de la chaîne sont celles du dernier poste ; l'objectif de la chaîne est celui du poste goulot (le plus lent).</p>
+    <datalist id="fc-postes-dl">${[...new Set(actifs.map(([i, e]) => (e.poste || '').trim()).concat(p.postes).filter(Boolean))].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <div class="table-wrap"><table class="fc-t"><thead><tr><th>Chaîne</th><th style="text-align:left;">Ouvrière</th><th>Poste</th><th>Cadence / h</th></tr></thead><tbody>${actifs.map(([id, e]) => `<tr><td><input type="checkbox" ${(!ch || !ch.length || ch.indexOf(id) >= 0) ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="scChaineToggle('${id}',this.checked)"></td><td class="fc-nom"><b>${esc(e.nom)}</b></td><td><input class="fc-objh" style="width:130px;" list="fc-postes-dl" value="${esc(fcPoste(id, e) === 'Sans poste' ? '' : fcPoste(id, e))}" ${ok ? '' : 'disabled'} onchange="fcPosteSet('${id}',this.value)"></td><td><input class="fc-objh" type="number" min="0" step="0.5" value="${fcObjH(id)}" ${ok ? '' : 'disabled'} onchange="scObjSet('${id}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 window.scChaineToggle = function(id, on){ const p = fcParams(), tous = activeEmployees().map(([i]) => i); let l = (p.chain && p.chain.length) ? p.chain.slice() : tous; l = on ? (l.indexOf(id) < 0 ? l.concat(id) : l) : l.filter(i => i !== id); p.chain = l; fcSaveParams(p); };
 window.scObjSet = function(id, v){ const p = fcParams(), n = parseFloat(v); if(n > 0) p.obj[id] = n; else delete p.obj[id]; fcSaveParams(p); };
-
-// Navigation et module
+// ---------- Navigation et module ----------
 const scNavItems = window.navItems;
 window.navItems = function(){
   if(activeModule === 'chaine') return [
@@ -72,23 +115,23 @@ window.navItems = function(){
     {tab:'fiche-chaine', label:'Fiche', icon:ICONS.team, show:canSaisie(currentUser.role) || currentUser.role === 'viewer', onclick:"fcDate=null;nav('fiche-chaine')"},
     {tab:'chaine-historique', label:'Historique', icon:ICONS.historique, show:true},
     {tab:'chaine-stats', label:'Stats', icon:ICONS.stats, show:true},
+    {tab:'chaine-rapports', label:'Rapports', icon:ICONS.invoice || ICONS.stats, show:true},
     {tab:'chaine-params', label:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
   ].filter(i => i.show);
   return scNavItems().filter(i => i.tab !== 'fiche-chaine');
 };
 const scNavOrigine = window.nav;
+const SC_ECRANS = {'chaine-tableau':renderChaineTableau, 'chaine-historique':renderChaineHistorique, 'chaine-stats':renderChaineStats, 'chaine-rapports':renderChaineRapports, 'chaine-params':renderChaineParams};
 window.nav = function(tab){
   const r = scNavOrigine.apply(this, arguments), m = document.getElementById('main');
-  try {
-    if(m && tab === 'chaine-tableau') renderChaineTableau(m);
-    else if(m && tab === 'chaine-historique') renderChaineHistorique(m);
-    else if(m && tab === 'chaine-stats') renderChaineStats(m);
-    else if(m && tab === 'chaine-params') renderChaineParams(m);
-  } catch(e) { console.error('Suivi chaîne', e); }
+  try { if(m && SC_ECRANS[tab]) SC_ECRANS[tab](m); } catch(e) { console.error('Suivi chaîne', e); }
   return r;
 };
 const scChoose = window.chooseModule;
 window.chooseModule = function(mod){ if(mod === 'chaine'){ activeModule = 'chaine'; renderShell(); return; } return scChoose.apply(this, arguments); };
 const scMods = window.modulesDeSociete;
 window.modulesDeSociete = function(soc){ const l = scMods(soc); return (soc === 'tek' && l.indexOf('rendement') >= 0 && l.indexOf('chaine') < 0) ? l.concat('chaine') : l; };
+const scCss = document.createElement('style');
+scCss.textContent = `.sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;} .sc-bar input[type=date]{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);} .sc-bar label{font-size:12px;display:flex;gap:4px;align-items:center;} .sc-per{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-soft);}`;
+document.head.appendChild(scCss);
 })();
