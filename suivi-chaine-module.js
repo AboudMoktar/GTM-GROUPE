@@ -2,7 +2,7 @@
 // S'appuie sur la fiche chaîne (fiche-chaine-module.js) : fcJour, fcCalcul, fcOuvrieres, fcParams…
 (function(){
 const SC_TABS = ['chaine-tableau', 'fiche-chaine', 'chaine-historique', 'chaine-stats', 'chaine-params'];
-let scJours = 30;
+let scDu = null, scAu = null;
 const isoMoins = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return toISODateLocal(d); };
 function scTotalJour(date){
   const slots = getSlotsForDate(date); if(!slots.length) return null;
@@ -11,6 +11,15 @@ function scTotalJour(date){
   return {date, q, o, p, saisi, pres, n:ouv.length, rend:o > 0 ? q / o * 100 : null, lignes};
 }
 function scPeriode(n){ const out = []; for(let i = 0; i < n; i++){ const t = scTotalJour(isoMoins(i)); if(t && t.saisi) out.push(t); } return out; }
+// Plage libre jusqu'à 5 ans en arrière
+function scPlageInit(){ if(!scAu) scAu = getTodayISO(); if(!scDu) scDu = isoMoins(29); }
+function scPlage(du, au){ const out = []; const d = new Date(au + 'T00:00:00'), f = new Date(du + 'T00:00:00'); for(; d >= f; d.setDate(d.getDate() - 1)){ const t = scTotalJour(toISODateLocal(d)); if(t && t.saisi) out.push(t); } return out; }
+function scBarrePlage(page){
+  scPlageInit(); const mini = isoMoins(1826), pre = [['7 j', 6], ['30 j', 29], ['3 mois', 90], ['1 an', 364], ['5 ans', 1825]];
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;"><label style="font-size:12px;">Du <input type="date" value="${scDu}" min="${mini}" max="${scAu}" onchange="scPlageSet(this.value,null,'${page}')"></label><label style="font-size:12px;">Au <input type="date" value="${scAu}" min="${scDu}" max="${getTodayISO()}" onchange="scPlageSet(null,this.value,'${page}')"></label>${pre.map(x => `<button class="btn btn-ghost fc-btn" onclick="scPlageSet(isoMoinsG(${x[1]}),getTodayISO(),'${page}')">${x[0]}</button>`).join('')}</div>`;
+}
+window.isoMoinsG = isoMoins;
+window.scPlageSet = function(du, au, page){ if(du) scDu = du; if(au) scAu = au; if(scDu > scAu) scDu = scAu; nav(page); };
 const scJf = (d) => d.split('-').reverse().join('/');
 const scTitre = (t, extra) => `<div class="flex-header" style="margin-bottom:10px;"><h2 style="margin:0;">${t}</h2>${extra || ''}</div>`;
 
@@ -31,22 +40,21 @@ function renderChaineTableau(m){
 }
 
 function renderChaineHistorique(m){
-  const l = scPeriode(60);
-  m.innerHTML = `<div class="card">${scTitre('Historique (60 derniers jours)')}${l.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Date</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th><th>Présentes</th><th></th></tr></thead><tbody>${l.map(t => `<tr><td><b>${scJf(t.date)}</b></td><td class="fc-tot">${t.q}</td><td>${t.o}</td><td><span class="hour-rend ${fcCls(t.rend)}">${fcPct(t.rend)}</span></td><td>${t.p} min</td><td>${t.pres}/${t.n}</td><td><button class="btn btn-ghost fc-btn" onclick="fcDate='${t.date}';nav('fiche-chaine')">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune saisie', 'Aucune fiche enregistrée sur les 60 derniers jours.')}</div>`;
+  scPlageInit(); const l = scPlage(scDu, scAu);
+  m.innerHTML = `<div class="card">${scTitre('Historique')}${scBarrePlage('chaine-historique')}${l.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Date</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th><th>Présentes</th><th></th></tr></thead><tbody>${l.map(t => `<tr><td><b>${scJf(t.date)}</b></td><td class="fc-tot">${t.q}</td><td>${t.o}</td><td><span class="hour-rend ${fcCls(t.rend)}">${fcPct(t.rend)}</span></td><td>${t.p} min</td><td>${t.pres}/${t.n}</td><td><button class="btn btn-ghost fc-btn" onclick="fcDate='${t.date}';nav('fiche-chaine')">Ouvrir</button></td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune saisie', 'Aucune fiche enregistrée sur cette période.')}</div>`;
 }
 
 function renderChaineStats(m){
-  const l = scPeriode(scJours), par = {}, motifs = {};
+  scPlageInit(); const l = scPlage(scDu, scAu), par = {}, motifs = {};
   l.forEach(t => t.lignes.forEach(x => { const a = par[x.id] || (par[x.id] = {nom:x.nom, q:0, o:0, p:0, j:0}); if(x.c.det.some(d => d.saisi)){ a.q += x.c.qty; a.o += x.c.obj; a.p += x.c.pertes; a.j++; } x.c.listePertes.forEach(p => { const k = p.motif || 'Autre'; motifs[k] = (motifs[k] || 0) + (parseInt(p.min) || 0); }); }));
   const rows = Object.values(par).filter(a => a.j).sort((a, b) => (b.o ? b.q / b.o : 0) - (a.o ? a.q / a.o : 0));
   const T = l.reduce((t, x) => ({q:t.q + x.q, o:t.o + x.o, p:t.p + x.p}), {q:0, o:0, p:0});
   const mt = Object.entries(motifs).sort((a, b) => b[1] - a[1]), mmax = mt.length ? mt[0][1] : 1;
-  m.innerHTML = `<div class="card">${scTitre('Statistiques', `<select onchange="scJoursSet(this.value)">${[7, 14, 30, 60, 90].map(n => `<option value="${n}" ${n === scJours ? 'selected' : ''}>${n} derniers jours</option>`).join('')}</select>`)}
+  m.innerHTML = `<div class="card">${scTitre('Statistiques')}${scBarrePlage('chaine-stats')}
     <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:12px;">${ddBoite(l.length, 'Jours saisis', 'ok')}${ddBoite(T.q, 'Pièces', 'ok')}${ddBoite(T.o ? Math.round(T.q / T.o * 100) + ' %' : '—', 'Rendement moyen', 'ok')}${ddBoite(T.p + ' min', 'Pertes', T.p ? 'bad' : 'nul')}</div>
     ${rows.length ? `<div class="table-wrap"><table class="fc-t"><thead><tr><th>Ouvrière</th><th>Jours</th><th>Pièces</th><th>Objectif</th><th>Rend.</th><th>Pertes</th></tr></thead><tbody>${rows.map(a => `<tr><td class="fc-nom"><b>${esc(a.nom)}</b></td><td>${a.j}</td><td class="fc-tot">${a.q}</td><td>${a.o}</td><td><span class="hour-rend ${fcCls(a.o ? a.q / a.o * 100 : null)}">${fcPct(a.o ? a.q / a.o * 100 : null)}</span></td><td>${a.p} min</td></tr>`).join('')}</tbody></table></div>` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}</div>
     <div class="card" style="margin-top:12px;">${scTitre('Pertes par motif')}${mt.length ? mt.map(([k, v]) => `<div class="dd-lot"><div style="width:${Math.max(3, Math.round(v / mmax * 100))}%"></div><span style="color:var(--ink);text-shadow:none;">${esc(k)}</span><b>${v} min</b></div>`).join('') : buildEmptyState('Aucune perte', 'Aucune perte saisie sur la période.')}</div>`;
 }
-window.scJoursSet = (v) => { scJours = parseInt(v) || 30; nav('chaine-stats'); };
 
 function renderChaineParams(m){
   const p = fcParams(), actifs = activeEmployees(), ch = p.chain, ok = currentUser.role === 'admin';
