@@ -338,7 +338,7 @@ function renderPortail(){
       <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(currentUser.nom)}</span>
         <button class="btn" style="padding:7px 11px;font-size:12.5px;background:rgba(255,255,255,.18);color:#fff;" onclick="logout()">Déconnexion</button></div>
     </div>
-    <div style="max-width:760px;margin:0 auto;padding:16px 14px 40px;">
+    <div style="width:100%;flex:1 1 100%;max-width:960px;margin:0 auto;padding:16px 14px 40px;">
       ${sous ? `<h2 style="margin:0 0 12px;font-size:17px;">${esc(sous)}</h2>` : ''}
       ${mgt ? portailHTMLMgt(D) : portailHTMLPercko()}
     </div>`;

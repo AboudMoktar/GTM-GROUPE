@@ -304,7 +304,7 @@ function renderAudit(){
   auditDonnees.entrees.forEach(e => { if(e.un) users[e.un] = e.u || e.un; });
   const opt = (v, l, cur) => '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(l) + '</option>';
   document.getElementById('app').innerHTML = `
-    <div style="max-width:760px;margin:0 auto;padding:20px 14px 40px;">
+    <div style="width:100%;flex:1 1 100%;max-width:960px;margin:0 auto;padding:20px 14px 40px;">
       <div class="flex-header">
         <div><h2 style="margin:0;">Journal d'audit</h2><div style="font-size:12.5px;color:var(--ink-soft);">Qui a modifié quoi, dans quelle société</div></div>
         <div class="actions"><button class="btn btn-ghost" onclick="auditFermer()">← Vue direction</button></div>
