@@ -110,15 +110,12 @@ function renderChaineParams(m){
     ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
     ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (15 opérations)</button>` : ''}</div>`;
   if(!cur){ m.innerHTML = liste; return; }
-  const pris = new Set(); cur.ops.forEach(o => (o.emps || []).forEach(id => pris.add(id)));
-  m.innerHTML = `<div class="card">${scTitre('Modèle', `<button class="btn btn-ghost" onclick="scModOuvrir(null)">‹ Retour aux modèles</button>`)}
+  m.innerHTML = `<div class="card">${scTitre('Modèle', `<button class="btn btn-ghost" onclick="scModOuvrir(null)">‹ Retour aux modèles</button>`)}<div id="fc-zone"></div>
     <div class="field"><label>Nom du modèle</label><input value="${esc(cur.nom)}" ${ok ? '' : 'disabled'} onchange="scModNom(this.value)"></div>
-    <div class="table-wrap"><table class="fc-t"><thead><tr><th>#</th><th style="text-align:left;">Poste (opération)</th><th>Cadence /h</th><th style="text-align:left;">Ouvrières par défaut</th><th></th></tr></thead><tbody>
-    ${cur.ops.map((o, i) => `<tr><td>${i + 1}</td><td><input class="fc-objh" style="width:150px;text-align:left;" value="${esc(o.nom)}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'nom',this.value)"></td><td><input class="fc-objh" type="number" min="0" step="0.5" value="${o.cadence || ''}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'cadence',this.value)"></td>
-      <td style="text-align:left;min-width:190px;">${(o.emps || []).map(id => `<span class="kp-chip">${esc((em[id] || {}).nom || id)}${ok ? ` <a href="#" onclick="scOpEmp(${i},'${id}',false);return false;" style="color:#DC3F45;text-decoration:none;">✕</a>` : ''}</span>`).join(' ')}
-        ${ok ? `<select onchange="scOpEmp(${i},this.value,true)"><option value="">+ ouvrière</option>${actifs.filter(([id]) => !pris.has(id)).map(([id, e]) => `<option value="${id}">${esc(e.nom)}</option>`).join('')}</select>` : ''}</td>
-      <td style="white-space:nowrap;">${ok ? `<button class="icon-btn" ${i ? '' : 'disabled'} onclick="scOpMove(${i},-1)">↑</button><button class="icon-btn" ${i < cur.ops.length - 1 ? '' : 'disabled'} onclick="scOpMove(${i},1)">↓</button><button class="icon-btn" onclick="scOpSuppr(${i})">✕</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="5" style="padding:16px;color:var(--ink-soft);">Aucune opération.</td></tr>'}
-    </tbody></table></div>${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scOpAjout()">+ Ajouter une opération</button>` : ''}
+    ${cur.ops.map((o, i) => `<div class="pc-card"><div class="pc-top"><span class="pc-num">${i + 1}</span><input class="pc-in" value="${esc(o.nom)}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'nom',this.value)" placeholder="Poste (opération)"><input class="pc-in pc-cad" type="number" min="0" step="0.5" inputmode="decimal" value="${o.cadence || ''}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'cadence',this.value)" title="Cadence pièces/heure"><span style="font-size:10px;color:var(--ink-soft);">/h</span></div>
+      <div class="pc-emps">${(o.emps || []).map(id => `<span class="kp-chip">${esc((em[id] || {}).nom || id)}</span>`).join('') || '<span style="font-size:12px;color:var(--ink-soft);">Aucune ouvrière</span>'}${ok ? `<button class="btn btn-ghost fc-btn" onclick="scPick(${i})">+ Ouvrières</button>` : ''}</div>
+      ${ok ? `<div style="display:flex;gap:6px;margin-top:9px;justify-content:flex-end;"><button class="btn btn-ghost fc-btn" ${i ? '' : 'disabled'} onclick="scOpMove(${i},-1)">↑ Monter</button><button class="btn btn-ghost fc-btn" ${i < cur.ops.length - 1 ? '' : 'disabled'} onclick="scOpMove(${i},1)">↓ Descendre</button><button class="btn btn-ghost fc-btn" style="color:#DC3F45;" onclick="scOpSuppr(${i})">Supprimer</button></div>` : ''}</div>`).join('') || '<div style="padding:12px;color:var(--ink-soft);">Aucune opération.</div>'}
+    ${ok ? `<button class="btn btn-primary" style="width:100%;" onclick="scOpAjout()">+ Ajouter une opération</button>` : ''}
     <p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 0;">Le dernier poste = sortie de la chaîne. Une ouvrière ne peut être que sur un poste à la fois.</p></div>`;
 }
 function scModMaj(f){ const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; f(c, l); fcSaveModeles(l); nav('chaine-params'); }
@@ -127,11 +124,19 @@ window.scModExemple = function(){ const l = fcModeles(), id = scNouvId(); l.push
 window.scModOuvrir = function(id){ scModEdit = id; nav('chaine-params'); };
 window.scModSuppr = function(id){ if(!confirm('Supprimer ce modèle ? Les fiches déjà saisies gardent leurs pièces.')) return; fcSaveModeles(fcModeles().filter(x => x.id !== id)); if(scModEdit === id) scModEdit = null; nav('chaine-params'); };
 window.scModNom = (v) => scModMaj(c => { c.nom = String(v).trim() || 'Modèle'; });
-window.scOpAjout = () => scModMaj(c => { c.ops.push({nom:'Poste ' + (c.ops.length + 1), cadence:getObjHoraireOp(), emps:[]}); });
+window.scOpAjout = () => scModMaj(c => { c.ops.push({nom:'Poste ' + (Math.max(0, ...c.ops.map(o => parseInt(String(o.nom).replace(/\D/g, '')) || 0)) + 1), cadence:getObjHoraireOp(), emps:[]}); });
 window.scOpSet = (i, k, v) => scModMaj(c => { if(k === 'cadence'){ const n = parseFloat(v); c.ops[i].cadence = n > 0 ? n : ''; } else c.ops[i].nom = String(v).trim() || ('Poste ' + (i + 1)); });
 window.scOpSuppr = (i) => scModMaj(c => { c.ops.splice(i, 1); });
 window.scOpMove = (i, d) => scModMaj(c => { const j = i + d; if(j < 0 || j >= c.ops.length) return; const t = c.ops[i]; c.ops[i] = c.ops[j]; c.ops[j] = t; });
-window.scOpEmp = (i, id, add) => { if(!id) return; scModMaj(c => { const o = c.ops[i]; o.emps = (o.emps || []).filter(x => x !== id); if(add) o.emps.push(id); }); };
+window.scPick = function(i){
+  const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; const em = activeEmployees(), ou = {}; c.ops.forEach((o, k) => (o.emps || []).forEach(id => { ou[id] = k; }));
+  document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">${esc(c.ops[i].nom)}</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Touchez une ouvrière pour l'ajouter ou la retirer de ce poste.</div>
+    <div style="max-height:58vh;overflow:auto;">${em.map(([id, e]) => { const k = ou[id], ici = k === i; return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="scPickToggle(${i},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${k !== undefined && !ici ? esc(c.ops[k].nom) : ''}</span></button>`; }).join('')}</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcFermer()">Terminer</button></div></div>`;
+};
+window.scPickToggle = function(i, id){ const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; const deja = (c.ops[i].emps || []).indexOf(id) >= 0; c.ops.forEach((o, k) => { o.emps = (o.emps || []).filter(x => x !== id); if(k === i && !deja) o.emps.push(id); }); fcSaveModeles(l); scPick(i); };
 // ---------- Navigation et module ----------
 const scNavItems = window.navItems;
 window.navItems = function(){
