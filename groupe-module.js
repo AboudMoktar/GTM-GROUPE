@@ -179,7 +179,7 @@ function directionIndicateurs(soc){
   const val = (fn) => { try { const v = fn(); return (v === null || v === undefined || Number.isNaN(v)) ? '—' : v; } catch(e){ console.error('Indicateur direction', soc, e); return '—'; } };
   const pct = (v) => (typeof v === 'number') ? Math.round(v) + ' %' : '—';
   // Factures émises non réglées (et combien sont en retard).
-  const aEncaisser = (s) => ({label:'À encaisser', large:true, valeur: val(() => { const f = factIndicateurs(s); return fmtDT(f.aEncaisser) + (f.retard ? ' · ' + f.retard + ' en retard' : ''); })});
+  const aEncaisser = (s) => ({label:'À encaisser', large:true, valeur: val(() => { const f = factIndicateurs(s); return (s === 'tek' ? (Number(f.aEncaisser) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €' : fmtDT(f.aEncaisser)) + (f.retard ? ' · ' + f.retard + ' en retard' : ''); })});
   if(soc === 'tek'){
     return [
       {label:'Production du jour', valeur: val(() => computeTotals(getDay(today)).totalGeneral)},
@@ -241,7 +241,7 @@ function renderDirection(){
       </div>`;
   };
   document.getElementById('app').innerHTML = `
-    <div style="max-width:1100px;margin:0 auto;padding:20px 16px;">
+    <div style="width:100%;flex:1 1 100%;max-width:1280px;margin:0 auto;padding:24px 20px;">
       <div class="flex-header" style="margin-bottom:16px;">
         <div>
           <h2 style="margin:0;">Vue direction</h2>
@@ -254,7 +254,7 @@ function renderDirection(){
           <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start;">
         ${SOCIETE_KEYS.map(carte).join('')}
       </div>
     </div>
