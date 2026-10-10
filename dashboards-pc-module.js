@@ -1,6 +1,6 @@
 // Tableaux de bord des modules (TEK-TREND, GADH, MGT, RH) : sur grand écran, cartes d'indicateurs avec icône
 // à gauche et cartes en deux colonnes, dans le même esprit que la Vue direction.
-const DPC_TABS = ['dashboard', 'gadh-dashboard', 'rh-dashboard'];
+const DPC_TABS = ['rh-dashboard'];
 (function(){
   const st = document.createElement('style');
   st.textContent = `
