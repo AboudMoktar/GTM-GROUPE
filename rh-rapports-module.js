@@ -54,10 +54,14 @@ function rrLundi(iso){ const d = new Date(iso + 'T00:00:00'), j = (d.getDay() + 
 function rrDonnees(type, ref){
   const emps = activeEmployees();
   const nom = (e) => e.nom || '';
+  const ids = emps.map(([id]) => id);
+  const D = rrDonneesBrut(type, ref, emps, nom); if(D) D.ids = ids; return D;
+}
+function rrDonneesBrut(type, ref, emps, nom){
   if(type === 'jour'){
     const lignes = emps.map(([id, e]) => { const j = rrJour(id, ref); return [e.matricule || '', nom(e), e.poste || '', j.code, RR_CODES[j.code], j.arrivee, j.depart, rrNum(j.retardH), rrNum(j.autH), rrNum(j.travaillees), j.motif]; });
     const cnt = (c) => lignes.filter(l => l[3] === c).length;
-    return {titre:'Rapport journalier — ' + rrFr(ref), fichier:'RH_journalier_' + ref, entetes:['Matricule', 'Nom', 'Poste', 'Code', 'État', 'Arrivée', 'Départ', 'Retard (h)', 'Sorties (h)', 'Heures travaillées', 'Observation'], lignes, colCode:3,
+    return {jourRef:ref, titre:'Rapport journalier — ' + rrFr(ref), fichier:'RH_journalier_' + ref, entetes:['Matricule', 'Nom', 'Poste', 'Code', 'État', 'Arrivée', 'Départ', 'Retard (h)', 'Sorties (h)', 'Heures travaillées', 'Observation'], lignes, colCode:3,
       resume:[['Effectif', emps.length], ['Présents', cnt('P') + cnt('R') + cnt('S')], ['dont retards', cnt('R')], ['dont sorties', cnt('S')], ['Absents', cnt('A') + cnt('ANJ') + cnt('AA') + cnt('X')], ['Congés', cnt('C')], ['Maladies', cnt('M')], ['Non renseignés', cnt('?')]]};
   }
   if(type === 'semaine' || type === 'mois'){
@@ -120,6 +124,47 @@ window.rrExcel = async function(type, ref){
   showToast('Rapport prêt');
 };
 
+// ---------- Correction d'un jour (passé ou présent) ----------
+window.rrCorriger = function(empId, date){
+  if(date > getTodayISO()){ showToast('Impossible de corriger un jour à venir'); return; }
+  const e = getEmployees()[empId]; if(!e) return;
+  const r = resolveDayStatus(empId, date), st = r.source === 'pointage' ? r.status : '';
+  let corps = `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">${esc(e.nom)} — <b>${rrFr(date)}</b></div>`;
+  if(r.source === 'periode'){
+    corps += `<div class="msg" style="margin-bottom:10px;font-size:12.5px;">${ABSENCE_TYPES[r.type].label} du ${rrFr(r.dateStart)} au ${rrFr(r.dateEnd)}${r.motif ? ' · ' + esc(r.motif) : ''}</div>
+      <button class="btn btn-primary" style="width:100%;" onclick="rhCloseModal();showEditAbsenceForm('${r.periodId}')">Modifier ou supprimer cette absence</button>`;
+  } else {
+    const actif = {present: st === 'present' && !computeRetardHours(r) && !(r.autorisations || []).length, retard: st === 'present' && computeRetardHours(r) > 0, sortie: st === 'present' && (r.autorisations || []).length > 0, absent: st === 'absent'};
+    corps += `<div class="rr-chips">${RR_ETATS.map(([k, l]) => `<button class="rr-chip rr-${k}${actif[k] ? ' on' : ''}" onclick="rrCorrigerEtat('${empId}','${date}','${k}')">${l}</button>`).join('')}</div>`;
+    if(st === 'present') corps += `<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+      <div class="field" style="margin:0;"><label style="font-size:10px;">Heure d'arrivée</label><input type="time" value="${r.in || ''}" onchange="rrCorrigerChamp('${empId}','${date}','in',this.value)"></div>
+      <div class="field" style="margin:0;"><label style="font-size:10px;">Heure de départ</label><input type="time" value="${r.out || ''}" onchange="rrCorrigerChamp('${empId}','${date}','out',this.value)"></div></div>
+      ${(r.autorisations || []).map((au, i) => `<div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;flex-wrap:wrap;"><div class="field" style="margin:0;"><label style="font-size:10px;">Sortie</label><input type="time" value="${au.sortie || ''}" onchange="rrCorrigerAut('${empId}','${date}',${i},'sortie',this.value)"></div><div class="field" style="margin:0;"><label style="font-size:10px;">Retour</label><input type="time" value="${au.retour || ''}" onchange="rrCorrigerAut('${empId}','${date}',${i},'retour',this.value)"></div><button class="icon-btn" onclick="rrCorrigerAut('${empId}','${date}',${i},null)" title="Retirer">✕</button></div>`).join('')}`;
+    if(st) corps += `<button class="btn btn-ghost" style="width:100%;margin-top:14px;" onclick="rrCorrigerEtat('${empId}','${date}','vide')">Effacer la saisie de ce jour</button>`;
+  }
+  rhModal('Corriger la journée', corps);
+};
+function rrApres(){ nav(activeTabIsRH()); }
+window.rrCorrigerEtat = function(empId, date, etat){
+  if(etat === 'conge' || etat === 'maladie'){
+    rhCloseModal(); showAbsenceForm(empId);
+    setTimeout(() => { const t = document.getElementById('ab-type'); if(t) t.value = etat; const a = document.getElementById('ab-start'), b = document.getElementById('ab-end'); if(a) a.value = date; if(b) b.value = date; }, 0); return;
+  }
+  const a = getAttendance(date), cur = a[empId] || {};
+  if(etat === 'vide') delete a[empId];
+  else if(etat === 'present') a[empId] = {status:'present', src:'manuel'};
+  else if(etat === 'absent') a[empId] = {status:'absent', src:'manuel'};
+  else if(etat === 'retard'){ const t = rrLireHeure("Heure d'arrivée (exemple 08:15)"); if(!t) return; a[empId] = {...cur, status:'present', in:t, src:'manuel'}; }
+  else if(etat === 'sortie'){ const t = rrLireHeure('Heure de sortie (exemple 10:30)'); if(!t) return; a[empId] = {...cur, status:'present', src:'manuel', autorisations:[...(cur.autorisations || []), {sortie:t, retour:'', prevue:''}]}; }
+  saveAttendance(date, a); rhCloseModal(); showToast('Journée corrigée'); rrApres();
+};
+window.rrCorrigerChamp = function(empId, date, champ, v){ const a = getAttendance(date); a[empId] = {...(a[empId] || {status:'present'}), [champ]:v, src:'manuel'}; saveAttendance(date, a); rrApres(); setTimeout(() => rrCorriger(empId, date), 50); };
+window.rrCorrigerAut = function(empId, date, i, champ, v){
+  const a = getAttendance(date), cur = a[empId] || {status:'present'}, l = [...(cur.autorisations || [])];
+  if(champ === null) l.splice(i, 1); else l[i] = {...l[i], [champ]:v};
+  a[empId] = {...cur, autorisations:l, src:'manuel'}; saveAttendance(date, a); rrApres(); setTimeout(() => rrCorriger(empId, date), 50);
+};
+
 // ---------- Écran « Rapports » ----------
 let rrType = 'jour', rrRef = null;
 const RR_TYPES = [['jour', 'Journalier'], ['semaine', 'Hebdomadaire'], ['mois', 'Mensuel par ouvrière'], ['paie', 'Pour la paie']];
@@ -130,10 +175,13 @@ function renderRHRapports(container){
   if(!rrRef || ((rrType === 'mois' || rrType === 'paie') !== (rrRef.length === 7))) rrRef = rrRefDefaut(rrType);
   const D = rrDonnees(rrType, rrRef);
   const mensuel = rrType === 'mois' || rrType === 'paie';
-  const cellule = (v, i) => {
-    const code = (D.colCode === i || (D.matrice && i >= D.matrice.debut && i <= D.matrice.fin)) && v ? v : null;
-    return `<td${code ? ` class="rr-c rr-k-${String(code).replace('?', 'q')}"` : ''}>${v === null || v === undefined ? '' : esc(String(v))}</td>`;
+  const cellule = (v, i, k) => {
+    const dansM = D.matrice && i >= D.matrice.debut && i <= D.matrice.fin;
+    const code = (D.colCode === i || dansM) && v ? v : null;
+    const clic = dansM ? ` onclick="rrCorriger('${D.ids[k]}','${D.jours[i - D.matrice.debut]}')" style="cursor:pointer;"` : '';
+    return `<td class="${code ? 'rr-c rr-k-' + String(code).replace('?', 'q') : ''}${dansM ? ' rr-cl' : ''}"${clic}>${v === null || v === undefined ? '' : esc(String(v))}</td>`;
   };
+  const aide = (D.jourRef || D.matrice) ? `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;">👆 Touchez ${D.jourRef ? 'une ligne' : 'une case'} pour corriger l'état d'un jour, même passé.</div>` : '';
   container.innerHTML = `
     <div class="card" style="padding:12px;">
       <div class="rr-types">${RR_TYPES.map(([k, l]) => `<button class="btn ${rrType === k ? 'btn-primary' : 'btn-ghost'}" onclick="rrChoisir('${k}')">${l}</button>`).join('')}</div>
@@ -142,10 +190,11 @@ function renderRHRapports(container){
         <span style="font-size:12px;color:var(--ink-soft);flex:1;min-width:140px;">${esc(D.titre)}</span>
         <button class="btn btn-primary" onclick="rrExcel('${rrType}','${rrRef}')">Télécharger en Excel</button>
       </div>
-      <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;">${D.resume.map(r => esc(r[0]) + ' : <b>' + esc(String(r[1])) + '</b>').join(' · ')}</div>
+      <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;">${D.resume.map(r => esc(r[0]) + ' : <b>' + esc(String(r[1])) + '</b>').join(' · ')}</div>${aide}
     </div>
+    <div id="rh-modal-zone"></div>
     <div class="card" style="padding:8px;"><div class="rr-scroll"><table class="rr-t"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-      <tbody>${D.lignes.length ? D.lignes.map(l => `<tr>${l.map(cellule).join('')}</tr>`).join('') : `<tr><td colspan="${D.entetes.length}" style="padding:20px;text-align:center;color:var(--ink-soft);">Aucun employé actif</td></tr>`}</tbody></table></div>
+      <tbody>${D.lignes.length ? D.lignes.map((l, k) => `<tr${D.jourRef ? ` class="rr-lg" onclick="rrCorriger('${D.ids[k]}','${D.jourRef}')"` : ''}>${l.map((v, i) => cellule(v, i, k)).join('')}</tr>`).join('') : `<tr><td colspan="${D.entetes.length}" style="padding:20px;text-align:center;color:var(--ink-soft);">Aucun employé actif</td></tr>`}</tbody></table></div>
       ${(D.matrice || D.colCode != null) ? `<div style="font-size:10.5px;color:var(--ink-soft);padding:8px 4px 2px;">${Object.entries(RR_CODES).map(([k, v]) => `<b>${k}</b> ${v}`).join(' · ')}</div>` : ''}</div>`;
 }
 const rrNavOrigine = window.nav;
@@ -163,7 +212,7 @@ rrCss.textContent = `
 .rr-chip.on.rr-absent{background:#ef4444;border-color:#ef4444;color:#fff;}
 .rr-types{display:flex;gap:6px;flex-wrap:wrap;} .rr-types .btn{padding:8px 12px;font-size:12.5px;}
 .rr-scroll{overflow:auto;max-height:68vh;} .rr-t{border-collapse:collapse;font-size:12px;width:100%;} .rr-t th{position:sticky;top:0;background:#0F3D66;color:#fff;padding:6px 7px;font-size:11px;white-space:nowrap;z-index:1;}
-.rr-t td{border:1px solid var(--border);padding:5px 7px;white-space:nowrap;} .rr-c{text-align:center;font-weight:800;}
+.rr-t td{border:1px solid var(--border);padding:5px 7px;white-space:nowrap;} .rr-c{text-align:center;font-weight:800;} .rr-cl:hover{outline:2px solid #0F3D66;outline-offset:-2px;} .rr-lg{cursor:pointer;} .rr-lg:hover td{background:rgba(15,61,102,.07);}
 .rr-k-P{background:#d1f5e0;color:#0a5c36;} .rr-k-R{background:#ffe3b3;color:#8a5200;} .rr-k-S{background:#fff2b3;color:#7a6200;} .rr-k-A,.rr-k-ANJ{background:#fad0cf;color:#9b1c1c;}
 .rr-k-C{background:#d6e4ff;color:#1e429f;} .rr-k-M{background:#e9d5ff;color:#6b21a8;} .rr-k-AA{background:#ffe3b3;color:#8a5200;} .rr-k-X{background:#eee;color:#444;}
 :root[data-theme="dark"] .rr-k-P,:root[data-theme="dark"] .rr-k-R,:root[data-theme="dark"] .rr-k-S,:root[data-theme="dark"] .rr-k-A,:root[data-theme="dark"] .rr-k-ANJ,:root[data-theme="dark"] .rr-k-C,:root[data-theme="dark"] .rr-k-M,:root[data-theme="dark"] .rr-k-AA,:root[data-theme="dark"] .rr-k-X{filter:brightness(.85);}
