@@ -36,8 +36,8 @@ function scAgg(du, au){
   const jours = scPlage(du, au), ouv = {}, postes = {}, pertes = [], motifs = {};
   const tot = jours.reduce((t, j) => ({q:t.q + j.q, o:t.o + j.o, p:t.p + j.p}), {q:0, o:0, p:0});
   jours.forEach(j => { j.calc.forEach(x => {
-    if(x.c.det.some(d => d.saisi)){ const a = ouv[x.id] || (ouv[x.id] = {nom:x.e.nom, poste:x.poste, j:0, q:0, o:0, p:0}); a.poste = x.poste; a.j++; a.q += x.c.qty; a.o += x.c.obj; a.p += x.c.pertes;
-      const b = postes[x.poste] || (postes[x.poste] = {nom:x.poste, ids:{}, q:0, o:0, p:0}); b.ids[x.id] = 1; b.q += x.c.qty; b.o += x.c.obj; b.p += x.c.pertes; }
+    if(x.c.det.some(d => d.saisi)){ const a = ouv[x.id] || (ouv[x.id] = {nom:x.e.nom, poste:x.poste, j:0, q:0, o:0, p:0, d:{}}); a.poste = (a.poste === x.poste || !a.poste.length) ? x.poste : a.poste + ' / ' + x.poste; if(!a.d[j.date]){ a.d[j.date] = 1; a.j++; } a.q += x.c.qty; a.o += x.c.obj; a.p += x.c.pertes;
+      const pk = (x.mnom ? x.mnom + ' · ' : '') + x.poste, b = postes[pk] || (postes[pk] = {nom:pk, ids:{}, q:0, o:0, p:0}); b.ids[x.id] = 1; b.q += x.c.qty; b.o += x.c.obj; b.p += x.c.pertes; }
     x.c.listePertes.forEach(l => { const m = l.motif || 'Autre', mn = parseInt(l.min) || 0; motifs[m] = (motifs[m] || 0) + mn; pertes.push([scJf(j.date), x.e.nom, x.poste, mn, m, l.note || '']); }); }); });
   return {jours, tot, ouv:Object.values(ouv), postes:Object.values(postes), pertes, motifs};
 }
@@ -108,9 +108,10 @@ function renderChaineParams2(m){
   const ok = currentUser.role === 'admin', mods = fcModeles(), em = getEmployees(), actifs = activeEmployees();
   if(scModEdit && !mods.find(x => x.id === scModEdit)) scModEdit = null;
   const cur = mods.find(x => x.id === scModEdit);
-  const liste = `<div class="card">${scTitre('Modèles et postes', ok ? `<button class="btn btn-primary" onclick="scModNouveau()">+ Nouveau modèle</button>` : '')}
+  const liste = `<div class="card">${scTitre('Modèles et postes', ok ? `<button class="btn btn-primary" onclick="scModNouveau()">+ Nouveau modèle</button>` : '')}<div id="fc-zone"></div>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Un modèle = ses opérations (postes) dans l'ordre de la chaîne, avec la cadence de chaque poste (pièces/heure par ouvrière) et les ouvrières par défaut. Dans la Fiche, on choisit le modèle du jour : ses postes apparaissent avec leurs ouvrières, modifiables.</p>
     ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
+    ${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="fcPolyPick(-1)">⚖ Volantes (équilibrage) : ${fcParams().polyv.length}</button>` : ''}
     ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (15 opérations)</button>` : ''}</div>`;
   if(!cur){ m.innerHTML = liste; return; }
   m.innerHTML = `<div class="card">${scTitre('Modèle', `<button class="btn btn-ghost" onclick="scModOuvrir(null)">‹ Retour aux modèles</button>`)}<div id="fc-zone"></div>
