@@ -98,15 +98,40 @@ function renderChaineRapports(m){
     ${D ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${D.resume.map(x => esc(x[0]) + ' : <b>' + esc(String(x[1])) + '</b>').join(' · ')}</div>
     ${D.lignes.length ? `<div class="fc-scroll"><table class="fc-t"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${D.lignes.slice(0, MAX).map(l => `<tr>${l.map((v, i) => `<td${i === 0 ? ' style="text-align:left;"' : ''}>${v === null || v === undefined ? '' : esc(String(v))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${D.lignes.length > MAX ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${MAX} premières lignes affichées sur ${D.lignes.length} : l'export Excel / PDF contient tout.</div>` : ''}` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}` : ''}</div>`;
 }
+let scModEdit = null;
+const scNouvId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const SC_EXEMPLE = [['Ourlet manche (Goulot)', 60], ['Fermer manche', 120], ['Pointage V', 90], ['Collage encolure', 90], ['Ourlet bas', 84], ['Pose attache', 65], ['Ultrason triangle', 72], ['Fermer côté', 65], ['Montage manche', 65], ['Surpiquer côté (Goulot)', 60], ['Bride', 100], ['Pose agrafe', 120], ['Finition', 105], ['Contrôle', 108], ['Emballage', 90]];
 function renderChaineParams(m){
-  const p = fcParams(), actifs = activeEmployees(), ch = p.chain, ok = currentUser.role === 'admin';
-  m.innerHTML = `<div class="card">${scTitre('Paramètres de la chaîne', ok ? `<button class="btn btn-ghost" onclick="fcPostes()">Ordre des postes</button>` : '')}<div id="fc-zone"></div>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Pour chaque ouvrière : appartient-elle à la chaîne, son poste et sa cadence (pièces/heure). Les pièces de la chaîne sont celles du dernier poste ; l'objectif de la chaîne est celui du poste goulot (le plus lent).</p>
-    <datalist id="fc-postes-dl">${[...new Set(actifs.map(([i, e]) => (e.poste || '').trim()).concat(p.postes).filter(Boolean))].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-    <div class="table-wrap"><table class="fc-t"><thead><tr><th>Chaîne</th><th style="text-align:left;">Ouvrière</th><th>Poste</th><th>Cadence / h</th></tr></thead><tbody>${actifs.map(([id, e]) => `<tr><td><input type="checkbox" ${(!ch || !ch.length || ch.indexOf(id) >= 0) ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="scChaineToggle('${id}',this.checked)"></td><td class="fc-nom"><b>${esc(e.nom)}</b></td><td><input class="fc-objh" style="width:130px;" list="fc-postes-dl" value="${esc(fcPoste(id, e) === 'Sans poste' ? '' : fcPoste(id, e))}" ${ok ? '' : 'disabled'} onchange="fcPosteSet('${id}',this.value)"></td><td><input class="fc-objh" type="number" min="0" step="0.5" value="${fcObjH(id)}" ${ok ? '' : 'disabled'} onchange="scObjSet('${id}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>`;
+  const ok = currentUser.role === 'admin', mods = fcModeles(), em = getEmployees(), actifs = activeEmployees();
+  if(scModEdit && !mods.find(x => x.id === scModEdit)) scModEdit = null;
+  const cur = mods.find(x => x.id === scModEdit);
+  const liste = `<div class="card">${scTitre('Modèles et postes', ok ? `<button class="btn btn-primary" onclick="scModNouveau()">+ Nouveau modèle</button>` : '')}
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Un modèle = ses opérations (postes) dans l'ordre de la chaîne, avec la cadence de chaque poste (pièces/heure par ouvrière) et les ouvrières par défaut. Dans la Fiche, on choisit le modèle du jour : ses postes apparaissent avec leurs ouvrières, modifiables.</p>
+    ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
+    ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (15 opérations)</button>` : ''}</div>`;
+  if(!cur){ m.innerHTML = liste; return; }
+  const pris = new Set(); cur.ops.forEach(o => (o.emps || []).forEach(id => pris.add(id)));
+  m.innerHTML = `<div class="card">${scTitre('Modèle', `<button class="btn btn-ghost" onclick="scModOuvrir(null)">‹ Retour aux modèles</button>`)}
+    <div class="field"><label>Nom du modèle</label><input value="${esc(cur.nom)}" ${ok ? '' : 'disabled'} onchange="scModNom(this.value)"></div>
+    <div class="table-wrap"><table class="fc-t"><thead><tr><th>#</th><th style="text-align:left;">Poste (opération)</th><th>Cadence /h</th><th style="text-align:left;">Ouvrières par défaut</th><th></th></tr></thead><tbody>
+    ${cur.ops.map((o, i) => `<tr><td>${i + 1}</td><td><input class="fc-objh" style="width:150px;text-align:left;" value="${esc(o.nom)}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'nom',this.value)"></td><td><input class="fc-objh" type="number" min="0" step="0.5" value="${o.cadence || ''}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'cadence',this.value)"></td>
+      <td style="text-align:left;min-width:190px;">${(o.emps || []).map(id => `<span class="kp-chip">${esc((em[id] || {}).nom || id)}${ok ? ` <a href="#" onclick="scOpEmp(${i},'${id}',false);return false;" style="color:#DC3F45;text-decoration:none;">✕</a>` : ''}</span>`).join(' ')}
+        ${ok ? `<select onchange="scOpEmp(${i},this.value,true)"><option value="">+ ouvrière</option>${actifs.filter(([id]) => !pris.has(id)).map(([id, e]) => `<option value="${id}">${esc(e.nom)}</option>`).join('')}</select>` : ''}</td>
+      <td style="white-space:nowrap;">${ok ? `<button class="icon-btn" ${i ? '' : 'disabled'} onclick="scOpMove(${i},-1)">↑</button><button class="icon-btn" ${i < cur.ops.length - 1 ? '' : 'disabled'} onclick="scOpMove(${i},1)">↓</button><button class="icon-btn" onclick="scOpSuppr(${i})">✕</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="5" style="padding:16px;color:var(--ink-soft);">Aucune opération.</td></tr>'}
+    </tbody></table></div>${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scOpAjout()">+ Ajouter une opération</button>` : ''}
+    <p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 0;">Le dernier poste = sortie de la chaîne. Une ouvrière ne peut être que sur un poste à la fois.</p></div>`;
 }
-window.scChaineToggle = function(id, on){ const p = fcParams(), tous = activeEmployees().map(([i]) => i); let l = (p.chain && p.chain.length) ? p.chain.slice() : tous; l = on ? (l.indexOf(id) < 0 ? l.concat(id) : l) : l.filter(i => i !== id); p.chain = l; fcSaveParams(p); };
-window.scObjSet = function(id, v){ const p = fcParams(), n = parseFloat(v); if(n > 0) p.obj[id] = n; else delete p.obj[id]; fcSaveParams(p); };
+function scModMaj(f){ const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; f(c, l); fcSaveModeles(l); nav('chaine-params'); }
+window.scModNouveau = function(){ const l = fcModeles(), id = scNouvId(); l.push({id, nom:'Nouveau modèle', ops:[]}); fcSaveModeles(l); scModEdit = id; nav('chaine-params'); };
+window.scModExemple = function(){ const l = fcModeles(), id = scNouvId(); l.push({id, nom:'Tee-shirt Pharmacie', ops:SC_EXEMPLE.map(x => ({nom:x[0], cadence:x[1], emps:[]}))}); fcSaveModeles(l); scModEdit = id; nav('chaine-params'); };
+window.scModOuvrir = function(id){ scModEdit = id; nav('chaine-params'); };
+window.scModSuppr = function(id){ if(!confirm('Supprimer ce modèle ? Les fiches déjà saisies gardent leurs pièces.')) return; fcSaveModeles(fcModeles().filter(x => x.id !== id)); if(scModEdit === id) scModEdit = null; nav('chaine-params'); };
+window.scModNom = (v) => scModMaj(c => { c.nom = String(v).trim() || 'Modèle'; });
+window.scOpAjout = () => scModMaj(c => { c.ops.push({nom:'Poste ' + (c.ops.length + 1), cadence:getObjHoraireOp(), emps:[]}); });
+window.scOpSet = (i, k, v) => scModMaj(c => { if(k === 'cadence'){ const n = parseFloat(v); c.ops[i].cadence = n > 0 ? n : ''; } else c.ops[i].nom = String(v).trim() || ('Poste ' + (i + 1)); });
+window.scOpSuppr = (i) => scModMaj(c => { c.ops.splice(i, 1); });
+window.scOpMove = (i, d) => scModMaj(c => { const j = i + d; if(j < 0 || j >= c.ops.length) return; const t = c.ops[i]; c.ops[i] = c.ops[j]; c.ops[j] = t; });
+window.scOpEmp = (i, id, add) => { if(!id) return; scModMaj(c => { const o = c.ops[i]; o.emps = (o.emps || []).filter(x => x !== id); if(add) o.emps.push(id); }); };
 // ---------- Navigation et module ----------
 const scNavItems = window.navItems;
 window.navItems = function(){
