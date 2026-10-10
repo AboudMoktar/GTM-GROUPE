@@ -1193,6 +1193,7 @@ function navItems(){
   const items = [
     {tab:'dashboard', label:'Tableau', icon:ICONS.dashboard, show:true},
     {tab:'saisie', label:'Saisie', icon:ICONS.saisie, show:canSaisie(currentUser.role), onclick:"saisieDate = getTodayISO(); nav('saisie')"},
+    {tab:'fiche-chaine', label:'Fiche chaîne', icon:ICONS.team, show:canSaisie(currentUser.role) || currentUser.role==='viewer'},
     {tab:'historique', label:'Historique', icon:ICONS.historique, show:true},
     {tab:'stats', label:'Stats', icon:ICONS.stats, show:true},
     {tab:'messages', label:'Messages', icon:ICONS.messages, show:true},
@@ -2815,6 +2816,7 @@ window.onload = init;
 <script src="./dashboards-modules-module.js"></script>
 <script src="./enregistrer-module.js"></script>
 <script src="./rh-rapports-module.js"></script>
+<script src="./fiche-chaine-module.js"></script>
 <script src="./nav-historique-module.js"></script>
 <script>
 if(false){
