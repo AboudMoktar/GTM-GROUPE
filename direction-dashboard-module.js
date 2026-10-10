@@ -37,6 +37,11 @@ function ddDonnees(){
     const d = new Date(); d.setDate(d.getDate() - i); const iso = toISODateLocal(d);
     D.serie.push({iso, j:d.getDate(), tek:ddSecuriser(() => computeTotals(getDay(iso)).totalGeneral, 0), gadh:ddSecuriser(() => gadhDayTotals(iso).totalReel, 0)});
   }
+  D.lots = ddSecuriser(() => suiviResume().map(l => ({lot:l.lot, qte:l.qte, exp:l.etapes.exp || 0, enCours:l.enCours, pct:l.qte > 0 ? Math.min(100, Math.round((l.etapes.exp || 0) / l.qte * 100)) : 0})), []);
+  D.lotsEnCours = D.lots.filter(l => l.enCours).sort((a, b) => b.pct - a.pct);
+  D.lotsFinis = D.lots.filter(l => !l.enCours);
+  D.avancement = (() => { const q = D.lotsEnCours.reduce((t, l) => t + l.qte, 0), e = D.lotsEnCours.reduce((t, l) => t + l.exp, 0); return q > 0 ? e / q * 100 : null; })();
+  D.presence = D.presents.total > 0 ? D.presents.n / D.presents.total * 100 : null;
   D.alertes = ddSecuriser(() => notifCalculer(), []);
   D.activite = ddSecuriser(() => {
     const l = []; (getJSON('audit_jours', []) || []).slice(-3).forEach(j => Object.values(auditJour(j)).forEach(e => l.push(e)));
@@ -74,6 +79,18 @@ function ddDonut(parts){
 }
 const ddCouleurRend = (v) => v === null ? 'var(--ink-faint)' : v >= 85 ? 'var(--good)' : v >= 60 ? 'var(--warn)' : 'var(--crit)';
 
+const ddTon = (v) => v === null ? '#9aa4b2' : v >= 85 ? '#10b9a0' : v >= 60 ? '#f29a4b' : '#e5484d';
+function ddJaugeP(titre, valeur){
+  const c = ddTon(valeur), v = valeur === null ? 0 : Math.max(0, Math.min(100, valeur)), R = 70, cx = 90, cy = 90, a = Math.PI * (1 - v / 100);
+  const pt = (ang) => [cx + R * Math.cos(ang), cy - R * Math.sin(ang)], [x1, y1] = pt(Math.PI), [x2, y2] = pt(0), [x3, y3] = pt(a);
+  return `<div class="dd-jp"><div class="dd-jp-t">${titre}</div><svg viewBox="0 0 180 100" style="width:100%;max-width:210px;display:block;margin:0 auto;"><path d="M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}" fill="none" stroke="var(--surface-3)" stroke-width="26"/>
+    ${v > 0 ? `<path d="M${x1} ${y1} A${R} ${R} 0 0 1 ${x3} ${y3}" fill="none" stroke="${c}" stroke-width="26"/>` : ''}
+    <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="24" font-weight="700" fill="var(--ink)">${valeur === null ? '—' : Math.round(valeur)}<tspan font-size="12">${valeur === null ? '' : '%'}</tspan></text></svg></div>`;
+}
+function ddBoite(valeur, libelle, ton, clic){
+  return `<div class="dd-bx dd-bx-${ton}" ${clic ? `onclick="${clic}" style="cursor:pointer;"` : ''}><div class="dd-bx-v">${valeur}</div><div class="dd-bx-l">${libelle}</div></div>`;
+}
+function ddBarreLot(l, fini){ return `<div class="dd-lot${fini ? ' fini' : ''}"><div style="width:${fini ? 100 : Math.max(l.pct, 3)}%"></div><span>${esc(String(l.lot))}</span><b>${fini ? l.qte : l.pct + ' %'}</b></div>`; }
 function ddKpi(titre, valeur, sous, icone, teinte, clic){
   return `<div class="dd-kpi" ${clic ? `onclick="${clic}" style="cursor:pointer;"` : ''}><div class="dd-kpi-t"><span>${titre}</span><i style="background:${teinte}1f;color:${teinte};">${ddIcone(icone)}</i></div><div class="dd-kpi-v">${valeur}</div><div class="dd-kpi-s">${sous}</div></div>`;
 }
@@ -104,6 +121,15 @@ window.renderDirection = function(){
     ddKpi('À encaisser', ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'Aucun retard', 'euro', '#16a34a'),
     ddKpi('Pipeline MGT', Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', (D.mgt.offresEnCours || 0) + ' offres · ' + (D.sav.ticketsActifs || 0) + ' tickets SAV', 'target', DD_COULEURS.mgt)
   ].join('');
+  const ton0 = (n, bon) => !n ? 'nul' : (bon || 'ok');
+  const boites = [
+    ddBoite(D.prodTek.toLocaleString('fr-FR'), 'Pièces produites TEK-TREND', ton0(D.prodTek)),
+    ddBoite(D.retGadh.toLocaleString('fr-FR'), 'Pièces retournées GADH', ton0(D.retGadh)),
+    ddBoite(D.presents.n + '<small>/' + D.presents.total + '</small>', 'Présents aujourd\'hui', ton0(D.presents.n)),
+    ddBoite(D.cmdTek, 'Commandes en cours · ' + D.cmdGadh + ' chez GADH', ton0(D.cmdTek)),
+    ddBoite(ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'À encaisser', D.retard ? 'bad' : ton0(D.aEncaisser)),
+    ddBoite(Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', 'Pipeline MGT · ' + (D.mgt.offresEnCours || 0) + ' offres', ton0(D.mgt.pipeline))
+  ].join('');
   const alertes = D.alertes.slice(0, 6).map(a => `<div class="dd-li"><i style="background:${a.niveau === 'crit' ? 'var(--crit)' : a.niveau === 'warn' ? 'var(--warn)' : 'var(--accent-2)'};"></i><div><b>${esc(a.titre)}</b><span>${SOCIETES[a.soc] ? SOCIETES[a.soc].nom : ''}${a.detail ? ' · ' + esc(a.detail) : ''}</span></div></div>`).join('');
   const activite = D.activite.map(e => `<div class="dd-li"><i style="background:${DD_COULEURS[e.soc] || 'var(--ink-faint)'};"></i><div><b>${esc(e.u || '')}</b><span>${esc(e.txt || e.lib || '')} · ${ddHeure(e.t)}</span></div></div>`).join('');
   let offresMgt = ''; try { offresMgt = typeof accueilGraphique === 'function' ? accueilGraphique() : ''; } catch(e) {}
@@ -114,15 +140,17 @@ window.renderDirection = function(){
       <div class="dd-haut"><div><h2>Vue direction</h2><div class="dd-date">${jour}</div></div>
         <div class="dd-actions">${typeof notifCloche === 'function' ? notifCloche().replace('class="notif-btn"', 'class="notif-btn notif-btn-clair btn btn-ghost" style="padding:10px 12px;"') : ''}<button class="theme-btn dd-theme" onclick="themeBasculer()"></button>
           <button class="btn btn-ghost dd-mob" onclick="switchSociete()">Sociétés</button>${peutAudit ? '<button class="btn btn-ghost dd-mob" onclick="auditOuvrir()">Audit</button>' : ''}<button class="btn btn-ghost dd-mob" onclick="logout()">Déconnexion</button></div></div>
-      <div class="dd-kpis">${kpis}</div>
+      <h3 class="dd-titre">Indicateurs globaux</h3>
+      <div class="dd-jauges4">${ddJaugeP('Rendement TEK-TREND', D.rendTek)}${ddJaugeP('Rendement GADH', D.rendGadh)}${ddJaugeP('Présence du personnel', D.presence)}${ddJaugeP('Commandes expédiées', D.avancement)}</div>
+      <div class="dd-boites">${boites}</div>
+      <div class="dd-g dd-g3">
+        <div class="dd-card dd-plat"><div class="dd-ct"><h3>À surveiller</h3><button class="dd-lien" onclick="notifOuvrir()">Tout voir</button></div><div class="dd-scroll">${alertes || '<div class="dd-vide">Rien à signaler</div>'}</div></div>
+        <div class="dd-card dd-plat"><div class="dd-ct"><h3>Commandes en cours</h3><span>${D.lotsEnCours.length}</span></div><div class="dd-scroll">${D.lotsEnCours.map(l => ddBarreLot(l, false)).join('') || '<div class="dd-vide">Aucune commande en cours</div>'}</div></div>
+        <div class="dd-card dd-plat"><div class="dd-ct"><h3>Commandes terminées</h3><span>${D.lotsFinis.length}</span></div><div class="dd-scroll">${D.lotsFinis.map(l => ddBarreLot(l, true)).join('') || '<div class="dd-vide">Aucune commande terminée</div>'}</div></div>
+      </div>
       <div class="dd-g dd-g2">
         <div class="dd-card"><div class="dd-ct"><h3>Production des 14 derniers jours</h3><span><i style="background:${DD_COULEURS.tek}"></i>TEK-TREND <i style="background:${DD_COULEURS.gadh}"></i>GADH</span></div>${ddBarres(D.serie)}</div>
-        <div class="dd-card"><div class="dd-ct"><h3>Rendement du jour</h3></div><div class="dd-jauges"><div>${ddJauge(D.rendTek, ddCouleurRend(D.rendTek))}<div class="dd-jl">TEK-TREND</div></div><div>${ddJauge(D.rendGadh, ddCouleurRend(D.rendGadh))}<div class="dd-jl">GADH TUNISIA</div></div></div></div>
-      </div>
-      <div class="dd-g dd-g3">
-        <div class="dd-card"><div class="dd-ct"><h3>À encaisser par société</h3></div>${ddDonut(SOCIETE_KEYS.map(k => ({l:SOCIETES[k].nom, v:D.fact[k].aEncaisser || 0, c:DD_COULEURS[k]})))}</div>
-        <div class="dd-card"><div class="dd-ct"><h3>MGT · offres et chiffre d'affaires</h3></div>${offresMgt || '<div style="color:var(--ink-soft);font-size:13px;padding:30px 0;text-align:center;">Pas de données</div>'}</div>
-        <div class="dd-card"><div class="dd-ct"><h3>À surveiller</h3><button class="dd-lien" onclick="notifOuvrir()">Tout voir</button></div>${alertes || '<div style="color:var(--ink-soft);font-size:13px;padding:24px 0;text-align:center;">Rien à signaler</div>'}</div>
+        <div class="dd-card"><div class="dd-ct"><h3>MGT · offres et chiffre d'affaires</h3></div>${offresMgt || '<div class="dd-vide">Pas de données</div>'}</div>
       </div>
       <div class="dd-g dd-g4">
         ${SOCIETE_KEYS.map(k => ddCarteSociete(k, directionIndicateurs(k))).join('')}
@@ -152,7 +180,15 @@ ddCss.textContent = `
 .dd-li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--border-soft);} .dd-li:first-of-type{border-top:0;} .dd-li i{width:9px;height:9px;border-radius:50%;margin-top:5px;flex-shrink:0;} .dd-li b{display:block;font-size:13px;} .dd-li span{display:block;font-size:11.5px;color:var(--ink-soft);}
 .dd-soc{padding:0;overflow:hidden;} .dd-soc-band{height:6px;} .dd-soc-tete{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);} .dd-soc-tete b{display:block;font-size:15px;} .dd-soc-tete span{display:block;font-size:11.5px;color:var(--ink-soft);}
 .dd-soc-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px;} .dd-soc-grille div{border:1px solid var(--border);border-radius:11px;padding:8px 10px;} .dd-soc-grille span{display:block;font-size:10.5px;color:var(--ink-soft);font-weight:700;} .dd-soc-grille b{display:block;font-family:var(--mono);font-size:16px;margin-top:2px;}
-@media (min-width:760px){.dd-g2{grid-template-columns:2fr 1fr;}.dd-g3{grid-template-columns:repeat(3,1fr);}.dd-g4{grid-template-columns:repeat(2,1fr);}}
+.dd-titre{margin:4px 0 8px;font-size:16px;}
+.dd-jauges4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;} .dd-jp{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px 10px;} .dd-jp-t{text-align:center;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+.dd-boites{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+.dd-bx{border:1.5px solid;border-radius:6px;text-align:center;padding:14px 8px 10px;background:var(--surface);} .dd-bx-v{font-size:34px;font-weight:300;line-height:1.1;} .dd-bx-v small{font-size:18px;} .dd-bx-l{font-size:11px;font-weight:700;margin-top:4px;}
+.dd-bx-ok{border-color:#10b9a0;color:#0a9a85;background:rgba(16,185,160,.07);} .dd-bx-bad{border-color:#e5484d;color:#d23a3f;background:rgba(229,72,77,.07);} .dd-bx-nul{border-color:var(--border);color:var(--ink-soft);}
+.dd-plat{padding:14px;} .dd-scroll{max-height:290px;overflow:auto;} .dd-vide{color:var(--ink-soft);font-size:13px;padding:24px 0;text-align:center;}
+.dd-lot{position:relative;height:26px;background:var(--surface-3);border:1px solid var(--border);margin-bottom:7px;border-radius:3px;overflow:hidden;font-size:12px;} .dd-lot div{position:absolute;inset:0 auto 0 0;background:#6b7a90;opacity:.85;} .dd-lot span,.dd-lot b{position:relative;line-height:24px;padding:0 8px;} .dd-lot b{float:right;font-weight:700;}
+.dd-lot span{color:#fff;mix-blend-mode:normal;font-weight:600;text-shadow:0 0 3px rgba(0,0,0,.45);} .dd-lot.fini div{background:#10b9a0;opacity:.9;} .dd-lot b{color:var(--ink);}
+@media (min-width:760px){.dd-jauges4{grid-template-columns:repeat(4,1fr);}.dd-boites{grid-template-columns:repeat(6,1fr);}.dd-g2{grid-template-columns:2fr 1fr;}.dd-g3{grid-template-columns:repeat(3,1fr);}.dd-g4{grid-template-columns:repeat(2,1fr);}}
 @media (min-width:1024px){.dd-side{display:flex;}.dd-mob{display:none;}.dd-main{padding:22px 28px 40px;}.dd-g4{grid-template-columns:repeat(3,1fr);}}
 `;
 document.head.appendChild(ddCss);
