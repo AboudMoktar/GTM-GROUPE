@@ -228,6 +228,9 @@ button.step{cursor:pointer}
 .chip.nc{background:var(--bad-bg);color:var(--bad)}
 td input.nc{background:var(--bad-bg)!important;border-color:var(--bad)!important}
 table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;padding:4px 3px}table.flux th{font-size:12px}
+/* chiffres des tableaux de saisie : noir gras, toujours lisibles */
+table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
+table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
 </style>
 
 <div id="app">
