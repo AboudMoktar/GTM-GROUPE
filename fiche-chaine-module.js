@@ -4,9 +4,11 @@ const FC_MOTIFS = ['Panne machine', 'Attente matière', 'Changement de série', 
 let fcDate = null;
 function fcParams(){ const p = getJSON('fc_params', null) || {}; return {chain:p.chain || null, obj:p.obj || {}, poste:p.poste || {}, postes:p.postes || []}; }
 function fcSaveParams(p){ setJSON('fc_params', p); }
-function fcJour(date){ const d = getJSON('fc_' + date, null) || {}; return {rows:d.rows || {}, modele:d.modele || null, aff:d.aff || {}}; }
+function fcJour(date){ const d = getJSON('fc_' + date, null) || {}; const aff = {}; Object.keys(d.aff || {}).forEach(k => { aff[k] = fcListe(d.aff[k]); }); return {rows:d.rows || {}, modele:d.modele || null, aff}; }
 // Modèles : chaque modèle = liste ordonnée d'opérations (postes) {nom, cadence (pièces/h par ouvrière), emps (ouvrières par défaut)}.
-function fcModeles(){ const l = getJSON('fc_modeles', null); return Array.isArray(l) ? l : []; }
+// Firebase supprime les listes vides et peut renvoyer des objets à la place des listes : on normalise toujours.
+const fcListe = (v) => Array.isArray(v) ? v.filter(x => x !== null && x !== undefined) : (v && typeof v === 'object' ? Object.keys(v).sort((a, b) => a - b).map(k => v[k]) : []);
+function fcModeles(){ return fcListe(getJSON('fc_modeles', null)).map(m => ({id:m.id, nom:m.nom || 'Modèle', ops:fcListe(m.ops).map(o => ({nom:o.nom || 'Poste', cadence:o.cadence, emps:fcListe(o.emps)}))})); }
 function fcSaveModeles(l){ setJSON('fc_modeles', l); }
 // Affectation du jour : modèle choisi + ouvrières par poste (par défaut celles du modèle, modifiables jour par jour)
 function fcAff(date){
