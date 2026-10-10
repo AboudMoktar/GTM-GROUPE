@@ -160,18 +160,30 @@ window.fcChoisir = function(){
 };
 window.fcModeleSet = function(mid){ const j = getJSON('fc_' + fcDate, null) || {}; j.modele = mid || null; delete j.aff; setJSON('fc_' + fcDate, j); nav('fiche-chaine'); };
 window.fcAffecter = function(){
-  const A = fcAff(fcDate); if(!A) return; const em = getEmployees(), pris = new Set(A.ordre.map(x => x[0])), libres = activeEmployees().filter(([id]) => !pris.has(id));
+  const A = fcAff(fcDate); if(!A) return; const em = getEmployees();
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">Affectations — ${esc(A.modele.nom)}</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
-    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${fcDate.split('-').reverse().join('/')} · ouvrières par défaut du modèle, modifiables pour ce jour.</div>
-    <div style="max-height:56vh;overflow:auto;">${A.ops.map((o, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--border-soft);"><div><b>${i + 1}. ${esc(o.nom)}</b> <span style="font-size:11px;color:var(--ink-soft);">${o.cadence || ''} pcs/h</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;">${o.emps.map(id => `<span class="kp-chip">${esc((em[id] || {}).nom || id)} <a href="#" onclick="fcAffRetire(${i},'${id}');return false;" style="margin-left:4px;color:#DC3F45;text-decoration:none;">✕</a></span>`).join('') || '<span style="font-size:11px;color:var(--ink-soft);">Aucune ouvrière</span>'}
-      <select onchange="fcAffAjoute(${i},this.value)"><option value="">+ ouvrière</option>${libres.map(([id, e]) => `<option value="${id}">${esc(e.nom)}</option>`).join('')}</select></div></div>`).join('')}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${fcDate.split('-').reverse().join('/')} · ouvrières par défaut du modèle, modifiables pour ce jour. Touchez « Choisir » pour changer.</div>
+    <div style="max-height:58vh;overflow:auto;">${A.ops.map((o, i) => `<div style="padding:9px 0;border-bottom:1px solid var(--border-soft);display:flex;gap:8px;align-items:center;"><div style="flex:1;min-width:0;"><b>${i + 1}. ${esc(o.nom)}</b> <span style="font-size:11px;color:var(--ink-soft);">${o.cadence || ''} pcs/h</span>
+      <div style="margin-top:4px;font-size:12.5px;">${o.emps.map(id => esc((em[id] || {}).nom || id)).join(', ') || '<span style="color:var(--ink-soft);">Aucune ouvrière</span>'}</div></div>
+      <button class="btn btn-ghost fc-btn" onclick="fcAffPick(${i})">Choisir</button></div>`).join('')}</div>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcFermer()">Terminer</button></div></div>`;
 };
-function fcAffEcrit(i, l){ const A = fcAff(fcDate), j = getJSON('fc_' + fcDate, null) || {}; j.aff = j.aff || {}; A.ops.forEach((o, k) => { if(!j.aff[k]) j.aff[k] = o.emps.slice(); }); j.aff[i] = l; setJSON('fc_' + fcDate, j); fcAffecter(); }
-window.fcAffRetire = function(i, id){ const A = fcAff(fcDate); fcAffEcrit(i, A.ops[i].emps.filter(x => x !== id)); };
-window.fcAffAjoute = function(i, id){ if(!id) return; const A = fcAff(fcDate); fcAffEcrit(i, A.ops[i].emps.concat(id)); };
+window.fcAffPick = function(i){
+  const A = fcAff(fcDate); if(!A) return; const em = activeEmployees();
+  const ou = {}; A.ops.forEach((o, k) => o.emps.forEach(id => { ou[id] = k; }));
+  document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcAffecter()"><div class="modal-sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">${esc(A.ops[i].nom)}</h3><button class="icon-btn" onclick="fcAffecter()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Touchez une ouvrière pour l'ajouter ou la retirer de ce poste.</div>
+    <div style="max-height:58vh;overflow:auto;">${em.map(([id, e]) => { const k = ou[id], ici = k === i; return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="fcAffToggle(${i},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${k !== undefined && !ici ? esc(A.ops[k].nom) : ''}</span></button>`; }).join('')}</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcAffecter()">Terminer</button></div></div>`;
+};
+window.fcAffToggle = function(i, id){
+  const A = fcAff(fcDate), j = getJSON('fc_' + fcDate, null) || {}; j.aff = {};
+  const deja = A.ops[i].emps.indexOf(id) >= 0;
+  A.ops.forEach((o, k) => { let l = o.emps.filter(x => x !== id); if(k === i && !deja) l = l.concat(id); j.aff[k] = l; });
+  setJSON('fc_' + fcDate, j); fcAffPick(i);
+};
 window.fcPosteSet = function(id, v){ const p = fcParams(); p.poste[id] = String(v || '').trim(); const n = p.poste[id]; if(n && p.postes.indexOf(n) < 0) p.postes = fcPostesOrdre().concat(n); fcSaveParams(p); nav(fcRetour()); };
 window.fcPostes = function(){
   const ord = fcPostesOrdre();
@@ -220,6 +232,10 @@ fcCss.textContent = `
 .fc-q.fc-red{background:rgba(245,158,11,.12);} .fc-q:disabled{background:var(--surface-3);opacity:.6;} .fc-tot{font-weight:800;font-size:13px;} .fc-btn{padding:5px 9px;font-size:11px;white-space:nowrap;}
 `;
 document.head.appendChild(fcCss);
+const pkCss = document.createElement('style');
+pkCss.textContent = `.pick-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 10px;border:0;border-bottom:1px solid var(--border-soft);background:transparent;color:var(--ink);font-size:15px;cursor:pointer;} .pick-row.on{background:rgba(14,159,131,.12);font-weight:700;} .pick-ck{width:24px;height:24px;border-radius:7px;border:2px solid var(--border);display:grid;place-items:center;color:#0E9F83;font-weight:800;flex:none;} .pick-row.on .pick-ck{border-color:#0E9F83;}
+.pc-card{border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--surface);} .pc-top{display:flex;gap:6px;align-items:center;} .pc-num{width:26px;height:26px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;} .pc-in{flex:1;min-width:0;padding:9px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--ink);font-size:14px;font-weight:600;} .pc-cad{width:70px;flex:none;text-align:center;} .pc-emps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:9px;}`;
+document.head.appendChild(pkCss);
 const kpCss = document.createElement('style');
 kpCss.textContent = `
 .kp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
