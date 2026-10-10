@@ -211,14 +211,13 @@ function departAnticipe(a){
   const slots = getSlotsForDate(a.dateISO || getTodayISO());
   return slots.length > 0 && hhmmToMin(a.out) < slots[slots.length-1].end;
 }
-// Même règle que le retard : on ne compte que des tranches de 0,5 h ; une tranche entamée
-// n'est comptée que si l'on dépasse 5 min dedans (ex. 44 min -> 1,00 h ; 33 min -> 0,50 h ; 36 min -> 1,00 h).
+// Sorties : on ne compte que des tranches de 0,5 h, arrondies à la demi-heure la plus proche, avec 5 min de tolérance
+// (jusqu'à 5 min : 0 ; 6 à 44 min : 0,5 h ; 45 à 74 min : 1 h ; 75 à 104 min : 1,5 h ...). Ex. 33 min -> 0,5 h ; 44 min -> 0,5 h ; 55 min -> 1 h.
 function autorisationDureeH(auth){
   if(!auth || !auth.sortie || !auth.retour) return 0;
   const minutes = hhmmToMin(auth.retour) - hhmmToMin(auth.sortie);
-  if(minutes <= 0) return 0;
-  const blocs = Math.floor(minutes/30) + ((minutes % 30) > 5 ? 1 : 0);
-  return blocs * 0.5;
+  if(minutes <= 5) return 0;
+  return Math.max(1, Math.round(minutes/30)) * 0.5;
 }
 function computeAutorisationsHours(a){
   if(!a || !Array.isArray(a.autorisations)) return 0;
