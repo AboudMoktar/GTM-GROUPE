@@ -1113,7 +1113,11 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
 
   var yr = (S.lines.filter(function(l){ return l.lot === ui.lot; })[0] || {}).year || (lotMonth(ui.lot) ? lotMonth(ui.lot).y : new Date().getFullYear());
   var iLot = el("input", {id:"mLot", value:ui.lot, placeholder:"PK202610-1"});
-  iLot.addEventListener("change", function(){ ui.lot = cleanTxt(iLot.value); render(); });
+  iLot.addEventListener("change", function(){
+    ui.lot = cleanTxt(iLot.value);
+    if (ui.lot && ui.qteAtt){ try { Object.keys(ui.qteAtt).forEach(function(k){ var a = k.split("|"); setLine(ui.lot, num(iYear.value), a[0], a[1], a[2], ui.qteAtt[k]); }); ui.qteAtt = {}; persist(); } catch (e) { toast(e.message); } }
+    render();
+  });
   var iYear = el("input", {id:"mYear", type:"number", inputmode:"numeric", value:yr});
   iYear.addEventListener("change", function(){ S.lines.forEach(function(l){ if (l.lot === ui.lot) l.year = num(iYear.value); }); persist(); });
   var seg = el("div", {class:"seg"});
@@ -1137,7 +1141,7 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     g.tot = el("td", {class:"tot b", rowspan:String(li.sizes.length)});
     li.sizes.forEach(function(s, i){
       var ln = findLine(ui.lot, cli, li.lib, s);
-      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", value:ln ? ln.qty : "", enterkeyhint:"next"});
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", value:ln ? ln.qty : ((ui.qteAtt || {})[cli + "|" + li.lib + "|" + s] || ""), enterkeyhint:"next"});
       var tr = el("tr", {class:i === 0 ? "gstart" : ""});
       if (i === 0 && mstart[gi]) tr.appendChild(el("td", {class:"mdl b", rowspan:String(span[gi]), text:li.model}));
       tr.appendChild(el("td", {class:"lib", text:li.lib}));
@@ -1147,7 +1151,8 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
       tb.appendChild(tr);
       g.cells.push({inp:inp, size:s}); inputs.push(inp);
       inp.addEventListener("change", function(){
-        try { if (!ui.lot) throw new Error("Saisissez d'abord le lot."); setLine(ui.lot, num(iYear.value), cli, li.lib, s, num(inp.value)); }
+        if (!ui.lot){ (ui.qteAtt = ui.qteAtt || {})[cli + "|" + li.lib + "|" + s] = num(inp.value); toast("Quantité notée : saisissez le lot pour l'enregistrer."); upd(); return; }
+        try { setLine(ui.lot, num(iYear.value), cli, li.lib, s, num(inp.value)); }
         catch (e) { toast(e.message); var l2 = findLine(ui.lot, cli, li.lib, s); inp.value = l2 ? l2.qty : ""; return; }
         persist(); upd();
       });
@@ -1161,7 +1166,7 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     var gf = 0, gc = 0;
     groups.forEach(function(g){
       var tf = 0, tc = 0;
-      g.cells.forEach(function(c){ var ln = findLine(ui.lot, cli, g.li.lib, c.size), q = ln ? ln.qty : 0; tf += q; if (q) tc += cutQty(q, g.li.model); });
+      g.cells.forEach(function(c){ var ln = findLine(ui.lot, cli, g.li.lib, c.size), q = ln ? ln.qty : (!ui.lot ? num(c.inp.value) || 0 : 0); tf += q; if (q) tc += cutQty(q, g.li.model); });
       g.tot.textContent = tf ? fmt(tf) : "0"; gf += tf; gc += tc;
     });
     stat.innerHTML = "";
