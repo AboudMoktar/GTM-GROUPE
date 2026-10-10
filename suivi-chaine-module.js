@@ -102,6 +102,9 @@ let scModEdit = null;
 const scNouvId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const SC_EXEMPLE = [['Ourlet manche (Goulot)', 60], ['Fermer manche', 120], ['Pointage V', 90], ['Collage encolure', 90], ['Ourlet bas', 84], ['Pose attache', 65], ['Ultrason triangle', 72], ['Fermer côté', 65], ['Montage manche', 65], ['Surpiquer côté (Goulot)', 60], ['Bride', 100], ['Pose agrafe', 120], ['Finition', 105], ['Contrôle', 108], ['Emballage', 90]];
 function renderChaineParams(m){
+  try { renderChaineParams2(m); } catch(e) { console.error('Params chaîne', e); m.innerHTML = `<div class="card">${scTitre('Paramètres')}<p style="color:#DC3F45;">Erreur d'affichage : ${esc(e.message)}</p></div>`; }
+}
+function renderChaineParams2(m){
   const ok = currentUser.role === 'admin', mods = fcModeles(), em = getEmployees(), actifs = activeEmployees();
   if(scModEdit && !mods.find(x => x.id === scModEdit)) scModEdit = null;
   const cur = mods.find(x => x.id === scModEdit);
