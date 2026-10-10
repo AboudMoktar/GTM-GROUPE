@@ -1016,6 +1016,7 @@ function renderModuleSelect(){
         <div style="display:flex;flex-direction:column;gap:12px;">
           ${[
             ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
+            ['chaine', ICONS.team, 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
             ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
             ['gadh', ICONS.gadh, 'GADH Tunisia', 'Production, personnel, pointage'],
             ['commandes', '<span style="font-size:24px;line-height:1;">📦</span>', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
@@ -1251,7 +1252,7 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
@@ -2817,6 +2818,7 @@ window.onload = init;
 <script src="./enregistrer-module.js"></script>
 <script src="./rh-rapports-module.js"></script>
 <script src="./fiche-chaine-module.js"></script>
+<script src="./suivi-chaine-module.js"></script>
 <script src="./nav-historique-module.js"></script>
 <script>
 if(false){
