@@ -182,9 +182,9 @@ function renderFactListe(main){
     .sort((a, c) => (c[1].statut === 'brouillon') - (a[1].statut === 'brouillon') || ((c[1].date || '') + (c[1].numero || '')).localeCompare((a[1].date || '') + (a[1].numero || '')));
   b.innerHTML = `
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' DT', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">DT à encaisser</div></div>
+      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
       <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;" class="${k.retard ? 'hour-rend bad' : ''}">${k.retard}</div><div style="font-size:10.5px;color:var(--ink-soft);">en retard</div></div>
-      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' DT', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">DT HT facturés ce mois</div></div>
+      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ HT facturés ce mois</div></div>
     </div>
     <div class="card" style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;">
       ${filtres.map(([f, lb]) => `<button class="btn ${factFiltre === f ? 'btn-primary' : 'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="factFiltre='${f}'; nav('fact-liste')">${lb}</button>`).join('')}
@@ -239,15 +239,15 @@ function renderFactEdit(main){
         <div class="mgt-ligne-nums">
           <label>Qté<input class="mgt-in" type="number" min="0" step="any" value="${l.qte}" ${dis} onchange="factMajLigne(${i}, 'qte', this.value)"></label>
           <label>P.U. HT<input class="mgt-in" type="number" min="0" step="0.001" value="${l.pu}" ${dis} onchange="factMajLigne(${i}, 'pu', this.value)"></label>
-          <label>Remise %<input class="mgt-in" type="number" min="0" max="100" step="0.5" value="${l.remise || 0}" ${dis} onchange="factMajLigne(${i}, 'remise', this.value)"></label>
+          ${soc === 'tek' ? '' : `<label>Remise %<input class="mgt-in" type="number" min="0" max="100" step="0.5" value="${l.remise || 0}" ${dis} onchange="factMajLigne(${i}, 'remise', this.value)"></label>`}
           <div class="mgt-ligne-tot">${fmtDT(factMontantLigne(l))}</div>
         </div>
       </div>`).join('')}
       ${ed ? `<button class="btn btn-ghost" style="margin-top:8px;padding:6px 12px;font-size:12px;" onclick="factAjouterLigne()">+ Ligne</button>` : ''}
       <div style="margin-top:12px;font-size:14px;line-height:1.9;text-align:right;">
         <div>Total HT : <b>${fmtDT(t.ht)}</b></div>
-        <div>TVA <input class="mgt-in" type="number" min="0" max="100" step="1" value="${f.tva}" ${dis} style="width:64px;display:inline-block;padding:4px 6px;" onchange="factMaj('tva', parseFloat(this.value)||0)"> % : <b>${fmtDT(t.tva)}</b></div>
-        <div>Timbre fiscal <input class="mgt-in" type="number" min="0" step="0.001" value="${f.timbre}" ${dis} style="width:80px;display:inline-block;padding:4px 6px;" onchange="factMaj('timbre', parseFloat(this.value)||0)"> : <b>${fmtDT(t.timbre)}</b></div>
+        ${soc === 'tek' ? '' : `<div>TVA <input class="mgt-in" type="number" min="0" max="100" step="1" value="${f.tva}" ${dis} style="width:64px;display:inline-block;padding:4px 6px;" onchange="factMaj('tva', parseFloat(this.value)||0)"> % : <b>${fmtDT(t.tva)}</b></div>
+        <div>Timbre fiscal <input class="mgt-in" type="number" min="0" step="0.001" value="${f.timbre}" ${dis} style="width:80px;display:inline-block;padding:4px 6px;" onchange="factMaj('timbre', parseFloat(this.value)||0)"> : <b>${fmtDT(t.timbre)}</b></div>`}
         <div style="font-size:16px;">Total TTC : <b>${fmtDT(t.ttc)}</b></div>
         <div style="font-size:11.5px;color:var(--ink-soft);">${factEnLettres(t.ttc)}</div>
       </div>
@@ -312,7 +312,7 @@ window.factCreerAvoir = (id) => {
 window.factFormPaiement = (id) => {
   const soc = factSoc(), l = factListe(soc), t = factTotaux(l[id], l);
   mgtModal('Enregistrer un paiement', `
-    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Date', 'fp-date', getTodayISO(), 'date')}</div><div style="flex:1;">${mgtChamp('Montant (DT)', 'fp-montant', t.reste.toFixed(3), 'number', 'min="0" step="0.001"')}</div></div>
+    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Date', 'fp-date', getTodayISO(), 'date')}</div><div style="flex:1;">${mgtChamp('Montant (€)', 'fp-montant', t.reste.toFixed(3), 'number', 'min="0" step="0.001"')}</div></div>
     ${mgtSelect('Mode', 'fp-mode', Object.entries(FACT_MODES), 'virement')}
     ${mgtChamp('Référence', 'fp-ref', '', 'text', 'placeholder="N° de chèque, de virement…"')}
     <button class="btn btn-primary" style="width:100%;" onclick="factSauverPaiement('${id}')">Enregistrer</button>`);
@@ -347,7 +347,7 @@ window.factImprimer = (id, relance) => {
   const soc = factSoc(), l = factListe(soc), f = l[id]; if(!f) return;
   const P = factParams(soc), t = factTotaux(f, l), avoir = f.type === 'avoir';
   const c = f.statut === 'emise' ? f.client : (factClients(soc)[f.clientId] || {nom:''});
-  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3});
+  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const entete = `<div class="top"><div><h1>${esc(P.raison)}</h1><div>${esc(P.adresse).replace(/\n/g, '<br>')}</div><div>${P.tel ? 'Tél. ' + esc(P.tel) : ''}${P.email ? ' · ' + esc(P.email) : ''}</div>${P.mf ? `<div>MF ${esc(P.mf)}</div>` : ''}</div>`;
   const clientBox = `<div class="box" style="margin-left:auto;width:45%;"><b>${esc(c.nom || '')}</b>${c.adresse ? '<br>' + esc(c.adresse) : ''}${c.mf ? '<br>MF ' + esc(c.mf) : ''}</div>`;
   const style = `body{font:12px Arial,sans-serif;color:#111;margin:28px;} h1{font-size:20px;margin:0 0 4px;} .top{display:flex;justify-content:space-between;gap:20px;margin-bottom:24px;}
@@ -360,7 +360,7 @@ window.factImprimer = (id, relance) => {
     corps = `${entete}<div class="box">Le ${mgtDate(getTodayISO())}</div></div>${clientBox}
       <p style="margin-top:30px;"><b>Objet : relance pour la facture ${esc(f.numero)}</b></p>
       <p>Madame, Monsieur,</p>
-      <p>Sauf erreur de notre part, la facture <b>${esc(f.numero)}</b> du ${mgtDate(f.date)}, d'un montant de <b>${n(t.ttc)} DT TTC</b>, arrivée à échéance le ${mgtDate(f.echeance)}, reste impayée${t.paye + t.avoirs > 0 ? ` pour un montant de <b>${n(t.reste)} DT</b>` : ''}.</p>
+      <p>Sauf erreur de notre part, la facture <b>${esc(f.numero)}</b> du ${mgtDate(f.date)}, d'un montant de <b>${n(t.ttc)} € TTC</b>, arrivée à échéance le ${mgtDate(f.echeance)}, reste impayée${t.paye + t.avoirs > 0 ? ` pour un montant de <b>${n(t.reste)} €</b>` : ''}.</p>
       <p>Nous vous remercions de bien vouloir procéder à son règlement dans les meilleurs délais${P.rib ? ` par virement sur notre compte RIB ${esc(P.rib)}` : ''}. Si votre paiement a été effectué entre-temps, merci de ne pas tenir compte de ce courrier.</p>
       <p>Veuillez agréer, Madame, Monsieur, nos salutations distinguées.</p>
       <p style="margin-top:40px;">${esc(P.raison)}</p>`;
@@ -372,8 +372,8 @@ window.factImprimer = (id, relance) => {
       <table><thead><tr><th>Désignation</th><th style="width:60px;">Qté</th><th style="width:100px;">P.U. HT</th><th style="width:55px;">Rem.</th><th style="width:110px;">Total HT</th></tr></thead><tbody>
         ${(f.lignes || []).map(x => `<tr><td>${esc(x.designation).replace(/\n/g, '<br>')}</td><td class="n">${x.qte}</td><td class="n">${n(x.pu)}</td><td class="n">${x.remise ? x.remise + ' %' : ''}</td><td class="n">${n(factMontantLigne(x))}</td></tr>`).join('')}
       </tbody></table>
-      <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} DT</td></tr><tr><td>TVA ${f.tva} %</td><td class="n">${n(t.tva)} DT</td></tr>
-        ${t.timbre ? `<tr><td>Timbre fiscal</td><td class="n">${n(t.timbre)} DT</td></tr>` : ''}<tr><td>Total TTC</td><td class="n">${n(t.ttc)} DT</td></tr></table>
+      <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} €</td></tr><tr><td>TVA ${f.tva} %</td><td class="n">${n(t.tva)} €</td></tr>
+        ${t.timbre ? `<tr><td>Timbre fiscal</td><td class="n">${n(t.timbre)} €</td></tr>` : ''}<tr><td>Total TTC</td><td class="n">${n(t.ttc)} €</td></tr></table>
       <div class="lettres">${avoir ? 'Arrêté le présent avoir' : 'Arrêtée la présente facture'} à la somme de : <b>${factEnLettres(t.ttc)}</b>.</div>
       ${f.notes ? `<div class="cond">${esc(f.notes)}</div>` : ''}`;
   }
@@ -531,7 +531,7 @@ function renderFactParams(main){
       ${mgtChamp('Téléphone', 'fx-tel', P.tel)}${mgtChamp('E-mail', 'fx-email', P.email)}
       ${mgtChamp('RIB', 'fx-rib', P.rib)}
       ${mgtChamp('TVA par défaut (%)', 'fx-tva', P.tva, 'number')}`}
-    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Timbre fiscal (DT)', 'fx-timbre', P.timbre, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Délai de paiement (jours)', 'fx-delai', P.delai, 'number', 'min="0"')}</div></div>
+    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Timbre fiscal (€)', 'fx-timbre', P.timbre, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Délai de paiement (jours)', 'fx-delai', P.delai, 'number', 'min="0"')}</div></div>
     ${mgt ? `<div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Taux horaire technicien (DT HT)', 'fx-taux', P.tauxHoraire, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Forfait déplacement (DT HT)', 'fx-depl', P.deplacement, 'number', 'step="0.001" min="0"')}</div></div>` : ''}
     ${mgtZone('Mentions par défaut (bas de facture)', 'fx-mention', P.mention)}
     <button class="btn btn-primary" style="width:100%;" onclick="factSauverParams()">Enregistrer</button>

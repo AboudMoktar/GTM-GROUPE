@@ -325,3 +325,15 @@ window.renderFactListe = function(main){
 };
 const percPaiement = window.factFormPaiement;
 window.factFormPaiement = function(id){ percPaiement(id); if(factSoc() === 'tek'){ const l = document.querySelector('#fp-montant'); if(l && l.previousElementSibling) l.previousElementSibling.textContent = 'Montant (€)'; } };
+
+// TEK-TREND : ni TVA, ni timbre, ni remise.
+const percMontantLigne = window.factMontantLigne;
+window.factMontantLigne = function(l){ return (typeof activeSociete !== 'undefined' && activeSociete === 'tek') ? (Number(l.qte) || 0) * (Number(l.pu) || 0) : percMontantLigne(l); };
+const percTotaux = window.factTotaux;
+window.factTotaux = function(f, toutes){
+  if((typeof activeSociete !== 'undefined' && activeSociete === 'tek') || f.percko || f.devise === 'EUR'){
+    const g = Object.assign({}, f, {tva:0, timbre:0, lignes:(f.lignes || []).map(l => Object.assign({}, l, {remise:0}))});
+    return percTotaux(g, toutes);
+  }
+  return percTotaux(f, toutes);
+};
