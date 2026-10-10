@@ -51,7 +51,7 @@ function mgtParams(){
 }
 function canEditMgt(){ return !!currentUser && currentUser.role !== 'viewer'; }
 function mgtClientNom(id){ const c = crmClients()[id]; return c ? c.nom : '—'; }
-function fmtDT(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3}) + ' DT'; }
+function fmtDT(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €'; }
 function mgtDate(d){ return d ? d.split('-').reverse().join('/') : '—'; }
 function mgtAddDays(d, n){ const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return toISODateLocal(x); }
 function mgtBadge(def){ return def ? `<span class="hour-rend ${def.cls}" style="font-size:11px;">${def.label}</span>` : ''; }
@@ -169,7 +169,7 @@ function renderMgtDashboard(main){
     </div>
     <div class="kpi-mini-grid">
       ${tuile(k.devisAttente, 'Devis en attente', '', 'mgt-devis')}
-      ${tuile(fmtDT(k.montantAttente).replace(' DT', ''), 'DT HT en attente', '', 'mgt-devis')}
+      ${tuile(fmtDT(k.montantAttente).replace(' €', ''), '€ HT en attente', '', 'mgt-devis')}
       ${tuile(k.projetsEnCours, 'Projets en cours', '', 'mgt-projets')}
       ${tuile(k.sousGarantie + '/' + k.machines, 'Machines sous garantie', '', 'mgt-parc')}
     </div>
@@ -180,7 +180,7 @@ function renderMgtDashboard(main){
       ${tuile(s.contratsARenouveler, 'Contrats à renouveler', s.contratsARenouveler ? 'hour-rend warn' : '', 'mgt-contrats')}
     </div>
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(2,1fr);">
-      ${tuile(fmtDT(f.aEncaisser).replace(' DT', ''), 'DT à encaisser', '', 'fact-liste')}
+      ${tuile(fmtDT(f.aEncaisser).replace(' €', ''), '€ à encaisser', '', 'fact-liste')}
       ${tuile(f.retard, 'Factures en retard', f.retard ? 'hour-rend bad' : '', 'fact-liste')}
     </div>
     <div class="card">
@@ -452,7 +452,7 @@ window.mgtFormProjet = (id, clientId) => {
     ${mgtChamp('Titre *', 'mp-titre', p.titre, 'text', 'placeholder="Ex : ligne de thermocollage"')}
     ${mgtSelect('Client *', 'mp-client', mgtOptionsClients(), p.clientId)}
     ${mgtSelect('Étape', 'mp-etape', Object.entries(MGT_ETAPES).map(([k, v]) => [k, v.label]), p.etape)}
-    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Montant HT (DT)', 'mp-montant', p.montant, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Date cible', 'mp-date', p.dateCible, 'date')}</div></div>
+    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Montant HT (€)', 'mp-montant', p.montant, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Date cible', 'mp-date', p.dateCible, 'date')}</div></div>
     ${mgtZone('Notes', 'mp-notes', p.notes)}
     ${devis.length ? `<div style="font-size:12px;margin-bottom:12px;"><b>Devis liés :</b> ${devis.map(([did, d]) => `<a href="#" onclick="mgtFermer(); mgtOuvrirDevis('${did}'); return false;">${esc(d.numero)}${d.version > 1 ? ' v' + d.version : ''}</a>`).join(', ')}</div>` : ''}
     <button class="btn btn-primary" style="width:100%;" onclick="mgtSauverProjet('${id || ''}')">Enregistrer</button>
@@ -576,7 +576,7 @@ window.mgtSupprimerDevis = (id) => { if(!confirm('Supprimer ce devis ?')) return
 // Impression : une page A4 propre dans une nouvelle fenêtre ; « Enregistrer en PDF » depuis la boîte d'impression.
 window.mgtImprimerDevis = (id) => {
   const d = mgtGet('devis')[id], c = mgtGet('clients')[d.clientId] || {}, P = mgtParams(), t = devisTotaux(d);
-  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3});
+  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(d.numero)}</title><style>
     body{font:12px Arial,sans-serif;color:#111;margin:28px;} h1{font-size:20px;margin:0 0 4px;} .top{display:flex;justify-content:space-between;gap:20px;margin-bottom:24px;}
     .box{border:1px solid #999;padding:10px;border-radius:4px;min-width:220px;} table{width:100%;border-collapse:collapse;margin-top:14px;} th,td{border:1px solid #999;padding:6px;vertical-align:top;}
@@ -590,7 +590,7 @@ window.mgtImprimerDevis = (id) => {
     <table><thead><tr><th>Désignation</th><th style="width:50px;">Qté</th><th style="width:100px;">P.U. HT</th><th style="width:55px;">Rem.</th><th style="width:110px;">Total HT</th></tr></thead><tbody>
       ${(d.lignes || []).map(l => `<tr><td>${esc(l.designation).replace(/\n/g, '<br>')}</td><td class="n">${l.qte}</td><td class="n">${n(l.pu)}</td><td class="n">${l.remise ? l.remise + ' %' : ''}</td><td class="n">${n((Number(l.qte) || 0) * (Number(l.pu) || 0) * (1 - (Number(l.remise) || 0) / 100))}</td></tr>`).join('')}
     </tbody></table>
-    <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} DT</td></tr><tr><td>TVA ${d.tva} %</td><td class="n">${n(t.tva)} DT</td></tr><tr><td>Total TTC</td><td class="n">${n(t.ttc)} DT</td></tr></table>
+    <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} €</td></tr><tr><td>TVA ${d.tva} %</td><td class="n">${n(t.tva)} €</td></tr><tr><td>Total TTC</td><td class="n">${n(t.ttc)} €</td></tr></table>
     ${d.conditions ? `<div class="cond"><b>Conditions</b><br>${esc(d.conditions)}</div>` : ''}
     <div class="pied">${esc(P.raison)}${P.rib ? ' · RIB ' + esc(P.rib) : ''}</div>
     <script>window.onload=function(){window.print();}<\/script></body></html>`;

@@ -415,7 +415,7 @@ window.savFormContrat = (id, clientId) => {
     ${mgtSelect('Client *', 'sc-client', mgtOptionsClients('— Choisir —'), c.clientId).replace('<select', `<select ${dis} onchange="document.getElementById('sc-machines').innerHTML = savCasesMachines(this.value, [])"`)}
     <div class="field"><label>Machines couvertes (aucune cochée = tout le parc du client)</label><div id="sc-machines">${savCasesMachines(c.clientId, c.machineIds || [])}</div></div>
     <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Début', 'sc-debut', c.debut, 'date', dis)}</div><div style="flex:1;">${mgtChamp('Fin', 'sc-fin', c.fin, 'date', dis)}</div></div>
-    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Visites par an', 'sc-visites', c.visitesAn, 'number', 'min="0" step="1" ' + dis)}</div><div style="flex:1;">${mgtChamp('Montant HT (DT)', 'sc-montant', c.montant, 'number', 'min="0" step="0.001" ' + dis)}</div></div>
+    <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Visites par an', 'sc-visites', c.visitesAn, 'number', 'min="0" step="1" ' + dis)}</div><div style="flex:1;">${mgtChamp('Montant HT (€)', 'sc-montant', c.montant, 'number', 'min="0" step="0.001" ' + dis)}</div></div>
     ${mgtZone('Notes', 'sc-notes', c.notes)}
     ${v ? `<div style="font-size:12.5px;margin-bottom:12px;">Visites préventives faites : <b>${v.faites} / ${v.prevues}</b></div>` : ''}
     ${ed ? `<button class="btn btn-primary" style="width:100%;" onclick="savSauverContrat('${id || ''}')">Enregistrer</button>` : ''}
