@@ -126,7 +126,6 @@ window.renderDirection = function(){
       </div>
       <div class="dd-g dd-g4">
         ${SOCIETE_KEYS.map(k => ddCarteSociete(k, directionIndicateurs(k))).join('')}
-        <div class="dd-card"><div class="dd-ct"><h3>Activité récente</h3>${peutAudit ? '<button class="dd-lien" onclick="auditOuvrir()">Journal</button>' : ''}</div>${activite || '<div style="color:var(--ink-soft);font-size:13px;padding:24px 0;text-align:center;">Aucune activité enregistrée</div>'}</div>
       </div></main></div>`;
   themeAppliquer(themeActuel());
   if(typeof notifMajCloche === 'function') notifMajCloche();
@@ -154,6 +153,6 @@ ddCss.textContent = `
 .dd-soc{padding:0;overflow:hidden;} .dd-soc-band{height:6px;} .dd-soc-tete{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);} .dd-soc-tete b{display:block;font-size:15px;} .dd-soc-tete span{display:block;font-size:11.5px;color:var(--ink-soft);}
 .dd-soc-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px;} .dd-soc-grille div{border:1px solid var(--border);border-radius:11px;padding:8px 10px;} .dd-soc-grille span{display:block;font-size:10.5px;color:var(--ink-soft);font-weight:700;} .dd-soc-grille b{display:block;font-family:var(--mono);font-size:16px;margin-top:2px;}
 @media (min-width:760px){.dd-g2{grid-template-columns:2fr 1fr;}.dd-g3{grid-template-columns:repeat(3,1fr);}.dd-g4{grid-template-columns:repeat(2,1fr);}}
-@media (min-width:1024px){.dd-side{display:flex;}.dd-mob{display:none;}.dd-main{padding:22px 28px 40px;}.dd-g4{grid-template-columns:repeat(4,1fr);}}
+@media (min-width:1024px){.dd-side{display:flex;}.dd-mob{display:none;}.dd-main{padding:22px 28px 40px;}.dd-g4{grid-template-columns:repeat(3,1fr);}}
 `;
 document.head.appendChild(ddCss);
