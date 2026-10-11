@@ -15,6 +15,8 @@ html[data-soc="gadh"]{--accent:#8B1F4B;--accent-2:#A8325F;--accent-bg:#F7ECF1;}
 html[data-soc="gadh"] .btn-primary{box-shadow:0 2px 8px rgba(139,31,75,.28);}
 html[data-soc="gadh"] .topbar,html[data-soc="gadh"] .deepbar{background:linear-gradient(120deg,#8B1F4B 0%,#6B1538 100%);border-bottom:3px solid #CFA824;}
 html[data-soc="gadh"] .topbar .tek{color:#CFA824;}
+html[data-soc="gadh"] .btn-primary{border-bottom:3px solid #CFA824;box-shadow:0 2px 8px rgba(139,31,75,.3);}
+html[data-soc="gadh"] .bottomnav .active,html[data-soc="gadh"] .bottomnav .on{color:#CFA824;}
 html[data-soc="gadh"] .sidebar{background:#6B1538;}
 html[data-soc="gadh"] .hero-card{background:linear-gradient(100deg,rgba(139,31,75,.97) 0%,rgba(139,31,75,.75) 45%,rgba(139,31,75,.35) 100%),url('./hero-bg.jpg');background-size:cover;}
 html[data-soc="gadh"] .field input:focus,html[data-soc="gadh"] .input-cell input:focus{border-color:#058A9E;box-shadow:0 0 0 3px rgba(5,138,158,.18);}
