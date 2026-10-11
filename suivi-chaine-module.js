@@ -98,7 +98,7 @@ function renderChaineRapports(m){
     ${D ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${D.resume.map(x => esc(x[0]) + ' : <b>' + esc(String(x[1])) + '</b>').join(' · ')}</div>
     ${D.lignes.length ? `<div class="fc-scroll"><table class="fc-t"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${D.lignes.slice(0, MAX).map(l => `<tr>${l.map((v, i) => `<td${i === 0 ? ' style="text-align:left;"' : ''}>${v === null || v === undefined ? '' : esc(String(v))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${D.lignes.length > MAX ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${MAX} premières lignes affichées sur ${D.lignes.length} : l'export Excel / PDF contient tout.</div>` : ''}` : buildEmptyState('Aucune donnée', 'Rien de saisi sur cette période.')}` : ''}</div>`;
 }
-let scModEdit = null;
+let scModEdit = null, scDraft = null, scDirty = false;
 const scNouvId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const SC_EXEMPLE = [['Ourlet manche (Goulot)', 60], ['Fermer manche', 120], ['Pointage V', 90], ['Collage encolure', 90], ['Ourlet bas', 84], ['Pose attache', 65], ['Ultrason triangle', 72], ['Fermer côté', 65], ['Montage manche', 65], ['Surpiquer côté (Goulot)', 60], ['Bride', 100], ['Pose agrafe', 120], ['Finition', 105], ['Contrôle', 108], ['Emballage', 90]];
 function renderChaineParams(m){
@@ -106,41 +106,49 @@ function renderChaineParams(m){
 }
 function renderChaineParams2(m){
   const ok = currentUser.role === 'admin', mods = fcModeles(), em = getEmployees(), actifs = activeEmployees();
-  if(scModEdit && !mods.find(x => x.id === scModEdit)) scModEdit = null;
-  const cur = mods.find(x => x.id === scModEdit);
+  if(!scDraft) scModEdit = null;
+  const cur = scDraft;
   const liste = `<div class="card">${scTitre('Modèles et postes', ok ? `<button class="btn btn-primary" onclick="scModNouveau()">+ Nouveau modèle</button>` : '')}<div id="fc-zone"></div>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Un modèle = ses opérations (postes) dans l'ordre de la chaîne, avec la cadence de chaque poste (pièces/heure par ouvrière) et les ouvrières par défaut. Dans la Fiche, on choisit le modèle du jour : ses postes apparaissent avec leurs ouvrières, modifiables.</p>
     ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
     ${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="fcPolyPick(-1)">⚖ Volantes (équilibrage) : ${fcParams().polyv.length}</button>` : ''}
     ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (15 opérations)</button>` : ''}</div>`;
   if(!cur){ m.innerHTML = liste; return; }
-  m.innerHTML = `<div class="card">${scTitre('Modèle', `<button class="btn btn-ghost" onclick="scModOuvrir(null)">‹ Retour aux modèles</button>`)}<div id="fc-zone"></div>
+  m.innerHTML = `<div class="card">${scTitre('Modèle', `<span style="display:flex;gap:6px;"><button class="btn btn-ghost" onclick="scModAnnuler()">‹ Retour</button>${ok ? `<button class="btn btn-primary" onclick="scModValider()">✓ Valider</button>` : ''}</span>`)}<div class="sc-dirty" id="sc-dirty" style="display:${scDirty ? 'block' : 'none'};">Modifications non enregistrées : touchez « Valider le modèle » en bas.</div><div id="fc-zone"></div>
     <div class="field"><label>Nom du modèle</label><input value="${esc(cur.nom)}" ${ok ? '' : 'disabled'} onchange="scModNom(this.value)"></div>
     ${cur.ops.map((o, i) => `<div class="pc-card"><div class="pc-top"><span class="pc-num">${i + 1}</span><input class="pc-in" value="${esc(o.nom)}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'nom',this.value)" placeholder="Poste (opération)"><input class="pc-in pc-cad" type="number" min="0" step="0.5" inputmode="decimal" value="${o.cadence || ''}" ${ok ? '' : 'disabled'} onchange="scOpSet(${i},'cadence',this.value)" title="Cadence pièces/heure"><span style="font-size:10px;color:var(--ink-soft);">/h</span></div>
       <div class="pc-emps">${(o.emps || []).map(id => `<span class="kp-chip">${esc((em[id] || {}).nom || id)}</span>`).join('') || '<span style="font-size:12px;color:var(--ink-soft);">Aucune ouvrière</span>'}${ok ? `<button class="btn btn-ghost fc-btn" onclick="scPick(${i})">+ Ouvrières</button>` : ''}</div>
       ${ok ? `<div style="display:flex;gap:6px;margin-top:9px;justify-content:flex-end;"><button class="btn btn-ghost fc-btn" ${i ? '' : 'disabled'} onclick="scOpMove(${i},-1)">↑ Monter</button><button class="btn btn-ghost fc-btn" ${i < cur.ops.length - 1 ? '' : 'disabled'} onclick="scOpMove(${i},1)">↓ Descendre</button><button class="btn btn-ghost fc-btn" style="color:#DC3F45;" onclick="scOpSuppr(${i})">Supprimer</button></div>` : ''}</div>`).join('') || '<div style="padding:12px;color:var(--ink-soft);">Aucune opération.</div>'}
     ${ok ? `<button class="btn btn-primary" style="width:100%;" onclick="scOpAjout()">+ Ajouter une opération</button>` : ''}
+    ${ok ? `<div class="sc-valbar"><button class="btn btn-ghost" onclick="scModAnnuler()">Annuler</button><button class="btn btn-primary" style="flex:1;" onclick="scModValider()">✓ Valider le modèle</button></div>` : ''}
     <p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 0;">Le dernier poste = sortie de la chaîne. Une ouvrière ne peut être que sur un poste à la fois.</p></div>`;
 }
-function scModMaj(f){ const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; f(c, l); fcSaveModeles(l); nav('chaine-params'); }
-window.scModNouveau = function(){ const l = fcModeles(), id = scNouvId(); l.push({id, nom:'Nouveau modèle', ops:[]}); fcSaveModeles(l); scModEdit = id; nav('chaine-params'); };
-window.scModExemple = function(){ const l = fcModeles(), id = scNouvId(); l.push({id, nom:'Tee-shirt Pharmacie', ops:SC_EXEMPLE.map(x => ({nom:x[0], cadence:x[1], emps:[]}))}); fcSaveModeles(l); scModEdit = id; nav('chaine-params'); };
-window.scModOuvrir = function(id){ scModEdit = id; nav('chaine-params'); };
+function scSilent(f){ if(!scDraft) return; f(scDraft); scDirty = true; const b = document.getElementById('sc-dirty'); if(b) b.style.display = 'block'; }
+function scModMaj(f){ if(!scDraft) return; f(scDraft); scDirty = true; nav('chaine-params'); }
+window.scModNouveau = function(){ scDraft = {id:scNouvId(), nom:'Nouveau modèle', ops:[]}; scModEdit = scDraft.id; scDirty = true; nav('chaine-params'); };
+window.scModExemple = function(){ scDraft = {id:scNouvId(), nom:'Tee-shirt Pharmacie', ops:SC_EXEMPLE.map(x => ({nom:x[0], cadence:x[1], emps:[]}))}; scModEdit = scDraft.id; scDirty = true; nav('chaine-params'); };
+window.scModOuvrir = function(id){ const m = fcModeles().find(x => x.id === id); scDraft = m ? JSON.parse(JSON.stringify(m)) : null; scModEdit = m ? id : null; scDirty = false; nav('chaine-params'); };
+window.scModAnnuler = function(){ if(scDirty && !confirm('Abandonner les modifications non validées ?')) return; scDraft = null; scModEdit = null; scDirty = false; nav('chaine-params'); };
+window.scModValider = function(){
+  if(!scDraft) return; const l = fcModeles(), i = l.findIndex(x => x.id === scDraft.id), c = JSON.parse(JSON.stringify(scDraft));
+  c.nom = String(c.nom || '').trim() || 'Modèle'; if(i >= 0) l[i] = c; else l.push(c);
+  fcSaveModeles(l); scDraft = null; scModEdit = null; scDirty = false; showToast('Modèle enregistré'); nav('chaine-params');
+};
 window.scModSuppr = function(id){ if(!confirm('Supprimer ce modèle ? Les fiches déjà saisies gardent leurs pièces.')) return; fcSaveModeles(fcModeles().filter(x => x.id !== id)); if(scModEdit === id) scModEdit = null; nav('chaine-params'); };
-window.scModNom = (v) => scModMaj(c => { c.nom = String(v).trim() || 'Modèle'; });
+window.scModNom = (v) => scSilent(c => { c.nom = String(v).trim() || 'Modèle'; });
 window.scOpAjout = () => scModMaj(c => { c.ops.push({nom:'Poste ' + (Math.max(0, ...c.ops.map(o => parseInt(String(o.nom).replace(/\D/g, '')) || 0)) + 1), cadence:getObjHoraireOp(), emps:[]}); });
-window.scOpSet = (i, k, v) => scModMaj(c => { if(k === 'cadence'){ const n = parseFloat(v); c.ops[i].cadence = n > 0 ? n : ''; } else c.ops[i].nom = String(v).trim() || ('Poste ' + (i + 1)); });
+window.scOpSet = (i, k, v) => scSilent(c => { if(k === 'cadence'){ const n = parseFloat(v); c.ops[i].cadence = n > 0 ? n : ''; } else c.ops[i].nom = String(v).trim() || ('Poste ' + (i + 1)); });
 window.scOpSuppr = (i) => scModMaj(c => { c.ops.splice(i, 1); });
 window.scOpMove = (i, d) => scModMaj(c => { const j = i + d; if(j < 0 || j >= c.ops.length) return; const t = c.ops[i]; c.ops[i] = c.ops[j]; c.ops[j] = t; });
 window.scPick = function(i){
-  const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; const em = activeEmployees(), ou = {}; c.ops.forEach((o, k) => (o.emps || []).forEach(id => { ou[id] = k; }));
+  const c = scDraft; if(!c) return; const em = activeEmployees(), ou = {}; c.ops.forEach((o, k) => (o.emps || []).forEach(id => { ou[id] = k; }));
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">${esc(c.ops[i].nom)}</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Touchez une ouvrière pour l'ajouter ou la retirer de ce poste.</div>
     <div style="max-height:58vh;overflow:auto;">${em.map(([id, e]) => { const k = ou[id], ici = k === i; return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="scPickToggle(${i},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${k !== undefined && !ici ? esc(c.ops[k].nom) : ''}</span></button>`; }).join('')}</div>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcFermer()">Terminer</button></div></div>`;
 };
-window.scPickToggle = function(i, id){ const l = fcModeles(), c = l.find(x => x.id === scModEdit); if(!c) return; const deja = (c.ops[i].emps || []).indexOf(id) >= 0; c.ops.forEach((o, k) => { o.emps = (o.emps || []).filter(x => x !== id); if(k === i && !deja) o.emps.push(id); }); fcSaveModeles(l); scPick(i); };
+window.scPickToggle = function(i, id){ const c = scDraft; if(!c) return; const deja = (c.ops[i].emps || []).indexOf(id) >= 0; c.ops.forEach((o, k) => { o.emps = (o.emps || []).filter(x => x !== id); if(k === i && !deja) o.emps.push(id); }); scDirty = true; scPick(i); };
 // ---------- Navigation et module ----------
 const scNavItems = window.navItems;
 window.navItems = function(){
@@ -166,6 +174,6 @@ window.chooseModule = function(mod){ if(mod === 'chaine'){ activeModule = 'chain
 const scMods = window.modulesDeSociete;
 window.modulesDeSociete = function(soc){ const l = scMods(soc); return (soc === 'tek' && l.indexOf('rendement') >= 0 && l.indexOf('chaine') < 0) ? l.concat('chaine') : l; };
 const scCss = document.createElement('style');
-scCss.textContent = `.sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;} .sc-bar input[type=date]{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);} .sc-bar label{font-size:12px;display:flex;gap:4px;align-items:center;} .sc-per{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-soft);}`;
+scCss.textContent = `.sc-dirty{background:rgba(230,154,12,.14);border:1px solid rgba(230,154,12,.4);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:10px;} .sc-valbar{display:flex;gap:8px;margin-top:14px;} .sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;} .sc-bar input[type=date]{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);} .sc-bar label{font-size:12px;display:flex;gap:4px;align-items:center;} .sc-per{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-soft);}`;
 document.head.appendChild(scCss);
 })();
