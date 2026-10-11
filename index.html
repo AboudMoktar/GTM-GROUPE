@@ -610,7 +610,8 @@ function onFirebaseDataMaintenant(){
     else if(typeof portailOuvert !== 'undefined' && portailOuvert) renderPortail();
     return;
   }
-  if(activeTab === 'commandes-home'){ fbFirstLoad = false; suiviNotifier(); }
+  if(document.querySelector('.modal-backdrop')){ /* une fenêtre est ouverte (ex: affectations) : ne pas la fermer */ }
+  else if(activeTab === 'commandes-home'){ fbFirstLoad = false; suiviNotifier(); }
   else if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
   else if(activeTab === 'saisie' || activeTab === 'sessions'){ /* ne pas interrompre une saisie en cours */ }
   else if(activeTab === 'messages'){
@@ -618,7 +619,7 @@ function onFirebaseDataMaintenant(){
     if(!composer || composer.value.trim() === '') nav('messages');
   }
   else if(document.activeElement && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement.tagName)){ /* un champ ou un bouton vient d'être utilisé (formulaire RH/GADH/Production en cours) : ne pas le redessiner sous la personne */ }
-  else if(document.querySelector('[id$="-form-zone"]:not(:empty)')){ /* un panneau de formulaire est actuellement ouvert (ex: création de commande) : le focus se perd entre deux clics de bouton, donc ce contrôle est plus fiable que activeElement seul */ }
+  else if(document.querySelector('.modal-backdrop') || document.querySelector('[id$="-form-zone"]:not(:empty)')){ /* un panneau de formulaire est actuellement ouvert (ex: création de commande) : le focus se perd entre deux clics de bouton, donc ce contrôle est plus fiable que activeElement seul */ }
   else { nav(activeTab); }
 }
 function detachFirebaseDataListeners(){
