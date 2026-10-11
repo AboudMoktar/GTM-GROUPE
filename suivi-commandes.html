@@ -660,6 +660,8 @@ function fluxGrid(lot, mode){
   var rows = suivi(lot, "*"), year = 0, dts = stageDates(lot);
   S.lines.forEach(function(l){ if (l.lot === lot) year = l.year; });
   var heads = mode === "q" ? ["Commande Coupe"].concat(SG_HEAD) : mode === "s" ? STATE_NAMES : mode === "n" ? SG_HEAD.map(function(h){ return "NC — " + h; }) : SG_HEAD.map(function(h){ return "Dates — " + h; });
+  var KEEP = (VUE === "gadh") ? ((mode === "q" || mode === "s") ? [2,4] : [1,3]) : null;
+  var allHeads = heads; if (KEEP) heads = KEEP.map(function(i){ return allHeads[i]; });
   var nv = heads.length, NC = 5 + nv + 1, g = {cols:[22,34,8,10,10], rows:[], merges:[], landscape:true};
   for (var k = 0; k < nv; k++) g.cols.push(mode === "d" ? 15 : 12.5); g.cols.push(12);
   var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
@@ -685,8 +687,9 @@ function fluxGrid(lot, mode){
     gset(g, r, 3, x.fr, {sz:11, al:"c", bd:"t"}); gset(g, r, 4, r === lTop ? libTot[lk] : "", {b:1, sz:11, al:"c", bd:"t"});
     var vals = mode === "q" ? [x.cut].concat(STG_KEYS.map(function(kk){ return x.s[kk]; })) : mode === "s" ? stateVals(x.cutE, x.s, x.n) : mode === "n" ? STG_KEYS.map(function(kk){ return x.n[kk] || 0; }) : null, mx = 1;
     for (k = 0; k < nv; k++){
-      if (vals){ var vv = vals[k]; sums[k] += vv; var st = {sz:11, al:"c", bd:"t"}; if (mode === "s" && vv) { st.bg = SG_BG[k]; st.b = 1; } if (mode === "n" && vv) { st.bg = "F4B6B6"; st.b = 1; } gset(g, r, 5 + k, (mode === "s" || mode === "n") && !vv ? "" : vv, st); }
-      else { var d = (dts[x.id] || {})[STG_KEYS[k]] || []; mx = Math.max(mx, d.length); gset(g, r, 5 + k, d.map(function(e){ return e[0] + " : " + e[1] + (e[2] ? " (NC " + e[2] + ")" : ""); }).join("\n"), {sz:9, al:"c", bd:"t", wrap:1}); }
+      var o = KEEP ? KEEP[k] : k;
+      if (vals){ var vv = vals[o]; sums[k] += vv; var st = {sz:11, al:"c", bd:"t"}; if (mode === "s" && vv) { st.bg = SG_BG[k]; st.b = 1; } if (mode === "n" && vv) { st.bg = "F4B6B6"; st.b = 1; } gset(g, r, 5 + k, (mode === "s" || mode === "n") && !vv ? "" : vv, st); }
+      else { var d = (dts[x.id] || {})[STG_KEYS[o]] || []; mx = Math.max(mx, d.length); gset(g, r, 5 + k, d.map(function(e){ return e[0] + " : " + e[1] + (e[2] ? " (NC " + e[2] + ")" : ""); }).join("\n"), {sz:9, al:"c", bd:"t", wrap:1}); }
     }
     gset(g, r, NC - 1, x.client, {sz:10, al:"c", bd:"t"});
     g.rows[r].h = 15 * mx; tq += x.fr; r++;
@@ -1289,7 +1292,8 @@ function vSuivi(v){
   if (!rows.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande pour ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
   var tot = {fr:0, cut:0, rest:0}; STAGES.forEach(function(s){ tot[s[0]] = 0; });
   rows.forEach(function(r){ tot.fr += r.fr; tot.cut += r.cut; tot.rest += r.rest; STAGES.forEach(function(s){ tot[s[0]] += r.s[s[0]]; }); });
-  v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:fmt(tot.fr)}), el("span", {text:"commandées"})), el("div", null, el("b", {text:fmt(tot.exp)}), el("span", {text:"expédiées"})), el("div", null, el("b", {text:fmt(tot.rest)}), el("span", {text:"reste à livrer"}))));
+  if (VUE === "gadh") v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:fmt(tot.gadh)}), el("span", {text:"envoyées à la GADH"})), el("div", null, el("b", {text:fmt(tot.ret)}), el("span", {text:"retournées"})), el("div", null, el("b", {text:fmt(Math.max(0, tot.gadh - tot.ret))}), el("span", {text:"encore à la GADH"}))));
+  else v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:fmt(tot.fr)}), el("span", {text:"commandées"})), el("div", null, el("b", {text:fmt(tot.exp)}), el("span", {text:"expédiées"})), el("div", null, el("b", {text:fmt(tot.rest)}), el("span", {text:"reste à livrer"}))));
   if (ui.smode !== "e"){
     v.appendChild(el("div", {class:"xlwrap tall"}, gridHTML(fluxGrid(ui.lot, ui.smode))));
     v.appendChild(el("p", {class:"mut", text:ui.smode === "s" ? "Situation : où se trouvent les pièces à cet instant (chaque pièce est dans l'état de la dernière étape atteinte)." : ui.smode === "n" ? "Pièces non conformes (NC) trouvées à chaque étape : elles ne passent pas à l'étape suivante." : ui.smode === "d" ? "Dates de chaque étape, avec la quantité traitée à chaque date (et les NC)." : "Cumul des pièces ayant atteint chaque étape. Reste à livrer = quantité commandée − expédiées (jamais négatif). Pour corriger un cumul, choisissez « Corriger »."}));
@@ -1508,19 +1512,23 @@ function vDash(v){
       VUE === "gadh" ? null : el("button", {class:"btn", text:"Aller aux commandes", onclick:function(){ ui.tab = "cmd"; render(); }})));
     return;
   }
-  var run = data.filter(function(d){ return !d.st.done; }), fin = data.filter(function(d){ return d.st.done; });
-  var rest = 0; run.forEach(function(d){ rest += d.all.rest; });
-  v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:String(run.length)}), el("span", {text:"commande(s) en cours"})), el("div", null, el("b", {text:fmt(rest)}), el("span", {text:"pièces restant à expédier"}))));
+  var G = VUE === "gadh";
+  function gOk(d){ return (d.all.t.gadh || 0) > 0 && (d.all.t.ret || 0) >= d.all.t.gadh; }
+  var run = data.filter(function(d){ return G ? !gOk(d) : !d.st.done; }), fin = data.filter(function(d){ return G ? gOk(d) : d.st.done; });
+  var rest = 0; run.forEach(function(d){ rest += G ? Math.max(0, (d.all.t.gadh || 0) - (d.all.t.ret || 0)) : d.all.rest; });
+  v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:String(run.length)}), el("span", {text:"commande(s) en cours"})), el("div", null, el("b", {text:fmt(rest)}), el("span", {text:G ? "pièces encore à la GADH" : "pièces restant à expédier"}))));
   function card(d){
     var c = el("div", {class:"card ord " + d.st.cls});
-    c.appendChild(el("div", {class:"top2"}, el("div", null, el("h2", {style:"margin:0", text:d.lot}), el("div", {class:"mut", text:"PERCKO" + (d.year ? " · " + d.year : "") + " · " + fmt(d.all.q) + " pièces" + (d.received ? " · reçue le " + dmy(d.received) : "")})), el("span", {class:"pill " + d.st.cls, text:d.st.txt})));
-    c.appendChild(el("div", {class:"cl"}, el("div", {class:"mut", style:"margin-bottom:6px", text:"Où sont les pièces ?"}), stateBar(d.all.sv, d.all.nc)));
-    if (d.clients.length > 1) d.clients.forEach(function(C){
+    c.appendChild(el("div", {class:"top2"}, el("div", null, el("h2", {style:"margin:0", text:d.lot}), el("div", {class:"mut", text:"PERCKO" + (d.year ? " · " + d.year : "") + " · " + fmt(d.all.q) + " pièces" + (d.received ? " · reçue le " + dmy(d.received) : "")})), el("span", {class:"pill " + (G ? "" : d.st.cls), text:G ? (gOk(d) ? "Retour complet" : (d.all.t.ret > 0 ? "Retour partiel" : ((d.all.t.gadh || 0) > 0 ? "À la GADH" : "Pas encore envoyée"))) : d.st.txt})));
+    if (G){ var sg = d.all.t.gadh || 0, rt = d.all.t.ret || 0, pc2 = sg ? Math.min(100, Math.round(rt / sg * 100)) : 0;
+      c.appendChild(el("div", {class:"cl"}, el("div", {class:"mut", style:"margin-bottom:6px", text:"Retournées " + fmt(rt) + " / " + fmt(sg) + " envoyées à la GADH"}), el("div", {style:"height:10px;background:var(--sub);border-radius:6px;overflow:hidden"}, el("i", {style:"display:block;height:100%;background:var(--acc);width:" + pc2 + "%"})))); }
+    else c.appendChild(el("div", {class:"cl"}, el("div", {class:"mut", style:"margin-bottom:6px", text:"Où sont les pièces ?"}), stateBar(d.all.sv, d.all.nc)));
+    if (d.clients.length > 1 && !G) d.clients.forEach(function(C){
       c.appendChild(el("div", {class:"cl"}, el("div", {class:"top2"}, el("b", {text:C.client}), el("span", {class:"mut", text:fmt(C.q) + " pièces · reste " + fmt(C.rest)}), el("span", {class:"pill " + C.st.cls, text:C.st.txt}))));
     });
     var bt = el("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"});
     if (!d.ready && VUE !== "gadh") bt.appendChild(el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.lot = d.lot; ui.tab = "cmd"; render(); }}));
-    bt.appendChild(el("button", {class:"btn small" + (d.ready ? "" : " sec"), text:"Faire avancer", onclick:function(){ ui.lot = d.lot; ui.tab = "flux"; ui.fv = {}; render(); }}));
+    bt.appendChild(el("button", {class:"btn small" + (d.ready ? "" : " sec"), text:G ? "Saisir le retour" : "Faire avancer", onclick:function(){ ui.lot = d.lot; ui.tab = "flux"; ui.fv = {}; render(); }}));
     if (VUE !== "gadh" && d.ready && d.all.rest > 0 && d.all.t.exp > 0) bt.appendChild(confirmBtn("Clôturer avec écart", "sec", function(){ commit(function(){ ensureLot(d.lot); S.lots[d.lot].closed = today(); }, "Commande clôturée avec écart"); }));
     bt.appendChild(el("button", {class:"btn small sec", text:"Suivi", onclick:function(){ ui.lot = d.lot; ui.tab = "suivi"; render(); }}));
     bt.appendChild(el("button", {class:"btn small sec", text:"Fiches", onclick:function(){ ui.lot = d.lot; ui.tab = "fiche"; render(); }}));
@@ -1528,7 +1536,7 @@ function vDash(v){
     return c;
   }
   if (run.length) { v.appendChild(el("h2", {style:"font-size:15px;margin:4px 0 8px", text:"Commandes en cours"})); run.forEach(function(d){ v.appendChild(card(d)); }); }
-  else v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande en cours : tout est expédié."})));
+  else v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:G ? "Aucune commande en cours : tout est retourné." : "Aucune commande en cours : tout est expédié."})));
   if (fin.length) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", style:"margin:0 0 8px", text:fin.length + " commande(s) terminée(s) archivée(s)."}), el("button", {class:"btn small sec", text:"Ouvrir l'archive", onclick:function(){ ui.tab = "arch"; render(); }})));
 }
 
