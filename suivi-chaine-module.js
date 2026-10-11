@@ -100,7 +100,7 @@ function renderChaineRapports(m){
 }
 let scModEdit = null, scDraft = null, scDirty = false;
 const scNouvId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-const SC_EXEMPLE = [['Ourlet manche (Goulot)', 60], ['Fermer manche', 120], ['Pointage V', 90], ['Collage encolure', 90], ['Ourlet bas', 84], ['Pose attache', 65], ['Ultrason triangle', 72], ['Fermer côté', 65], ['Montage manche', 65], ['Surpiquer côté (Goulot)', 60], ['Bride', 100], ['Pose agrafe', 120], ['Finition', 105], ['Contrôle', 108], ['Emballage', 90]];
+const SC_EXEMPLE = [['Ourlet manche (Goulot)', 60], ['Fermer manche', 120], ['Pointage V', 90], ['Collage encolure', 90], ['Ourlet bas', 84], ['Pose attache', 65], ['Ultrason triangle', 72], ['Fermer côté', 65], ['Montage manche', 65], ['Surpiquer côté (Goulot)', 60], ['Bride', 100], ['Pose agrafe', 120]];
 function renderChaineParams(m){
   try { renderChaineParams2(m); } catch(e) { console.error('Params chaîne', e); m.innerHTML = `<div class="card">${scTitre('Paramètres')}<p style="color:#DC3F45;">Erreur d'affichage : ${esc(e.message)}</p></div>`; }
 }
@@ -112,7 +112,7 @@ function renderChaineParams2(m){
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Un modèle = ses opérations (postes) dans l'ordre de la chaîne, avec la cadence de chaque poste (pièces/heure par ouvrière) et les ouvrières par défaut. Dans la Fiche, on choisit le modèle du jour : ses postes apparaissent avec leurs ouvrières, modifiables.</p>
     ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
     ${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="fcPolyPick(-1)">⚖ Volantes (équilibrage) : ${fcParams().polyv.length}</button>` : ''}
-    ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (15 opérations)</button>` : ''}</div>`;
+    ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (12 opérations)</button>` : ''}</div>`;
   if(!cur){ m.innerHTML = liste; return; }
   m.innerHTML = `<div class="card">${scTitre('Modèle', `<span style="display:flex;gap:6px;"><button class="btn btn-ghost" onclick="scModAnnuler()">‹ Retour</button>${ok ? `<button class="btn btn-primary" onclick="scModValider()">✓ Valider</button>` : ''}</span>`)}<div class="sc-dirty" id="sc-dirty" style="display:${scDirty ? 'block' : 'none'};">Modifications non enregistrées : touchez « Valider le modèle » en bas.</div><div id="fc-zone"></div>
     <div style="font-size:12.5px;background:var(--card-soft,rgba(37,99,235,.08));border-radius:10px;padding:9px 11px;margin-bottom:10px;">Rangez les opérations <b>dans l'ordre réel de la chaîne</b> : de la <b>première</b> (début) à la <b>dernière</b>. La dernière opération (finition / contrôle) est la <b>sortie</b> : ses pièces donnent le <b>rendement réel</b>.</div>
