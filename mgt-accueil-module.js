@@ -37,7 +37,7 @@ window.renderMgtDashboard = function(main){
   main.innerHTML = `
     <div class="card" style="padding:18px 16px 8px;border-radius:22px;">
       <div style="display:inline-block;padding:10px 18px;border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.08);margin-bottom:14px;background:#fff;">
-        <img src="${ACCUEIL_LOGO}" alt="MGT Tunisie" style="display:block;height:64px;max-width:260px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:30px;font-weight:900;letter-spacing:-1px;color:#E8400B;&quot;>m.g.t</span>'"></div>
+        <img src="${ACCUEIL_LOGO}" alt="MGT Tunisie" style="display:block;height:64px;max-width:260px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:30px;font-weight:900;letter-spacing:-1px;color:#B53802;&quot;>m.g.t</span>'"></div>
       <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--ink-soft);">MGT SARL</div>
       <div style="font-size:24px;font-weight:800;margin:4px 0 6px;">CRM — Base clients</div>
       <div style="font-size:14px;color:var(--ink-soft);margin-bottom:14px;">Suivi commercial, offres, projets, SAV et facturation.</div>
@@ -198,8 +198,8 @@ window.mgtNavItems = function(){ return accueilNavItemsOrigine().map(i => i.tab 
   const st = document.createElement('style');
   st.textContent = '.acc-grille{display:grid;grid-template-columns:1fr 1fr;gap:12px;}'
     + '.acc-tuile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:120px;padding:16px 8px;border:1px solid var(--border);border-radius:22px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px;font-weight:700;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.05);}'
-    + '.acc-tuile:active{transform:scale(.97);border-color:#E8400B;}'
-    + '.acc-ico{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:#FDEDE6;border:1px solid #F6C9B8;color:#E8400B;}'
+    + '.acc-tuile:active{transform:scale(.97);border-color:#B53802;}'
+    + '.acc-ico{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:#FBEEE8;border:1px solid #F6C9B8;color:#B53802;}'
     + '.acc-ico svg{width:28px;height:28px;}'
     + '@media (min-width:700px){.acc-grille{grid-template-columns:repeat(4,1fr);}}'
     + '.acc-rech{display:flex;gap:8px;}.acc-rech input{flex:1;min-width:0;}'
