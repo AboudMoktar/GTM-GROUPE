@@ -30,7 +30,7 @@ const PROFILS = {
   secretaire_gadh: {label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-rh'], factures:'*'}}, aide:'RH et facturation GADH'},
   resp_gadh:       {label:'Responsable GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-dashboard', 'gadh-production', 'gadh-prodchain', 'commandes-home', 'gadh-historique', 'gadh-stats']}}, aide:'Rendement et commandes à l\'assemblage'},
   agent_chaine:    {label:'Agent chaîne TEK-TREND', role:'chef_chaine', groupe:false, societes:{tek:true}, acces:{tek:{rendement:['dashboard', 'saisie']}}, aide:'Saisie des rendements par heure'}  ,
-  secretaire_mgt:  {label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true}, acces:{mgt:{mgt:['mgt-devis', 'mgt-devis-edit', 'fact-liste', 'fact-clients', 'fact-edit', 'fact-params']}}, aide:'Facturation et devis MGT'},
+  secretaire_mgt:  {label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true}, acces:{mgt:{mgt:['mgt-devis', 'mgt-devis-edit', 'mgt-lettrage', 'mgt-ca', 'fact-liste', 'fact-clients', 'fact-edit', 'fact-params']}}, aide:'Facturation et devis MGT'},
   technico_mgt:    {label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true}, aide:'Tout dans MGT (clients, offres, planning, devis, SAV, factures)'}
 };
 const PROFILS_ORDRE = ['direction', 'sysadmin', 'responsable', 'secretaire_tek', 'secretaire_gadh', 'resp_gadh', 'agent_chaine', 'secretaire_mgt', 'technico_mgt'];
