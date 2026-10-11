@@ -52,6 +52,33 @@ html[data-theme="dark"][data-soc="gadh"]{--bg:#17101A;--surface-2:#241826;--surf
 html[data-theme="dark"][data-soc="gadh"] .bottomnav{background:#241826;}
 html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active{color:#E8C24A;}
 html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active svg{background:#3A1426;color:#E8C24A;}
+
+html[data-soc="gadh"] body{background:radial-gradient(800px 380px at 105% -5%,rgba(207,168,36,.16),transparent 60%),radial-gradient(700px 420px at -10% 25%,rgba(5,138,158,.11),transparent 60%),#FAF7F2;background-attachment:fixed;}
+html[data-soc="gadh"] .topbar,html[data-soc="gadh"] .deepbar{background:radial-gradient(260px 120px at 90% 0%,rgba(207,168,36,.35),transparent 70%),linear-gradient(135deg,#9A2455 0%,#5E1032 100%);border-radius:0 0 26px 26px;padding-bottom:12px;box-shadow:0 14px 30px -14px rgba(94,16,50,.55);}
+html[data-soc="gadh"] .card{border:1px solid rgba(139,31,75,.06);border-top:1px solid rgba(139,31,75,.06);border-radius:22px;box-shadow:0 14px 34px -18px rgba(94,16,50,.28);padding:14px;}
+html[data-soc="gadh"] main .card:nth-child(3n+2),html[data-soc="gadh"] main .card:nth-child(3n+3){border-top-color:rgba(139,31,75,.06);}
+html[data-soc="gadh"] .dd-jp{border-radius:24px;border:0;box-shadow:0 16px 34px -20px color-mix(in srgb,var(--c) 70%,#000);background:linear-gradient(155deg,color-mix(in srgb,var(--c) 16%,#fff) 0%,#fff 65%);}
+html[data-soc="gadh"] .dd-bx{border:0;border-radius:20px;text-align:left;padding:14px 16px;background:linear-gradient(160deg,color-mix(in srgb,var(--c,#8B1F4B) 14%,#fff) 0%,#fff 70%);box-shadow:0 12px 26px -18px color-mix(in srgb,var(--c,#8B1F4B) 80%,#000);}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+1){--c:#8B1F4B;}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+2){--c:#CFA824;}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+3){--c:#058A9E;}
+html[data-soc="gadh"] .dd-bx-v{font-weight:800;color:var(--c,#8B1F4B);}
+html[data-soc="gadh"] .dd-bx-l{text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+html[data-soc="gadh"] .btn-primary{background:linear-gradient(135deg,#B03466 0%,#7A1740 100%);border:0;border-radius:16px;box-shadow:0 10px 22px -10px rgba(139,31,75,.75),inset 0 -3px 0 rgba(207,168,36,.9);}
+html[data-soc="gadh"] .field input,html[data-soc="gadh"] .field select,html[data-soc="gadh"] .field textarea{border-radius:14px;background:#fff;border:1.5px solid #EADFCE;}
+html[data-soc="gadh"] main{padding-bottom:104px;}
+html[data-soc="gadh"] .bottomnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));border-radius:26px;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid rgba(139,31,75,.08);box-shadow:0 18px 40px -12px rgba(94,16,50,.45);padding:5px;gap:2px;}
+html[data-soc="gadh"] .bottomnav button{border-radius:20px;min-height:50px;}
+html[data-soc="gadh"] .bottomnav button.active{background:linear-gradient(135deg,#A8325F,#6B1538);color:#fff;box-shadow:0 8px 16px -8px rgba(139,31,75,.8);}
+html[data-soc="gadh"] .bottomnav button.active::before{display:none;}
+html[data-soc="gadh"] .bottomnav button.active::after{content:'';position:absolute;bottom:3px;width:5px;height:5px;border-radius:50%;background:#CFA824;}
+html[data-soc="gadh"] .bottomnav button.active svg{background:none;padding:0;width:20px;height:20px;color:#fff;}
+html[data-soc="gadh"] .bottomnav .active,html[data-soc="gadh"] .bottomnav .on{color:#fff;}
+html[data-theme="dark"][data-soc="gadh"] body{background:radial-gradient(800px 380px at 105% -5%,rgba(207,168,36,.12),transparent 60%),#17101A;}
+html[data-theme="dark"][data-soc="gadh"] .card,html[data-theme="dark"][data-soc="gadh"] .dd-bx,html[data-theme="dark"][data-soc="gadh"] .dd-jp{background:#241826;}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav{background:rgba(36,24,38,.92);}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active{color:#fff;}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active svg{color:#fff;background:none;}
 html[data-theme="dark"][data-soc="mgt"]{--accent:#E8602A;--accent-2:#F07A44;--accent-bg:#3A1D13;}
 html[data-theme="dark"][data-soc="mgt"] .btn-primary{background:#C2410C;color:#fff;}
 html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120deg,#1B0D07 0%,#34170A 100%);}
