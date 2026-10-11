@@ -133,7 +133,7 @@ function renderFicheChaine(container){
         <button class="btn btn-ghost" style="padding:9px 11px;" onclick="fcDate='${dn(1)}';nav('fiche-chaine')" ${date >= getTodayISO() ? 'disabled' : ''}>›</button>
         <span style="flex:1;"></span>
         <button class="btn btn-ghost fc-modsel" ${edit ? '' : 'disabled'} onclick="fcModelesPick()" title="Modèles en cours dans la chaîne">${AF ? esc(AF.modeles.map(g => g.mod.nom).join(' + ')) : 'Choisir le(s) modèle(s)'}</button>
-        ${edit && AF ? `<button class="btn btn-ghost" onclick="fcAffecter(0)">Affectations</button>` : ''}${edit && !AF ? `<button class="btn btn-ghost" onclick="fcPostes()">Postes</button><button class="btn btn-ghost" onclick="fcChoisir()">Choisir les ouvrières</button>` : ''}
+        ${edit && AF ? `<button class="btn btn-ghost" onclick="fcAffecter()">Affectations</button>` : ''}${edit && !AF ? `<button class="btn btn-ghost" onclick="fcPostes()">Postes</button><button class="btn btn-ghost" onclick="fcChoisir()">Choisir les ouvrières</button>` : ''}
         <button class="btn btn-primary" onclick="rrExcel('chaine','${date}','${date}')">Excel</button><button class="btn btn-primary" onclick="rrPdf('chaine','${date}','${date}')">PDF</button>
       </div>
       <div id="fc-kpis" style="margin-top:12px;">${fcKpisHTML(TT)}</div>
@@ -196,8 +196,9 @@ window.fcModelesPick = function(){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">Modèles en cours</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Plusieurs modèles peuvent tourner en même temps dans la chaîne : cochez-les tous. Les ouvrières sont communes à tous les modèles du jour.</div>
     <div style="max-height:56vh;overflow:auto;">${mods.map(m => `<button type="button" class="pick-row${sel.has(m.id) ? ' on' : ''}" onclick="fcModeleToggle('${m.id}')"><span class="pick-ck">${sel.has(m.id) ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(m.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${m.ops.length} postes</span></button>`).join('') || '<div style="color:var(--ink-soft);padding:10px 0;">Aucun modèle : créez-les dans Params.</div>'}</div>
-    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcFermer()">Terminer</button></div></div>`;
+    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcModelesFin()">Suivant : choisir les ouvrières ›</button></div></div>`;
 };
+window.fcModelesFin = function(){ fcFermer(); if(fcAff(fcDate)) fcAffecter(); };
 window.fcModeleToggle = function(mid){ const jour = fcJour(fcDate); jour.modeles = jour.modeles.indexOf(mid) >= 0 ? jour.modeles.filter(x => x !== mid) : jour.modeles.concat(mid); fcSaveJour(fcDate, jour); fcModelesPick(); };
 
 // ----- Affectations : poste par poste (plusieurs ouvrières par poste, « Valider » le poste pour les retirer de la liste des suivants) -----
@@ -207,7 +208,7 @@ function fcDispo(id, date){ const r = resolveDayStatus(id, date); return !(r.sou
 function fcSauveAff(A, jour){ // écrit les affectations explicites de tous les postes (les défauts du modèle deviennent fixes pour ce jour)
   jour.aff = {}; A.modeles.forEach(g => g.ops.forEach(o => { jour.aff[o.cle] = o.emps.slice(); })); }
 function fcVolHeureDefaut(){ const slots = getSlotsForDate(fcDate); if(!slots.length) return 0; if(fcDate === getTodayISO()){ const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); const s = slots.filter(x => x.start <= m).pop(); return s ? s.start : slots[0].start; } return slots[0].start; }
-window.fcAffecter = function(k){
+window.fcAffPoste = function(k){
   const A = fcAff(fcDate); if(!A) return; const steps = []; A.modeles.forEach(g => g.ops.forEach(o => steps.push({g, o})));
   k = Math.max(0, Math.min(steps.length - 1, k || 0)); const st = steps[k], o = st.o, em = getEmployees(), poly = A.poly, slots = getSlotsForDate(fcDate);
   if(fcVolMin === null || !slots.some(x => x.start === fcVolMin)) fcVolMin = fcVolHeureDefaut();
@@ -222,44 +223,60 @@ window.fcAffecter = function(k){
     const libres = pool.filter(([id]) => poly.has(id) || !ou[id] || ou[id].cle === o.cle || !ou[id].valide);
     const vols = libres.filter(([id]) => poly.has(id)), fixes = libres.filter(([id]) => !poly.has(id));
     const ligne = ([id, e]) => { const ici = o.emps.indexOf(id) >= 0, autre = ou[id] && ou[id].cle !== o.cle ? ou[id] : null;
-      return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="fcWizToggle(${k},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${autre ? esc(autre.nom) : ''}</span></button>`; };
+      return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="fcWizToggle(${k},'${id}',this)"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${autre ? esc(autre.nom) : ''}</span></button>`; };
     const ligneV = ([id, e]) => { const v = o.vols.find(x => x.id === id), ici = !!v, ailleurs = A.modeles.some(g => g.ops.some(p => p.cle !== o.cle && p.vols.some(x => x.id === id)));
-      return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="fcWizVol(${k},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">⚖ ${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${ici ? 'dès ' + fcHM(v.segs[0][0]) : (ailleurs ? 'ailleurs' : 'libre')}</span></button>`; };
+      return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="fcWizVol(${k},'${id}',this)"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">⚖ ${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${ici ? 'dès ' + fcHM(v.segs[0][0]) : (ailleurs ? 'ailleurs' : 'libre')}</span></button>`; };
     corps = `<div style="font-size:12px;color:var(--ink-soft);margin:4px 0 6px;">Cochez une ou plusieurs ouvrières. Une fois le poste validé, elles n'apparaissent plus aux postes suivants.</div>
-      <div style="max-height:40vh;overflow:auto;">${fixes.map(ligne).join('') || '<div style="padding:10px;color:var(--ink-soft);">Plus d’ouvrière libre.</div>'}
+      <div class="pick-list" style="max-height:40vh;overflow:auto;">${fixes.map(ligne).join('') || '<div style="padding:10px;color:var(--ink-soft);">Plus d’ouvrière libre.</div>'}
       ${vols.length ? `<div style="font-size:11px;font-weight:700;color:var(--ink-soft);padding:10px 10px 2px;">VOLANTES (équilibrage) — à partir de <select onchange="fcVolMin=parseInt(this.value)">${slots.map(x => `<option value="${x.start}" ${x.start === fcVolMin ? 'selected' : ''}>${fcHM(x.start)}</option>`).join('')}</select></div>${vols.map(ligneV).join('')}` : ''}</div>`;
   }
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:11px;color:var(--ink-soft);font-weight:700;">${esc(st.g.mod.nom)} · poste ${k + 1}/${steps.length} · validés ${nbValides}</div><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <h3 style="margin:2px 0 0;">${esc(o.nom)} <span style="font-size:12px;font-weight:600;color:var(--ink-soft);">${o.cad} pcs/h par ouvrière</span></h3>
     ${corps}
-    <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-ghost" ${k ? '' : 'disabled'} onclick="fcAffecter(${k - 1})">‹ Précédent</button>
-      ${o.valide ? `<button class="btn btn-primary" style="flex:1;" onclick="${k + 1 < steps.length ? `fcAffecter(${k + 1})` : 'fcFermer()'}">${k + 1 < steps.length ? 'Poste suivant ›' : 'Terminer'}</button>` : `<button class="btn btn-primary" style="flex:1;" onclick="fcWizValider(${k})">${k + 1 < steps.length ? 'Valider le poste ›' : 'Valider et terminer'}</button>`}</div>
-    <div style="display:flex;justify-content:space-between;margin-top:8px;"><button class="btn btn-ghost fc-btn" onclick="fcPolyPick(${k})">⚖ Volantes…</button><button class="btn btn-ghost fc-btn" onclick="fcFermer()">Fermer</button></div></div></div>`;
+    <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-ghost" onclick="fcAffecter()">‹ Liste</button>
+      ${o.valide ? `<button class="btn btn-primary" style="flex:1;" onclick="fcAffecter()">Retour à la liste</button>` : `<button class="btn btn-primary" style="flex:1;" onclick="fcWizValider(${k})">✓ Valider le poste</button>`}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;"><button class="btn btn-ghost fc-btn" onclick="fcPolyPick(${k})">⚖ Volantes…</button><button class="btn btn-ghost fc-btn" onclick="fcFermer()">Fermer</button></div></div>`;
 };
-function fcAffMaj(f, k){ const A = fcAff(fcDate), jour = fcJour(fcDate); f(A, jour); fcSaveJour(fcDate, jour); fcAffecter(k); }
-window.fcWizToggle = (k, id) => fcAffMaj((A, jour) => {
-  let cur = null, tous = [];
-  A.modeles.forEach(g => g.ops.forEach(p => { tous.push(p); })); cur = tous[k];
-  const deja = cur.emps.indexOf(id) >= 0; tous.forEach(p => { p.emps = p.emps.filter(x => x !== id); }); if(!deja) cur.emps.push(id); fcSauveAff(A, jour);
-}, k);
-window.fcWizValider = function(k){ const A = fcAff(fcDate), jour = fcJour(fcDate), tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); fcSauveAff(A, jour); jour.valid[tous[k].cle] = true; fcSaveJour(fcDate, jour); if(k + 1 < tous.length) fcAffecter(k + 1); else fcFermer(); };
+function fcAffMaj(f, k){ const A = fcAff(fcDate), jour = fcJour(fcDate); f(A, jour); fcSaveJour(fcDate, jour); fcAffPoste(k); }
+function fcMarque(btn, on, tag){ if(!btn) return; btn.classList.toggle('on', !!on); const ck = btn.querySelector('.pick-ck'); if(ck) ck.textContent = on ? '✓' : ''; const t = btn.lastElementChild; if(t) t.textContent = tag || ''; }
+// Cocher / décocher : mise à jour sur place (la liste ne se recharge pas, le défilement est conservé)
+window.fcWizToggle = function(k, id, btn){
+  const A = fcAff(fcDate), jour = fcJour(fcDate), tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); const cur = tous[k];
+  const deja = cur.emps.indexOf(id) >= 0; tous.forEach(p => { p.emps = p.emps.filter(x => x !== id); }); if(!deja) cur.emps.push(id);
+  fcSauveAff(A, jour); fcSaveJour(fcDate, jour); fcMarque(btn, !deja, '');
+};
+window.fcWizValider = function(k){ const A = fcAff(fcDate), jour = fcJour(fcDate), tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); fcSauveAff(A, jour); jour.valid[tous[k].cle] = true; fcSaveJour(fcDate, jour); fcAffecter(); };
 window.fcWizModifier = (k) => fcAffMaj((A, jour) => { const tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); fcSauveAff(A, jour); delete jour.valid[tous[k].cle]; }, k);
-window.fcWizVol = (k, id) => fcAffMaj((A, jour) => {
-  const tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); const cle = tous[k].cle, tl = [];
+window.fcWizVol = function(k, id, btn){
+  const A = fcAff(fcDate), jour = fcJour(fcDate), tous = []; A.modeles.forEach(g => g.ops.forEach(p => tous.push(p))); const cle = tous[k].cle, tl = [];
   A.modeles.forEach(g => g.ops.forEach(p => p.vols.forEach(v => { if(v.id === id) v.segs.forEach(sg => tl.push({t:sg[0], cle:p.cle})); })));
   tl.sort((a, b) => a.t - b.t); const ici = tl.some(x => x.cle === cle); fcSauveAff(A, jour);
-  jour.vol[id] = ici ? tl.filter(x => x.cle !== cle) : tl.filter(x => x.t < fcVolMin).concat({t:fcVolMin, cle});
-}, k);
+  jour.vol[id] = ici ? tl.filter(x => x.cle !== cle) : tl.filter(x => x.t < fcVolMin).concat({t:fcVolMin, cle}); fcSaveJour(fcDate, jour);
+  fcMarque(btn, !ici, !ici ? 'dès ' + fcHM(fcVolMin) : 'libre');
+};
+// Liste de tous les postes des modèles en cours : on choisit les ouvrières poste par poste
+window.fcAffecter = function(){
+  const A = fcAff(fcDate); if(!A) return; const em = getEmployees(); let k = -1, nb = 0, val = 0;
+  const bloc = A.modeles.map(g => `<div class="aff-g"><div class="aff-gt">${esc(g.mod.nom)}</div>${g.ops.map(o => { k++; nb++; if(o.valide) val++;
+    const noms = [...o.emps.map(id => esc((em[id] || {}).nom || id)), ...o.vols.map(v => '⚖ ' + esc((em[v.id] || {}).nom || v.id))];
+    return `<div class="aff-op${o.valide ? ' ok' : ''}"><div style="flex:1;min-width:0;"><b>${o.i + 1}. ${esc(o.nom)}</b> <span style="font-size:11px;color:var(--ink-soft);">${o.cad} pcs/h</span><div class="aff-n">${noms.join(', ') || '<span class="aff-vide">À choisir</span>'}</div></div>
+      <button class="btn ${o.valide ? 'btn-ghost' : 'btn-primary'} fc-btn" onclick="fcAffPoste(${k})">${o.valide ? '✓ Modifier' : 'Choisir'}</button></div>`; }).join('')}</div>`).join('');
+  document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><h3 style="margin:0;">Ouvrières par opération</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${fcDate.split('-').reverse().join('/')} · postes validés : <b>${val}/${nb}</b>. Une opération peut avoir une ou plusieurs ouvrières.</div>
+    <div class="aff-scroll" style="max-height:60vh;overflow:auto;">${bloc}</div>
+    <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-ghost fc-btn" onclick="fcPolyPick(-2)">⚖ Volantes…</button><button class="btn btn-primary" style="flex:1;" onclick="fcFermer()">Terminer</button></div></div></div>`;
+};
 window.fcPolyPick = function(k){
   const em = activeEmployees(), p = fcParams(), sel = new Set(p.polyv);
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">⚖ Volantes</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Une volante équilibre la chaîne : elle reste disponible pour tous les postes, change de poste en cours de journée, et sa cadence s'ajoute au poste où elle se trouve.</div>
-    <div style="max-height:52vh;overflow:auto;">${em.map(([id, e]) => `<button type="button" class="pick-row${sel.has(id) ? ' on' : ''}" onclick="fcPolyToggle('${id}',${k})"><span class="pick-ck">${sel.has(id) ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span></button>`).join('')}</div>
-    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="${k >= 0 ? `fcAffecter(${k})` : 'fcFermer()'}">Terminer</button></div></div>`;
+    <div style="max-height:52vh;overflow:auto;">${em.map(([id, e]) => `<button type="button" class="pick-row${sel.has(id) ? ' on' : ''}" onclick="fcPolyToggle('${id}',${k},this)"><span class="pick-ck">${sel.has(id) ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span></button>`).join('')}</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="${k >= 0 ? `fcAffPoste(${k})` : (k === -2 ? 'fcAffecter()' : 'fcFermer()')}">Terminer</button></div></div>`;
 };
-window.fcPolyToggle = function(id, k){ const p = fcParams(); p.polyv = p.polyv.indexOf(id) >= 0 ? p.polyv.filter(x => x !== id) : p.polyv.concat(id); fcSaveParams(p); fcPolyPick(k); };
+window.fcPolyToggle = function(id, k, btn){ const p = fcParams(); const on = p.polyv.indexOf(id) < 0; p.polyv = on ? p.polyv.concat(id) : p.polyv.filter(x => x !== id); fcSaveParams(p); fcMarque(btn, on, ''); };
 window.fcPosteSet = function(id, v){ const p = fcParams(); p.poste[id] = String(v || '').trim(); const n = p.poste[id]; if(n && p.postes.indexOf(n) < 0) p.postes = fcPostesOrdre().concat(n); fcSaveParams(p); nav(fcRetour()); };
 window.fcPostes = function(){
   const ord = fcPostesOrdre();
@@ -322,6 +339,7 @@ kpCss.textContent = `
 .kp-ring{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;position:relative;} .kp-ring i{font-style:normal;width:36px;height:36px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--c);}
 .kp-tx{min-width:0;} .kp-l{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;} .kp-v{font-size:26px;font-weight:700;line-height:1.15;color:var(--ink);} .kp-s{font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .kp-postes{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;} .kp-chip{font-size:11.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;} .kp-chip.last{border-color:#2563EB;} .kp-arrow{color:var(--ink-soft);}
+.aff-g{margin-bottom:12px;} .aff-gt{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#2563EB;padding:6px 0;} .aff-op{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-soft);} .aff-op.ok{background:linear-gradient(90deg,rgba(14,159,131,.08),transparent);} .aff-n{margin-top:3px;font-size:12.5px;} .aff-vide{color:#DC3F45;}
 .fc-vol{color:#2563EB;font-size:12px;} .fc-t tr.fc-grp td{background:var(--surface-3);text-align:left;padding:7px 10px;font-size:12px;position:sticky;left:0;}
 .fc-poste-l{display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;font-weight:600;} .fc-modsel{padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);max-width:190px;}
 .fc-poste{display:block;width:100%;margin-top:3px;padding:3px 6px;font-size:11px;border:1px dashed var(--border);border-radius:6px;background:transparent;color:var(--ink-soft);}
