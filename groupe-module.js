@@ -307,3 +307,48 @@ function readSocietesField(){
     + '.soc-fleche{display:flex;align-items:center;padding:0 16px 0 4px;font-size:26px;color:#9AA4B5;}';
   document.head.appendChild(st);
 })();
+
+
+// --- Réinitialisation (phase de test) ---
+// Efface l'historique d'une société ; les paramètres (employés, modèles, cadences,
+// horaires…) sont gardés sauf si l'on répond « oui » à la 2e question.
+const REINIT_PARAMS = ['schedule','employees','ops','ops_history','obj_horaire_op','fc_modeles','fc_params','rh_departements','prod_references','gadh_employees','gadh_cadences','gadh_plannings'];
+const REINIT_GARDER = ['users_v2','sessions','prod_v4_migre'];
+window.reinitialiserSociete = async function(soc){
+  if(!currentUser || currentUser.role !== 'admin'){ showToast('Réservé à l\'administrateur'); return; }
+  const nom = soc === 'gadh' ? 'GADH' : 'TEK-TREND';
+  if(!confirm('Effacer tout l\'historique de ' + nom + ' ?\nCette action est définitive.')) return;
+  const tout = confirm('Supprimer AUSSI les paramètres de ' + nom + ' (employés, modèles, cadences, horaires) ?\n\nOK = tout supprimer\nAnnuler = garder les paramètres');
+  const mot = prompt('Pour confirmer, tapez EFFACER');
+  if(!mot || mot.trim().toUpperCase() !== 'EFFACER'){ showToast('Annulé'); return; }
+  const dossiers = soc === 'gadh' ? ['gadh'] : ['tek'];
+  const keys = new Set();
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i) || '';
+      if(k.indexOf(CACHE_PREFIX) === 0) keys.add(k.slice(CACHE_PREFIX.length));
+    }
+  }catch(e){}
+  Object.keys(memoryCache).forEach(k => { if(k.indexOf(CACHE_PREFIX) === 0) keys.add(k.slice(CACHE_PREFIX.length)); });
+  if(firebaseReady && fbRootRef){
+    const dos = dossiers.concat(['liaison']);
+    for(const d of dos){
+      try{ const snap = await fbRootRef.child(d).once('value'); const v = snap.val() || {}; Object.keys(v).forEach(k => keys.add(k)); }catch(e){}
+    }
+  }
+  let n = 0; const taches = [];
+  keys.forEach(k => {
+    if(REINIT_GARDER.indexOf(k) >= 0) return;
+    const d = firebaseDossierDe(k);
+    if(d === null) return;
+    if(d !== dossiers[0] && d !== 'liaison') return;
+    if(!tout && (REINIT_PARAMS.indexOf(k) >= 0)) return;
+    delete memoryCache[CACHE_PREFIX + k];
+    try{ localStorage.removeItem(CACHE_PREFIX + k); }catch(e){}
+    if(firebaseReady && fbRootRef) taches.push(fbRootRef.child(firebaseCheminDe(k)).remove().catch(function(){}));
+    n++;
+  });
+  try{ await Promise.all(taches); }catch(e){}
+  showToast('✓ ' + nom + ' réinitialisé (' + n + ' éléments effacés)');
+  setTimeout(function(){ nav(activeTab); }, 300);
+};

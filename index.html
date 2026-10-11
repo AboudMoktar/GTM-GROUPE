@@ -2146,6 +2146,12 @@ function renderParams(container){
 
       <button class="btn btn-primary btn-block" style="margin-top:15px;" onclick="saveParams()">Enregistrer les paramètres</button>
     </div>
+
+    <div class="card" style="border:1.5px solid #DC2626;">
+      <h3 style="margin:0 0 4px;color:#DC2626;">Phase de test — Réinitialiser</h3>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface tout l'historique TEK-TREND (saisies, pointages, absences, commandes…). Les comptes utilisateurs ne sont jamais touchés.</p>
+      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('tek')">🗑 Réinitialiser TEK-TREND</button>
+    </div>
   `;
 
   window.toggleOpHistoryPanel = (i, forceOpen) => {
