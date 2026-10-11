@@ -24,6 +24,34 @@ html[data-soc="gadh"] .fc-t th{background:#6B1538;}
 html[data-theme="dark"][data-soc="gadh"]{--accent:#D4588A;--accent-2:#E57BA6;--accent-bg:#3A1426;}
 html[data-theme="dark"][data-soc="gadh"] .btn-primary{background:#A8325F;color:#fff;}
 html[data-theme="dark"][data-soc="gadh"] .topbar{background:linear-gradient(120deg,#4A0F27 0%,#3A0C1F 100%);}
+
+html[data-soc="gadh"]{--bg:#FAF6EF;--surface-2:#F6EFE3;--surface-3:#F0E6D6;--border:#E8DCC8;--border-soft:#F0E6D6;}
+html[data-soc="gadh"] .topbar,html[data-soc="gadh"] .deepbar{border-bottom:0;background:linear-gradient(90deg,#CFA824 0 34%,#058A9E 34% 67%,#C2477A 67% 100%) left bottom/100% 4px no-repeat,linear-gradient(120deg,#8B1F4B 0%,#5E1032 100%);padding-bottom:13px;}
+html[data-soc="gadh"] .btn-primary{background:linear-gradient(145deg,#A8325F 0%,#7A1740 100%);border-radius:13px;border-bottom:3px solid #CFA824;}
+html[data-soc="gadh"] .card{border:1px solid var(--border);border-top:3px solid #8B1F4B;border-radius:16px;}
+html[data-soc="gadh"] main .card:nth-child(3n+2){border-top-color:#CFA824;}
+html[data-soc="gadh"] main .card:nth-child(3n+3){border-top-color:#058A9E;}
+html[data-soc="gadh"] main h2{font-weight:800;letter-spacing:-.02em;}
+html[data-soc="gadh"] main h2::after{content:'';display:block;width:38px;height:4px;border-radius:3px;background:linear-gradient(90deg,#CFA824,#058A9E);margin-top:6px;}
+html[data-soc="gadh"] .dd-jp:nth-child(4n+1){--c:#8B1F4B;}
+html[data-soc="gadh"] .dd-jp:nth-child(4n+2){--c:#CFA824;}
+html[data-soc="gadh"] .dd-jp:nth-child(4n+3){--c:#058A9E;}
+html[data-soc="gadh"] .dd-jp:nth-child(4n+4){--c:#C2477A;}
+html[data-soc="gadh"] .dd-bx{border-radius:14px;border-width:0 0 0 5px;border-style:solid;box-shadow:0 2px 10px rgba(94,16,50,.08);text-align:left;padding-left:14px;}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+1){border-color:#8B1F4B;}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+2){border-color:#CFA824;}
+html[data-soc="gadh"] .dd-bx:nth-child(3n+3){border-color:#058A9E;}
+html[data-soc="gadh"] .dd-bx-bad{border-color:#E5484D !important;}
+html[data-soc="gadh"] .bottomnav{background:#fff;border-top:0;box-shadow:0 -6px 20px rgba(94,16,50,.10);}
+html[data-soc="gadh"] .bottomnav button.active{color:#8B1F4B;font-weight:800;}
+html[data-soc="gadh"] .bottomnav button.active::before{background:#CFA824;width:34px;height:4px;}
+html[data-soc="gadh"] .bottomnav button.active svg{background:#F7ECF1;border-radius:12px;padding:5px 12px;width:44px;height:30px;box-sizing:border-box;color:#8B1F4B;}
+html[data-soc="gadh"] .bottomnav .active,html[data-soc="gadh"] .bottomnav .on{color:#8B1F4B;}
+html[data-soc="gadh"] .badge,html[data-soc="gadh"] .chip.on{background:#CFA824;color:#3A2A00;}
+html[data-theme="dark"][data-soc="gadh"]{--bg:#17101A;--surface-2:#241826;--surface-3:#2E1F31;--border:#3D2B40;--border-soft:#2E1F31;}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav{background:#241826;}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active{color:#E8C24A;}
+html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active svg{background:#3A1426;color:#E8C24A;}
 html[data-theme="dark"][data-soc="mgt"]{--accent:#E8602A;--accent-2:#F07A44;--accent-bg:#3A1D13;}
 html[data-theme="dark"][data-soc="mgt"] .btn-primary{background:#C2410C;color:#fff;}
 html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120deg,#1B0D07 0%,#34170A 100%);}
@@ -32,7 +60,8 @@ html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120de
   const quelle = () => { if(typeof activeModule === 'undefined' || !document.getElementById('main')) return '';
     if(activeModule === 'mgt') return 'mgt';
     if(activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; return ''; };
-  const sync = () => { try { const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
+  const meta0 = (document.querySelector('meta[name="theme-color"]')||{}).content;
+  const sync = () => { try { const mt = document.querySelector('meta[name="theme-color"]'); if(mt){ const w0 = quelle(); mt.content = w0 === 'gadh' ? '#5E1032' : w0 === 'mgt' ? '#2A130A' : (meta0 || mt.content); } const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
   ['nav', 'renderShell', 'chooseModule', 'chooseSociete'].forEach(n => { const f = window[n]; if(typeof f === 'function') window[n] = function(){ const r = f.apply(this, arguments); sync(); return r; }; });
   setInterval(sync, 600); sync();
 })();
