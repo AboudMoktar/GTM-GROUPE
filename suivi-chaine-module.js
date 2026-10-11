@@ -145,10 +145,10 @@ window.scPick = function(i){
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;">${esc(c.ops[i].nom)}</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Touchez une ouvrière pour l'ajouter ou la retirer de ce poste.</div>
-    <div style="max-height:58vh;overflow:auto;">${em.map(([id, e]) => { const k = ou[id], ici = k === i; return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="scPickToggle(${i},'${id}')"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${k !== undefined && !ici ? esc(c.ops[k].nom) : ''}</span></button>`; }).join('')}</div>
+    <div style="max-height:58vh;overflow:auto;">${em.map(([id, e]) => { const k = ou[id], ici = k === i; return `<button type="button" class="pick-row${ici ? ' on' : ''}" onclick="scPickToggle(${i},'${id}',this)"><span class="pick-ck">${ici ? '✓' : ''}</span><span style="flex:1;text-align:left;">${esc(e.nom)}</span><span style="font-size:11px;color:var(--ink-soft);">${k !== undefined && !ici ? esc(c.ops[k].nom) : ''}</span></button>`; }).join('')}</div>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="fcFermer()">Terminer</button></div></div>`;
 };
-window.scPickToggle = function(i, id){ const c = scDraft; if(!c) return; const deja = (c.ops[i].emps || []).indexOf(id) >= 0; c.ops.forEach((o, k) => { o.emps = (o.emps || []).filter(x => x !== id); if(k === i && !deja) o.emps.push(id); }); scDirty = true; scPick(i); };
+window.scPickToggle = function(i, id, btn){ const c = scDraft; if(!c) return; const deja = (c.ops[i].emps || []).indexOf(id) >= 0; c.ops.forEach((o, k) => { o.emps = (o.emps || []).filter(x => x !== id); if(k === i && !deja) o.emps.push(id); }); scDirty = true; fcMarque(btn, !deja, ''); };
 // ---------- Navigation et module ----------
 const scNavItems = window.navItems;
 window.navItems = function(){
