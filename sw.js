@@ -1,7 +1,7 @@
 // TEK-TREND — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v59';
+const CACHE_NAME = 'groupe-v60';
 
 // Fichiers essentiels de l'application (mêmes dossier que sw.js)
 const APP_SHELL = [
@@ -66,7 +66,7 @@ self.addEventListener('fetch', function(event){
   // de secours si l'appareil est hors connexion.
   if(isAppShellDocument(event.request) || isSiteCode(event.request)){
     event.respondWith(
-      fetch(event.request).then(function(response){
+      fetch(event.request, {cache:'no-cache'}).then(function(response){
         if(response && response.ok){
           const copy = response.clone();
           caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
