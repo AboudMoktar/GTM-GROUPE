@@ -231,7 +231,17 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 /* chiffres des tableaux de saisie : noir gras, toujours lisibles */
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
+</style><style>
+:root[data-soc="gadh"]{--bg:#FAF7F2;--pri:#8B1F4B;--acc:#058A9E;--head:#6B1538;--sub:#F6EFE3;--tot:#F3DDE6;--line:#E8DCC8;--shadow:0 12px 30px -16px rgba(94,16,50,.3);--radius:20px;}
+:root[data-soc="gadh"] .btn,:root[data-soc="gadh"] button{border-radius:14px;}
+:root[data-soc="gadh"] header{background:radial-gradient(240px 110px at 90% 0%,rgba(207,168,36,.35),transparent 70%),linear-gradient(135deg,#9A2455,#5E1032);border-radius:0 0 24px 24px;}
+:root[data-soc="gadh"] button.btn:not(.sec):not(.bad){background:linear-gradient(135deg,#B03466,#7A1740);border-color:transparent;box-shadow:inset 0 -3px 0 rgba(207,168,36,.9);}
+:root[data-theme="dark"][data-soc="gadh"],:root[data-soc="gadh"][data-dark]{--bg:#17101A;--card:#241826;--pri:#E57BA6;--acc:#38B6C8;--head:#4A1030;--sub:#2E1F31;--tot:#3A1426;--line:#3D2B40;}
 </style>
+<script>
+(function(){var r=document.documentElement;function sync(){try{var P=window.parent.document.documentElement;var w=P.getAttribute('data-soc')||'';if((r.getAttribute('data-soc')||'')!==w){w?r.setAttribute('data-soc',w):r.removeAttribute('data-soc');}var t=P.getAttribute('data-theme');if(t&&r.getAttribute('data-theme')!==t)r.setAttribute('data-theme',t);}catch(e){}}sync();setInterval(sync,500);})();
+</script>
+
 
 <div id="app">
   <header>
@@ -371,7 +381,7 @@ function desiredDocs(){
     for (var k = 0; k * 1200 < ms.length; k++)
       d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ return [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; })};
   });
-  return d;
+  return JSON.parse(JSON.stringify(d)); /* Firebase refuse les valeurs « undefined » */
 }
 function persist(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
 function flush(){
