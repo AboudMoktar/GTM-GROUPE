@@ -1445,6 +1445,15 @@ function vFlux(v){
       confirmBtn("Clôturer la coupe (écart accepté)", "sec", function(){ commit(function(){ rows.forEach(function(l){ var tt = tot[l.id] || {}, nn = ncT[l.id] || {}; if ((tt.cp || 0) + (nn.cp || 0) > 0) l.cc = 1; }); }, "Coupe clôturée : plus rien à couper pour ces lignes"); }),
       anyClosed ? confirmBtn("Rouvrir la coupe", "sec", function(){ commit(function(){ rows.forEach(function(l){ l.cc = 0; }); }, "Coupe rouverte"); }) : null));
   }
+  if (capped && items.length && items.every(function(it){ return it.disp === 0; })){
+    var nxt = si < STG_KEYS.length - 1 ? STG_KEYS[si + 1] : null;
+    v.appendChild(el("div", {class:"msg", style:"margin-bottom:10px;background:#fff3cd;border:1px solid #e7cf6a;color:#4a3b00"},
+      el("b", {text:"Rien à saisir à cette étape : "}), "tout ce qui était disponible est déjà passé (colonne « Déjà passé »). Les cases sont bloquées. ",
+      nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null));
+    items.forEach(function(it){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; });
+  } else {
+    items.forEach(function(it){ if (capped && it.disp === 0){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; } });
+  }
   v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
   v.appendChild(el("p", {class:"mut", text:stage === "cp" ? "La coupe peut couper plus ou moins que l'ordre de coupe : « Clôturer la coupe » accepte l'écart. Saisissez les pièces non conformes (NC) dans la colonne NC." : "Conformes + NC ne peuvent pas dépasser le disponible. Si vous saisissez des NC, les conformes se réduisent automatiquement. À l'emballage, la quantité proposée est celle qui est sortie du contrôle (conformes uniquement)."}));
 
