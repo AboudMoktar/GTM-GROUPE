@@ -700,7 +700,7 @@ function gadhWeekChart(days){
     const x = pad + i*bw + bw*0.2;
     const bh = (d.reel/maxV)*(H-pad*1.5);
     const y = H-pad-bh;
-    return `<rect x="${x}" y="${y}" width="${bw*0.6}" height="${bh}" rx="3" fill="#9C1F45"/>`;
+    return `<rect x="${x}" y="${y}" width="${bw*0.6}" height="${bh}" rx="3" fill="#A8325F"/>`;
   }).join('');
   const pts = days.map((d,i) => {
     const x = pad + i*bw + bw/2;
@@ -773,7 +773,7 @@ function renderGadhDashboard(container){
   // par créneau, puisque Commandes donne déjà le détail par référence).
   const refRanking = Object.entries(totals.parRef).map(([rk,q]) => [gadhRefName(rk), q]).sort((a,b)=>b[1]-a[1]);
   const totalRefQty = Object.values(totals.parRef).reduce((s,v)=>s+v,0) || 1;
-  const refColors = ['#9C1F45','#EC4899','#10B981','#6B7280','#F59E0B','#8B5CF6','#06B6D4'];
+  const refColors = ['#A8325F','#EC4899','#10B981','#6B7280','#F59E0B','#8B5CF6','#06B6D4'];
 
   // Qualité par référence (Bon >=80% / Moyen 60-79% / Faible <60%), parmi les
   // références ayant une cadence configurée (donc un objectif calculable).
@@ -812,7 +812,7 @@ function renderGadhDashboard(container){
 
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div class="kpi-mini" style="background:linear-gradient(160deg,#EFF6FF,var(--surface));border-color:#BFDBFE;">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#C0446B,#781230);">🏭</div>
+        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#B84470,#8B1F4B);">🏭</div>
         <div class="kpi-mini-val">${totals.totalReel}</div><div class="kpi-mini-lbl">Production</div>
         ${gadhTrendBadge(totals.totalReel, yTotals.totalReel)}
       </div>
@@ -891,7 +891,7 @@ function renderGadhDashboard(container){
       ${commandesEnCours.length===0 ? buildEmptyState("Aucune commande en cours") : commandesEnCours.map(c => `
         <div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;font-size:12px;"><b>${esc(c.numero)}</b><span style="color:var(--ink-soft);">${c.retourFait} / ${c.total}</span></div>
-          <div style="height:7px;background:var(--border-soft);border-radius:4px;overflow:hidden;margin-top:3px;"><div style="width:${c.pct}%;height:100%;background:${c.pct>=100?'#10B981':'#9C1F45'};"></div></div>
+          <div style="height:7px;background:var(--border-soft);border-radius:4px;overflow:hidden;margin-top:3px;"><div style="width:${c.pct}%;height:100%;background:${c.pct>=100?'#10B981':'#A8325F'};"></div></div>
         </div>
       `).join('')}
     </div>
