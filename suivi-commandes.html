@@ -288,7 +288,7 @@ var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}};
 function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
 var HOST = hostStore();
 var VUE = (/[?&]vue=gadh\b/.test(location.search) || (HOST && HOST.vue() === "gadh")) ? "gadh" : "tek";
-var GADH_STG = ["gadh","asm","ret"];
+var GADH_STG = ["ret"];
 var PC = window.innerWidth >= 800;   /* grand écran : tableaux plus lisibles (comme la version PC .exe) */
 var dirty = false;
 var ui = {tab:"dash", lot:"", client:"*"};
@@ -1354,12 +1354,12 @@ function vFlux(v){
   var lot = ui.lot, lines = filtered(lot, "*");
   if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
   if (!ui.stage || STG_KEYS.indexOf(ui.stage) < 0) ui.stage = "cp";
-  if (VUE === "gadh" && GADH_STG.indexOf(ui.stage) < 0) ui.stage = "gadh";
+  if (VUE === "gadh" && GADH_STG.indexOf(ui.stage) < 0) ui.stage = "ret";
   if (!ui.fcli) ui.fcli = "*";
   if (!ui.fv) ui.fv = {};
   var clients = sortedUnique(lines.map(function(l){ return l.client; }));
   if (ui.fcli !== "*" && clients.indexOf(ui.fcli) < 0) ui.fcli = "*";
-  var stage = ui.stage, si = STG_KEYS.indexOf(stage), prevS = stagePrev(stage), tot = stageTotals(), names = {}; STAGES.forEach(function(s){ names[s[0]] = s[1]; });
+  var stage = ui.stage, si = STG_KEYS.indexOf(stage), prevS = (VUE === "gadh" && stage === "ret") ? "gadh" : stagePrev(stage), tot = stageTotals(), names = {}; STAGES.forEach(function(s){ names[s[0]] = s[1]; });
   var ready = lotReady(lot), info = S.lots[lot] || {};
   var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
   var A = sumStates(rows, tot);
@@ -1367,7 +1367,7 @@ function vFlux(v){
   var sc = el("div", {class:"seg"});
   [["*","Toutes les commandes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
   v.appendChild(sc);
-  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Où sont mes pièces ?"}), el("div", {class:"mut", style:"margin-bottom:8px", text:fmt(A.q) + " pièces commandées · " + fmt(A.ord) + " à couper (ordre de coupe) · reste à livrer " + fmt(A.rest)}), stateBar(A.sv, A.nc)));
+  if (VUE !== "gadh") v.appendChild(el("div", {class:"card"}, el("h2", {text:"Où sont mes pièces ?"}), el("div", {class:"mut", style:"margin-bottom:8px", text:fmt(A.q) + " pièces commandées · " + fmt(A.ord) + " à couper (ordre de coupe) · reste à livrer " + fmt(A.rest)}), stateBar(A.sv, A.nc)));
   /* parcours */
   var pc = el("div", {class:"card"}, el("h2", {text:"Parcours de la commande — lot " + lot}));
   function step(n, label, sub, cls, right, onclick, on, pct){
@@ -1376,9 +1376,10 @@ function vFlux(v){
     if (onclick) b.addEventListener("click", onclick);
     return b;
   }
-  pc.appendChild(step(1, "Commande reçue", info.received ? "le " + dmy(info.received) : "", "done", ""));
-  pc.appendChild(step(2, "Commande prête — à envoyer au centre de coupe", ready ? "validée le " + dmy(info.ready || "") : "à vérifier puis valider par TEK-TREND (onglet Commandes)", ready ? "done" : "todo", "", (ready || VUE === "gadh") ? null : function(){ ui.tab = "cmd"; render(); }));
+  if (VUE !== "gadh") pc.appendChild(step(1, "Commande reçue", info.received ? "le " + dmy(info.received) : "", "done", ""));
+  if (VUE !== "gadh") pc.appendChild(step(2, "Commande prête — à envoyer au centre de coupe", ready ? "validée le " + dmy(info.ready || "") : "à vérifier puis valider par TEK-TREND (onglet Commandes)", ready ? "done" : "todo", "", (ready || VUE === "gadh") ? null : function(){ ui.tab = "cmd"; render(); }));
   STAGES.forEach(function(s, i){
+    if (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) return;
     var t = A.t[s[0]], target = i === 0 ? A.cut : A.q, pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
     pc.appendChild(step(i + 3, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
   });
@@ -1387,7 +1388,7 @@ function vFlux(v){
   /* passage d'étape */
   var iDate = el("input", {type:"date", id:"fDate", value:ui.fdate || today()}); iDate.addEventListener("change", function(){ ui.fdate = iDate.value; });
   var note = el("input", {id:"fNote", placeholder:"BL, remarque…", value:ui.fnote || ""}); note.addEventListener("change", function(){ ui.fnote = note.value; });
-  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Étape " + (si + 3) + " — " + names[stage]}), pager(VUE === "gadh" ? GADH_STG : STG_KEYS, stage, goStage, "Étape " + (si + 3) + " / 11"),
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:(VUE === "gadh" ? "" : "Étape " + (si + 3) + " — ") + names[stage]}), (VUE === "gadh" ? null : pager(STG_KEYS, stage, goStage, "Étape " + (si + 3) + " / 11")),
     el("p", {class:"mut", style:"margin:4px 0 8px", text:STAGE_HELP[stage]}),
     el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note)),
     el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
@@ -1421,22 +1422,29 @@ function vFlux(v){
   t.appendChild(el("thead", null, el("tr", null, [["Taille","l"],[prevS ? names[prevS] : "Ordre coupe",""],["Déjà passé",""],["Disponible",""],["Conformes",""],["NC",""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
   t.appendChild(tb);
   function gather(){ var nm = [], tq = 0, tn = 0; items.forEach(function(it){ var q = num(it.inp.value), n = num(it.inpN.value); if (!q && !n) return; nm.push({id:nid("M"), date:iDate.value || today(), lineId:it.l.id, stage:stage, qty:q, nc:n, note:note.value || ""}); tq += q; tn += n; }); return {nm:nm, tq:tq, tn:tn}; }
+  function gadhAsm(nm){
+    if (!(VUE === "gadh" && stage === "ret")) return [];
+    var t0 = stageTotals(), n0 = ncTotals(), add = {}, out = [];
+    nm.forEach(function(m){ add[m.lineId] = (add[m.lineId] || 0) + (m.qty || 0) + (m.nc || 0); });
+    Object.keys(add).forEach(function(id){ var used = ((t0[id] || {}).ret || 0) + ((n0[id] || {}).ret || 0) + add[id], asm = (t0[id] || {}).asm || 0; if (asm < used) out.push({id:nid("M"), date:iDate.value || today(), lineId:id, stage:"asm", qty:used - asm, nc:0, note:"Assemblage (auto)"}); });
+    return out;
+  }
   function ask(next){
     if (!ready){ toast("Validez d'abord la commande (onglet Commandes)."); return; }
     var g = gather(); if (!g.nm.length){ toast("Aucune quantité à valider."); return; }
-    try { checkMoves(g.nm); } catch (e) { toast(e.message); return; }
+    try { checkMoves(gadhAsm(g.nm).concat(g.nm)); } catch (e) { toast(e.message); return; }
     ui.pend = {stage:stage, next:next, n:g.nm.length, tq:g.tq, tn:g.tn, date:iDate.value || today()}; render(true);
   }
   function doIt(){
     var g = gather(), next = ui.pend && ui.pend.next;
-    var ok = commit(function(){ if (!g.nm.length) throw new Error("Aucune quantité à valider."); checkMoves(g.nm); g.nm.forEach(function(m){ S.moves.push(m); }); ui.fv = {}; ui.pend = null; if (next && si < STG_KEYS.length - 1) ui.stage = STG_KEYS[si + 1]; });
+    var ok = commit(function(){ if (!g.nm.length) throw new Error("Aucune quantité à valider."); var ex = gadhAsm(g.nm); checkMoves(ex.concat(g.nm)); ex.concat(g.nm).forEach(function(m){ S.moves.push(m); }); ui.fv = {}; ui.pend = null; if (next && si < STG_KEYS.length - 1) ui.stage = STG_KEYS[si + 1]; });
     if (ok){ toast(names[stage] + " : " + fmt(g.tq) + " conformes" + (g.tn ? " + " + fmt(g.tn) + " NC" : "")); if (next) render(); }
   }
   if (ui.pend && ui.pend.stage === stage) v.appendChild(el("div", {class:"card confirm"}, el("h2", {text:"Confirmer le passage ?"}), el("p", {style:"margin:0 0 10px"}, el("b", {text:fmt(ui.pend.tq) + " pièces conformes"}), (ui.pend.tn ? " + " : ""), ui.pend.tn ? el("b", {text:fmt(ui.pend.tn) + " NC", style:"color:var(--bad)"}) : null, " (" + ui.pend.n + " ligne(s)) → « " + names[stage] + " » le " + dmy(ui.pend.date) + "."),
     el("div", {class:"actions"}, el("button", {class:"btn", text:"Confirmer", onclick:doIt}), el("button", {class:"btn sec", text:"Annuler", onclick:function(){ ui.pend = null; render(true); }}))));
   v.appendChild(el("div", {class:"actions"},
     el("button", {class:"btn", text:"Valider l'étape", onclick:function(){ ask(false); }}),
-    el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
+    VUE === "gadh" ? null : el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
     el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
     el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }})));
   if (stage === "cp" && VUE !== "gadh"){
