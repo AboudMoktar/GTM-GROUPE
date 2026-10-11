@@ -247,6 +247,12 @@ function renderGadhParametres(container){
         </div>
       `).join('')}
     </div>
+
+    <div class="card" style="border:1.5px solid #DC2626;">
+      <h3 style="margin:0 0 4px;color:#DC2626;">Phase de test — Réinitialiser</h3>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface tout l'historique GADH (saisies, pointages, absences, commandes…). Les comptes utilisateurs ne sont jamais touchés.</p>
+      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('gadh')">🗑 Réinitialiser GADH</button>
+    </div>
   `;
 
   window.setGadhCadence = (rk, val) => {
