@@ -10,7 +10,7 @@ function fcJour(date){
   const d = getJSON('fc_' + date, null) || {}; let modeles = fcListe(d.modeles); if(!modeles.length && d.modele) modeles = [d.modele];
   const aff = {}; Object.keys(d.aff || {}).forEach(k => { const kk = (String(k).indexOf(':') < 0 && d.modele) ? d.modele + ':' + k : k; aff[kk] = fcListe(d.aff[k]); });
   const vol = {}; Object.keys(d.vol || {}).forEach(k => { vol[k] = fcListe(d.vol[k]).map(x => ({t:parseInt(x.t) || 0, cle:x.cle})).sort((a, b) => a.t - b.t); });
-  return {rows:d.rows || {}, modeles, aff, valid:d.valid || {}, vol};
+  return {rows:d.rows || {}, modeles, aff, valid:d.valid || {}, vol, lock:d.lock || {}};
 }
 function fcSaveJour(date, d){ setJSON('fc_' + date, d); }
 // Modèles : liste ordonnée d'opérations (postes) {nom, cadence (pièces/h par ouvrière), emps (ouvrières par défaut)}.
@@ -102,9 +102,11 @@ function fcCalcul(en, date, jour){
     const o = Math.round(objh * frac * ov / 60), q = parseInt(h[s.label]) || 0;
     qty += q; obj += o; return {label:s.label, q, o, frac:(ov < s.minutes && frac > 0) ? Math.min(frac, ov / s.minutes) : frac, ov, saisi:(h[s.label] !== undefined && String(h[s.label]) !== '')};
   });
+  const hs = det.reduce((t, d) => t + (d.saisi ? d.ov * Math.min(1, d.frac) / 60 : 0), 0), rythme = hs > 0 ? qty / hs : null;
   const pertes = (row.pertes || []).reduce((t, p) => t + (parseInt(p.min) || 0), 0);
-  return {qty, obj, rend: obj > 0 ? qty / obj * 100 : null, pertes, det, etat:fcEtat(en.id, date), objh, listePertes:row.pertes || []};
+  return {qty, obj, rythme, rend: obj > 0 ? qty / obj * 100 : null, pertes, det, etat:fcEtat(en.id, date), objh, listePertes:row.pertes || []};
 }
+const fcRy = (r) => r === null || r === undefined ? '—' : (Math.round(r * 10) / 10).toString().replace('.', ',');
 const fcPct = (r) => r === null ? '—' : Math.round(r) + ' %';
 const fcCls = (r) => r === null ? '' : rendClass(Math.round(r));
 
@@ -115,14 +117,16 @@ function renderFicheChaine(container){
   if(!slots.length){
     container.innerHTML = `<div class="card"><div class="flex-header"><h2 style="margin:0;">Fiche chaîne</h2><input type="date" value="${date}" max="${getTodayISO()}" onchange="fcDate=this.value;nav('fiche-chaine')"></div>${buildEmptyState('Jour non travaillé', 'Aucun créneau programmé le ' + jf + ' (voir Paramètres → Horaires).')}</div>`; return;
   }
-  const TT = fcTotaux(date, jour), calc = TT.calc, NC = slots.length + 6;
-  const ligne = (x) => `<tr id="fc-r-${x.key}">
+  const TT = fcTotaux(date, jour), calc = TT.calc, NC = slots.length + 8;
+  const ligne = (x) => { const lk = !!jour.lock[x.key]; return `<tr id="fc-r-${x.key}"${lk ? ' class="fc-lk"' : ''}>
       <td class="fc-nom"><b>${esc(x.e.nom)}${x.poly ? ' <span class="fc-vol" title="Volante (équilibrage)">⚖</span>' : ''}</b><span class="hour-rend ${x.c.etat.cls}">${esc(x.c.etat.label)}</span>${AF ? `<span class="fc-poste-l">${esc(x.poste)}</span>` : `<input class="fc-poste" list="fc-postes-dl" value="${esc(x.poste === 'Sans poste' ? '' : x.poste)}" placeholder="Poste" ${edit ? '' : 'disabled'} onchange="fcPosteSet('${x.id}',this.value)" title="Poste (modifiable)">`}</td>
       <td><input class="fc-objh" type="number" min="0" step="0.5" value="${x.c.objh}" ${edit && !AF ? '' : 'disabled'} onchange="fcObjHSet('${x.id}',this.value)" title="${AF ? 'Cadence du poste (réglée dans le modèle)' : 'Objectif par heure'}"></td>
-      ${x.c.det.map(d => `<td><input class="fc-q${d.frac < 1 ? ' fc-red' : ''}" data-slot="${esc(d.label)}" enterkeyhint="next" type="number" min="0" inputmode="numeric" value="${d.saisi ? (jour.rows[x.key].h[d.label]) : ''}" placeholder="${d.o}" ${edit && d.frac > 0 && d.ov > 0 ? '' : 'disabled'} onchange="fcSaisir('${x.key}','${d.label}',this.value)" title="Objectif ${d.o}"></td>`).join('')}
+      ${x.c.det.map(d => `<td><input class="fc-q${d.frac < 1 ? ' fc-red' : ''}" data-slot="${esc(d.label)}" enterkeyhint="next" type="number" min="0" inputmode="numeric" value="${d.saisi ? (jour.rows[x.key].h[d.label]) : ''}" placeholder="${d.o}" ${edit && !lk && d.frac > 0 && d.ov > 0 ? '' : 'disabled'} onchange="fcSaisir('${x.key}','${d.label}',this.value)" title="Objectif ${d.o}"></td>`).join('')}
       <td class="fc-tot" id="fc-q-${x.key}">${x.c.qty}</td><td class="fc-tot" id="fc-o-${x.key}">${x.c.obj}</td>
+      <td class="fc-tot" id="fc-y-${x.key}" title="Pièces par heure réellement travaillée">${fcRy(x.c.rythme)}</td>
       <td class="fc-tot" id="fc-p-${x.key}"><span class="hour-rend ${fcCls(x.c.rend)}">${fcPct(x.c.rend)}</span></td>
-      <td id="fc-l-${x.key}"><button class="btn btn-ghost fc-btn" onclick="fcPertes('${x.key}')">${x.c.pertes ? x.c.pertes + ' min' : '+ Perte'}</button></td></tr>`;
+      <td id="fc-l-${x.key}"><button class="btn btn-ghost fc-btn" onclick="fcPertes('${x.key}')">${x.c.pertes ? x.c.pertes + ' min' : '+ Perte'}</button></td>
+      <td>${lk ? `<button class="btn btn-ghost fc-btn" ${currentUser.role === 'admin' ? '' : 'disabled'} onclick="fcVerrou('${x.key}')">🔒 Verrouillé</button>` : `<button class="btn btn-primary fc-btn" ${edit ? '' : 'disabled'} onclick="fcVerrou('${x.key}')">✓ Valider</button>`}</td></tr>`; };
   const entete = (g) => `<tr class="fc-grp"><td colspan="${NC}" id="fc-g-${g.id}">${fcGrpHTML(g)}</td></tr>`;
   const lignes = AF ? TT.groupes.map(g => entete(g) + calc.filter(x => x.mid === g.id).map(ligne).join('')).join('') : calc.map(ligne).join('');
   container.innerHTML = `
@@ -136,33 +140,39 @@ function renderFicheChaine(container){
         ${edit && AF ? `<button class="btn btn-ghost" onclick="fcAffecter()">Affectations</button>` : ''}${edit && !AF ? `<button class="btn btn-ghost" onclick="fcPostes()">Postes</button><button class="btn btn-ghost" onclick="fcChoisir()">Choisir les ouvrières</button>` : ''}
         <button class="btn btn-primary" onclick="rrExcel('chaine','${date}','${date}')">Excel</button><button class="btn btn-primary" onclick="rrPdf('chaine','${date}','${date}')">PDF</button>
       </div>
-      <div id="fc-kpis" style="margin-top:12px;">${fcKpisHTML(TT)}</div>
-      <div style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Saisissez les pièces de chaque heure. Entrée = ouvrière suivante (même heure). Le chiffre gris est l'objectif de l'heure : il baisse tout seul si l'ouvrière est absente, en retard ou en sortie (état repris du pointage RH).</div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Saisissez les pièces de chaque heure. Entrée = ouvrière suivante (même heure). « ✓ Valider » verrouille la ligne de l'ouvrière. Le chiffre gris est l'objectif de l'heure : il baisse tout seul si l'ouvrière est absente, en retard ou en sortie (état repris du pointage RH).</div>
     </div>
     <div id="fc-zone"></div>
     <datalist id="fc-postes-dl">${[...new Set(activeEmployees().map(([i, e]) => (e.poste || '').trim()).concat(fcParams().postes).filter(Boolean))].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-    <div class="card" style="padding:6px;"><div class="fc-scroll"><table class="fc-t"><thead><tr><th style="text-align:left;">Ouvrière</th><th>Obj/h</th>${slots.map(s => `<th>${s.label.replace(' - ', '<br>')}</th>`).join('')}<th>Total</th><th>Objectif</th><th>Rend.</th><th>Pertes</th></tr></thead>
-      <tbody>${lignes || `<tr><td colspan="${slots.length + 6}" style="padding:20px;text-align:center;color:var(--ink-soft);">${mods.length ? 'Choisissez le ou les modèles en cours (bouton en haut) : ses postes et ouvrières apparaissent ici.' : 'Aucun modèle : créez-les dans Params (opérations, cadences, ouvrières).'}</td></tr>`}</tbody></table></div></div>`;
+    <div class="card" style="padding:6px;"><div class="fc-scroll"><table class="fc-t"><thead><tr><th style="text-align:left;">Ouvrière</th><th>Obj/h</th>${slots.map(s => `<th>${s.label.replace(' - ', '<br>')}</th>`).join('')}<th>Total</th><th>Objectif</th><th>Rythme<br>/h</th><th>Rend.</th><th>Pertes</th><th>Saisie</th></tr></thead>
+      <tbody>${lignes || `<tr><td colspan="${slots.length + 8}" style="padding:20px;text-align:center;color:var(--ink-soft);">${mods.length ? 'Choisissez le ou les modèles en cours (bouton en haut) : ses postes et ouvrières apparaissent ici.' : 'Aucun modèle : créez-les dans Params (opérations, cadences, ouvrières).'}</td></tr>`}</tbody></table></div></div>`;
 }
 function fcGrpHTML(g){ return `<b>${esc(g.nom)}</b> · chaîne : ${g.q} / ${g.o} <span class="hour-rend ${fcCls(g.rend)}">${fcPct(g.rend)}</span>${g.goulot ? ' · goulot : ' + esc(g.goulot.nom) : ''}`; }
 function fcMajLigne(key){
   const date = fcDate, jour = fcJour(date), en = fcEntries(date).find(x => x.key === key); if(!en) return;
   const c = fcCalcul(en, date, jour);
   const set = (k, v) => { const el = document.getElementById(k + key); if(el) el.innerHTML = v; };
-  set('fc-q-', c.qty); set('fc-o-', c.obj); set('fc-p-', `<span class="hour-rend ${fcCls(c.rend)}">${fcPct(c.rend)}</span>`);
+  set('fc-q-', c.qty); set('fc-y-', fcRy(c.rythme)); set('fc-o-', c.obj); set('fc-p-', `<span class="hour-rend ${fcCls(c.rend)}">${fcPct(c.rend)}</span>`);
   const T = fcTotaux(date, jour), k = document.getElementById('fc-kpis'); if(k) k.innerHTML = fcKpisHTML(T);
   T.groupes.forEach(g => { const el = document.getElementById('fc-g-' + g.id); if(el) el.innerHTML = fcGrpHTML(g); });
 }
 window.fcSaisir = function(id, slot, val){
   const v = String(val).trim();
   if(v !== '' && (!/^\d+$/.test(v))){ showToast('Entrez un nombre entier positif'); renderFicheChaine(document.getElementById('main')); return; }
-  const jour = fcJour(fcDate), row = jour.rows[id] || (jour.rows[id] = {}); row.h = row.h || {};
+  const jour = fcJour(fcDate); if(jour.lock[id]){ showToast('Ligne verrouillée'); return; }
+  const row = jour.rows[id] || (jour.rows[id] = {}); row.h = row.h || {};
   if(v === '') delete row.h[slot]; else row.h[slot] = parseInt(v);
   fcSaveJour(fcDate, jour); fcMajLigne(id);
 };
+window.fcVerrou = function(id){
+  const jour = fcJour(fcDate), z = document.querySelector('.fc-scroll'), top = z ? z.scrollTop : 0, left = z ? z.scrollLeft : 0;
+  if(jour.lock[id]){ if(currentUser.role !== 'admin') return; if(!confirm('Déverrouiller cette ligne ?')) return; delete jour.lock[id]; } else jour.lock[id] = true;
+  fcSaveJour(fcDate, jour); renderFicheChaine(document.getElementById('main'));
+  const z2 = document.querySelector('.fc-scroll'); if(z2){ z2.scrollTop = top; z2.scrollLeft = left; }
+};
 window.fcObjHSet = function(id, val){ const p = fcParams(); const n = parseFloat(val); if(n > 0) p.obj[id] = n; else delete p.obj[id]; fcSaveParams(p); nav('fiche-chaine'); };
 window.fcPertes = function(id){
-  const en = fcEntries(fcDate).find(x => x.key === id), e = en ? en.e : (getEmployees()[id] || {nom:id}), jour = fcJour(fcDate), row = jour.rows[id] || {}, l = row.pertes || [], edit = canSaisie(currentUser.role);
+  const en = fcEntries(fcDate).find(x => x.key === id), e = en ? en.e : (getEmployees()[id] || {nom:id}), jour = fcJour(fcDate), row = jour.rows[id] || {}, l = row.pertes || [], edit = canSaisie(currentUser.role) && !jour.lock[id];
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><h3 style="margin:0;">Pertes / arrêts — ${esc(e.nom)}</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${fcDate.split('-').reverse().join('/')}</div>
@@ -323,7 +333,7 @@ fcCss.textContent = `
 .fc-scroll{overflow:auto;max-height:72vh;} .fc-t{border-collapse:collapse;font-size:12px;width:100%;} .fc-t th{position:sticky;top:0;background:#0F3D66;color:#fff;padding:6px 5px;font-size:10.5px;z-index:2;white-space:nowrap;}
 .fc-t td{border:1px solid var(--border);padding:3px;text-align:center;} .fc-nom{text-align:left!important;position:sticky;left:0;background:var(--surface);z-index:1;min-width:150px;} .fc-nom b{display:block;font-size:12.5px;} .fc-nom .hour-rend{font-size:10px;}
 .fc-q,.fc-objh{width:58px;padding:6px 4px;text-align:center;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:700;} .fc-objh{width:52px;font-weight:600;} .fc-q::placeholder{color:#9aa4b2;font-weight:400;}
-.fc-q.fc-red{background:rgba(245,158,11,.12);} .fc-q:disabled{background:var(--surface-3);opacity:.6;} .fc-tot{font-weight:800;font-size:13px;} .fc-btn{padding:5px 9px;font-size:11px;white-space:nowrap;}
+.fc-lk td{background:rgba(14,159,131,.07);} .fc-q.fc-red{background:rgba(245,158,11,.12);} .fc-q:disabled{background:var(--surface-3);opacity:.6;} .fc-tot{font-weight:800;font-size:13px;} .fc-btn{padding:5px 9px;font-size:11px;white-space:nowrap;}
 `;
 document.head.appendChild(fcCss);
 const pkCss = document.createElement('style');
