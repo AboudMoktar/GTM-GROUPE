@@ -2,12 +2,10 @@
 // Logo officiel MGT (macpi Group Tunisia), fichier local.
 const ACCUEIL_LOGO = './logo-mgt.png';
 const ACCUEIL_TUILES = [
-  ['mgt-projets',   'Projets',               'box'],
-  ['mgt-offres',    'Offres en cours',       'invoice'],
+  ['mgt-offres',    'Offres & Projets',      'box'],
   ['mgt-agenda',    'Calendrier commercial', 'calendarCheck'],
   ['fact-liste',    'Facturation & Lettrage','invoice'],
   ['mgt-clients',   'Clients',               'team'],
-  ['mgt-recherche', 'Recherche',             null],
   ['mgt-sav',       'SAV',                   'wrench'],
   ['mgt-parc',      'Machines',              'params'],
   ['mgt-listing',   'Listing',               null],
