@@ -260,7 +260,7 @@ window.fcAffecter = function(){
   const A = fcAff(fcDate); if(!A) return; const em = getEmployees(); let k = -1, nb = 0, val = 0;
   const bloc = A.modeles.map(g => `<div class="aff-g"><div class="aff-gt">${esc(g.mod.nom)}</div>${g.ops.map(o => { k++; nb++; if(o.valide) val++;
     const noms = [...o.emps.map(id => esc((em[id] || {}).nom || id)), ...o.vols.map(v => '⚖ ' + esc((em[v.id] || {}).nom || v.id))];
-    return `<div class="aff-op${o.valide ? ' ok' : ''}"><div style="flex:1;min-width:0;"><b>${o.i + 1}. ${esc(o.nom)}</b> <span style="font-size:11px;color:var(--ink-soft);">${o.cad} pcs/h</span><div class="aff-n">${noms.join(', ') || '<span class="aff-vide">À choisir</span>'}</div></div>
+    return `<div class="aff-op${o.valide ? ' ok' : ''}"><div style="flex:1;min-width:0;"><b>${o.i + 1}. ${esc(o.nom)}</b> <span style="font-size:11px;color:var(--ink-soft);">${o.cad} pcs/h</span>${o.i === g.ops.length - 1 && g.ops.length > 1 ? ' <span style="font-size:11px;font-weight:700;">🏁 sortie</span>' : ''}<div class="aff-n">${noms.join(', ') || '<span class="aff-vide">À choisir</span>'}</div></div>
       <button class="btn ${o.valide ? 'btn-ghost' : 'btn-primary'} fc-btn" onclick="fcAffPoste(${k})">${o.valide ? '✓ Modifier' : 'Choisir'}</button></div>`; }).join('')}</div>`).join('');
   document.getElementById('fc-zone').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this) fcFermer()"><div class="modal-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><h3 style="margin:0;">Ouvrières par opération</h3><button class="icon-btn" onclick="fcFermer()">✕</button></div>
