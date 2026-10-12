@@ -81,3 +81,23 @@ html[data-theme="dark"][data-soc="tek"] .topbar,html[data-theme="dark"][data-soc
 `;
   document.head.appendChild(st);
 })();
+// Vue direction : indicateurs plus compacts
+(function(){
+  const s=document.createElement('style');
+  s.textContent=`
+html[data-theme] .dd-jauges4,html[data-theme] .dd-boites{gap:8px;margin-bottom:12px;}
+html[data-theme] .dd-jp{padding:10px 10px 9px;border-radius:16px;}
+html[data-theme] .dd-jp-t{font-size:9.5px;margin:0 0 5px;letter-spacing:.04em;}
+html[data-theme] .dd-jp-svg{width:44px;height:44px;}
+html[data-theme] .dd-jp-r{gap:8px;}
+html[data-theme] .dd-jp-v{font-size:22px;}
+html[data-theme] .dd-jp-v small{font-size:11px;}
+html[data-theme] .dd-jp-s{margin-top:6px;padding:2px 8px;font-size:9.5px;}
+html[data-theme] .dd-bx{padding:9px 10px 9px 14px;border-radius:14px;}
+html[data-theme] .dd-bx::before{top:10px;bottom:10px;width:3px;}
+html[data-theme] .dd-bx-l{font-size:9px;margin:0 0 3px;letter-spacing:.04em;}
+html[data-theme] .dd-bx-v{font-size:20px;}
+html[data-theme] .dd-bx-v small{font-size:11px;}
+`;
+  document.head.appendChild(s);
+})();
