@@ -52,6 +52,20 @@
   .topbar .logo-sub { font-size:8px; }
 
   /* --- LOGIN --- */
+
+  /* Écran d'ouverture GTM (affiché pendant le chargement) */
+  html,body{background:#0d1721;}
+  .gtm-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden;color:#fff;background:radial-gradient(circle at 15% 15%,#004d5a 0%,transparent 40%),radial-gradient(circle at 85% 20%,#63122c 0%,transparent 40%),radial-gradient(circle at 80% 85%,#9e3912 0%,transparent 50%),#0d1721;}
+  .gtm-splash svg.gs-deco{position:absolute;pointer-events:none;opacity:.2;}
+  .gs-badge{position:relative;padding:22px 34px 18px;border-radius:30px;border:2px solid transparent;background:linear-gradient(rgba(13,23,33,.72),rgba(13,23,33,.72)) padding-box,linear-gradient(135deg,#1DB5C7,#8C1D40 50%,#FF7B47) border-box;box-shadow:0 0 40px rgba(29,181,199,.18),0 0 50px rgba(255,123,71,.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+  .gs-gtm{font:900 68px/1 'Segoe UI',system-ui,-apple-system,Arial,sans-serif;letter-spacing:2px;display:flex;gap:4px;}
+  .gs-gtm .g{color:#1DB5C7;}.gs-gtm .t{background:linear-gradient(180deg,#DF9E19 25%,#B02A56 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;}.gs-gtm .m{color:#FF7B47;}
+  .gs-groupe{margin-top:18px;font:700 15px/1 system-ui,-apple-system,'Segoe UI',Arial,sans-serif;letter-spacing:.55em;padding-left:.55em;text-transform:uppercase;color:#fff;}
+  .gs-sub{margin-top:12px;font:600 11px/1 system-ui,-apple-system,'Segoe UI',Arial,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.7);text-transform:uppercase;text-align:center;}
+  .gs-sub i{font-style:normal;color:#DF9E19;margin:0 6px;}
+  .gs-bar{margin-top:34px;width:170px;height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;position:relative;}
+  .gs-bar::after{content:'';position:absolute;top:0;bottom:0;width:45%;border-radius:3px;background:linear-gradient(90deg,#00838F,#DF9E19,#FF7B47);animation:gsbar 1.3s ease-in-out infinite;}
+  @keyframes gsbar{0%{left:-45%;}100%{left:100%;}}
   .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#F3F5F8 0%,#E8EDF3 100%);}
   .login-card{background:var(--surface);border-radius:20px;padding:36px 30px;width:100%;max-width:380px;box-shadow:var(--shadow-md);border:1px solid var(--border-soft);}
   .field{margin-bottom:16px;}
@@ -385,7 +399,15 @@
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app"><div class="gtm-splash">
+  <svg class="gs-deco" style="left:-10px;top:-10px" width="170" height="130" viewBox="0 0 110 80" fill="none" stroke="#1DB5C7" stroke-width="1.4"><line x1="0" y1="0" x2="110" y2="80"/><line x1="40" y1="0" x2="110" y2="55"/><line x1="0" y1="40" x2="70" y2="80"/><line x1="90" y1="0" x2="10" y2="70"/></svg>
+  <svg class="gs-deco" style="right:-6px;top:0" width="150" height="130" viewBox="0 0 120 80" fill="none" stroke-width="2"><polyline points="30,0 75,35 35,75" stroke="#B02A56"/><polyline points="55,0 92,32 57,70" stroke="#DF9E19"/><polyline points="80,0 118,28 82,60" stroke="#1DB5C7"/></svg>
+  <svg class="gs-deco" style="right:-40px;bottom:-40px" width="190" height="190" viewBox="0 0 24 24" fill="none" stroke="#FF7B47" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3.2"/></svg>
+  <div class="gs-badge"><div class="gs-gtm"><span class="g">G</span><span class="t">T</span><span class="m">M</span></div></div>
+  <div class="gs-groupe">Groupe</div>
+  <div class="gs-sub">TEK-TREND<i>•</i>GADH TUNISIA<i>•</i>MGT</div>
+  <div class="gs-bar"></div>
+</div></div>
 
 <!-- SDK Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
