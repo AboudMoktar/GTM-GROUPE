@@ -8,7 +8,7 @@ function dmBarre(libelle, valeur, pct, couleur, clic){
 
 // ---------- TEK-TREND ----------
 const dmTekOrigine = window.renderDashboard;
-window.renderDashboard = function(container){
+const dmTekNouveau = function(container){
   try {
     const iso = getTodayISO(), data = getDay(iso), tot = computeTotals(data), obj = getObjForDay(data), ops = getOps();
     const heures = getHoursForDate(iso);
@@ -48,6 +48,10 @@ window.renderDashboard = function(container){
     if(typeof prodCarteResume === 'function') prodCarteResume(container, 'tek');
   } catch(e) { console.error('Tableau de bord TEK-TREND', e); return dmTekOrigine(container); }
 };
+
+// Le tableau de bord TEK-TREND garde l'affichage d'origine (carte principale, alerte, résumé) ; l'ancienne version « Vue direction » reste disponible ici.
+window.renderDashboard = dmTekOrigine;
+window.renderDashboardVueDirection = dmTekNouveau;
 
 // ---------- GADH ----------
 const dmGadhOrigine = window.renderGadhDashboard;
