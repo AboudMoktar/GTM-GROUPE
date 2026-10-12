@@ -10,7 +10,7 @@ html[data-soc="tek"] .topbar .tek{color:#F2A93B;}
 html[data-soc="tek"] .btn-primary{border-bottom:3px solid #F2A93B;box-shadow:0 2px 8px rgba(0,96,112,.3);}
 html[data-soc="tek"] .bottomnav .active,html[data-soc="tek"] .bottomnav .on{color:#F2A93B;}
 html[data-soc="tek"] .sidebar{background:#074652;}
-html[data-soc="tek"] .hero-card{background:linear-gradient(100deg,rgba(0,96,112,.97) 0%,rgba(0,96,112,.75) 45%,rgba(0,96,112,.35) 100%),url('./hero-bg.jpg');background-size:cover;}
+html[data-soc="tek"] .hero-card{background:radial-gradient(320px 200px at 95% 0%,rgba(23,149,159,.55),transparent 70%),linear-gradient(135deg,#06323C 0%,#0A4D5C 55%,#0E6A78 100%);-webkit-backdrop-filter:none;backdrop-filter:none;filter:none;}
 html[data-soc="tek"] .field input:focus,html[data-soc="tek"] .input-cell input:focus{border-color:#17959F;box-shadow:0 0 0 3px rgba(23,149,159,.18);}
 html[data-soc="tek"] .fc-t th{background:#074652;}
 html[data-theme="dark"][data-soc="tek"]{--accent:#2FB7A6;--accent-2:#5CD0C2;--accent-bg:#0f3a45;}
@@ -69,7 +69,7 @@ html[data-theme="dark"][data-soc="tek"] .card,html[data-theme="dark"][data-soc="
 html[data-theme="dark"][data-soc="tek"] .bottomnav{background:rgba(18,38,46,.92);}
 html[data-theme="dark"][data-soc="tek"] .bottomnav button.active{color:#fff;}
 html[data-theme="dark"][data-soc="tek"] .bottomnav button.active svg{color:#fff;background:none;}
-html[data-soc="tek"] .hero-card{background:linear-gradient(100deg,rgba(0,96,112,.97) 0%,rgba(0,96,112,.75) 45%,rgba(0,96,112,.35) 100%),url('./hero-bg.jpg');background-size:cover;}
+html[data-soc="tek"] .hero-card{background:radial-gradient(320px 200px at 95% 0%,rgba(23,149,159,.55),transparent 70%),linear-gradient(135deg,#06323C 0%,#0A4D5C 55%,#0E6A78 100%);-webkit-backdrop-filter:none;backdrop-filter:none;filter:none;}
 html[data-soc="tek"] .bottomnav button{font-size:10.5px;}
 html[data-soc="tek"] .bottomnav button.active{background:linear-gradient(135deg,#17959F,#006070);}
 html[data-theme="dark"][data-soc="tek"] .card,html[data-theme="dark"][data-soc="tek"] .dd-jp,html[data-theme="dark"][data-soc="tek"] .dd-bx{background:linear-gradient(160deg,color-mix(in srgb,var(--c,#17959F) 14%,#12262e) 0%,#12262e 75%);color:var(--ink);}
