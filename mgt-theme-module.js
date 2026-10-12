@@ -86,9 +86,9 @@ html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120de
   document.head.appendChild(st);
   const quelle = () => { if(typeof activeModule === 'undefined' || !document.getElementById('main')) return '';
     if(activeModule === 'mgt') return 'mgt';
-    if(activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; return ''; };
+    if(activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; if(typeof activeSociete === 'undefined' || !activeSociete || activeSociete === 'tek') return 'tek'; return ''; };
   const meta0 = (document.querySelector('meta[name="theme-color"]')||{}).content;
-  const sync = () => { try { const mt = document.querySelector('meta[name="theme-color"]'); if(mt){ const w0 = quelle(); mt.content = w0 === 'gadh' ? '#5E1032' : w0 === 'mgt' ? '#2A130A' : (meta0 || mt.content); } const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
+  const sync = () => { try { const mt = document.querySelector('meta[name="theme-color"]'); if(mt){ const w0 = quelle(); mt.content = w0 === 'gadh' ? '#5E1032' : w0 === 'tek' ? '#06323C' : w0 === 'mgt' ? '#2A130A' : (meta0 || mt.content); } const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
   ['nav', 'renderShell', 'chooseModule', 'chooseSociete'].forEach(n => { const f = window[n]; if(typeof f === 'function') window[n] = function(){ const r = f.apply(this, arguments); sync(); return r; }; });
   setInterval(sync, 600); sync();
 })();
