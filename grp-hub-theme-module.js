@@ -19,6 +19,16 @@
 .login-wrap .soc-card[onclick*="'gadh'"]::after{right:0;top:0;height:100%;width:8rem;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 80' fill='none' stroke-width='2.4'><polyline points='50,0 95,35 55,75' stroke='%238c1d40' stroke-opacity='.45'/><polyline points='70,0 107,32 72,70' stroke='%23df9e19' stroke-opacity='.55'/><polyline points='90,0 120,28 90,60' stroke='%23167a8c' stroke-opacity='.45'/></svg>");background-size:100% 100%;}
 .login-wrap .soc-card[onclick*="'mgt'"]::after{right:-16px;bottom:-28px;width:112px;height:112px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cb4e1d' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'><path d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'/><circle cx='12' cy='12' r='3.2'/></svg>");background-size:100% 100%;}
 .login-wrap .soc-card .soc-txt,.login-wrap .soc-card .soc-fleche{position:relative;z-index:1;}
+
+.login-wrap .login-brand{background:radial-gradient(circle at 15% 10%,#004d5a 0%,transparent 55%),radial-gradient(circle at 92% 12%,#63122c 0%,transparent 55%),radial-gradient(circle at 85% 100%,#9e3912 0%,transparent 60%),#0d1721 !important;}
+.login-wrap .lb-titre{color:#fff;letter-spacing:2px;}
+.login-wrap .lb-titre span{background:linear-gradient(90deg,#1DB5C7,#DF9E19 55%,#FF7B47);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;}
+.login-wrap .lb-sous{opacity:.75;}
+.login-wrap .lb-chip{box-shadow:0 6px 18px -8px rgba(0,0,0,.6);}
+.login-wrap .lb-pied{opacity:.75;color:#DF9E19;}
+.login-wrap .login-cote .btn-primary{background:linear-gradient(90deg,#00838f 0%,#8c1d40 55%,#cb4e1d 100%) !important;border:0;border-radius:14px;box-shadow:0 10px 22px -10px rgba(140,29,64,.7);}
+.login-wrap .login-cote .field input:focus{border-color:#00838f;box-shadow:0 0 0 3px rgba(0,131,143,.18);}
+.login-wrap .lc-titre{color:#0d1721;}
 `;
   document.head.appendChild(st);
 })();
