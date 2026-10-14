@@ -2425,10 +2425,10 @@ const OLD_SUPABASE_URL = 'https://grjvuicpnonihroiiqqm.supabase.co';
 const OLD_SUPABASE_ANON_KEY = 'sb_publishable_ASinTMCdYTkk3ycHI8g7tw_yqB6EpLr';
 async function importFromSupabaseOnce(){
   const email = (prompt('Importer les anciennes données Supabase\n\nEmail utilisé auparavant pour la synchronisation :') || '').trim();
-  if(!email){ return; }
+  if(!email){ alert('Import annulé : aucun email saisi.'); return; }
   const password = prompt('Mot de passe de ce compte Supabase :') || '';
-  if(!password){ toast('Import annulé : mot de passe requis.'); return; }
-  toast('Connexion à l\'ancienne base...');
+  if(!password){ alert('Import annulé : aucun mot de passe saisi.'); return; }
+  alert('Connexion à l\'ancienne base en cours...\n\nPatientez, un message s\'affichera à la fin (succès ou erreur).');
   let client = null;
   const report = { clients: 0, clientsSkip: 0, history: 0, historySkip: 0, settings: 0, settingsSkip: 0, tags: 0, tagsSkip: 0, historyTags: 0, historyTagsSkip: 0, errors: [] };
   try {
@@ -2531,6 +2531,104 @@ async function importFromSupabaseOnce(){
   }
 }
 window.importFromSupabaseOnce = importFromSupabaseOnce;
+
+// ===== Import ponctuel depuis l'ancienne base LOCALE de cet appareil (sans Supabase) =====
+// Avant le passage sur Firebase, ce CRM stockait aussi une copie de ses données directement
+// dans la base locale du navigateur (IndexedDB, nom "mgt_crm_v4") sur CE téléphone/ordinateur
+// précis — indépendamment de Supabase. Si la synchronisation Supabase n'a jamais vraiment
+// fonctionné (compte jamais configuré, mot de passe oublié...), ces données locales sont
+// la source la plus sûre : elles ne demandent ni email ni mot de passe, juste cet appareil.
+function openOldLocalDb(){
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open('mgt_crm_v4');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Impossible d\'ouvrir l\'ancienne base locale.'));
+      req.onblocked = () => reject(new Error('Ancienne base locale verrouillée (fermez les autres onglets de l\'application et réessayez).'));
+    } catch(e) { reject(e); }
+  });
+}
+function readOldLocalStore(idb, store){
+  return new Promise((resolve) => {
+    try {
+      if(!idb.objectStoreNames.contains(store)){ resolve([]); return; }
+      const tx = idb.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    } catch(e) { resolve([]); }
+  });
+}
+async function importFromLocalDeviceOnce(){
+  if(!confirm('Récupérer les anciennes données enregistrées sur CET appareil (avant le passage sur Firebase) ?\n\nAucun mot de passe nécessaire : la recherche se fait directement dans la mémoire de ce téléphone/ordinateur.')) return;
+  const report = { clients: 0, clientsSkip: 0, history: 0, historySkip: 0, settings: 0, settingsSkip: 0, tags: 0, tagsSkip: 0, historyTags: 0, historyTagsSkip: 0 };
+  let idb = null;
+  try {
+    idb = await openOldLocalDb();
+    const names = Array.from(idb.objectStoreNames || []);
+    if(!names.length){ alert('Aucune ancienne base trouvée sur cet appareil (rien à récupérer ici).'); return; }
+
+    const mergeInto = async (store, keyField) => {
+      const rows = await readOldLocalStore(idb, store);
+      if(!rows.length) return;
+      const existing = await dbAll(store);
+      const existingKeys = new Set(existing.map(it => String(it[keyField])));
+      let added = 0, skipped = 0;
+      for(const r of rows){
+        const k = String(r[keyField]);
+        if(existingKeys.has(k)){ skipped++; continue; }
+        await dbPut(store, r);
+        added++;
+      }
+      return { added, skipped };
+    };
+
+    const cRows = await readOldLocalStore(idb, 'crm_clients');
+    if(cRows.length){
+      const existing = await dbAll('crm_clients');
+      const existingIds = new Set(existing.map(c => String(c.ID)));
+      for(const c of cRows){
+        if(!c || !c.ID || existingIds.has(String(c.ID))){ if(c && c.ID) report.clientsSkip++; continue; }
+        await dbPut('crm_clients', c);
+        report.clients++;
+      }
+    }
+    const h = await mergeInto('crm_history', 'id'); if(h){ report.history = h.added; report.historySkip = h.skipped; }
+    const s = await mergeInto('crm_settings', 'key'); if(s){ report.settings = s.added; report.settingsSkip = s.skipped; }
+    const t = await mergeInto('crm_tags', 'id'); if(t){ report.tags = t.added; report.tagsSkip = t.skipped; }
+    const htRows = await readOldLocalStore(idb, 'crm_history_tags');
+    if(htRows.length){
+      const existing = await dbAll('crm_history_tags');
+      const existingKeys = new Set(existing.map(it => it.history_id + '::' + it.tag_id));
+      for(const r of htRows){
+        const k = r.history_id + '::' + r.tag_id;
+        if(existingKeys.has(k)){ report.historyTagsSkip++; continue; }
+        await dbPut('crm_history_tags', r);
+        report.historyTags++;
+      }
+    }
+
+    try { await rebuildClientCache(); refreshFilters(); updateStats(); render(); } catch(e){}
+
+    const total = report.clients + report.history + report.settings + report.tags + report.historyTags;
+    if(total === 0){
+      alert('Base locale trouvée sur cet appareil, mais elle ne contenait aucune donnée à récupérer (déjà vide, ou déjà toutes importées).');
+    } else {
+      alert([
+        'Récupération terminée depuis cet appareil.',
+        'Clients : ' + report.clients + ' récupérés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents' : ''),
+        'Historique : ' + report.history + ' récupérés' + (report.historySkip ? ', ' + report.historySkip + ' déjà présents' : ''),
+        'Réglages : ' + report.settings + ' récupérés' + (report.settingsSkip ? ', ' + report.settingsSkip + ' déjà présents' : ''),
+        'Étiquettes : ' + report.tags + ' récupérées' + (report.tagsSkip ? ', ' + report.tagsSkip + ' déjà présentes' : ''),
+      ].join('\n'));
+    }
+  } catch(err) {
+    alert('Erreur pendant la récupération locale : ' + (err && err.message ? err.message : err));
+  } finally {
+    if(idb){ try { idb.close(); } catch(e){} }
+  }
+}
+window.importFromLocalDeviceOnce = importFromLocalDeviceOnce;
 
 // ===== DataManager History (dmh) =====
 const dmh = { _ready: false };
@@ -4147,6 +4245,7 @@ initApp().then(async()=>{setup(); try{await importBillingHistory2026(); await re
 <button class="secondary" id="diagViewTrashBtn">Corbeille</button>
 <button class="secondary" id="diagPermanentDeleteBtn" style="border-color:#8b2635;color:#8b2635">Nettoyer corbeille</button>
 <button class="secondary" id="diagCopyHistorySqlBtn" style="border-color:#126b45;color:#126b45">SQL crm_history</button>
+<button class="secondary" id="diagImportLocalBtn" style="border-color:#126b45;color:#126b45">Récupérer données de cet appareil (sans mot de passe)</button>
 <button class="secondary" id="diagImportSupabaseBtn" style="border-color:#1a5fa8;color:#1a5fa8">Importer anciennes données (Supabase)</button>
 </div>
 </div>
@@ -9515,28 +9614,30 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 </script>
 
 <!-- Pont GTM Groupe : bouton retour vers le sélecteur de module quand cette page est ouverte dans le cadre de GTM Groupe.
-     Placé comme élément normal DANS le header (pas en position fixe par-dessus), pour ne jamais
-     recouvrir le logo / la recherche / le compte, à aucune largeur d'écran ni au défilement. -->
+     Placé dans sa PROPRE ligne, tout en haut du header, AVANT .top — jamais à l'intérieur de .top,
+     dont la mise en page interne (grille/flex à plusieurs colonnes, changeante selon la largeur
+     d'écran) écrasait ou vidait visuellement le bouton quand il y était inséré. Ainsi il ne dépend
+     d'aucune règle de .top et ne peut plus recouvrir ni être recouvert par le logo/la recherche/le compte. -->
 <style id="gtm-bridge-style">
-#gtm-back-btn{order:-1;flex:0 0 auto!important;position:static!important;display:none;align-items:center;gap:6px;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;padding:8px 14px 8px 10px!important;margin:0 10px 0 0!important;border-radius:999px;border:0;background:rgba(17,20,24,.85);color:#fff;font:600 13px/1 Segoe UI,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap;}
+#gtm-back-row{display:none;}
+#gtm-back-btn{display:inline-flex!important;align-items:center;gap:6px;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;padding:8px 14px 8px 10px!important;margin:0 0 10px 0!important;border-radius:999px;border:0;background:rgba(17,20,24,.85);color:#fff!important;font:600 13px/1 Segoe UI,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap;}
 #gtm-back-btn:hover{background:rgba(239,63,8,.9);}
-html[data-mgt-theme="light"] #gtm-back-btn{background:rgba(255,255,255,.92);color:#18212f;box-shadow:0 6px 18px rgba(0,0,0,.18);}
-html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff;}
-@media(max-width:700px){#gtm-back-btn{margin:0 0 8px 0!important;align-self:flex-start;}}
+html[data-mgt-theme="light"] #gtm-back-btn{background:rgba(255,255,255,.92);color:#18212f!important;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff!important;}
 </style>
-<button id="gtm-back-btn" type="button" onclick="window.parent.postMessage({type:'gtm-mgt-back'},'*')">← GTM Groupe</button>
+<div id="gtm-back-row"><button id="gtm-back-btn" type="button" onclick="window.parent.postMessage({type:'gtm-mgt-back'},'*')">← GTM Groupe</button></div>
 <script>
 (function(){
   try{
     if(window.parent && window.parent !== window){
-      var b=document.getElementById('gtm-back-btn');
-      if(b){
-        // On déplace le bouton à l'intérieur de la barre d'en-tête (div.top), comme premier
-        // élément, pour qu'il suive le même flux que le logo/la recherche/le compte au lieu
-        // de flotter par-dessus en position fixe (c'était la cause du "tout caché en haut").
-        var top = document.querySelector('header .top');
-        if(top && b.parentElement !== top) top.insertBefore(b, top.firstChild);
-        b.style.display='inline-flex';
+      var row=document.getElementById('gtm-back-row'); var b=document.getElementById('gtm-back-btn');
+      if(row && b){
+        // On place la ligne du bouton retour tout en haut du <header>, avant .top, pour qu'elle
+        // ne dépende jamais de la mise en page interne de .top (c'était la cause du bloc vide
+        // apparu après la première correction, et du "tout caché en haut" avant ça).
+        var header = document.querySelector('header');
+        if(header && row.parentElement !== header) header.insertBefore(row, header.firstChild);
+        row.style.display='block';
       }
       // Affiche le compte réellement connecté (GTM Groupe) à la place du placeholder
       // de l'ancien système de connexion Supabase, et retire son comportement de menu.
@@ -9568,4 +9669,14 @@ html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff;}
     }
   }catch(e){}
 })();
+// Les deux boutons d'import (Supabase / cet appareil) sont câblés ici, par délégation sur tout
+// le document, au lieu de dépendre de la fonction "setup" de l'écran Clients : celle-ci ne
+// s'exécute que si l'écran Clients a déjà été ouvert une fois, donc un clic depuis
+// Paramètres > Diagnostic sans être passé par Clients ne déclenchait jusqu'ici rien du tout.
+document.addEventListener('click', function(ev){
+  var t = ev.target && ev.target.closest ? ev.target.closest('#diagImportSupabaseBtn, #diagImportLocalBtn') : null;
+  if(!t) return;
+  if(t.id === 'diagImportSupabaseBtn') importFromSupabaseOnce();
+  else if(t.id === 'diagImportLocalBtn') importFromLocalDeviceOnce();
+});
 </script>
