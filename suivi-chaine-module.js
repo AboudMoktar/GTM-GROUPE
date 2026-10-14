@@ -112,6 +112,7 @@ function renderChaineParams2(m){
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Un modèle = ses opérations (postes) dans l'ordre de la chaîne, avec la cadence de chaque poste (pièces/heure par ouvrière) et les ouvrières par défaut. Dans la Fiche, on choisit le modèle du jour : ses postes apparaissent avec leurs ouvrières, modifiables.</p>
     ${mods.length ? mods.map(x => `<div class="session-row" style="padding:10px 0;"><div><b>${esc(x.nom)}</b><div style="font-size:11px;color:var(--ink-soft);">${x.ops.length} postes · ${x.ops.reduce((t, o) => t + (o.emps || []).length, 0)} ouvrières affectées</div></div><div><button class="btn btn-ghost fc-btn" onclick="scModOuvrir('${x.id}')">${ok ? 'Modifier' : 'Voir'}</button>${ok ? ` <button class="icon-btn" title="Supprimer" onclick="scModSuppr('${x.id}')">✕</button>` : ''}</div></div>`).join('') : buildEmptyState('Aucun modèle', 'Créez un modèle puis ajoutez ses opérations (postes).')}
     ${ok ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="fcPolyPick(-1)">⚖ Volantes (équilibrage) : ${fcParams().polyv.length}</button>` : ''}
+    ${ok && !PHARMA_GAMMES.every(g => mods.some(x => x.nom === g.nom)) ? `<button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="scModPharma()">Créer PHARMA-HOMME et PHARMA-FEMME (gammes de montage)</button>` : ''}
     ${ok && !mods.length ? `<button class="btn btn-ghost" style="margin-top:10px;" onclick="scModExemple()">Créer l'exemple « Tee-shirt Pharmacie » (12 opérations)</button>` : ''}</div>`;
   if(!cur){ m.innerHTML = liste; return; }
   m.innerHTML = `<div class="card">${scTitre('Modèle', `<span style="display:flex;gap:6px;"><button class="btn btn-ghost" onclick="scModAnnuler()">‹ Retour</button>${ok ? `<button class="btn btn-primary" onclick="scModValider()">✓ Valider</button>` : ''}</span>`)}<div class="sc-dirty" id="sc-dirty" style="display:${scDirty ? 'block' : 'none'};">Modifications non enregistrées : touchez « Valider le modèle » en bas.</div><div id="fc-zone"></div>
@@ -127,6 +128,15 @@ function renderChaineParams2(m){
 }
 function scSilent(f){ if(!scDraft) return; f(scDraft); scDirty = true; const b = document.getElementById('sc-dirty'); if(b) b.style.display = 'block'; }
 function scModMaj(f){ if(!scDraft) return; f(scDraft); scDirty = true; nav('chaine-params'); }
+const PHARMA_GAMMES = [
+  {nom:'PHARMA-HOMME', ops:['POSE AGRAFE','OURLET MANCHE','FERMER MANCHE','PIQÛRE V','COLLETAGE ENCOLURE','OURLET BAS','POSE ATTACHES','ULTRASON TRIANGLE','FERMER CÔTÉ','MONTAGE MANCHE','SURPIQÛRE CÔTÉ','BRIDE (SORTIE CHAÎNE)']},
+  {nom:'PHARMA-FEMME', ops:['POSE AGRAFE','PIQÛRE V','COLLETAGE ENCOLURE','OURLET BAS','POSE ATTACHES','ULTRASON TRIANGLE','FERMER CÔTÉ','MONTAGE MANCHE','SURPIQÛRE CÔTÉ','BRIDE (SORTIE CHAÎNE)']}
+];
+window.scModPharma = function(){
+  const l = fcModeles(); let n = 0;
+  PHARMA_GAMMES.forEach(g => { if(l.some(x => x.nom === g.nom)) return; l.push({id:scNouvId(), nom:g.nom, ops:g.ops.map(o => ({nom:o, cadence:'', emps:[]}))}); n++; });
+  if(n){ fcSaveModeles(l); showToast(n + ' modèle(s) créé(s) — renseignez les cadences et les ouvrières'); } nav('chaine-params');
+};
 window.scModNouveau = function(){ scDraft = {id:scNouvId(), nom:'Nouveau modèle', ops:[]}; scModEdit = scDraft.id; scDirty = true; nav('chaine-params'); };
 window.scModExemple = function(){ scDraft = {id:scNouvId(), nom:'Tee-shirt Pharmacie', ops:SC_EXEMPLE.map(x => ({nom:x[0], cadence:x[1], emps:[]}))}; scModEdit = scDraft.id; scDirty = true; nav('chaine-params'); };
 window.scModOuvrir = function(id){ const m = fcModeles().find(x => x.id === id); scDraft = m ? JSON.parse(JSON.stringify(m)) : null; scModEdit = m ? id : null; scDirty = false; nav('chaine-params'); };
