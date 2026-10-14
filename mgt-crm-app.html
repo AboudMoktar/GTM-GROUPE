@@ -1405,51 +1405,62 @@ const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLo
 const splitVals=s=>String(s||'').split('|').map(x=>x.trim()).filter(Boolean);
 const clsImp=s=>String(s||'').charAt(0)||'D';
 const scoreClass=n=>Number(n)>=65?'high':Number(n)>=45?'mid':'low';
-// ===== INDEXEDDB v2 (DataManager - single source) =====
-const DB_NAME='mgt_crm_v4'; const DB_VER=8; let _dbp=null;
-function db(){
-  if(_dbp) return _dbp;
-  _dbp=new Promise((ok,no)=>{
-    const r=indexedDB.open(DB_NAME,DB_VER);
-    r.onupgradeneeded=e=>{
-      const d=e.target.result;
-      const upgradeTx=e.target.transaction;
-      // Reparation idempotente du schema : ne jamais se fier uniquement a oldVersion.
-      // Certaines installations possedent deja la version 7 sans tous les stores attendus.
-      const ensureStore=(name,opts)=>d.objectStoreNames.contains(name)?upgradeTx.objectStore(name):d.createObjectStore(name,opts);
-      ensureStore('app_data');
-      ensureStore('sync_queue',{autoIncrement:true});
-      ensureStore('sync_logs',{autoIncrement:true});
-      ensureStore('clients',{autoIncrement:true});
-      ensureStore('crm_clients',{keyPath:'ID'});
-      ensureStore('history_queue',{autoIncrement:true});
-      const sq2=ensureStore('sync_queue_v2',{keyPath:'id'});
-      if(!sq2.indexNames.contains('client_id')) sq2.createIndex('client_id','client_id',{unique:false});
-      if(!sq2.indexNames.contains('status')) sq2.createIndex('status','status',{unique:false});
-      const hq2=ensureStore('history_queue_v2',{keyPath:'id'});
-      if(!hq2.indexNames.contains('history_id')) hq2.createIndex('history_id','history_id',{unique:false});
-      if(!hq2.indexNames.contains('status')) hq2.createIndex('status','status',{unique:false});
-      ensureStore('sync_queue_backup',{keyPath:'id'});
-      ensureStore('history_queue_backup',{keyPath:'id'});
-      const hist=ensureStore('crm_history',{keyPath:'id'});
-      if(!hist.indexNames.contains('entity_id')) hist.createIndex('entity_id','entity_id',{unique:false});
-      ensureStore('crm_settings',{keyPath:'key'});
-      ensureStore('crm_tags',{keyPath:'id'});
-      ensureStore('crm_history_tags',{keyPath:['history_id','tag_id']});
-    };
-    r.onsuccess=e=>{const d=e.target.result; d.onversionchange=()=>{try{d.close();}catch(_){} _dbp=null;}; _dbp=Promise.resolve(d); ok(d);};
-    r.onerror=e=>{_dbp=null; no(e.target.error||new Error('Ouverture IndexedDB impossible'));};
-    r.onblocked=()=>{console.error('IndexedDB upgrade bloquee : fermer les autres onglets/fenetres du CRM puis reessayer.');};
-  });
-  return _dbp;
+// ===== STOCKAGE : relié à GTM Groupe (Firebase), comme le reste de l'application =====
+// Avant : base locale IndexedDB + synchronisation Supabase séparée (compte, serveur distincts).
+// Maintenant : les données réelles du CRM (clients, historique, réglages, étiquettes) passent
+// par window.parent.getJSON/setJSON — les mêmes fonctions que tout GTM Groupe, qui gèrent déjà
+// le cache local et la synchronisation Firebase en temps réel (dossier "mgt"). L'API dbGet/dbSet/
+// dbAll/dbCount/dbClear/dbPut/dbDel est conservée telle quelle : tout le reste du CRM (des milliers
+// de lignes) continue d'appeler ces mêmes fonctions sans rien changer.
+function gtmHost(){ try { return (window.parent && window.parent !== window && window.parent.getJSON && window.parent.setJSON) ? window.parent : null; } catch(e){ return null; } }
+const STORE_KEYS = { crm_clients:'ID', crm_history:'id', crm_settings:'key', crm_tags:'id' };
+const STORE_COMPOUND = { crm_history_tags:['history_id','tag_id'] };
+const SYNCED_STORES = ['crm_clients','crm_history','crm_settings','crm_tags','crm_history_tags'];
+const _localArrays = {};
+function isSynced(store){ return SYNCED_STORES.indexOf(store) >= 0; }
+function readArr(store){
+  if(isSynced(store)){ const h=gtmHost(); if(h){ try{ return h.getJSON('mgt_'+store, [])||[]; }catch(e){ return []; } } }
+  if(!_localArrays[store]){ try{ const raw=localStorage.getItem('mgtcrm_local_'+store); _localArrays[store]=raw?JSON.parse(raw):[]; }catch(e){ _localArrays[store]=[]; } }
+  return _localArrays[store];
 }
-async function dbGet(store,key){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readonly'), r=t.objectStore(store).get(key); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error);});}
-async function dbSet(store,key,val){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readwrite'); let r; if(store==='app_data'&&key!==undefined) r=t.objectStore(store).put(val,key); else r=t.objectStore(store).add(val); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error);});}
-async function dbDel(store,key){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readwrite'), r=t.objectStore(store).delete(key); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error);});}
-async function dbAll(store){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readonly'), r=t.objectStore(store).getAll(); r.onsuccess=()=>ok(r.result||[]); r.onerror=()=>no(r.error);});}
-async function dbCount(store){const d=await db(); return new Promise(ok=>{let t=d.transaction(store,'readonly'), r=t.objectStore(store).count(); r.onsuccess=()=>ok(r.result); r.onerror=()=>ok(0);});}
-async function dbClear(store){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readwrite'), r=t.objectStore(store).clear(); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error);});}
-async function dbPut(store,val){const d=await db(); return new Promise((ok,no)=>{let t=d.transaction(store,'readwrite'), r=t.objectStore(store).put(val); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error);});}
+function writeArr(store, arr){
+  if(isSynced(store)){ const h=gtmHost(); if(h){ try{ h.setJSON('mgt_'+store, arr); return; }catch(e){} } }
+  _localArrays[store]=arr;
+  try{ localStorage.setItem('mgtcrm_local_'+store, JSON.stringify(arr)); }catch(e){}
+}
+function matchKey(store,item,key){
+  const cp=STORE_COMPOUND[store];
+  if(cp){ const k=Array.isArray(key)?key:[key]; return cp.every((f,i)=>String(item&&item[f])===String(k[i])); }
+  const kp=STORE_KEYS[store]; if(!kp) return false;
+  return String(item&&item[kp])===String(key);
+}
+function appDataLocal(){ try{ const raw=localStorage.getItem('mgtcrm_app_data'); return raw?JSON.parse(raw):{}; }catch(e){ return {}; } }
+function appDataSave(o){ try{ localStorage.setItem('mgtcrm_app_data', JSON.stringify(o)); }catch(e){} }
+function db(){ return Promise.resolve({objectStoreNames:{contains:function(){return true;}}}); }
+async function dbGet(store,key){
+  if(store==='app_data') return appDataLocal()[key];
+  return readArr(store).find(it=>matchKey(store,it,key));
+}
+async function dbSet(store,key,val){
+  if(store==='app_data'){ const o=appDataLocal(); o[key]=val; appDataSave(o); return; }
+  const arr=readArr(store); arr.push(val); writeArr(store,arr);
+}
+async function dbDel(store,key){
+  if(store==='app_data'){ const o=appDataLocal(); delete o[key]; appDataSave(o); return; }
+  writeArr(store, readArr(store).filter(it=>!matchKey(store,it,key)));
+}
+async function dbAll(store){ return readArr(store).slice(); }
+async function dbCount(store){ return readArr(store).length; }
+async function dbClear(store){ if(store==='app_data'){ appDataSave({}); return; } writeArr(store, []); }
+async function dbPut(store,val){
+  const arr=readArr(store);
+  const cp=STORE_COMPOUND[store];
+  let idx=-1;
+  if(cp) idx=arr.findIndex(it=>cp.every(f=>String(it[f])===String(val[f])));
+  else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
+  if(idx>=0) arr[idx]=val; else arr.push(val);
+  writeArr(store, arr);
+}
 // ===== Queues v2 (Etape A) : stores avec keyPath:'id' =====
 let QUEUE_SYNC_STORE='sync_queue';
 function queuesReady(){ return QUEUE_SYNC_STORE==='sync_queue_v2' && QUEUE_HISTORY_STORE==='history_queue_v2'; }
@@ -2524,7 +2535,7 @@ async function migrateQueuesV2() {
     await dms.set('queues_v2', '1', 'Queues v2 activees', 'sync');
     await dbSet('app_data', 'queue_migration_report_v2', report);
     console.log('QUEUE_MIGRATION_V2: OK', JSON.stringify(report));
-    try { toast('Queues v2: migration validee (sync ' + report.queues.sync_queue.apres.total + ' | history ' + report.queues.history_queue.apres.total + ').'); } catch(e) {}
+    // (ancien message technique "migration des files" supprimé : sans objet avec Firebase)
     return report;
   } finally { _queueMigrationLock = false; }
 }
@@ -8631,10 +8642,13 @@ body.mgt-nonsuper #syncToggleBtn,body.mgt-nonsuper #syncConfig,body.mgt-nonsuper
 'use strict';
 /* ---- A RENSEIGNER UNE SEULE FOIS : valeurs publiques du projet Supabase ---- */
 var MGT_LOGIN_CONFIG = window.MGT_LOGIN_CONFIG = {
-  enabled: true,
-  url: 'https://grjvuicpnonihroiiqqm.supabase.co',      /* ex : https://xxxx.supabase.co */
-  anonKey: 'sb_publishable_ASinTMCdYTkk3ycHI8g7tw_yqB6EpLr',     /* cle "anon" / "publishable" (publique par conception) */
-  domain: 'mgt.local'                          /* doit correspondre aux emails crees dans Supabase */
+  // Connexion Supabase désactivée : l'accès au CRM passe désormais par la connexion
+  // déjà faite dans GTM Groupe (même compte, données sur Firebase). Plus d'écran de
+  // connexion séparé ni de compte Supabase distinct.
+  enabled: false,
+  url: '',
+  anonKey: '',
+  domain: 'mgt.local'
 };
 if(!MGT_LOGIN_CONFIG.enabled) return;
 
@@ -9396,6 +9410,33 @@ html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff;}
   try{
     if(window.parent && window.parent !== window){
       var b=document.getElementById('gtm-back-btn'); if(b) b.style.display='inline-flex';
+      // Affiche le compte réellement connecté (GTM Groupe) à la place du placeholder
+      // de l'ancien système de connexion Supabase, et retire son comportement de menu.
+      var nom = (window.parent.getCurrentUserName && window.parent.getCurrentUserName()) || '';
+      if(nom){
+        var nameEl = document.getElementById('v448TopAccountName');
+        if(nameEl) nameEl.textContent = nom;
+        var chip = document.querySelector('.v448TopAccount');
+        if(chip) chip.title = nom + ' — connecté via GTM Groupe';
+      }
+      // Le badge « Hors ligne » venait de l'ancienne connexion Supabase (jamais établie
+      // ici) : les données passent en réalité par GTM Groupe (Firebase), donc on l'affiche
+      // correctement plutôt que de laisser croire que rien n'est enregistré.
+      window.updateHeaderSyncStatus = function(){
+        var el=document.getElementById('headerSyncStatus'); if(!el) return;
+        var dot=el.querySelector('.headerSyncDot'), label=document.getElementById('headerSyncLabel');
+        if(dot) dot.className='headerSyncDot green';
+        if(label) label.textContent='GTM Groupe';
+      };
+      window.setSyncStatus = function(){
+        var el=document.getElementById('syncStatus'); if(!el) return;
+        el.textContent='Via GTM Groupe'; el.className='syncStatus online';
+      };
+      updateHeaderSyncStatus(); setSyncStatus();
+      // L'ancienne file d'attente de synchronisation (vers Supabase) ne sert plus à rien :
+      // chaque écriture passe déjà, immédiatement, par GTM Groupe (Firebase). On la neutralise
+      // pour qu'elle n'accumule pas des entrées inutiles dans le stockage local de l'appareil.
+      if(typeof SyncManager === 'object'){ SyncManager.queueEvent = async function(){}; SyncManager.processLocalQueue = async function(){}; SyncManager.startAutoSync = function(){}; }
     }
   }catch(e){}
 })();

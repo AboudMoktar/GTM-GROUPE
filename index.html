@@ -779,6 +779,9 @@ function setJSON(key, value){
 }
 
 let currentUser = null;
+// `currentUser` est déclaré avec `let` : il n'est pas accessible comme `window.currentUser`
+// depuis un cadre (iframe), par ex. le CRM MGT. Cette fonction l'expose proprement.
+window.getCurrentUserName = () => (currentUser && (currentUser.nom || currentUser.username)) || '';
 let activeTab = 'dashboard';
 // IMPORTANT : ne jamais utiliser .toISOString() pour obtenir une date "YYYY-MM-DD" —
 // toISOString() convertit en UTC, ce qui décale la date d'un jour pour les fuseaux
