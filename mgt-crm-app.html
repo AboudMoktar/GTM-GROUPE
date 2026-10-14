@@ -9397,19 +9397,30 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 })();
 </script>
 
-<!-- Pont GTM Groupe : bouton retour vers le sélecteur de module quand cette page est ouverte dans le cadre de GTM Groupe. -->
+<!-- Pont GTM Groupe : bouton retour vers le sélecteur de module quand cette page est ouverte dans le cadre de GTM Groupe.
+     Placé comme élément normal DANS le header (pas en position fixe par-dessus), pour ne jamais
+     recouvrir le logo / la recherche / le compte, à aucune largeur d'écran ni au défilement. -->
 <style id="gtm-bridge-style">
-#gtm-back-btn{position:fixed;top:10px;left:10px;z-index:100001;display:none;align-items:center;gap:6px;padding:8px 14px 8px 10px;border-radius:999px;border:0;background:rgba(17,20,24,.85);color:#fff;font:600 13px/1 Segoe UI,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);backdrop-filter:blur(4px);}
+#gtm-back-btn{order:-1;flex:0 0 auto!important;position:static!important;display:none;align-items:center;gap:6px;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;padding:8px 14px 8px 10px!important;margin:0 10px 0 0!important;border-radius:999px;border:0;background:rgba(17,20,24,.85);color:#fff;font:600 13px/1 Segoe UI,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap;}
 #gtm-back-btn:hover{background:rgba(239,63,8,.9);}
 html[data-mgt-theme="light"] #gtm-back-btn{background:rgba(255,255,255,.92);color:#18212f;box-shadow:0 6px 18px rgba(0,0,0,.18);}
 html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff;}
+@media(max-width:700px){#gtm-back-btn{margin:0 0 8px 0!important;align-self:flex-start;}}
 </style>
 <button id="gtm-back-btn" type="button" onclick="window.parent.postMessage({type:'gtm-mgt-back'},'*')">← GTM Groupe</button>
 <script>
 (function(){
   try{
     if(window.parent && window.parent !== window){
-      var b=document.getElementById('gtm-back-btn'); if(b) b.style.display='inline-flex';
+      var b=document.getElementById('gtm-back-btn');
+      if(b){
+        // On déplace le bouton à l'intérieur de la barre d'en-tête (div.top), comme premier
+        // élément, pour qu'il suive le même flux que le logo/la recherche/le compte au lieu
+        // de flotter par-dessus en position fixe (c'était la cause du "tout caché en haut").
+        var top = document.querySelector('header .top');
+        if(top && b.parentElement !== top) top.insertBefore(b, top.firstChild);
+        b.style.display='inline-flex';
+      }
       // Affiche le compte réellement connecté (GTM Groupe) à la place du placeholder
       // de l'ancien système de connexion Supabase, et retire son comportement de menu.
       var nom = (window.parent.getCurrentUserName && window.parent.getCurrentUserName()) || '';
