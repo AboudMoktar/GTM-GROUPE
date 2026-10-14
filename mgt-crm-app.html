@@ -2416,6 +2416,122 @@ grant all on public.crm_tags to authenticated;
 grant all on public.crm_history_tags to authenticated;
 do $$ begin if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='crm_tags') then alter publication supabase_realtime add table public.crm_tags; end if; if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='crm_history_tags') then alter publication supabase_realtime add table public.crm_history_tags; end if; end $$;`;
 
+// ===== Import ponctuel depuis l'ancienne base Supabase =====
+// Avant le passage sur Firebase (voir plus haut), ce CRM synchronisait ses données vers un
+// projet Supabase personnel. Ce bloc permet de récupérer UNE FOIS ces anciennes données
+// (clients, historique, réglages, étiquettes) et de les copier dans le stockage Firebase
+// actuel — sans réactiver Supabase de façon permanente : la connexion est fermée juste après.
+const OLD_SUPABASE_URL = 'https://grjvuicpnonihroiiqqm.supabase.co';
+const OLD_SUPABASE_ANON_KEY = 'sb_publishable_ASinTMCdYTkk3ycHI8g7tw_yqB6EpLr';
+async function importFromSupabaseOnce(){
+  const email = (prompt('Importer les anciennes données Supabase\n\nEmail utilisé auparavant pour la synchronisation :') || '').trim();
+  if(!email){ return; }
+  const password = prompt('Mot de passe de ce compte Supabase :') || '';
+  if(!password){ toast('Import annulé : mot de passe requis.'); return; }
+  toast('Connexion à l\'ancienne base...');
+  let client = null;
+  const report = { clients: 0, clientsSkip: 0, history: 0, historySkip: 0, settings: 0, settingsSkip: 0, tags: 0, tagsSkip: 0, historyTags: 0, historyTagsSkip: 0, errors: [] };
+  try {
+    const loaded = await SyncManager._ensureCDNLoaded();
+    if(!loaded){ toast('Impossible de charger la bibliothèque Supabase (pas de connexion internet ?).'); return; }
+    client = window.supabase.createClient(OLD_SUPABASE_URL, OLD_SUPABASE_ANON_KEY, { auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
+    const signIn = await client.auth.signInWithPassword({ email, password });
+    if(signIn.error){ toast('Connexion refusée : ' + signIn.error.message); return; }
+
+    // --- Clients (ancien schéma V1 : une seule ligne JSONB) ---
+    try {
+      const { data: row, error } = await client.from(SYNC_TABLE).select('*').eq('id', SYNC_ROW_ID).maybeSingle();
+      if(error) throw error;
+      if(row){
+        const deleted = new Set((row.deleted_clients || []).map(String));
+        const byId = {};
+        (row.added_clients || []).forEach(c => { if(c && c.ID) byId[String(c.ID)] = c; });
+        Object.entries(row.saved_edits || {}).forEach(([id, c]) => { if(c) byId[String(id)] = c; });
+        const existing = await dbAll('crm_clients');
+        const existingIds = new Set(existing.map(c => String(c.ID)));
+        for(const [id, c] of Object.entries(byId)){
+          if(deleted.has(id)) continue;
+          if(existingIds.has(id)){ report.clientsSkip++; continue; }
+          await dbPut('crm_clients', c);
+          report.clients++;
+        }
+      }
+    } catch(e){ report.errors.push('clients (V1): ' + (e && e.message ? e.message : e)); }
+
+    // --- Clients (ancien schéma V2 : une ligne par client, repli si V1 vide) ---
+    if(report.clients === 0 && report.clientsSkip === 0){
+      try {
+        const { data: rows, error } = await client.from(SYNC_V2_CLIENTS_TABLE).select('*').is('deleted_at', null);
+        if(error) throw error;
+        if(rows && rows.length){
+          const existing = await dbAll('crm_clients');
+          const existingIds = new Set(existing.map(c => String(c.ID)));
+          for(const r of rows){
+            const c = (r.data && typeof r.data === 'object') ? Object.assign({}, r.data) : r;
+            if(!c.ID) c.ID = String(r.id || r.ID || '');
+            if(!c.ID || existingIds.has(String(c.ID))){ if(c.ID) report.clientsSkip++; continue; }
+            await dbPut('crm_clients', c);
+            report.clients++;
+          }
+        }
+      } catch(e){ report.errors.push('clients (V2): ' + (e && e.message ? e.message : e)); }
+    }
+
+    // --- Historique / réglages / étiquettes (schéma à plat, mêmes colonnes que le stockage local) ---
+    const importFlatTable = async (table, store, keyField) => {
+      try {
+        const { data: rows, error } = await client.from(table).select('*');
+        if(error) throw error;
+        if(!rows) return;
+        const existing = await dbAll(store);
+        const existingKeys = new Set(existing.map(it => String(it[keyField])));
+        for(const r of rows){
+          const k = String(r[keyField]);
+          if(existingKeys.has(k)){ report[store === 'crm_history' ? 'historySkip' : store === 'crm_settings' ? 'settingsSkip' : 'tagsSkip']++; continue; }
+          await dbPut(store, r);
+          report[store === 'crm_history' ? 'history' : store === 'crm_settings' ? 'settings' : 'tags']++;
+        }
+      } catch(e){ report.errors.push(table + ': ' + (e && e.message ? e.message : e)); }
+    };
+    await importFlatTable('crm_history', 'crm_history', 'id');
+    await importFlatTable('crm_settings', 'crm_settings', 'key');
+    await importFlatTable('crm_tags', 'crm_tags', 'id');
+    try {
+      const { data: rows, error } = await client.from('crm_history_tags').select('*');
+      if(error) throw error;
+      if(rows){
+        const existing = await dbAll('crm_history_tags');
+        const existingKeys = new Set(existing.map(it => it.history_id + '::' + it.tag_id));
+        for(const r of rows){
+          const k = r.history_id + '::' + r.tag_id;
+          if(existingKeys.has(k)){ report.historyTagsSkip++; continue; }
+          await dbPut('crm_history_tags', r);
+          report.historyTags++;
+        }
+      }
+    } catch(e){ report.errors.push('crm_history_tags: ' + (e && e.message ? e.message : e)); }
+
+    try { await rebuildClientCache(); refreshFilters(); updateStats(); render(); } catch(e){}
+
+    const lines = [
+      'Import terminé.',
+      'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
+      'Historique : ' + report.history + ' importés' + (report.historySkip ? ', ' + report.historySkip + ' déjà présents' : ''),
+      'Réglages : ' + report.settings + ' importés' + (report.settingsSkip ? ', ' + report.settingsSkip + ' déjà présents' : ''),
+      'Étiquettes : ' + report.tags + ' importées' + (report.tagsSkip ? ', ' + report.tagsSkip + ' déjà présentes' : ''),
+    ];
+    if(report.errors.length) lines.push('', 'Non trouvé ou inaccessible : ' + report.errors.join(' | '));
+    alert(lines.join('\n'));
+    toast('Import Supabase terminé : ' + report.clients + ' client(s) ajouté(s).');
+  } catch(err) {
+    alert('Erreur pendant l\'import : ' + (err && err.message ? err.message : err));
+  } finally {
+    if(client){ try { await client.auth.signOut({ scope: 'local' }); } catch(e){} }
+    client = null;
+  }
+}
+window.importFromSupabaseOnce = importFromSupabaseOnce;
+
 // ===== DataManager History (dmh) =====
 const dmh = { _ready: false };
 dmh.init = async function() { if (!this._ready) this._ready = true; };
@@ -3252,7 +3368,7 @@ renderAnnualDayDetail=function(a){const d=dateToInput(actionMainDate(a)); if(d) 
 renderAnnualCalendar=function(){const modal=document.getElementById('annualCalendarModal'); if(!modal||modal.hidden) return; const label=document.getElementById('annualYearLabel'); if(label) label.textContent='Annee '+annualYear; const jump=document.getElementById('annualMonthJump'); if(jump&&jump.options.length<=1){['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'].forEach((m,i)=>{const o=document.createElement('option'); o.value=String(i); o.textContent=m; jump.appendChild(o);});} calendarActionMap={}; const body=document.getElementById('annualCalendarBody'); if(!body) return; body.innerHTML='<div class="annualMiniHeader"><div class="annualLegend"><span><i class="annualDot visite"></i>Visites</span><span><i class="annualDot sav"></i>SAV</span><span><i class="annualDot conge"></i>Conges</span><span><i class="annualDot special"></i>Evenements</span><span><i class="annualDot holiday"></i>Jours feries</span></div><div class="muted">'+annualActions().length+' action(s) cette annee</div></div><div class="annualMiniGrid">'+Array.from({length:12},(_,m)=>annualMonthHtml(m)).join('')+'</div>'; body.querySelectorAll('[data-annual-date]').forEach(btn=>btn.onclick=()=>renderAnnualDateDetail(btn.dataset.annualDate)); body.querySelectorAll('[data-annual-week]').forEach(btn=>btn.onclick=e=>{e.stopPropagation(); renderAnnualWeekDetail(Number(btn.dataset.annualMonth),Number(btn.dataset.annualWeek));});};
 openAnnualCalendar=function(){calendarActionMap={}; annualYear=pilotCalendarDate.getFullYear(); openPanel('annualCalendarModal'); renderAnnualCalendar();};
 const baseSetupClientGridFinal=setup;
-setup=function(){baseSetupClientGridFinal(); ['clientListSearch','clientListActivityFilter','clientListVisitFilter','clientListRegionFilter','clientListCityFilter','clientListCommercialFilter','clientListGroupFilter','clientListLastVisitFilter'].forEach(id=>{const el=document.getElementById(id); if(el){const fn=()=>{clientPage=1; renderPagedClients();}; el.addEventListener('input',fn); el.addEventListener('change',fn);}}); const reset=document.getElementById('resetBtn'); if(reset) reset.onclick=resetClientListFilters; const edit=document.getElementById('calendarCtxEdit'); if(edit) edit.onclick=()=>{const a=calendarContextEvent; hideCalendarContext(); if(a){showEventContext(a); openEventEditor(a);}}; const del=document.getElementById('calendarCtxDelete'); if(del) del.onclick=()=>deleteCalendarAction(calendarContextEvent,false); document.addEventListener('click',e=>{const menu=document.getElementById('calendarContextMenu'); if(menu&&!menu.hidden&&!menu.contains(e.target)) hideCalendarContext();}); const current=document.getElementById('annualCurrentBtn'); if(current) current.onclick=()=>{annualYear=new Date().getFullYear(); renderAnnualCalendar();}; const jump=document.getElementById('annualMonthJump'); if(jump) jump.onchange=()=>{const target=document.getElementById('annualMonth'+jump.value); if(target) target.scrollIntoView({behavior:'smooth',block:'center'});};     const slb=document.getElementById('showSyncLogsBtn'); if(slb) slb.onclick=async()=>{const v=document.getElementById('syncLogsViewer'); if(!v) return; if(v.style.display!=='block'){try{const logs=await dbAll('sync_logs'); v.innerHTML=logs.slice(-20).reverse().map(l=>'['+l.level+'] '+(l.timestamp||'').slice(0,19)+' '+(l.category?'['+l.category+'] ':'')+l.message+(l.details?' - '+l.details:'')).join('\n')||'Aucun log.'; v.style.display='block';}catch(e){v.textContent='Erreur chargement logs.'; v.style.display='block';}}else{v.style.display='none';}}; document.getElementById('diagCloseBtn').onclick=closeDiagnostic; document.getElementById('diagRefreshBtn').onclick=()=>{const grid=document.getElementById('diagGrid'); const logBody=document.getElementById('diagLogBody'); if(grid&&logBody) renderDiagnostic(grid,logBody);}; document.getElementById('diagForceSyncBtn').onclick=async()=>{setSyncStatus('Sync forcee...','wait'); await processQueue(); toast('Sync terminee.'); closeDiagnostic();}; document.getElementById('diagViewTrashBtn').onclick=openTrash; document.getElementById('diagPermanentDeleteBtn').onclick=()=>{if(!confirm('Vider la corbeille ?\n\nTous les clients dans la corbeille seront supprimes definitivement.')) return; const items=softDeletedClients(); items.forEach(c=>permanentDelete(c[fields.id])); rebuildClientCache().then(()=>{refreshFilters(); updateStats(); render();}); toast('Corbeille videe.'); closeDiagnostic();}; document.getElementById('diagMigrateHistoryBtn').onclick=async()=>{if(!confirm('Migrer les donnees Planning[] existantes vers crm_history ?\n\nLes donnees Planning restent intactes dans le client mais seront dupliquees dans la nouvelle table crm_history.')) return; const r=await migratePlanningToHistory(); toast('Migration: '+r.migrated+' crm_history crees, '+r.skipped+' ignores.'); closeDiagnostic();}; document.getElementById('diagCopyHistorySqlBtn').onclick=()=>{navigator.clipboard.writeText(SUPABASE_SQL_HISTORY).then(()=>toast('SQL crm_history copie ! Collez dans Supabase SQL Editor.')).catch(()=>downloadBlob(SUPABASE_SQL_HISTORY,'supabase_crm_history.sql','text/plain;charset=utf-8'));}; document.getElementById('trashCloseBtn').onclick=()=>{const m=document.getElementById('trashModal'); if(m) m.hidden=true;}; CalendrierPreview.init();};
+setup=function(){baseSetupClientGridFinal(); ['clientListSearch','clientListActivityFilter','clientListVisitFilter','clientListRegionFilter','clientListCityFilter','clientListCommercialFilter','clientListGroupFilter','clientListLastVisitFilter'].forEach(id=>{const el=document.getElementById(id); if(el){const fn=()=>{clientPage=1; renderPagedClients();}; el.addEventListener('input',fn); el.addEventListener('change',fn);}}); const reset=document.getElementById('resetBtn'); if(reset) reset.onclick=resetClientListFilters; const edit=document.getElementById('calendarCtxEdit'); if(edit) edit.onclick=()=>{const a=calendarContextEvent; hideCalendarContext(); if(a){showEventContext(a); openEventEditor(a);}}; const del=document.getElementById('calendarCtxDelete'); if(del) del.onclick=()=>deleteCalendarAction(calendarContextEvent,false); document.addEventListener('click',e=>{const menu=document.getElementById('calendarContextMenu'); if(menu&&!menu.hidden&&!menu.contains(e.target)) hideCalendarContext();}); const current=document.getElementById('annualCurrentBtn'); if(current) current.onclick=()=>{annualYear=new Date().getFullYear(); renderAnnualCalendar();}; const jump=document.getElementById('annualMonthJump'); if(jump) jump.onchange=()=>{const target=document.getElementById('annualMonth'+jump.value); if(target) target.scrollIntoView({behavior:'smooth',block:'center'});};     const slb=document.getElementById('showSyncLogsBtn'); if(slb) slb.onclick=async()=>{const v=document.getElementById('syncLogsViewer'); if(!v) return; if(v.style.display!=='block'){try{const logs=await dbAll('sync_logs'); v.innerHTML=logs.slice(-20).reverse().map(l=>'['+l.level+'] '+(l.timestamp||'').slice(0,19)+' '+(l.category?'['+l.category+'] ':'')+l.message+(l.details?' - '+l.details:'')).join('\n')||'Aucun log.'; v.style.display='block';}catch(e){v.textContent='Erreur chargement logs.'; v.style.display='block';}}else{v.style.display='none';}}; document.getElementById('diagCloseBtn').onclick=closeDiagnostic; document.getElementById('diagRefreshBtn').onclick=()=>{const grid=document.getElementById('diagGrid'); const logBody=document.getElementById('diagLogBody'); if(grid&&logBody) renderDiagnostic(grid,logBody);}; document.getElementById('diagForceSyncBtn').onclick=async()=>{setSyncStatus('Sync forcee...','wait'); await processQueue(); toast('Sync terminee.'); closeDiagnostic();}; document.getElementById('diagViewTrashBtn').onclick=openTrash; document.getElementById('diagPermanentDeleteBtn').onclick=()=>{if(!confirm('Vider la corbeille ?\n\nTous les clients dans la corbeille seront supprimes definitivement.')) return; const items=softDeletedClients(); items.forEach(c=>permanentDelete(c[fields.id])); rebuildClientCache().then(()=>{refreshFilters(); updateStats(); render();}); toast('Corbeille videe.'); closeDiagnostic();}; document.getElementById('diagMigrateHistoryBtn').onclick=async()=>{if(!confirm('Migrer les donnees Planning[] existantes vers crm_history ?\n\nLes donnees Planning restent intactes dans le client mais seront dupliquees dans la nouvelle table crm_history.')) return; const r=await migratePlanningToHistory(); toast('Migration: '+r.migrated+' crm_history crees, '+r.skipped+' ignores.'); closeDiagnostic();}; document.getElementById('diagCopyHistorySqlBtn').onclick=()=>{navigator.clipboard.writeText(SUPABASE_SQL_HISTORY).then(()=>toast('SQL crm_history copie ! Collez dans Supabase SQL Editor.')).catch(()=>downloadBlob(SUPABASE_SQL_HISTORY,'supabase_crm_history.sql','text/plain;charset=utf-8'));}; const diagImp=document.getElementById('diagImportSupabaseBtn'); if(diagImp) diagImp.onclick=()=>importFromSupabaseOnce(); document.getElementById('trashCloseBtn').onclick=()=>{const m=document.getElementById('trashModal'); if(m) m.hidden=true;}; CalendrierPreview.init();};
 function planningEventColor(type){const map={visite:'#126b45',sav:'#8b2635',conge:'#6b4bb8',offre:'#d7ba74',devis:'#d7ba74',appel:'#9eb8d8',admin:'#7f8b99',installation:'#6b4bb8',exposition:'#9a5b00',project:'#0b6578',maintenance:'#8b2635',terrain:'#126b45',office:'#7f8b99'};return map[String(type||'').toLowerCase().trim()]||'#999';}
 const CalendrierPreview={isFullscreen:false,init(){const $=id=>document.getElementById(id);$('calPreviewBtn').onclick=()=>this.open();$('calPrintBtn').onclick=()=>{this.open();setTimeout(()=>this.print(),200);};$('calPdfBtn').onclick=()=>{this.open();setTimeout(()=>this.exportPdf(),200);};$('calClosePr').onclick=()=>this.close();$('calFullscreenPr').onclick=()=>this.toggleFullscreen();$('calPrevPr').onclick=()=>this.navigate(-1);$('calNextPr').onclick=()=>this.navigate(1);$('calModePr').onchange=function(){pilotCalendarMode=this.value;renderPilotage();CalendrierPreview.open();};$('calPrintPr').onclick=()=>this.print();$('calPdfPr').onclick=()=>this.exportPdf();const om=document.getElementById('calPreviewModal');if(om)om.onclick=function(e){if(e.target===this)CalendrierPreview.close();};},open(){const m=document.getElementById('calPreviewModal');if(!m)return;m.removeAttribute('hidden');this.render();},close(){const m=document.getElementById('calPreviewModal');if(m)m.setAttribute('hidden','');if(this.isFullscreen){this.isFullscreen=false;this.updateFullscreenUI();}},toggleFullscreen(){this.isFullscreen=!this.isFullscreen;this.updateFullscreenUI();},updateFullscreenUI(){const box=document.getElementById('calPreviewBox');const btn=document.getElementById('calFullscreenPr');if(this.isFullscreen){box.style.width='100vw';box.style.maxHeight='100vh';box.style.borderRadius='0';btn.textContent='Reduire';}else{box.style.width='';box.style.maxHeight='';box.style.borderRadius='';btn.textContent='Plein ecran';}},navigate(dir){pilotCalendarDate=addDays(pilotCalendarDate,pilotCalendarMode==='week'?dir*7:dir*32);renderPilotage();this.render();},render(){const src=document.getElementById('planningCalendar'),tgt=document.getElementById('calPreviewBody');if(!src||!tgt)return;tgt.innerHTML=src.innerHTML;const dg=document.getElementById('calDiagPr');if(dg){const all=allPlanningActions().filter(a=>matchesPilot(a.client,a)&&parseDateValue(actionMainDate(a)));dg.textContent='Actions affichees : '+all.length+' | Mode : '+pilotCalendarMode;}},print(){const body=document.getElementById('calPreviewBody');if(!body||!body.innerHTML.trim()){alert('Aucune action a imprimer');return;}const pa=document.getElementById('calPrintArea');pa.innerHTML=body.innerHTML;window.print();},exportPdf(){const body=document.getElementById('calPreviewBody');if(!body||!body.innerHTML.trim()){alert('Aucune action a exporter');return;}const pa=document.getElementById('calPrintArea');pa.innerHTML=body.innerHTML;window.print();}};
 /* ===== V4.2.2 - Etape 2 : moteur de navigation modulaire ===== */
@@ -4031,6 +4147,7 @@ initApp().then(async()=>{setup(); try{await importBillingHistory2026(); await re
 <button class="secondary" id="diagViewTrashBtn">Corbeille</button>
 <button class="secondary" id="diagPermanentDeleteBtn" style="border-color:#8b2635;color:#8b2635">Nettoyer corbeille</button>
 <button class="secondary" id="diagCopyHistorySqlBtn" style="border-color:#126b45;color:#126b45">SQL crm_history</button>
+<button class="secondary" id="diagImportSupabaseBtn" style="border-color:#1a5fa8;color:#1a5fa8">Importer anciennes données (Supabase)</button>
 </div>
 </div>
 </div>
