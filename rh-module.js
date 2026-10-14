@@ -776,10 +776,20 @@ function renderRHPersonnel(container, canEdit){
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="saveEmployeeForm('${mode}','${id||''}')">Enregistrer</button>
           <button class="btn btn-ghost" onclick="document.getElementById('emp-form-zone').innerHTML=''">Annuler</button>
+          ${mode==='edit' ? `<button class="btn btn-warning" style="margin-left:auto;" onclick="deleteEmployeeForm('${id}')">Supprimer</button>` : ''}
         </div>
       </div>
     `;
   }
+  window.deleteEmployeeForm = (id) => {
+    const list = getEmployees();
+    const e = list[id]; if(!e) return;
+    if(!confirm('Supprimer définitivement '+(e.nom||'cette personne')+' ?\nSes présences et son historique seront aussi supprimés. Cette action est irréversible.')) return;
+    delete list[id];
+    saveEmployees(list);
+    showToast('Employé supprimé');
+    nav('rh-personnel');
+  };
   window.saveEmployeeForm = (mode, id) => {
     const nom = document.getElementById('ef-nom').value.trim();
     const matricule = document.getElementById('ef-matricule').value.trim();
@@ -1104,9 +1114,19 @@ function renderRHFiche(container, canEdit, empId){
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="saveEmployeeForm('edit','${id}')">Enregistrer</button>
           <button class="btn btn-ghost" onclick="document.getElementById('fiche-edit-zone').innerHTML=''">Annuler</button>
+          <button class="btn btn-warning" style="margin-left:auto;" onclick="deleteEmployeeFiche('${id}')">Supprimer</button>
         </div>
       </div>
     `;
+  };
+  window.deleteEmployeeFiche = (id) => {
+    const list = getEmployees();
+    const emp = list[id]; if(!emp) return;
+    if(!confirm('Supprimer définitivement '+(emp.nom||'cette personne')+' ?\nSes présences et son historique seront aussi supprimés. Cette action est irréversible.')) return;
+    delete list[id];
+    saveEmployees(list);
+    showToast('Employé supprimé');
+    nav('rh-personnel');
   };
   if(typeof window.saveEmployeeForm !== 'function'){
     window.saveEmployeeForm = (mode, id) => {
