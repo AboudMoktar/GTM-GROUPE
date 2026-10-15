@@ -2702,9 +2702,19 @@ function restoreFromBackupFile(file){
 
       try { await rebuildClientCache(); refreshFilters(); updateStats(); render(); } catch(e){}
 
+      // Les offres, factures, machines, visites et le planning de chaque client sont inclus
+      // directement dans sa fiche (ils voyagent avec elle, pas besoin d'étape séparée) : les
+      // modules Facturation & Lettrage et Calendrier commercial les lisent déjà depuis là.
+      // On alimente aussi la table d'historique séparée (utilisée par SAV et la fiche client)
+      // à partir du planning de chaque client restauré, pour que cette vue soit à jour aussi.
+      let histReport = { migrated: 0, skipped: 0 };
+      try { histReport = await migratePlanningToHistory(); } catch(e){}
+
       alert([
         'Restauration terminée.',
         'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
+        '(offres, factures, machines, visites et planning inclus dans chaque fiche client)',
+        'Historique (SAV / fiche client) : ' + histReport.migrated + ' évènements ajoutés' + (histReport.skipped ? ', ' + histReport.skipped + ' déjà présents' : ''),
       ].join('\n'));
     } catch(err) {
       alert('Erreur pendant la restauration : ' + (err && err.message ? err.message : err));
