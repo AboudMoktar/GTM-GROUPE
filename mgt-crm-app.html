@@ -880,6 +880,7 @@ html[data-mgt-theme="light"] .mgtBackHomeBtn{background:#ef3f08!important;color:
     <div style="display:flex!important;flex-wrap:wrap;gap:8px;padding:12px 14px">
       <button class="iconBtn secondary" id="mainImportLocalBtn" title="Récupérer les anciennes données restées sur cet appareil (sans mot de passe)" style="display:inline-flex!important;flex:1 1 180px;border-color:#126b45;color:#126b45"> Récupérer (appareil)</button>
       <button class="iconBtn secondary" id="mainImportSupabaseBtn" title="Importer les anciennes données depuis Supabase" style="display:inline-flex!important;flex:1 1 180px;border-color:#1a5fa8;color:#1a5fa8"> Récupérer (Supabase)</button>
+      <button class="iconBtn secondary" id="mainRestoreBackupBtn" title="Restaurer un fichier de sauvegarde (.json) exporté par cette application" style="display:inline-flex!important;flex:1 1 180px;border-color:#7a1aa8;color:#7a1aa8"> Restaurer un fichier de sauvegarde</button>
     </div>
   </div>
   <div class="settingsSection">
@@ -2636,6 +2637,92 @@ async function importFromLocalDeviceOnce(){
   }
 }
 window.importFromLocalDeviceOnce = importFromLocalDeviceOnce;
+
+// ===== Restauration depuis un fichier de sauvegarde (.json) =====
+// Le bouton "Import" historique (importBackupFile) attend un format précis de sauvegarde
+// "légère" et utilise en plus l'ancienne API IndexedDB brute (db().transaction(...)), qui
+// n'existe plus depuis le passage sur Firebase. Il ne fonctionne donc ni avec ce fichier-ci,
+// ni avec aucun autre, actuellement. Cette fonction lit directement le fichier choisi et
+// comprend aussi bien ce format "backup complet" (clé "clients" à la racine) que l'ancien
+// format "sauvegarde" (savedEdits/addedClients/originalClients), puis écrit via dbPut, qui
+// lui passe bien par Firebase.
+function restoreFromBackupFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let report = { clients: 0, clientsSkip: 0 };
+    try {
+      const data = JSON.parse(String(reader.result || ''));
+      if(!data || typeof data !== 'object') throw new Error('Fichier illisible (pas un JSON valide).');
+
+      let toImport = [];
+      if(Array.isArray(data.clients) && data.clients.length){
+        // Format "backup complet" (exportFullBackup) : liste de clients à la racine.
+        toImport = data.clients;
+      } else if(data.savedEdits || data.addedClients || data.originalClients){
+        // Ancien format "sauvegarde légère" (exportBackup).
+        const map = new Map();
+        const saved = (typeof data.savedEdits === 'object' && !Array.isArray(data.savedEdits)) ? data.savedEdits : {};
+        const adds = Array.isArray(data.addedClients) ? data.addedClients : [];
+        const del = Array.isArray(data.deletedClients) ? data.deletedClients : [];
+        const delSet = new Set(del.map(String));
+        const orig = Array.isArray(data.originalClients) ? data.originalClients : [];
+        if(orig.length){
+          for(const c of orig){
+            const id = String(c.ID || '');
+            if(id && !delSet.has(id)){ map.set(id, Object.assign({}, c, saved[id] || {})); }
+          }
+          for(const c of adds){
+            const id = String(c.ID || '');
+            if(id && !delSet.has(id)){ map.set(id, Object.assign({}, c, map.get(id) || {}, saved[id] || {})); }
+          }
+        } else {
+          for(const [id, val] of Object.entries(saved)){
+            if(val && typeof val === 'object'){ const p = Object.assign({ ID: id }, val); delete p._deleted_at; map.set(String(id), p); }
+          }
+          for(const c of adds){
+            const id = String(c.ID || '');
+            if(id && !delSet.has(id)) map.set(id, Object.assign(map.get(id) || {}, c));
+          }
+        }
+        toImport = [...map.values()];
+      } else {
+        throw new Error('Format de fichier non reconnu (ni "clients", ni "savedEdits/addedClients").');
+      }
+
+      const existing = await dbAll('crm_clients');
+      const existingIds = new Set(existing.map(c => String(c.ID)));
+      for(const c of toImport){
+        if(!c || typeof c !== 'object' || !c.ID) continue;
+        const id = String(c.ID);
+        if(existingIds.has(id)){ report.clientsSkip++; continue; }
+        await dbPut('crm_clients', c);
+        report.clients++;
+      }
+
+      try { await rebuildClientCache(); refreshFilters(); updateStats(); render(); } catch(e){}
+
+      alert([
+        'Restauration terminée.',
+        'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
+      ].join('\n'));
+    } catch(err) {
+      alert('Erreur pendant la restauration : ' + (err && err.message ? err.message : err));
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+function openRestoreBackupPicker(){
+  let input = document.getElementById('restoreBackupFileInput');
+  if(!input){
+    input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json,application/json'; input.id = 'restoreBackupFileInput'; input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; input.value=''; if(f) restoreFromBackupFile(f); });
+  }
+  input.click();
+}
+window.openRestoreBackupPicker = openRestoreBackupPicker;
 
 // ===== DataManager History (dmh) =====
 const dmh = { _ready: false };
@@ -9695,5 +9782,10 @@ document.addEventListener('click', function(ev){
   var t = ev.target && ev.target.closest ? ev.target.closest('#v448SettingsBtn') : null;
   if(!t) return;
   try { openModule('settings'); } catch(e){}
+});
+document.addEventListener('click', function(ev){
+  var t = ev.target && ev.target.closest ? ev.target.closest('#mainRestoreBackupBtn') : null;
+  if(!t) return;
+  try { openRestoreBackupPicker(); } catch(e){}
 });
 </script>
