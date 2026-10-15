@@ -9686,4 +9686,14 @@ document.addEventListener('click', function(ev){
   if(t.id === 'diagImportSupabaseBtn') importFromSupabaseOnce();
   else if(t.id === 'diagImportLocalBtn') importFromLocalDeviceOnce();
 });
+// L'icône engrenage de l'en-tête (v448SettingsBtn) n'ouvrait rien : elle vient d'un menu de
+// compte jamais terminé dans cette version du CRM. Sur mobile, la barre du bas (Offres,
+// Calendrier, Facturation, Clients, Recherche) ne propose pas non plus "Paramètres" — seul le
+// menu ☰ (souvent peu visible) y menait. On la rend fonctionnelle pour que "Paramètres" soit
+// toujours accessible d'un tap, où qu'on soit dans l'application.
+document.addEventListener('click', function(ev){
+  var t = ev.target && ev.target.closest ? ev.target.closest('#v448SettingsBtn') : null;
+  if(!t) return;
+  try { openModule('settings'); } catch(e){}
+});
 </script>
