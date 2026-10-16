@@ -46,8 +46,26 @@ window.grpSuiviStore = {
   ecrireDocs: suiviEcrireDocs,
   vue: () => (activeModule === 'gadh' ? 'gadh' : 'tek'),
   lectureSeule: () => !!(currentUser && currentUser.role === 'viewer'),
-  toast: (msg) => showToast(msg)
+  toast: (msg) => showToast(msg),
+  imprimer: (html, titre) => suiviImprimer(html, titre)
 };
+
+// Impression des documents du suivi (étiquettes cartons, colisage, liste total) :
+// le cadre seul s'imprime mal sur téléphone, on imprime donc depuis cette page.
+// Le HTML reçu contient ses propres styles (#pk-doc-zone, @page).
+function suiviImprimer(html, titre){
+  let zone = document.getElementById('pk-doc-zone');
+  if(zone) zone.remove();
+  zone = document.createElement('div');
+  zone.id = 'pk-doc-zone';
+  zone.innerHTML = html;
+  document.body.appendChild(zone);
+  const avant = document.title;
+  const nettoyer = () => { const z = document.getElementById('pk-doc-zone'); if(z) z.remove(); document.title = avant; window.removeEventListener('afterprint', nettoyer); };
+  window.addEventListener('afterprint', nettoyer);
+  document.title = titre || 'Document';
+  setTimeout(() => { window.print(); }, 150);
+}
 
 function renderSuiviFrame(main){
   const vue = activeModule === 'gadh' ? 'gadh' : 'tek';

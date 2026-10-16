@@ -23,7 +23,23 @@ let notifTimer = null;
 
 function notifPluriel(n, s, p){ return n + ' ' + (n > 1 ? (p || s + 's') : s); }
 
-// Commandes (lots) du suivi PERCKO en cours dont le dernier mouvement date de 7 jours ou plus.
+// Seuils réglés dans le suivi PERCKO (Réglages › Alertes) : 7 jours sans mouvement par défaut.
+function notifSeuilsSuivi(){
+  const a = ((suiviLireDocs().cfg || {}).alertes) || {};
+  return {proche: a.proche >= 0 ? +a.proche : 3, bloque: a.bloque > 0 ? +a.bloque : 7};
+}
+// Commandes en cours dont la date de livraison prévue est dépassée ou proche.
+function notifLotsLivraison(){
+  const lots = ((suiviLireDocs().cfg || {}).lots) || {}, seuil = notifSeuilsSuivi().proche;
+  const auj = new Date(getTodayISO()).getTime(), res = [];
+  suiviResume().filter(l => l.enCours).forEach(l => {
+    const liv = (lots[l.lot] || {}).livraison; if(!liv) return;
+    const jours = Math.round((new Date(liv).getTime() - auj) / 86400000);
+    if(jours < 0 || jours <= seuil) res.push({lot:l.lot, jours, liv, reste:Math.max(0, l.qte - (l.etapes.exp || 0))});
+  });
+  return res;
+}
+// Commandes (lots) du suivi PERCKO en cours dont le dernier mouvement date du seuil « bloquée » ou plus (7 jours par défaut).
 function notifLotsStagnants(){
   const docs = suiviLireDocs(), lotDeLigne = {}, dernier = {};
   Object.keys(docs).forEach(id => {
@@ -33,11 +49,11 @@ function notifLotsStagnants(){
     if(id.indexOf('moves-') !== 0) return;
     (docs[id].moves || []).forEach(m => { const lot = lotDeLigne[m[2]]; if(lot && m[1] > (dernier[lot] || '')) dernier[lot] = m[1]; });
   });
-  const auj = new Date(getTodayISO()).getTime(), res = [];
+  const auj = new Date(getTodayISO()).getTime(), res = [], seuil = notifSeuilsSuivi().bloque;
   suiviResume().filter(l => l.enCours).forEach(l => {
     const d = dernier[l.lot]; if(!d) return;
     const jours = Math.floor((auj - new Date(d).getTime()) / 86400000);
-    if(jours >= 7) res.push({lot:l.lot, jours, chezGadh:(l.etapes.gadh || 0) > (l.etapes.ret || 0)});
+    if(jours >= seuil) res.push({lot:l.lot, jours, chezGadh:(l.etapes.gadh || 0) > (l.etapes.ret || 0)});
   });
   return res;
 }
@@ -56,14 +72,26 @@ function notifSociete(soc, push){
       push({id:'arr-' + o.id + (grave ? '-c' : '-w'), niveau:grave ? 'crit' : 'warn', titre:nom + ' à l\'arrêt depuis ' + arrDuree(o.minutes),
         detail:(ARR_CAUSES[o.a.cause] || ARR_CAUSES.autre).label, ouvrir:{module:'machines', tab:'arr-dashboard'}});
     });
+    // Dates de livraison des commandes PERCKO (TEK-TREND seulement)
+    if(soc === 'tek'){
+      let liv = [];
+      try { liv = notifLotsLivraison(); } catch(e) {}
+      liv.forEach(l => {
+        const retard = l.jours < 0;
+        push({id:'liv-' + l.lot + '-' + l.jours, niveau:retard ? 'crit' : 'warn',
+          titre:'Commande ' + l.lot + (retard ? ' en retard de ' + notifPluriel(-l.jours, 'jour') : l.jours === 0 ? ' à livrer aujourd\'hui' : ' à livrer dans ' + notifPluriel(l.jours, 'jour')),
+          detail:'Livraison prévue le ' + l.liv.split('-').reverse().join('/') + ' · ' + l.reste + ' pièce(s) restant à expédier', ouvrir:{module:'commandes', tab:'commandes-home'}});
+      });
+    }
     // Commandes sans mouvement
     let stagnants = [];
     try { stagnants = notifLotsStagnants(); } catch(e) {}
     if(soc === 'gadh') stagnants = stagnants.filter(l => l.chezGadh);
     if(stagnants.length){
       const mod = soc === 'gadh' ? 'gadh' : 'commandes';
+      let seuilB = 7; try { seuilB = notifSeuilsSuivi().bloque; } catch(e) {}
       push({id:'stag-' + soc + '-' + stagnants.map(l => l.lot).join(','), niveau:'warn',
-        titre:stagnants.length > 1 ? notifPluriel(stagnants.length, 'commande') + ' sans mouvement depuis 7 jours ou plus' : 'Commande ' + stagnants[0].lot + ' sans mouvement depuis ' + stagnants[0].jours + ' jours',
+        titre:stagnants.length > 1 ? notifPluriel(stagnants.length, 'commande') + ' sans mouvement depuis ' + seuilB + ' jours ou plus' : 'Commande ' + stagnants[0].lot + ' sans mouvement depuis ' + stagnants[0].jours + ' jours',
         detail:stagnants.slice(0, 4).map(l => l.lot).join(', ') + (stagnants.length > 4 ? '…' : ''), ouvrir:{module:mod, tab:'commandes-home'}});
     }
   }
