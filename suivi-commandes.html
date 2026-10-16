@@ -369,13 +369,39 @@ function setLine(lot, year, client, lib, size, qty){
   if (!lot || !client || !lib || !size) throw new Error("Lot, client, libellé et taille sont obligatoires.");
   if (qty < 0) throw new Error("Quantité négative impossible.");
   var l = findLine(lot, client, lib, size);
-  if (!l){ if (qty === 0) return; ensureLot(lot); S.lines.push({id:nid("L"), lot:lot, year:year||0, client:client, model:modelOf(lib), lib:lib, size:size, qty:qty}); return; }
+  if (lotReady(lot)) figerEnvoiImplicite(lot);   /* garde l'ordre envoyé avant la modification */
+  if (!l){ if (qty === 0) return; ensureLot(lot); S.lines.push({id:nid("L"), lot:lot, year:year||0, client:client, model:modelOf(lib), lib:lib, size:size, qty:qty}); noteModif(lot, client, lib, size, 0, qty); return; }
   if (qty === 0){
     if (S.moves.some(function(m){ return m.lineId === l.id; })) throw new Error("Des mouvements existent pour cette ligne : supprimez-les d'abord (onglet Flux).");
-    S.lines = S.lines.filter(function(x){ return x.id !== l.id; }); return;
+    S.lines = S.lines.filter(function(x){ return x.id !== l.id; }); noteModif(lot, client, lib, size, l.qty, 0); return;
   }
+  var q0 = l.qty;
+  if (qty > q0 && l.cc) l.cc = 0;   /* pièces ajoutées : la coupe de cette ligne se rouvre pour couper le complément */
   l.qty = qty; if (year) l.year = year;
+  noteModif(lot, client, lib, size, q0, qty);
 }
+/* Des pièces peuvent être ajoutées (ou retirées) à une commande quel que soit son statut.
+   Après validation, chaque changement est noté dans le journal du lot ; un ajout rouvre une commande clôturée avec écart. */
+function noteModif(lot, client, lib, size, q0, q1){
+  var L = S.lots[lot]; if (!L || q0 === q1) return;
+  if (q1 > q0 && L.closed){ L.closed = ""; L.rouverte = today(); }
+  if (!L.ready) return;
+  (L.modifs = L.modifs || []).push({d:today(), c:client, l:lib, t:size, a:q0, n:q1});
+}
+/* ordre de coupe total du lot (quantités + marges), et ce qui a déjà été envoyé au centre de coupe */
+function ordreLot(lot){ var t = 0; S.lines.forEach(function(l){ if (l.lot === lot) t += cutQty(l.qty, l.model); }); return t; }
+function premiereCoupe(lot){ var d = ""; S.moves.forEach(function(m){ if (m.stage !== "cp") return; var l = lineById(m.lineId); if (l && l.lot === lot && (!d || m.date < d)) d = m.date; }); return d; }
+/* commandes déjà coupées avant cette étape : l'envoi est déduit de la première coupe */
+function envoisCoupe(lot){
+  var e = (S.lots[lot] || {}).envois;
+  if (e && e.length) return e;
+  var d = premiereCoupe(lot);
+  return d ? [{d:d, q:ordreLot(lot), n:"déduit de la première coupe", implicite:true}] : [];
+}
+function figerEnvoiImplicite(lot){ var e = envoisCoupe(lot); if (e.length === 1 && e[0].implicite){ delete e[0].implicite; ensureLot(lot); S.lots[lot].envois = e; } }
+function ordreEnvoye(lot){ var e = envoisCoupe(lot); return e.length ? e[e.length - 1].q : 0; }
+function complementCoupe(lot){ var e = envoisCoupe(lot); return e.length ? Math.max(0, ordreLot(lot) - ordreEnvoye(lot)) : 0; }
+function marquerEnvoiCoupe(lot, date, note){ ensureLot(lot); (S.lots[lot].envois = S.lots[lot].envois || []).push({d:date || today(), q:ordreLot(lot), n:note || ""}); }
 
 /* ---------- sauvegarde (base de données de la page, sinon mémoire du téléphone) ---------- */
 function safeId(s){ return String(s).replace(/[^A-Za-z0-9_-]/g,"_"); }
@@ -1207,9 +1233,11 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
       g.cells.push({inp:inp, size:s}); inputs.push(inp);
       inp.addEventListener("change", function(){
         if (!ui.lot){ (ui.qteAtt = ui.qteAtt || {})[cli + "|" + li.lib + "|" + s] = num(inp.value); toast("Quantité notée : saisissez le lot pour l'enregistrer."); upd(); return; }
-        try { setLine(ui.lot, num(iYear.value), cli, li.lib, s, num(inp.value)); }
+        var l0 = findLine(ui.lot, cli, li.lib, s), q0 = l0 ? l0.qty : 0, qn = num(inp.value);
+        try { setLine(ui.lot, num(iYear.value), cli, li.lib, s, qn); }
         catch (e) { toast(e.message); var l2 = findLine(ui.lot, cli, li.lib, s); inp.value = l2 ? l2.qty : ""; return; }
         persist(); upd();
+        if (lotReady(ui.lot) && qn > q0) toast("+" + fmt(qn - q0) + " pièce(s) ajoutée(s) à la commande " + ui.lot + " (" + li.lib + " " + s + ")");
       });
       inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var k = inputs.indexOf(inp); if (inputs[k+1]) inputs[k+1].focus(); else inp.blur(); } });
       inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
@@ -1238,6 +1266,15 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     if (Object.keys(unk).length) vc.appendChild(el("div", {class:"msg err", text:"Absents de la nomenclature (consommation non calculée) : " + Object.keys(unk).join(", ")}));
     if (ready){
       vc.appendChild(el("p", {class:"mut", text:"Validée le " + dmy(info.ready || "") + " — fiches de consommation disponibles."}));
+      vc.appendChild(el("p", {class:"mut", text:"Vous pouvez ajouter des pièces à tout moment, quel que soit l'avancement de la commande : l'ordre de coupe et les consommations se recalculent, la coupe se rouvre pour le complément" + (envoisCoupe(ui.lot).length ? " et le complément à envoyer au centre de coupe est signalé dans le Flux." : ".")}));
+      var cpl = complementCoupe(ui.lot);
+      if (cpl) vc.appendChild(el("div", {class:"msg", style:"background:#fff3cd;color:#5c3b00"}, el("b", {text:fmt(cpl) + " pièce(s) à couper ajoutée(s) depuis l'envoi au centre de coupe. "}), el("button", {class:"btn small", text:"Envoyer le complément", onclick:function(){ ui.tab = "flux"; ui.stage = "env"; ui.fv = {}; ui.pend = null; render(); }})));
+      var mods = (info.modifs || []).slice(-15).reverse();
+      if (mods.length){
+        var jm = el("div", {style:"margin-top:10px"}, el("div", {class:"mut", style:"font-weight:600;margin-bottom:4px", text:"Modifications après validation (" + (info.modifs || []).length + ")"}));
+        mods.forEach(function(m){ var d = m.n - m.a; jm.appendChild(el("div", {class:"dl"}, el("div", {class:"mut", text:dmy(m.d) + " · " + m.c + " · " + m.l + " " + m.t}), el("b", {style:"white-space:nowrap;color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(m.a) + " → " + fmt(m.n) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
+        vc.appendChild(jm);
+      }
       vc.appendChild(el("div", {class:"actions"}, el("button", {class:"btn", text:"Voir les fiches de consommation", onclick:function(){ ui.tab = "fiche"; ui.fiche = "c"; render(); }}),
         confirmBtn("Rouvrir pour modifier", "sec", function(){ commit(function(){ if (S.moves.some(function(m){ var l = lineById(m.lineId); return l && l.lot === ui.lot; })) throw new Error("Des étapes sont déjà enregistrées : impossible de rouvrir."); ensureLot(ui.lot); S.lots[ui.lot].ready = ""; }, "Commande rouverte"); })));
     } else {
@@ -1398,7 +1435,8 @@ function validateLot(lot){
 function vFlux(v){
   var lot = ui.lot, lines = filtered(lot, "*");
   if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
-  if (!ui.stage || STG_KEYS.indexOf(ui.stage) < 0) ui.stage = "cp";
+  if (VUE === "gadh" && ui.stage === "env") ui.stage = "ret";
+  if (!ui.stage || (STG_KEYS.indexOf(ui.stage) < 0 && ui.stage !== "env")) ui.stage = (VUE !== "gadh" && lotReady(lot) && !envoisCoupe(lot).length && !S.moves.some(function(m){ var x = lineById(m.lineId); return x && x.lot === lot; })) ? "env" : "cp";
   if (VUE === "gadh" && GADH_STG.indexOf(ui.stage) < 0) ui.stage = "ret";
   if (!ui.fcli) ui.fcli = "*";
   if (!ui.fv) ui.fv = {};
@@ -1422,13 +1460,19 @@ function vFlux(v){
     return b;
   }
   if (VUE !== "gadh") pc.appendChild(step(1, "Commande reçue", info.received ? "le " + dmy(info.received) : "", "done", ""));
-  if (VUE !== "gadh") pc.appendChild(step(2, "Commande prête — à envoyer au centre de coupe", ready ? "validée le " + dmy(info.ready || "") : "à vérifier puis valider par TEK-TREND (onglet Commandes)", ready ? "done" : "todo", "", (ready || VUE === "gadh") ? null : function(){ ui.tab = "cmd"; render(); }));
+  if (VUE !== "gadh") pc.appendChild(step(2, "Commande prête (validée)", ready ? "validée le " + dmy(info.ready || "") : "à vérifier puis valider par TEK-TREND (onglet Commandes)", ready ? "done" : "todo", "", (ready || VUE === "gadh") ? null : function(){ ui.tab = "cmd"; render(); }));
+  if (VUE !== "gadh"){
+    var envs = envoisCoupe(lot), ordre = ordreLot(lot), compl = complementCoupe(lot), dern = envs[envs.length - 1];
+    pc.appendChild(step(3, "Commande envoyée au centre de coupe", dern ? "envoyée le " + dmy(dern.d) + (envs.length > 1 ? " (" + envs.length + " envois)" : "") + (compl ? " · complément de " + fmt(compl) + " pièce(s) à envoyer" : "") : (ready ? "fiche de coupe à envoyer au centre de coupe (PROGES)" : ""),
+      !dern ? "todo" : compl ? "part" : "done", fmt(dern ? ordreEnvoye(lot) : 0) + " / " + fmt(ordre), function(){ goStage("env"); }, stage === "env", ordre ? Math.min(100, Math.round((dern ? ordreEnvoye(lot) : 0) / ordre * 100)) : 0));
+  }
   STAGES.forEach(function(s, i){
     if (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) return;
     var t = A.t[s[0]], target = i === 0 ? A.cut : A.q, pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
-    pc.appendChild(step(i + 3, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
+    pc.appendChild(step(i + 4, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
   });
   v.appendChild(pc);
+  if (stage === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
 
   /* passage d'étape */
   var iDate = el("input", {type:"date", id:"fDate", value:ui.fdate || today()}); iDate.addEventListener("change", function(){ ui.fdate = iDate.value; });
@@ -1436,7 +1480,7 @@ function vFlux(v){
   var mOpts = [["", "— choisir —"]].concat(S.motifs.map(function(x){ return [x, x]; }));
   if (ui.fmotif && S.motifs.indexOf(ui.fmotif) < 0) ui.fmotif = "";
   var iMotif = sel(mOpts, ui.fmotif || "", "fMotif"); iMotif.addEventListener("change", function(){ ui.fmotif = iMotif.value; });
-  v.appendChild(el("div", {class:"card"}, el("h2", {text:(VUE === "gadh" ? "" : "Étape " + (si + 3) + " — ") + names[stage]}), (VUE === "gadh" ? null : pager(STG_KEYS, stage, goStage, "Étape " + (si + 3) + " / 11")),
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:(VUE === "gadh" ? "" : "Étape " + (si + 4) + " — ") + names[stage]}), (VUE === "gadh" ? null : pager(["env"].concat(STG_KEYS), stage, goStage, "Étape " + (si + 4) + " / 12")),
     el("p", {class:"mut", style:"margin:4px 0 8px", text:STAGE_HELP[stage]}),
     el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note), el("label", {text:"Motif des NC"}, iMotif)),
     el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
@@ -1486,7 +1530,7 @@ function vFlux(v){
   }
   function doIt(){
     var g = gather(), next = ui.pend && ui.pend.next;
-    var ok = commit(function(){ if (!g.nm.length) throw new Error("Aucune quantité à valider."); var ex = gadhAsm(g.nm); checkMoves(ex.concat(g.nm)); ex.concat(g.nm).forEach(function(m){ S.moves.push(m); }); ui.fv = {}; ui.pend = null; if (next && si < STG_KEYS.length - 1) ui.stage = STG_KEYS[si + 1]; });
+    var ok = commit(function(){ if (!g.nm.length) throw new Error("Aucune quantité à valider."); var ex = gadhAsm(g.nm); checkMoves(ex.concat(g.nm)); ex.concat(g.nm).forEach(function(m){ S.moves.push(m); }); if (stage === "cp" && VUE !== "gadh" && !((S.lots[lot] || {}).envois || []).length) marquerEnvoiCoupe(lot, iDate.value || today(), "noté automatiquement à la première coupe"); ui.fv = {}; ui.pend = null; if (next && si < STG_KEYS.length - 1) ui.stage = STG_KEYS[si + 1]; });
     if (ok){ toast(names[stage] + " : " + fmt(g.tq) + " conformes" + (g.tn ? " + " + fmt(g.tn) + " NC" : "")); if (next) render(); }
   }
   if (ui.pend && ui.pend.stage === stage) v.appendChild(el("div", {class:"card confirm"}, el("h2", {text:"Confirmer le passage ?"}), el("p", {style:"margin:0 0 10px"}, el("b", {text:fmt(ui.pend.tq) + " pièces conformes"}), (ui.pend.tn ? " + " : ""), ui.pend.tn ? el("b", {text:fmt(ui.pend.tn) + " NC" + (iMotif.value ? " (" + iMotif.value + ")" : ""), style:"color:var(--bad)"}) : null, " (" + ui.pend.n + " ligne(s)) → « " + names[stage] + " » le " + dmy(ui.pend.date) + "."),
@@ -1539,7 +1583,7 @@ function statusOf(C){
   if (C.rest === 0) return {txt:"Terminée", cls:"ok", done:true};
   if (C.closed) return {txt:"Clôturée (écart " + fmt(C.rest) + ")", cls:"ok", done:true};
   var hi = -1; STG_KEYS.forEach(function(k, i){ if ((C.t[k] || 0) > 0) hi = i; });
-  if (hi < 0) return C.ready ? {txt:"Prête — à envoyer au centre de coupe", cls:"wip", done:false} : {txt:"Reçue — à vérifier et valider", cls:"na", done:false};
+  if (hi < 0) return C.ready ? (C.envoi ? {txt:"Envoyée au centre de coupe", cls:"wip", done:false} : {txt:"Prête — à envoyer au centre de coupe", cls:"wip", done:false}) : {txt:"Reçue — à vérifier et valider", cls:"na", done:false};
   var full = C.t[STG_KEYS[hi]] >= (hi === 0 ? C.cut : C.q);
   return {txt:STAGE_STATUS[hi] + (full ? " (complète)" : " (partielle)"), cls:"wip", done:false};
 }
@@ -1548,8 +1592,8 @@ function dashData(){
   S.lines.forEach(function(l){ var L = lots[l.lot] || (lots[l.lot] = {lot:l.lot, year:l.year, lines:[], byc:{}}); L.lines.push(l); (L.byc[l.client] = L.byc[l.client] || []).push(l); });
   return Object.keys(lots).sort().reverse().map(function(k){
     var L = lots[k], ready = lotReady(k), info = S.lots[k] || {};
-    var cl = Object.keys(L.byc).sort().map(function(c){ var C = sumStates(L.byc[c], tot); C.client = c; C.ready = ready; C.closed = !!info.closed; C.st = statusOf(C); return C; });
-    var all = sumStates(L.lines, tot); all.ready = ready; all.closed = !!info.closed;
+    var cl = Object.keys(L.byc).sort().map(function(c){ var C = sumStates(L.byc[c], tot); C.client = c; C.ready = ready; C.closed = !!info.closed; C.envoi = !!(info.envois && info.envois.length); C.st = statusOf(C); return C; });
+    var all = sumStates(L.lines, tot); all.ready = ready; all.closed = !!info.closed; all.envoi = !!(info.envois && info.envois.length);
     return {lot:L.lot, year:L.year, ready:ready, received:info.received, clients:cl, all:all, st:statusOf(all)};
   });
 }
@@ -1611,6 +1655,8 @@ function lotAlertes(d, act){
     if (j < 0) out.push({niv:"bad", court:"Retard " + (-j) + " j", txt:"En retard de " + (-j) + " jour(s) : livraison prévue le " + dmy(L.livraison) + ", reste " + fmt(d.all.rest) + " pièce(s) à expédier."});
     else if (j <= A.proche) out.push({niv:"warn", court:j === 0 ? "Livraison aujourd'hui" : "Livraison J-" + j, txt:(j === 0 ? "Livraison prévue aujourd'hui" : "Livraison dans " + j + " jour(s), le " + dmy(L.livraison)) + " : reste " + fmt(d.all.rest) + " pièce(s) à expédier."});
   }
+  var compl = G ? 0 : complementCoupe(d.lot);
+  if (compl) out.push({niv:"warn", court:"Complément coupe", txt:fmt(compl) + " pièce(s) ajoutée(s) après l'envoi : complément à envoyer au centre de coupe.", stage:"env"});
   var chez = (d.all.sv[2] || 0) + (d.all.sv[3] || 0);
   if (chez > 0 && act.lastG && joursDepuis(act.lastG) >= A.bloque){
     var jg = joursDepuis(act.lastG);
@@ -2024,6 +2070,45 @@ function cartonsCards(lot, lines){
     out.push(card);
   });
   return out;
+}
+
+/* ---------- Étape 3 : envoi de l'ordre de coupe au centre de coupe ---------- */
+function envoiCoupeCard(lot, ready){
+  var envs = envoisCoupe(lot), ordre = ordreLot(lot), compl = complementCoupe(lot), deja = envs.length ? ordreEnvoye(lot) : 0;
+  var c = el("div", {class:"card"}, el("h2", {text:"Étape 3 — Commande envoyée au centre de coupe"}),
+    pager(["env"].concat(STG_KEYS), "env", function(k){ ui.stage = k; ui.fv = {}; ui.pend = null; render(); }, "Étape 3 / 12"),
+    el("p", {class:"mut", style:"margin:4px 0 8px", text:"Envoi de l'ordre de coupe (fiche PROGES : quantités avec marges et consommation de tissu) au centre de coupe. Si des pièces sont ajoutées à la commande après l'envoi, le complément est signalé ici pour être envoyé à son tour."}));
+  if (!ready){
+    c.appendChild(el("div", {class:"msg err"}, "Commande non validée : validez-la dans l'onglet Commandes avant de l'envoyer au centre de coupe. ", el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
+    return c;
+  }
+  c.appendChild(el("div", {class:"stat"},
+    el("div", null, el("b", {text:fmt(ordre)}), el("span", {text:"pièces à couper (ordre de coupe)"})),
+    el("div", null, el("b", {text:fmt(deja)}), el("span", {text:"déjà envoyées au centre de coupe"})),
+    el("div", null, el("b", {text:envs.length ? fmt(compl) : fmt(ordre)}), el("span", {text:envs.length ? "complément à envoyer" : "à envoyer"}))));
+  var iD = el("input", {type:"date", id:"eDate", value:ui.edate || today()}); iD.addEventListener("change", function(){ ui.edate = iD.value; });
+  var iN = el("input", {id:"eNote", placeholder:"N° d'envoi, remarque…"});
+  var a = el("div", {class:"actions", style:"margin:10px 0 0"});
+  a.appendChild(el("button", {class:"btn sec", text:"Fiche de coupe PROGES (PDF)", onclick:function(){ saveFile("Fiche_coupe_PROGES_" + lot + "_" + today().replace(/-/g, "") + ".pdf", pdfBuild([ficheGrid(lot, "*", "c")])); }}));
+  if (!envs.length || compl){
+    c.appendChild(el("div", {class:"row"}, el("label", {text:"Date d'envoi"}, iD), el("label", {text:"Référence"}, iN)));
+    a.appendChild(el("button", {class:"btn", text:envs.length ? "Valider l'envoi du complément (+" + fmt(compl) + ")" : "Valider l'envoi au centre de coupe", onclick:function(){
+      var n = envs.length ? compl : ordre;
+      if (commit(function(){ marquerEnvoiCoupe(lot, iD.value || today(), cleanTxt(iN.value)); ui.stage = "cp"; ui.fv = {}; ui.pend = null; }, (envs.length ? "Complément envoyé : " : "Commande envoyée au centre de coupe : ") + fmt(n) + " pièces")) render();
+    }}));
+  } else c.appendChild(el("div", {class:"msg", text:"Ordre de coupe envoyé en totalité au centre de coupe."}));
+  c.appendChild(a);
+  if (envs.length){
+    var h = el("div", {style:"margin-top:12px"}, el("div", {class:"mut", style:"font-weight:600;margin-bottom:4px", text:"Envois au centre de coupe"}));
+    envs.forEach(function(e, i){
+      var avant = i ? envs[i - 1].q : 0;
+      h.appendChild(el("div", {class:"dl"},
+        el("div", {class:"mut"}, el("b", {text:dmy(e.d)}), " · " + (i ? "complément +" + fmt(Math.max(0, e.q - avant)) + " (ordre total " + fmt(e.q) + ")" : "ordre de coupe " + fmt(e.q) + " pièces") + (e.n ? " · " + e.n : "")),
+        e.implicite ? null : confirmBtn("Annuler", "bad", function(){ commit(function(){ S.lots[lot].envois.splice(i, 1); }, "Envoi annulé"); })));
+    });
+    c.appendChild(h);
+  }
+  return c;
 }
 
 /* ---------- Réglages ajoutés ---------- */
