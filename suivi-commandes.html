@@ -226,6 +226,66 @@ button.step{cursor:pointer}
 .card.confirm{border:2px solid var(--pri)}
 
 .chip.nc{background:var(--bad-bg);color:var(--bad)}
+/* ---- Flux, mode simple ---- */
+.sx-titre{font-size:18px;margin:6px 0 10px}
+.sx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:700px){.sx-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sx-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 12px;min-height:138px;border-radius:16px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;box-shadow:var(--shadow)}
+.sx-tile .ic,.sx-head .ic,.sx-conf-ic .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;flex:none}
+.sx-tile .ic svg,.sx-head .ic svg,.sx-conf-ic .ic svg{width:26px;height:26px}
+.sx-tile .nm{font-weight:700;font-size:17px;line-height:1.15}
+.sx-tile .big{font-family:var(--cond);font-size:30px;font-weight:700;line-height:1;color:var(--c)}
+.sx-tile .big.okv{font-size:18px;color:var(--ok)}
+.sx-tile .sm{font-size:13px;color:var(--mut)}
+.sx-tile .num{position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;color:var(--mut)}
+.sx-tile.go{border-color:var(--c)}
+.sx-tile.first{box-shadow:0 0 0 3px var(--c),var(--shadow)}
+.sx-tile.wait{opacity:.55;box-shadow:none}
+.sx-head{display:flex;align-items:center;gap:12px;margin:2px 0 12px}
+.sx-head .sx-nm{font-size:21px}
+.sx-nm{font-weight:700;font-size:19px;line-height:1.2}
+.sx-back{width:48px;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:24px;font-weight:700;flex:none;cursor:pointer}
+.sx-opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.sx-chip{min-height:42px;padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.sx-art{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--card);margin-bottom:12px;box-shadow:var(--shadow)}
+.sx-art .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;font-weight:700;font-size:16px;background:var(--sub)}
+.sx-art .hd .cli{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.85);color:#18212f}
+.sx-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.sx-row.fini{opacity:.6}
+.sx-sz{width:50px;height:50px;border-radius:12px;background:var(--sub);display:grid;place-items:center;font-weight:800;font-size:18px}
+.sx-mid{min-width:0}
+.sx-af{font-size:13px;color:var(--mut);margin-bottom:4px;font-weight:600}
+.sx-step{display:flex;align-items:center;gap:6px}
+.sx-step button{width:44px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--sub);color:var(--ink);font-size:24px;font-weight:700;cursor:pointer;flex:none}
+.sx-step input{width:64px;min-width:0;height:46px;padding:0 4px;text-align:center;font-size:20px;font-weight:800;background:var(--edit);border-color:var(--edit-line)}
+.sx-step input::-webkit-inner-spin-button,.sx-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.sx-step input{-moz-appearance:textfield;appearance:textfield}
+.sx-def{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:62px;padding:6px 6px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--mut);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.sx-def span:first-child{font-size:18px}
+.sx-def.on{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.sx-bar{position:sticky;bottom:-24px;z-index:6;display:flex;align-items:center;gap:12px;margin:12px -16px 0;padding:12px 16px 30px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(20,40,63,.12)}
+.sx-bartxt{font-size:14px;line-height:1.25;min-width:96px}
+.sx-bartxt b{font-family:var(--cond);font-size:24px}
+.sx-bartxt .bad{color:var(--bad);font-weight:700}
+.sx-go{flex:1;min-height:56px;padding:12px 18px;border:0;border-radius:14px;background:var(--ok);color:#fff;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
+.sx-go:disabled{opacity:.4;cursor:default}
+.sx-annul{display:block;width:100%;min-height:50px;margin-top:8px;border:0;background:none;color:var(--mut);font:inherit;font-size:16px;font-weight:600;cursor:pointer}
+.sx-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,15,22,.55)}
+.sx-box{width:100%;max-width:520px;max-height:92vh;overflow:auto;padding:20px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background:var(--card);color:var(--ink)}
+.sx-ncstep{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0}
+.sx-ncstep button{width:64px;height:64px;border-radius:16px;border:1px solid var(--line);background:var(--sub);color:var(--ink);font-size:30px;font-weight:700;cursor:pointer}
+.sx-ncval{min-width:80px;text-align:center;font-family:var(--cond);font-size:44px;font-weight:700;color:var(--bad)}
+.sx-motifs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sx-motifs button{min-height:52px;padding:8px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.sx-motifs button.on{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.sx-conf-ic{display:flex;justify-content:center;margin-bottom:10px}
+.sx-recap{display:flex;justify-content:center;gap:12px;margin:14px 0 10px}
+.sx-recap div{flex:1;max-width:170px;text-align:center;padding:12px;border-radius:14px;background:var(--sub)}
+.sx-recap div.bad{background:var(--bad-bg);color:var(--bad)}
+.sx-recap b{display:block;font-family:var(--cond);font-size:38px;line-height:1.05}
+.sx-bravo{width:84px;height:84px;margin:4px auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--ok);color:#fff;font-size:46px;font-weight:700}
+.sx-vide{text-align:center;padding:26px 16px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin-bottom:14px}
+.sx-ok{width:70px;height:70px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:var(--sub);color:var(--ok);font-size:36px;font-weight:700}
 .colle{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--sub);font-weight:600}
 .colle b{font-family:var(--cond);font-size:17px}
 .pill.warn{background:#fff3cd;color:#7a4f00}
@@ -1107,7 +1167,7 @@ function tabIcon(k){ var b = el("b"); b.innerHTML = '<svg viewBox="0 0 24 24" fi
 if (VUE === "gadh") TABS = [["dash","Tableau","▦"],["flux","Flux","4"],["fiche","Fiche GADH","2"],["suivi","Suivi","3"],["arch","Archive","▣"]];
 function drawTabs(){
   var t = document.getElementById("tabs"); t.innerHTML = "";
-  TABS.forEach(function(x){ t.appendChild(el("button", {class:ui.tab === x[0] ? "on" : "", onclick:function(){ ui.tab = x[0]; render(); }}, tabIcon(x[0]), el("span", {text:x[1]}))); });
+  TABS.forEach(function(x){ t.appendChild(el("button", {class:ui.tab === x[0] ? "on" : "", onclick:function(){ ui.tab = x[0]; if (x[0] === "flux"){ ui.sxOpen = false; ui.pend = null; } render(); }}, tabIcon(x[0]), el("span", {text:x[1]}))); });
 }
 function render(keepScroll){
   var v = document.getElementById("view");
@@ -1268,7 +1328,7 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
       vc.appendChild(el("p", {class:"mut", text:"Validée le " + dmy(info.ready || "") + " — fiches de consommation disponibles."}));
       vc.appendChild(el("p", {class:"mut", text:"Vous pouvez ajouter des pièces à tout moment, quel que soit l'avancement de la commande : l'ordre de coupe et les consommations se recalculent, la coupe se rouvre pour le complément" + (envoisCoupe(ui.lot).length ? " et le complément à envoyer au centre de coupe est signalé dans le Flux." : ".")}));
       var cpl = complementCoupe(ui.lot);
-      if (cpl) vc.appendChild(el("div", {class:"msg", style:"background:#fff3cd;color:#5c3b00"}, el("b", {text:fmt(cpl) + " pièce(s) à couper ajoutée(s) depuis l'envoi au centre de coupe. "}), el("button", {class:"btn small", text:"Envoyer le complément", onclick:function(){ ui.tab = "flux"; ui.stage = "env"; ui.fv = {}; ui.pend = null; render(); }})));
+      if (cpl) vc.appendChild(el("div", {class:"msg", style:"background:#fff3cd;color:#5c3b00"}, el("b", {text:fmt(cpl) + " pièce(s) à couper ajoutée(s) depuis l'envoi au centre de coupe. "}), el("button", {class:"btn small", text:"Envoyer le complément", onclick:function(){ ui.tab = "flux"; ui.stage = "env"; ui.sxOpen = true; ui.fv = {}; ui.pend = null; render(); }})));
       var mods = (info.modifs || []).slice(-15).reverse();
       if (mods.length){
         var jm = el("div", {style:"margin-top:10px"}, el("div", {class:"mut", style:"font-weight:600;margin-bottom:4px", text:"Modifications après validation (" + (info.modifs || []).length + ")"}));
@@ -1433,6 +1493,8 @@ function validateLot(lot){
   if (ok){ toast("Commande validée : consommations calculées"); ui.tab = "fiche"; ui.fiche = "c"; render(); }
 }
 function vFlux(v){
+  if ((ui.fmode || (ui.fmode = fluxMode())) !== "detail") return vFluxSimple(v);
+  v.appendChild(el("div", {style:"text-align:right;margin-bottom:6px"}, el("button", {class:"btn sec small", text:"← Revenir au mode simple", onclick:function(){ setFluxMode("simple"); ui.sxOpen = false; render(); }})));
   var lot = ui.lot, lines = filtered(lot, "*");
   if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
   if (VUE === "gadh" && ui.stage === "env") ui.stage = "ret";
@@ -1468,7 +1530,7 @@ function vFlux(v){
   }
   STAGES.forEach(function(s, i){
     if (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) return;
-    var t = A.t[s[0]], target = i === 0 ? A.cut : A.q, pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
+    var t = A.t[s[0]], target = i === 0 ? A.cut : Math.max(A.q, A.t.cp || 0), pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
     pc.appendChild(step(i + 4, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
   });
   v.appendChild(pc);
@@ -1614,7 +1676,7 @@ function vDash(v){
   if (alerts.length){
     alerts.sort(function(x, y){ return (x.a.niv === "bad" ? 0 : 1) - (y.a.niv === "bad" ? 0 : 1); });
     var ac = el("div", {class:"card", id:"alertes"}, el("h2", {text:"À surveiller (" + alerts.length + ")"}));
-    alerts.forEach(function(x){ ac.appendChild(el("button", {class:"alerte " + x.a.niv, onclick:function(){ ui.lot = x.d.lot; ui.tab = x.a.tab || "flux"; if (x.a.stage) ui.stage = x.a.stage; ui.fv = {}; ui.pend = null; render(); }}, el("b", {text:x.d.lot}), el("span", {text:x.a.txt}))); });
+    alerts.forEach(function(x){ ac.appendChild(el("button", {class:"alerte " + x.a.niv, onclick:function(){ ui.lot = x.d.lot; ui.tab = x.a.tab || "flux"; if (x.a.stage) ui.stage = x.a.stage; ui.sxOpen = !!x.a.stage; ui.fv = {}; ui.pend = null; render(); }}, el("b", {text:x.d.lot}), el("span", {text:x.a.txt}))); });
     v.appendChild(ac);
   }
   function card(d){
@@ -2154,6 +2216,252 @@ function regExtras(v){
     el("p", null, el("button", {class:"btn small", text:"Enregistrer l'unité", onclick:function(){ S.colleU = cleanTxt(iU.value) || "g"; persist(); toast("Unité enregistrée"); }}))));
 }
 function sortedUniqueKeep(a){ var seen = {}, o = []; a.forEach(function(x){ if (!seen[x]){ seen[x] = 1; o.push(x); } }); return o; }
+
+/* =====================================================================
+   FLUX — MODE SIMPLE (par défaut) : pensé pour les postes de travail.
+   1) On choisit son poste (grandes tuiles avec le nombre de pièces à faire).
+   2) Une carte par article, une ligne par taille : la quantité à faire est déjà
+      remplie ; on corrige avec − / + ; « Défaut » pour les pièces non conformes (motif en un toucher).
+   3) Un seul gros bouton « Valider », une confirmation claire, puis l'étape suivante.
+   Les étapes intermédiaires « En assemblage » et « Prêt à expédier » se remplissent
+   automatiquement (au retour GADH et à l'expédition). Le mode détaillé reste disponible.
+   ===================================================================== */
+var SX = [["env","Envoi coupe"],["cp","Coupe"],["gadh","Envoi GADH"],["ret","Retour GADH"],["conf","Confection"],["ctl","Contrôle"],["emb","Emballage"],["exp","Expédition"]];
+var SX_NOM = {}; SX.forEach(function(x){ SX_NOM[x[0]] = x[1]; });
+var SX_PREV = {cp:null, gadh:"cp", ret:"gadh", conf:"ret", ctl:"conf", emb:"ctl", exp:"emb"};
+var SX_AUTO = {ret:"asm", exp:"pret"};
+var SX_COL = {env:"#6b7a90", cp:"#c48a00", gadh:"#e07b39", ret:"#5a9a3f", conf:"#2a6f97", ctl:"#4d7fe0", emb:"#7d5ba6", exp:"#0f6b45"};
+var SX_ICO = {
+  env:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
+  cp:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/>',
+  gadh:'<path d="M1 4h14v12H1z"/><path d="M15 8h4l4 4v4h-8z"/><circle cx="5.5" cy="18.5" r="2.2"/><circle cx="18.5" cy="18.5" r="2.2"/>',
+  ret:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  conf:'<path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/>',
+  ctl:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="m7.5 11 2.5 2.5 4.5-4.5"/>',
+  emb:'<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>',
+  exp:'<path d="M4 22V4"/><path d="M4 4h13l-2.5 4L17 12H4"/>'
+};
+var SX_AIDE = {
+  env:"Envoyez la fiche de coupe au centre de coupe, puis validez l'envoi.",
+  cp:"Comptez les pièces coupées reçues du centre de coupe.",
+  gadh:"Comptez les pièces envoyées à la GADH.",
+  ret:"Comptez les pièces revenues de la GADH, assemblées.",
+  conf:"Comptez les pièces sorties de la confection.",
+  ctl:"Comptez les pièces contrôlées. Une pièce avec un défaut : touchez « Défaut ».",
+  emb:"Comptez les pièces mises en carton.",
+  exp:"Comptez les pièces chargées pour l'expédition."
+};
+function fluxMode(){ try { return localStorage.getItem("pk_fmode") || "simple"; } catch (e) { return "simple"; } }
+function setFluxMode(m){ try { localStorage.setItem("pk_fmode", m); } catch (e) {} ui.fmode = m; ui.fv = {}; ui.pend = null; }
+function sxIcon(st, col){ var s = el("span", {class:"ic", style:"background:" + (col || SX_COL[st])}); s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + SX_ICO[st] + "</svg>"; return s; }
+/* pièces disponibles à un poste, par ligne de commande */
+function sxItems(stage, rows){
+  var tot = stageTotals(), ncT = ncTotals(), prev = SX_PREV[stage], auto = SX_AUTO[stage];
+  return rows.map(function(l){
+    var t = tot[l.id] || {}, n = ncT[l.id] || {};
+    var base = prev ? (t[prev] || 0) - (auto ? (n[auto] || 0) : 0) : cutQty(l.qty, l.model), done = (t[stage] || 0) + (n[stage] || 0);
+    return {l:l, base:base, done:done, fait:t[stage] || 0, disp:(!prev && l.cc) ? 0 : Math.max(0, base - done), key:l.id + stage};
+  });
+}
+function sxAFaire(stage, lot, rows){
+  if (stage === "env"){ if (!lotReady(lot)) return {a:0, f:0}; var e = envoisCoupe(lot); return {a:e.length ? complementCoupe(lot) : ordreLot(lot), f:e.length ? ordreEnvoye(lot) : 0}; }
+  var a = 0, f = 0; sxItems(stage, rows).forEach(function(it){ a += it.disp; f += it.fait; }); return {a:a, f:f};
+}
+/* étapes intermédiaires remplies automatiquement (assemblage au retour, prêt à l'expédition) */
+function sxAutoMoves(stage, nm, date){
+  var auto = SX_AUTO[stage]; if (!auto) return [];
+  var t0 = stageTotals(), n0 = ncTotals(), add = {}, out = [];
+  nm.forEach(function(m){ add[m.lineId] = (add[m.lineId] || 0) + (m.qty || 0) + (m.nc || 0); });
+  Object.keys(add).forEach(function(id){ var used = ((t0[id] || {})[stage] || 0) + ((n0[id] || {})[stage] || 0) + add[id], have = (t0[id] || {})[auto] || 0; if (have < used) out.push({id:nid("M"), date:date, lineId:id, stage:auto, qty:used - have, nc:0, note:(auto === "asm" ? "Assemblage" : "Prêt à expédier") + " (auto)"}); });
+  return out;
+}
+function sxFermer(){ Array.prototype.forEach.call(document.querySelectorAll(".sx-modal"), function(m){ m.remove(); }); }
+/* tant qu'une fenêtre est ouverte, les mises à jour venant d'autres appareils ne redessinent pas l'écran (ui.pend) */
+function sxClose(){ ui.pend = null; sxFermer(); }
+function sxModal(){ sxFermer(); ui.pend = ui.pend || {modal:true}; var box = el("div", {class:"sx-box"}), m = el("div", {class:"sx-modal"}, box); m.addEventListener("click", function(e){ if (e.target === m){ ui.pend = null; sxFermer(); } }); document.body.appendChild(m); return box; }
+function sxOuvrir(st){ ui.stage = st; ui.sxOpen = true; ui.fv = {}; ui.pend = null; render(); }
+
+function vFluxSimple(v){
+  sxFermer();
+  var lot = ui.lot, lines = filtered(lot, "*"), G = VUE === "gadh";
+  if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
+  if (!ui.fcli) ui.fcli = "*";
+  var clients = sortedUnique(lines.map(function(l){ return l.client; }));
+  if (ui.fcli !== "*" && clients.indexOf(ui.fcli) < 0) ui.fcli = "*";
+  var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
+  if (ui.stage === "asm") ui.stage = "ret";
+  if (ui.stage === "pret") ui.stage = "exp";
+  if (G){ ui.stage = "ret"; ui.sxOpen = true; }
+  if (clients.length > 1){
+    var sc = el("div", {class:"seg"});
+    [["*", "Toutes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
+    v.appendChild(sc);
+  }
+  if (ui.sxOpen && SX_NOM[ui.stage]) return sxPoste(v, lot, rows, ui.stage);
+  sxAccueil(v, lot, rows);
+}
+
+function sxAccueil(v, lot, rows){
+  var ready = lotReady(lot), A = sumStates(rows, stageTotals());
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Où sont les pièces ?"}), stateBar(A.sv, A.nc)));
+  if (!ready) v.appendChild(el("div", {class:"msg err", style:"margin:0 0 12px"}, "Commande pas encore validée : vérifiez-la et validez-la d'abord. ", el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
+  v.appendChild(el("h2", {class:"sx-titre", text:"Choisissez votre poste"}));
+  var g = el("div", {class:"sx-grid"}), suiv = null;
+  SX.forEach(function(x, i){
+    var st = x[0], r = sxAFaire(st, lot, rows), etat = r.a > 0 ? "go" : r.f > 0 ? "ok" : "wait", avant = st === "cp" && ready && !envoisCoupe(lot).length;
+    if (avant) etat = "wait";
+    if (etat === "go" && !suiv) suiv = st;
+    var b = el("button", {class:"sx-tile " + etat, style:"--c:" + SX_COL[st], onclick:function(){ sxOuvrir(st); }},
+      el("span", {class:"num", text:String(i + 1)}), sxIcon(st, etat === "wait" ? "#9aa6ba" : null), el("span", {class:"nm", text:x[1]}),
+      etat === "go" ? el("span", null, el("span", {class:"big", text:fmt(r.a)}), el("span", {class:"sm", text:" à faire"})) :
+      etat === "ok" ? el("span", {class:"big okv", text:"✓ Terminé"}) : el("span", {class:"sm", text:avant ? "Après l'envoi au centre de coupe" : "Pas encore de pièces"}));
+    g.appendChild(b);
+  });
+  v.appendChild(g);
+  if (suiv) Array.prototype.forEach.call(g.children, function(b, i){ if (SX[i][0] === suiv) b.classList.add("first"); });
+  v.appendChild(el("p", {style:"text-align:center;margin:16px 0 4px"}, el("button", {class:"btn sec small", text:"Afficher le mode détaillé (tableau)", onclick:function(){ setFluxMode("detail"); render(); }})));
+}
+
+function sxPoste(v, lot, rows, st){
+  var G = VUE === "gadh", ready = lotReady(lot);
+  var hd = el("div", {class:"sx-head"});
+  if (!G) hd.appendChild(el("button", {class:"sx-back", "aria-label":"Retour aux postes", text:"←", onclick:function(){ ui.sxOpen = false; ui.fv = {}; ui.pend = null; render(); }}));
+  hd.appendChild(sxIcon(st)); hd.appendChild(el("div", null, el("div", {class:"sx-nm", text:G ? "Retour à TEK-TREND" : SX_NOM[st]}), el("div", {class:"mut", text:SX_AIDE[st]})));
+  v.appendChild(hd);
+  if (st === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
+  if (!ready){ v.appendChild(el("div", {class:"msg err"}, G ? "Commande pas encore validée par TEK-TREND." : "Commande pas encore validée : validez-la d'abord dans l'onglet Commandes.")); return; }
+  var items = sxItems(st, rows), capped = st !== "cp", total = 0, fait = 0;
+  items.forEach(function(it){ total += it.disp; fait += it.fait; });
+  function nc(it){ return ui.fv[it.key + "n"] || 0; }
+  function val(it){ if (it.key in ui.fv) return ui.fv[it.key]; return capped ? Math.max(0, it.disp - nc(it)) : it.disp; }
+  function extras(){
+    if (st === "gadh" || st === "ret") v.appendChild(bonsCard(lot, st));
+    if (G) v.appendChild(bonsCard(lot, "gadh"));
+    if (!G && (st === "emb" || st === "exp")) cartonsCards(lot, rows).forEach(function(c){ v.appendChild(c); });
+  }
+  if (!items.some(function(it){ return it.disp > 0; })){
+    var nx = null; SX.forEach(function(x, i){ if (!nx && i > SX.map(function(y){ return y[0]; }).indexOf(st) && sxAFaire(x[0], lot, rows).a > 0) nx = x[0]; });
+    v.appendChild(el("div", {class:"sx-vide"}, el("div", {class:"sx-ok", text:fait ? "✓" : "…"}),
+      el("div", {class:"sx-nm", text:fait ? "Rien à faire ici pour l'instant" : "Pas encore de pièces à ce poste"}),
+      el("div", {class:"mut", text:fait ? fmt(fait) + " pièce(s) déjà passée(s) à ce poste." : "Les pièces arrivent ici après « " + (SX_NOM[SX_PREV[st]] || "") + " »."}),
+      (!G && nx) ? el("button", {class:"sx-go", style:"margin-top:14px;width:100%", text:"Aller à : " + SX_NOM[nx] + " (" + fmt(sxAFaire(nx, lot, rows).a) + " à faire)", onclick:function(){ sxOuvrir(nx); }}) : null));
+    extras(); return;
+  }
+  /* date et référence */
+  var dTxt = (ui.fdate && ui.fdate !== today()) ? dmy(ui.fdate) : "Aujourd'hui";
+  var opt = el("div", {class:"sx-opts"},
+    el("button", {class:"sx-chip", text:"📅 " + dTxt, onclick:function(){ ui.sxDate = !ui.sxDate; render(true); }}),
+    el("button", {class:"sx-chip", text:ui.fnote ? "📝 " + ui.fnote : "＋ Référence (BL…)", onclick:function(){ ui.sxRef = !ui.sxRef; render(true); }}));
+  v.appendChild(opt);
+  if (ui.sxDate){ var di = el("input", {type:"date", value:ui.fdate || today(), style:"margin-bottom:10px"}); di.addEventListener("change", function(){ ui.fdate = di.value || today(); ui.sxDate = false; render(true); }); v.appendChild(di); }
+  if (ui.sxRef){ var ri = el("input", {placeholder:"N° de BL, remarque…", value:ui.fnote || "", style:"margin-bottom:10px"}); ri.addEventListener("change", function(){ ui.fnote = cleanTxt(ri.value); ui.sxRef = false; render(true); }); v.appendChild(ri); }
+  v.appendChild(el("div", {class:"sx-opts"},
+    el("button", {class:"sx-chip", text:"Tout remplir", onclick:function(){ items.forEach(function(it){ delete ui.fv[it.key]; }); render(true); }}),
+    el("button", {class:"sx-chip", text:"Tout à zéro", onclick:function(){ items.forEach(function(it){ ui.fv[it.key] = 0; ui.fv[it.key + "n"] = 0; }); render(true); }})));
+  /* une carte par article */
+  var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
+  var groups = [], gk = {};
+  items.forEach(function(it){ var k = it.l.lib + "|" + it.l.client; if (!gk[k]){ gk[k] = {l:it.l, its:[]}; groups.push(gk[k]); } gk[k].its.push(it); });
+  var bar = el("div", {class:"sx-bar"}), barTxt = el("div", {class:"sx-bartxt"}), go = el("button", {class:"sx-go"});
+  function totaux(){ var q = 0, n = 0; items.forEach(function(it){ if (it.disp > 0 || !capped){ q += val(it); n += nc(it); } }); return {q:q, n:n}; }
+  function majBar(){ var t = totaux(); barTxt.innerHTML = ""; barTxt.appendChild(el("b", {text:fmt(t.q)})); barTxt.appendChild(document.createTextNode(" bonne(s)")); if (t.n){ barTxt.appendChild(el("br")); barTxt.appendChild(el("span", {class:"bad", text:fmt(t.n) + " défaut(s)"})); } go.textContent = "✔ Valider"; go.disabled = !(t.q || t.n); }
+  groups.forEach(function(gr){
+    var m = fmm[gr.l.lib], card = el("div", {class:"sx-art"});
+    card.appendChild(el("div", {class:"hd", style:m ? "background:#" + m[5] + ";color:#" + m[6] : ""}, el("span", {text:nomDoc(gr.l.lib)}), el("span", {class:"cli", text:gr.l.client})));
+    gr.its.forEach(function(it){
+      var row = el("div", {class:"sx-row" + (it.disp === 0 && capped ? " fini" : "")});
+      row.appendChild(el("div", {class:"sx-sz", text:it.l.size}));
+      if (it.disp === 0 && capped){
+        row.appendChild(el("div", {class:"mut", text:it.fait ? "✓ Fait (" + fmt(it.fait) + ")" : "Rien à faire"})); row.appendChild(el("span"));
+        card.appendChild(row); return;
+      }
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", value:String(val(it))});
+      function poser(q){ q = Math.max(0, q); if (capped && q + nc(it) > it.disp) q = Math.max(0, it.disp - nc(it)); ui.fv[it.key] = q; inp.value = String(q); majBar(); }
+      inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+      inp.addEventListener("input", function(){ ui.fv[it.key] = num(inp.value); majBar(); });
+      inp.addEventListener("change", function(){ poser(num(inp.value)); });
+      var mid = el("div", {class:"sx-mid"}, el("div", {class:"sx-af", text:(st === "cp" ? "À couper : " : "À faire : ") + fmt(it.disp)}),
+        el("div", {class:"sx-step"}, el("button", {text:"−", "aria-label":"Moins", onclick:function(){ poser(num(inp.value) - 1); }}), inp, el("button", {text:"+", "aria-label":"Plus", onclick:function(){ poser(num(inp.value) + 1); }})));
+      row.appendChild(mid);
+      var n = nc(it);
+      row.appendChild(el("button", {class:"sx-def" + (n ? " on" : ""), onclick:function(){ sxDefaut(it, capped); }}, el("span", {text:"⚠"}), el("span", {text:n ? n + " défaut" + (n > 1 ? "s" : "") : "Défaut"})));
+      card.appendChild(row);
+    });
+    v.appendChild(card);
+  });
+  go.addEventListener("click", function(){ sxConfirmer(lot, st, items, val, nc); });
+  bar.appendChild(barTxt); bar.appendChild(go); v.appendChild(bar); majBar();
+  if (st === "cp") v.appendChild(el("div", {class:"actions", style:"margin-top:10px"},
+    confirmBtn("Clôturer la coupe (accepter l'écart)", "sec", function(){ commit(function(){ var tot = stageTotals(), ncT = ncTotals(); rows.forEach(function(l){ if (((tot[l.id] || {}).cp || 0) + ((ncT[l.id] || {}).cp || 0) > 0) l.cc = 1; }); }, "Coupe clôturée"); })));
+  extras();
+}
+
+/* pièces avec défaut : nombre + motif, en grands boutons */
+function sxDefaut(it, capped){
+  var box = sxModal(), n = ui.fv[it.key + "n"] || 0, motif = ui.fv[it.key + "m"] || "";
+  var max = capped ? it.disp : 1e9;
+  var aff = el("div", {class:"sx-ncval", text:String(n)});
+  function poser(x){ n = Math.max(0, Math.min(max, x)); aff.textContent = String(n); ok.disabled = !!(n && !motif); }
+  box.appendChild(el("div", {class:"sx-nm", text:"Pièces avec défaut"}));
+  box.appendChild(el("div", {class:"mut", text:nomDoc(it.l.lib) + " · taille " + it.l.size + " · " + it.l.client}));
+  box.appendChild(el("div", {class:"sx-ncstep"}, el("button", {text:"−", onclick:function(){ poser(n - 1); }}), aff, el("button", {text:"+", onclick:function(){ poser(n + 1); }})));
+  box.appendChild(el("div", {class:"mut", style:"margin:4px 0 8px;font-weight:600", text:"Quel défaut ?"}));
+  var grid = el("div", {class:"sx-motifs"});
+  S.motifs.forEach(function(x){ var b = el("button", {class:x === motif ? "on" : "", text:x, onclick:function(){ motif = x; Array.prototype.forEach.call(grid.children, function(c){ c.classList.toggle("on", c === b); }); ok.disabled = !!(n && !motif); }}); grid.appendChild(b); });
+  box.appendChild(grid);
+  var ok = el("button", {class:"sx-go", style:"width:100%;margin-top:14px", text:"OK", onclick:function(){
+    ui.fv[it.key + "n"] = n; ui.fv[it.key + "m"] = n ? motif : "";
+    if (capped){ var q = it.key in ui.fv ? ui.fv[it.key] : it.disp; if (q + n > it.disp) ui.fv[it.key] = Math.max(0, it.disp - n); else if (!(it.key in ui.fv)) ui.fv[it.key] = Math.max(0, it.disp - n); }
+    sxClose(); render(true);
+  }});
+  box.appendChild(ok);
+  box.appendChild(el("button", {class:"sx-annul", text:"Annuler", onclick:sxClose}));
+  poser(n);
+}
+
+function sxConfirmer(lot, st, items, val, nc){
+  var date = ui.fdate || today(), nm = [], tq = 0, tn = 0, sansMotif = null;
+  items.forEach(function(it){
+    var q = val(it), n = nc(it); if (!q && !n) return;
+    if (n && !ui.fv[it.key + "m"]) sansMotif = it;
+    var m = {id:nid("M"), date:date, lineId:it.l.id, stage:st, qty:q, nc:n, note:ui.fnote || ""}; if (n && ui.fv[it.key + "m"]) m.motif = ui.fv[it.key + "m"];
+    nm.push(m); tq += q; tn += n;
+  });
+  if (!nm.length){ toast("Aucune pièce à valider."); return; }
+  if (sansMotif){ toast("Choisissez le défaut des pièces " + sansMotif.l.size + "."); sxDefaut(sansMotif, st !== "cp"); return; }
+  var auto = sxAutoMoves(st, nm, date);
+  try { checkMoves(auto.concat(nm)); } catch (e) { toast(e.message); return; }
+  ui.pend = {stage:st, simple:true};
+  var box = sxModal();
+  box.appendChild(el("div", {class:"sx-conf-ic"}, sxIcon(st)));
+  box.appendChild(el("div", {class:"sx-nm", style:"text-align:center", text:(VUE === "gadh" ? "Retour à TEK-TREND" : SX_NOM[st]) + " — on valide ?"}));
+  var r = el("div", {class:"sx-recap"});
+  r.appendChild(el("div", null, el("b", {text:fmt(tq)}), el("span", {text:"pièce(s) bonne(s)"})));
+  if (tn) r.appendChild(el("div", {class:"bad"}, el("b", {text:fmt(tn)}), el("span", {text:"défaut(s)"})));
+  box.appendChild(r);
+  box.appendChild(el("div", {class:"mut", style:"text-align:center;margin-bottom:12px", text:"Date : " + (date === today() ? "aujourd'hui" : dmy(date)) + (ui.fnote ? " · " + ui.fnote : "") + " · lot " + lot}));
+  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, valider", onclick:function(){
+    var ok = commit(function(){
+      checkMoves(auto.concat(nm));
+      auto.concat(nm).forEach(function(m){ S.moves.push(m); });
+      if (st === "cp" && VUE !== "gadh" && !((S.lots[lot] || {}).envois || []).length) marquerEnvoiCoupe(lot, date, "noté automatiquement à la première coupe");
+      ui.fv = {}; ui.pend = null;
+    });
+    if (ok) sxBravo(lot, st, tq, tn);
+  }}));
+  box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:function(){ ui.pend = null; sxFermer(); }}));
+}
+function sxBravo(lot, st, tq, tn){
+  var rows = filtered(lot, "*").filter(function(l){ return ui.fcli === "*" || !ui.fcli || l.client === ui.fcli; }), keys = SX.map(function(x){ return x[0]; }), nx = null;
+  if (VUE !== "gadh") keys.slice(keys.indexOf(st) + 1).forEach(function(k){ if (!nx && sxAFaire(k, lot, rows).a > 0) nx = k; });
+  ui.pend = {bravo:true};
+  var box = sxModal();
+  box.appendChild(el("div", {class:"sx-bravo", text:"✓"}));
+  box.appendChild(el("div", {class:"sx-nm", style:"text-align:center", text:"C'est enregistré"}));
+  box.appendChild(el("div", {class:"mut", style:"text-align:center;margin-bottom:14px", text:fmt(tq) + " pièce(s) bonne(s)" + (tn ? " et " + fmt(tn) + " défaut(s)" : "") + " — " + (VUE === "gadh" ? "retour à TEK-TREND" : SX_NOM[st])}));
+  if (nx) box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"Poste suivant : " + SX_NOM[nx] + " (" + fmt(sxAFaire(nx, lot, rows).a) + ")", onclick:function(){ sxClose(); sxOuvrir(nx); }}));
+  box.appendChild(el("button", {class:nx ? "sx-annul" : "sx-go", style:nx ? "" : "width:100%", text:VUE === "gadh" ? "OK" : "Retour aux postes", onclick:function(){ sxClose(); if (VUE !== "gadh"){ ui.sxOpen = false; } render(); }}));
+}
 
 /* ---------- démarrage ---------- */
 if (VUE === "gadh"){ var hb = document.querySelector("header .brand"); if (hb) hb.innerHTML = '<span class="tt"><span class="trd">GADH</span><span class="cm">,</span></span><div><h1>Commandes TEK-TREND</h1><div class="sub">envoi à la GADH · assemblage · retour</div></div>'; }
