@@ -1,35 +1,78 @@
-// TEK-TREND — Service Worker
+// GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v108';
+const CACHE_NAME = 'groupe-v110';
 
-// Fichiers essentiels de l'application (mêmes dossier que sw.js)
+// Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
+// l'installation, pour que l'application s'ouvre aussi SANS réseau.
 const APP_SHELL = [
   './',
   './index.html',
-  './rh-module.js',
-  './gadh-module.js',
-  './tek-theme-module.js',
-  './prod-module.js',
-  './commandes-module.js',
-  './mgt-crm-app.html',
   './manifest.json',
+  './mgt-crm-app.html',
   './icon-192.png',
   './icon-512.png',
+  './icon-maskable-512.png',
   './hero-bg.jpg',
   './logo-mgt.png',
   './logo-tek.png',
-  './logo-gadh.png'
+  './logo-gadh.png',
+  './firebase-config.js',
+  './rh-module.js',
+  './gadh-module.js',
+  './prod-module.js',
+  './commandes-module.js',
+  './groupe-module.js',
+  './suivi-module.js',
+  './pointeuse-module.js',
+  './mgt-module.js',
+  './mgt-sav-module.js',
+  './factures-module.js',
+  './facturation-percko-module.js',
+  './machines-module.js',
+  './notif-module.js',
+  './audit-module.js',
+  './portail-module.js',
+  './mgt-crm-module.js',
+  './mgt-crm-ecrans.js',
+  './mgt-fichiers-module.js',
+  './mgt-export-module.js',
+  './mgt-accueil-module.js',
+  './mgt-calendrier-module.js',
+  './mgt-historique-2026.js',
+  './mgt-lettrage-module.js',
+  './mgt-communication-module.js',
+  './mgt-theme-module.js',
+  './tek-theme-module.js',
+  './grp-hub-theme-module.js',
+  './profils-module.js',
+  './theme-nav-module.js',
+  './direction-dashboard-module.js',
+  './dashboards-pc-module.js',
+  './dashboards-modules-module.js',
+  './enregistrer-module.js',
+  './rh-rapports-module.js',
+  './fiche-chaine-module.js',
+  './suivi-chaine-module.js',
+  './nav-historique-module.js',
+  './hors-ligne-module.js'
+];
+// Bibliothèques Firebase (autre site) : indispensables pour démarrer hors ligne.
+const EXTERNES = [
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js'
 ];
 
-// --- Installation : on met en cache le strict nécessaire pour que ---
-// --- l'application s'ouvre même sans connexion internet.          ---
+// --- Installation : chaque fichier est mis en cache séparément, pour qu'un ---
+// --- seul fichier indisponible n'empêche pas tout le reste.              ---
 self.addEventListener('install', function(event){
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(function(cache){ return cache.addAll(APP_SHELL); })
-      .then(function(){ return self.skipWaiting(); })
-      .catch(function(err){ console.error('Erreur mise en cache initiale :', err); })
+    caches.open(CACHE_NAME).then(function(cache){
+      const locaux = APP_SHELL.map(function(u){ return cache.add(new Request(u, {cache:'reload'})).catch(function(err){ console.warn('Non mis en cache :', u, err); }); });
+      const ext = EXTERNES.map(function(u){ return fetch(u, {mode:'cors'}).then(function(r){ if(r && r.ok) return cache.put(u, r); }).catch(function(err){ console.warn('Non mis en cache :', u, err); }); });
+      return Promise.all(locaux.concat(ext));
+    }).then(function(){ return self.skipWaiting(); })
   );
 });
 

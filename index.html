@@ -113,6 +113,7 @@
   .sync-badge.sync-connecting::before{animation:pulse 1s infinite;}
   .sync-badge.sync-ok{background:var(--good-bg);color:var(--good);}
   .sync-badge.sync-error{background:var(--bad-bg);color:var(--bad);}
+  .sync-badge .sync-n{font-size:10px;font-weight:800;}
   .sync-time{font-size:9px;color:rgba(255,255,255,.5);font-weight:600;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
   .user-chip .role{background:rgba(255,255,255,.14); color:#fff; padding:4px 8px; border-radius:20px; font-size:10.5px; font-weight:700;white-space:nowrap;}
@@ -534,11 +535,19 @@ let fbFirstLoad = true;
 function firebaseConfigured(){ return firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('VOTRE_') !== 0; }
 
 let lastSyncAt = null;
-function setSyncBadge(state){
+function setSyncBadge(state, interne){
   // state: 'off' | 'connecting' | 'ok' | 'error'
+  if(!interne && typeof hlDernierEtatBadge !== 'undefined') hlDernierEtatBadge = state;
+  if(!interne && typeof hlMajBandeau === 'function') hlMajBandeau();
   const el = document.getElementById('sync-badge');
   const timeEl = document.getElementById('sync-time');
   if(!el) return;
+  const hl = (typeof hlEtat === 'function') ? hlEtat() : null;
+  if(hl){
+    el.className = 'sync-badge ' + hl.cls;
+    el.innerHTML = '<span>' + hl.txt + '</span>' + (hl.n !== '' ? '<b class="sync-n">' + hl.n + '</b>' : '');
+    return;
+  }
   const map = {
     off:       {cls:'sync-off',   txt:'Mode local', icon:''},
     connecting:{cls:'sync-connecting', txt:'Connexion...', icon:''},
@@ -557,6 +566,8 @@ function setSyncBadge(state){
 // Clic sur le badge : état détaillé + resynchronisation forcée.
 function syncBadgeClic(){
   if(!firebaseConfigured()){ showToast('Mode local : Firebase non configuré.'); return; }
+  if(typeof hlConflits === 'function' && hlConflits().length){ hlOuvrirConflits(); return; }
+  if(typeof hlConnecte !== 'undefined' && hlConnecte === false){ const n = hlNbAttente(); showToast(n ? `Hors ligne : ${n} enregistrement(s) en attente, envoyé(s) automatiquement au retour du réseau.` : 'Hors ligne : vos saisies seront envoyées au retour du réseau.'); return; }
   if(!navigator.onLine){ showToast('Pas de connexion internet. Les données restent en local.'); return; }
   if(!firebaseReady){ showToast('Connexion impossible. Rechargez la page.'); return; }
   showToast('Resynchronisation…');
@@ -583,6 +594,7 @@ function initFirebase(){
     fbAuth = firebase.auth();
     fbRootRef = firebase.database().ref(FIREBASE_PATH);
     firebaseReady = true;
+    if(typeof hlSurveillerConnexion === 'function') hlSurveillerConnexion();
     // IMPORTANT : depuis le Lot D (sécurité), les règles Firebase exigent d'être
     // authentifié pour lire/écrire. On ne s'abonne donc aux données qu'après une
     // connexion réussie (voir attachFirebaseDataListeners), pas ici.
@@ -603,11 +615,13 @@ function attachFirebaseDataListeners(){
     console.error('Erreur Firebase (lecture) :', err);
     setSyncBadge('error');
   };
-  fbListenRefs = firebaseDossiersLisibles().map(d => fbRootRef.child(d));
-  fbListenRefs.forEach(function(ref){
+  const dossiers = firebaseDossiersLisibles();
+  fbListenRefs = dossiers.map(d => fbRootRef.child(d));
+  fbListenRefs.forEach(function(ref, i){
     ref.on('value', function(snap){
       const data = snap.val() || {};
-      Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
+      if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier(dossiers[i], data, true);
+      else Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
       onFirebaseData();
     }, onError);
   });
@@ -616,7 +630,8 @@ function attachFirebaseDataListeners(){
     const usersRef = fbRootRef.child('users_v2');
     fbListenRefs.push(usersRef);
     usersRef.on('value', function(snap){
-      memoryCache[CACHE_PREFIX+'users_v2'] = snap.val() || {};
+      if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier('users_v2', {users_v2: snap.val() || {}}, true);
+      else memoryCache[CACHE_PREFIX+'users_v2'] = snap.val() || {};
       onFirebaseData();
     }, onError);
   }
@@ -654,6 +669,7 @@ function detachFirebaseDataListeners(){
   fbFirstLoad = true;
 }
 function syncToFirebase(key, value){
+  if(typeof hlEcrire === 'function'){ hlEcrire(firebaseCheminDe(key), value, {cle: key}); return; }
   if(!firebaseReady || !fbRootRef) return;
   fbRootRef.child(firebaseCheminDe(key)).set(value).then(function(){
     setSyncBadge('ok');
@@ -710,6 +726,7 @@ function watchSessions(){
     sessionsCache = snap.val() || {};
     try { window.localStorage.setItem(CACHE_PREFIX+'sessions', JSON.stringify(sessionsCache)); } catch(e) {}
     if(currentUser && mySessionId && !sessionsCache[mySessionId]){
+      if(typeof hlSessionPerdueParAbsence === 'function' && hlSessionPerdueParAbsence()){ writeMySession(); return; }
       forceLocalLogout();
       return;
     }
@@ -746,6 +763,7 @@ function endMySession(){
   if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
 }
 function forceLocalLogout(){
+  if(currentUser && currentUser.uid && typeof hlOublierCompte === 'function') hlOublierCompte(currentUser.uid);
   currentUser = null; mySessionId = null; activeModule = null; activeSociete = null; directionOuverte = false; portailOuvert = false; auditOuvert = false;
   try { window.sessionStorage.removeItem(CACHE_PREFIX+'user'); window.localStorage.removeItem(CACHE_PREFIX+'sid'); } catch(e) {}
   if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
@@ -772,6 +790,7 @@ function getJSON(key, fallback){
   return fallback; 
 }
 function setJSON(key, value){ 
+  if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(key)) return;
   let fullKey = CACHE_PREFIX + key;
   memoryCache[fullKey] = JSON.parse(JSON.stringify(value));
   try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {} 
@@ -1068,9 +1087,23 @@ function renderModuleSelect(){
   `;
 }
 
+function profilVersUtilisateur(fbUser, profile){
+  return { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role, societes: profile.societes || {}, groupe: !!profile.groupe, portail: profile.portail || null, profil: profile.profil || null };
+}
 async function loadProfileAndEnter(fbUser){
+  // Profil déjà connu sur cet appareil : on entre tout de suite (même sans réseau),
+  // avec la dernière copie des données ; le profil est revérifié en arrière-plan.
+  const memorise = (typeof hlProfilMemorise === 'function') ? hlProfilMemorise(fbUser.uid) : null;
+  if(memorise){
+    currentUser = profilVersUtilisateur(fbUser, memorise);
+    try { window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); } catch(e) {}
+    await hlChargerCopies();
+    startSessionAndRender();
+    hlRafraichirProfil(fbUser, memorise);
+    return;
+  }
   try{
-    const snap = await fbRootRef.child('users_v2/'+fbUser.uid).once('value');
+    const snap = await ((typeof hlAvecDelai === 'function') ? hlAvecDelai(fbRootRef.child('users_v2/'+fbUser.uid).once('value'), 20000) : fbRootRef.child('users_v2/'+fbUser.uid).once('value'));
     let profile = snap.val();
     if(!profile){
       // Amorçage : si AUCUN profil n'existe encore nulle part (tout premier compte
@@ -1088,12 +1121,16 @@ async function loadProfileAndEnter(fbUser){
         return;
       }
     }
-    currentUser = { uid: fbUser.uid, username: profile.username, nom: profile.nom, role: profile.role, societes: profile.societes || {}, groupe: !!profile.groupe, portail: profile.portail || null, profil: profile.profil || null };
+    currentUser = profilVersUtilisateur(fbUser, profile);
+    if(typeof hlMemoriserProfil === 'function') hlMemoriserProfil(fbUser.uid, profile);
     try { window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(currentUser)); } catch(e) {}
+    if(typeof hlChargerCopies === 'function') await hlChargerCopies();
     startSessionAndRender();
   }catch(err){
     console.error('Erreur de lecture du profil :', err);
-    renderLogin("Erreur de connexion aux données. Vérifiez votre connexion internet.");
+    renderLogin((err && err.hlDelai) || navigator.onLine === false
+      ? "Pas de connexion internet. La toute première ouverture sur cet appareil nécessite internet ; ensuite l'application s'ouvre aussi hors ligne."
+      : "Erreur de connexion aux données. Vérifiez votre connexion internet.");
   }
 }
 
@@ -1184,6 +1221,9 @@ function renderLogin(err){
 }
 
 function logout(){
+  const nAttente = (typeof hlNbAttente === 'function') ? hlNbAttente() : 0;
+  if(nAttente && !confirm(`${nAttente} enregistrement(s) n'ont pas encore été envoyés (pas de connexion).\n\nSe déconnecter quand même ? Ils seront envoyés à la prochaine connexion sur cet appareil.`)) return;
+  if(currentUser && currentUser.uid && typeof hlOublierCompte === 'function') hlOublierCompte(currentUser.uid);
   endMySession();
   detachFirebaseDataListeners();
   currentUser = null; mySessionId = null; activeModule = null; activeSociete = null; directionOuverte = false; portailOuvert = false; auditOuvert = false;
@@ -2868,8 +2908,9 @@ window.onload = init;
 <script src="./fiche-chaine-module.js"></script>
 <script src="./suivi-chaine-module.js"></script>
 <script src="./nav-historique-module.js"></script>
+<script src="./hors-ligne-module.js"></script>
 <script>
-if(false){
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./sw.js').catch(function(err){
       console.error('Echec enregistrement du Service Worker :', err);

@@ -220,7 +220,11 @@ function crmEnregistrerClient(id, rec){
   memoryCache[plein] = apres;
   try { window.localStorage.setItem(plein, JSON.stringify(apres)); } catch(e) {}
   try { if(typeof auditEnregistrer === 'function' && currentUser) auditEnregistrer('mgt_clients', avant, apres); } catch(e) { console.error('Audit', e); }
-  if(typeof firebaseReady !== 'undefined' && firebaseReady && fbRootRef){
+  if(typeof hlEcrire === 'function'){
+    // Boîte d'envoi persistante (voir hors-ligne-module.js) : la fiche est renvoyée
+    // à la prochaine ouverture si l'app est fermée avant confirmation du serveur.
+    hlEcrire(firebaseCheminDe('mgt_clients') + '/' + id, rec === null ? null : rec, {cle:'mgt_clients', sous:id});
+  } else if(typeof firebaseReady !== 'undefined' && firebaseReady && fbRootRef){
     fbRootRef.child(firebaseCheminDe('mgt_clients') + '/' + id).set(rec === null ? null : rec)
       .then(() => setSyncBadge('ok'))
       .catch(() => showToast('⚠️ Non synchronisé (vérifiez la connexion)'));
