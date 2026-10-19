@@ -2186,9 +2186,23 @@ function exportFichesCartons(lot, client, colis){
    (60, 60, … puis le reste), dans l'ordre des modèles et des tailles. Les fiches peuvent être imprimées avant la coupe.
    À l'envoi au centre de coupe, la liste est figée : les numéros ne changent plus ; des pièces ajoutées ensuite
    donnent de nouveaux cartons à la fin, des pièces retirées réduisent les derniers cartons de la taille. */
+/* ordre des modèles dans les cartons (ex. commencer par PHARMA-FEMME) : S.lots[lot].ordre[client] = [libellés…] */
+function lignesOrdonnees(lot, client){
+  var ls = filtered(lot, client), ord = ((S.lots[lot] || {}).ordre || {})[client];
+  if (!ord || !ord.length) return ls;
+  function rang(l){ var i = ord.indexOf(l.lib); return i < 0 ? 999 : i; }
+  return ls.map(function(l, i){ return [l, i]; }).sort(function(a, b){ return (rang(a[0]) - rang(b[0])) || (a[1] - b[1]); }).map(function(x){ return x[0]; });
+}
+function modelesDuClient(lot, client){ var o = []; lignesOrdonnees(lot, client).forEach(function(l){ if (o.indexOf(l.lib) < 0) o.push(l.lib); }); return o; }
+function commencerPar(lot, client, lib){
+  if (cartonsManuels(lot, client).length) throw new Error("Des cartons " + client + " sont déjà emballés : l'ordre des fiches ne peut plus changer.");
+  ensureLot(lot); var L = S.lots[lot], m = modelesDuClient(lot, client);
+  (L.ordre = L.ordre || {})[client] = [lib].concat(m.filter(function(x){ return x !== lib; }));
+  if (L.plans && L.plans[client]){ delete L.plans[client]; figerPlans(lot); }   /* fiches pas encore utilisées : on renumérote */
+}
 function planBrut(lot, client, R){
   var out = [];
-  filtered(lot, client).forEach(function(l){ var q = l.qty; while (q > 0){ var x = Math.min(R.n, q); out.push([l.id, x]); q -= x; } });
+  lignesOrdonnees(lot, client).forEach(function(l){ var q = l.qty; while (q > 0){ var x = Math.min(R.n, q); out.push([l.id, x]); q -= x; } });
   return out;
 }
 function planAjuste(lot, client, R, plan){
@@ -2251,6 +2265,12 @@ function fichesPrevuesCards(lot){
     t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Cartons"}), el("th", {text:"Pièces"}))));
     ordre.forEach(function(k){ tb.appendChild(el("tr", null, el("td", {class:"l", text:k}), el("td", {text:String(parT[k].n)}), el("td", {text:fmt(parT[k].q)}))); });
     t.appendChild(tb); card.appendChild(el("div", {class:"tw"}, t));
+    var mods = modelesDuClient(lot, cl);
+    if (mods.length > 1){
+      var so = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Commencer par :"}));
+      mods.forEach(function(lib, i){ so.appendChild(el("button", {class:i === 0 ? "on" : "", text:nomDoc(lib), onclick:function(){ if (i === 0) return; var deja = !!(((S.lots[lot] || {}).plans || {})[cl]); commit(function(){ commencerPar(lot, cl, lib); }, "Les cartons commencent par " + nomDoc(lib) + (deja ? " — numéros changés : réimprimez les fiches" : "")); }})); });
+      card.appendChild(so);
+    }
     var seg = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center", text:"Fiches par page (A4) :"}));
     if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
     PP_CHOIX.forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 (paysage)" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
@@ -2704,36 +2724,48 @@ function toutDocsBloc(lot, client){
 function cartonsPrevusRestants(lot, cl){ var faits = {}; cartonsManuels(lot, cl).forEach(function(c){ faits[c.n] = 1; }); return planCartons(lot, cl).filter(function(c){ return !faits[c.n]; }); }
 function toutValiderCard(lot, cl){
   var rest = cartonsPrevusRestants(lot, cl); if (!rest.length) return null;
-  var q = 0, parT = {}, ordre = [];
-  rest.forEach(function(c){ q += c.q; var k = nomDoc(c.items[0].lib) + " " + c.items[0].size; if (!parT[k]){ parT[k] = 0; ordre.push(k); } parT[k]++; });
-  return el("div", {class:"sx-tout"},
+  var q = 0, mods = [], parM = {};
+  rest.forEach(function(c){ q += c.q; var lib = c.items[0].lib; if (!parM[lib]){ parM[lib] = {n:0, q:0}; mods.push(lib); } parM[lib].n++; parM[lib].q += c.q; });
+  var card = el("div", {class:"sx-tout"},
     el("div", {style:"font-weight:700;font-size:16px", text:"Tout valider d'un coup"}),
     el("div", {class:"mut", style:"margin:4px 0 8px", text:rest.length + " carton(s) prévu(s) restant(s) · " + fmt(q) + " pièces (N° " + plages(rest.map(function(c){ return c.n; })) + "). Les fiches, la liste de colisage et la liste total sont produites aussitôt."}),
-    el("button", {class:"sx-go", style:"width:100%", text:"✔ Tout valider (" + rest.length + " cartons)", onclick:function(){
-      ui.pend = {tout:true};
-      var box = sxModal();
-      box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"📦 " + rest.length + " cartons"}));
-      var rec = el("div", {class:"sx-cdet"});
-      ordre.forEach(function(k){ rec.appendChild(el("div", null, el("span", {text:k}), el("b", {text:parT[k] + " carton(s)"}))); });
-      rec.appendChild(el("div", {class:"tot"}, el("span", {text:"Total"}), el("b", {text:fmt(q) + " pièces"})));
-      box.appendChild(rec);
-      box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, tout valider", onclick:function(){
-        var ok = commit(function(){
-          cartonsPrevusRestants(lot, cl).forEach(function(c){ var it = c.items[0]; enregistrerCarton(lot, {id:nid("C"), n:c.n, cl:cl, d:today(), it:[[it.lineId, it.q]], kg:null}); });
-          ui.pend = null; ui.ct = null; ui.ctEdit = null;
-        });
-        if (!ok) return;
-        ui.pend = {bravo:true};
-        var b = sxModal();
-        b.appendChild(el("div", {class:"sx-bravo", text:"✓"}));
-        b.appendChild(el("div", {class:"sx-nm", style:"text-align:center", text:rest.length + " cartons enregistrés"}));
-        b.appendChild(el("div", {class:"mut", style:"text-align:center;margin-bottom:14px", text:"Fiches cartons, liste de colisage et liste total sont prêtes."}));
-        b.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"🖨 Tout imprimer", onclick:function(){ sxClose(); render(true); toutImprimer(lot, cl); }}));
-        b.appendChild(el("button", {class:"sx-go", style:"width:100%;margin-top:8px;background:var(--pri)", text:"📗 Tout en Excel (3 feuilles)", onclick:function(){ sxClose(); render(true); toutExcel(lot, cl); }}));
-        b.appendChild(el("button", {class:"sx-annul", text:"Fermer", onclick:function(){ sxClose(); render(true); }}));
-      }}));
-      box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
-    }}));
+    el("button", {class:"sx-go", style:"width:100%", text:"✔ Tout valider (" + rest.length + " cartons)", onclick:function(){ ouvrirToutValider(lot, cl, null); }}));
+  if (mods.length > 1){
+    var par = el("div", {class:"sx-opts", style:"margin:8px 0 0"});
+    mods.forEach(function(lib){ par.appendChild(el("button", {class:"sx-chip", text:"✔ " + nomDoc(lib) + " (" + parM[lib].n + " carton" + (parM[lib].n > 1 ? "s" : "") + ")", onclick:function(){ ouvrirToutValider(lot, cl, lib); }})); });
+    card.appendChild(el("div", {class:"mut", style:"margin-top:10px;font-weight:600", text:"Ou un seul modèle d'un coup :"}));
+    card.appendChild(par);
+  }
+  return card;
+}
+/* valide d'un coup les cartons prévus restants (tous, ou ceux d'un modèle) */
+function ouvrirToutValider(lot, cl, lib){
+  var rest = cartonsPrevusRestants(lot, cl).filter(function(c){ return !lib || c.items[0].lib === lib; }); if (!rest.length) return;
+  var q = 0, parT = {}, ordre = [];
+  rest.forEach(function(c){ q += c.q; var k = nomDoc(c.items[0].lib) + " " + c.items[0].size; if (!parT[k]){ parT[k] = 0; ordre.push(k); } parT[k]++; });
+  ui.pend = {tout:true};
+  var box = sxModal();
+  box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"📦 " + rest.length + " carton" + (rest.length > 1 ? "s" : "") + (lib ? " · " + nomDoc(lib) : "")}));
+  var rec = el("div", {class:"sx-cdet"});
+  ordre.forEach(function(k){ rec.appendChild(el("div", null, el("span", {text:k}), el("b", {text:parT[k] + " carton(s)"}))); });
+  rec.appendChild(el("div", {class:"tot"}, el("span", {text:"Total · N° " + plages(rest.map(function(c){ return c.n; }))}), el("b", {text:fmt(q) + " pièces"})));
+  box.appendChild(rec);
+  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, tout valider", onclick:function(){
+    var ok = commit(function(){
+      cartonsPrevusRestants(lot, cl).filter(function(c){ return !lib || c.items[0].lib === lib; }).forEach(function(c){ var it = c.items[0]; enregistrerCarton(lot, {id:nid("C"), n:c.n, cl:cl, d:today(), it:[[it.lineId, it.q]], kg:null}); });
+      ui.pend = null; ui.ct = null; ui.ctEdit = null;
+    });
+    if (!ok) return;
+    ui.pend = {bravo:true};
+    var b = sxModal();
+    b.appendChild(el("div", {class:"sx-bravo", text:"✓"}));
+    b.appendChild(el("div", {class:"sx-nm", style:"text-align:center", text:rest.length + " carton" + (rest.length > 1 ? "s" : "") + " enregistré" + (rest.length > 1 ? "s" : "")}));
+    b.appendChild(el("div", {class:"mut", style:"text-align:center;margin-bottom:14px", text:"Fiches cartons, liste de colisage et liste total sont prêtes."}));
+    b.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"🖨 Tout imprimer", onclick:function(){ sxClose(); render(true); toutImprimer(lot, cl); }}));
+    b.appendChild(el("button", {class:"sx-go", style:"width:100%;margin-top:8px;background:var(--pri)", text:"📗 Tout en Excel (3 feuilles)", onclick:function(){ sxClose(); render(true); toutExcel(lot, cl); }}));
+    b.appendChild(el("button", {class:"sx-annul", text:"Fermer", onclick:function(){ sxClose(); render(true); }}));
+  }}));
+  box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
 }
 
 /* ---------- Étape 3 : envoi de l'ordre de coupe au centre de coupe ---------- */
