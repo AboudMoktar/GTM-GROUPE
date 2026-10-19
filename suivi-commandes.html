@@ -2110,55 +2110,73 @@ function docCartonsHtml(client, colis, pp, lot){
       '<table class="etq-tab"><thead><tr><th style="width:16%">Taille</th><th>Modèles</th>' + (info ? '<th style="width:22%">Code ACL</th>' : '') + '<th style="width:18%">Quantité</th></tr></thead><tbody>' + lignes + '</tbody></table>' +
       (info ? '<table class="etq-info"><tr><td>Lot</td><td><b>' + hx(lot) + '</b></td></tr><tr><td>Date de péremption</td><td><b>' + hx(per) + '</b></td></tr></table>' : '') + '</div>';
   }
-  var pages = [];
-  for (var i = 0; i < colis.length; i += pp) pages.push(colis.slice(i, i + pp));
-  return '<div class="etq-pages p' + pp + '">' + pages.map(function(pg){ return '<div class="etq-page">' + pg.map(etq).join("") + '</div>'; }).join("") + '</div>';
+  var pages = [], np = pp === "4L" ? 4 : pp;
+  for (var i = 0; i < colis.length; i += np) pages.push(colis.slice(i, i + np));
+  return '<div class="etq-pages p' + String(pp).toLowerCase() + '">' + pages.map(function(pg){ return '<div class="etq-page">' + pg.map(etq).join("") + '</div>'; }).join("") + '</div>';
 }
+var PP_CHOIX = [1, 2, 4, "4L"];   /* fiches par page : 1, 2, 4 (portrait) ou 4 en paysage */
 /* Fiches cartons en Excel (à imprimer) : une fiche par carton, deux par page A4, logo PERCKO à gauche */
 function logoOctets(){ var b = atob(PK_LOGO.split(",")[1]), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
-function fichesCartonsGrid(lot, client, colis){
-  var info = client === "ALLOGA", per = info ? peremption(lot) : "", d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""};
-  var g = {cols:[14, 18, 18, 18, 18, 16], rows:[], merges:[], breaks:[]}, anchors = [], r = 0;
+/* mode "4L" : 4 fiches par page A4 paysage (2 × 2) ; sinon 2 fiches par page A4 portrait */
+function fichesCartonsGrid(lot, client, colis, mode){
+  var L4 = mode === "4L", info = client === "ALLOGA", per = info ? peremption(lot) : "", d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""};
+  var W = L4 ? [9, 12, 11, 11, 11, 10] : [14, 18, 18, 18, 18, 16];
+  var g = {cols:L4 ? W.concat([3]).concat(W) : W.slice(), rows:[], merges:[], breaks:[], landscape:L4}, anchors = [];
+  var Z = L4 ? {hd:14, d0:9, d1:10, hn:32, sn:18, hh:20, sh:9, hi:26, si:12, sb:13, hl:24, sl:11, sv:13, cy:1140000}
+             : {hd:18, d0:11, d1:13, hn:44, sn:26, hh:26, sh:12, hi:32, si:14, sb:16, hl:30, sl:14, sv:16, cy:1480000};
   var dest = ["Destinataire :", d.nom].concat(d.lignes).concat(d.tel ? ["TÉLÉPHONE : " + d.tel] : []);
   while (dest.length < 7) dest.push("");
-  var B = "t", TH = {b:1, sz:12, al:"c", bd:B, bg:"EEEEEE"}, TD = {sz:14, al:"c", bd:B}, TDB = {b:1, sz:16, al:"c", bd:B};
-  colis.forEach(function(c, k){
-    var r0 = r;
+  var B = "t", TH = {b:1, sz:Z.sh, al:"c", bd:B, bg:"EEEEEE"}, TD = {sz:Z.si, al:"c", bd:B, wrap:1}, TDB = {b:1, sz:Z.sb, al:"c", bd:B};
+  function h(r, v){ while (g.rows.length <= r) g.rows.push({h:15, cells:[]}); g.rows[r].h = Math.max(g.rows[r].h === 15 ? 0 : g.rows[r].h, v); }
+  function bloc(c, r, o){
+    var r0 = r, cc;
     dest.forEach(function(txt, i){
-      gset(g, r, 0, "", null); gset(g, r, 1, "", null);
-      gset(g, r, 2, txt, {sz:i === 0 ? 11 : 13, b:i > 0 && txt.indexOf("TÉLÉPHONE") < 0 ? 1 : 0, al:"l"}); gmerge(g, r, 2, r, 5);
-      g.rows[r].h = 18; r++;
+      gset(g, r, o + 2, txt, {sz:i === 0 ? Z.d0 : Z.d1, b:i > 0 && txt.indexOf("TÉLÉPHONE") < 0 ? 1 : 0, al:"l"}); gmerge(g, r, o + 2, r, o + 5); h(r, Z.hd); r++;
     });
-    anchors.push({row:r0, col:0, colOff:90000, rowOff:60000, cx:Math.round(1480000 * 124 / 147), cy:1480000});
-    var Num = {b:1, sz:26, al:"c", bd:"m"};
-    for (var cc = 0; cc < 6; cc++) gset(g, r, cc, cc ? "" : "CARTON N°" + c.n, Num);
-    gmerge(g, r, 0, r, 5); g.rows[r].h = 44; r++;
-    if (info){ gset(g, r, 0, "Taille", TH); gset(g, r, 1, "Modèles", TH); gset(g, r, 2, "", TH); gset(g, r, 3, "", TH); gmerge(g, r, 1, r, 3); gset(g, r, 4, "Code ACL", TH); gset(g, r, 5, "Quantité", TH); }
-    else { gset(g, r, 0, "Taille", TH); gset(g, r, 1, "Modèles", TH); for (cc = 2; cc < 5; cc++) gset(g, r, cc, "", TH); gmerge(g, r, 1, r, 4); gset(g, r, 5, "Quantité", TH); }
-    g.rows[r].h = 26; r++;
+    anchors.push({row:r0, col:o, colOff:L4 ? 50000 : 90000, rowOff:40000, cx:Math.round(Z.cy * 124 / 147), cy:Z.cy});
+    var Num = {b:1, sz:Z.sn, al:"c", bd:"m"};
+    for (cc = 0; cc < 6; cc++) gset(g, r, o + cc, cc ? "" : "CARTON N°" + c.n, Num);
+    gmerge(g, r, o, r, o + 5); h(r, Z.hn); r++;
+    if (info){ gset(g, r, o, "Taille", TH); gset(g, r, o + 1, "Modèles", TH); gset(g, r, o + 2, "", TH); gset(g, r, o + 3, "", TH); gmerge(g, r, o + 1, r, o + 3); gset(g, r, o + 4, "Code ACL", TH); gset(g, r, o + 5, "Quantité", TH); }
+    else { gset(g, r, o, "Taille", TH); gset(g, r, o + 1, "Modèles", TH); for (cc = 2; cc < 5; cc++) gset(g, r, o + cc, "", TH); gmerge(g, r, o + 1, r, o + 4); gset(g, r, o + 5, "Quantité", TH); }
+    h(r, Z.hh); r++;
     c.items.forEach(function(x){
-      gset(g, r, 0, "T" + x.size, TDB); gset(g, r, 1, nomDoc(x.lib), TD);
-      if (info){ gset(g, r, 2, "", TD); gset(g, r, 3, "", TD); gmerge(g, r, 1, r, 3); gset(g, r, 4, aclDe(x), TDB); }
-      else { for (cc = 2; cc < 5; cc++) gset(g, r, cc, "", TD); gmerge(g, r, 1, r, 4); }
-      gset(g, r, 5, x.q, TDB); g.rows[r].h = 32; r++;
+      gset(g, r, o, "T" + x.size, TDB); gset(g, r, o + 1, nomDoc(x.lib), TD);
+      if (info){ gset(g, r, o + 2, "", TD); gset(g, r, o + 3, "", TD); gmerge(g, r, o + 1, r, o + 3); gset(g, r, o + 4, aclDe(x), TDB); }
+      else { for (cc = 2; cc < 5; cc++) gset(g, r, o + cc, "", TD); gmerge(g, r, o + 1, r, o + 4); }
+      gset(g, r, o + 5, x.q, TDB); h(r, Z.hi); r++;
     });
-    if (c.items.length > 1){ gset(g, r, 0, "Total", TDB); for (cc = 1; cc < 5; cc++) gset(g, r, cc, "", TD); gmerge(g, r, 0, r, 4); gset(g, r, 5, c.q, TDB); g.rows[r].h = 32; r++; }
+    if (c.items.length > 1){ gset(g, r, o, "Total", TDB); for (cc = 1; cc < 5; cc++) gset(g, r, o + cc, "", TD); gmerge(g, r, o, r, o + 4); gset(g, r, o + 5, c.q, TDB); h(r, Z.hi); r++; }
     if (info){
       [["Lot", lot], ["Date de péremption", per]].forEach(function(p){
-        gset(g, r, 0, "  " + p[0], {sz:14, al:"l", bd:B}); gset(g, r, 1, "", {bd:B}); gset(g, r, 2, "", {bd:B}); gmerge(g, r, 0, r, 2);
-        gset(g, r, 3, p[1], {b:1, sz:16, al:"c", bd:B}); gset(g, r, 4, "", {bd:B}); gset(g, r, 5, "", {bd:B}); gmerge(g, r, 3, r, 5);
-        g.rows[r].h = 30; r++;
+        gset(g, r, o, "  " + p[0], {sz:Z.sl, al:"l", bd:B}); gset(g, r, o + 1, "", {bd:B}); gset(g, r, o + 2, "", {bd:B}); gmerge(g, r, o, r, o + 2);
+        gset(g, r, o + 3, p[1], {b:1, sz:Z.sv, al:"c", bd:B}); gset(g, r, o + 4, "", {bd:B}); gset(g, r, o + 5, "", {bd:B}); gmerge(g, r, o + 3, r, o + 5);
+        h(r, Z.hl); r++;
       });
     }
-    gset(g, r, 0, "", null); g.rows[r].h = k % 2 ? 6 : 44; r++;
-    if (k % 2 === 1 && k < colis.length - 1) g.breaks.push(r);
-  });
+    return r;
+  }
+  var r = 0, bande = 0, i;
+  if (L4){
+    for (i = 0; i < colis.length; i += 2){
+      var fin = bloc(colis[i], r, 0);
+      if (colis[i + 1]) fin = Math.max(fin, bloc(colis[i + 1], r, 7));
+      r = fin; gset(g, r, 0, "", null); h(r, bande % 2 ? 4 : 18); r++;
+      if (bande % 2 === 1 && i + 2 < colis.length) g.breaks.push(r);
+      bande++;
+    }
+  } else {
+    colis.forEach(function(c, k){
+      r = bloc(c, r, 0); gset(g, r, 0, "", null); h(r, k % 2 ? 6 : 44); r++;
+      if (k % 2 === 1 && k < colis.length - 1) g.breaks.push(r);
+    });
+  }
   return {grid:g, anchors:anchors};
 }
 function exportFichesCartons(lot, client, colis){
   colis = colis || cartonsLot(lot, client).filter(function(c){ return ui.etqOuv || !c.ouvert; });
   if (!colis.length){ toast("Aucun carton à imprimer pour l'instant."); return; }
-  var f = fichesCartonsGrid(lot, client, colis);
+  var f = fichesCartonsGrid(lot, client, colis, ui.etqPP);
   saveFile(nomFichier("Fiches_cartons_" + client + "_" + lot + "_" + today().replace(/-/g, "")) + ".xlsx",
     xlsxBuild([{name:"Cartons " + client, grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]));
 }
@@ -2234,12 +2252,12 @@ function fichesPrevuesCards(lot){
     ordre.forEach(function(k){ tb.appendChild(el("tr", null, el("td", {class:"l", text:k}), el("td", {text:String(parT[k].n)}), el("td", {text:fmt(parT[k].q)}))); });
     t.appendChild(tb); card.appendChild(el("div", {class:"tw"}, t));
     var seg = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center", text:"Fiches par page (A4) :"}));
-    if ([1, 2, 4].indexOf(ui.etqPP) < 0) ui.etqPP = 4;
-    [1, 2, 4].forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
+    if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
+    PP_CHOIX.forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 (paysage)" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
     card.appendChild(seg);
     card.appendChild(toutDocsBloc(lot, cl));
     card.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
-      el("button", {class:"btn small", text:"🖨 Imprimer les fiches (imprimante normale)", onclick:function(){ imprimerDoc(docCartonsHtml(cl, plan, ui.etqPP, lot), "A4 portrait", "8mm", "Fiches_cartons_" + cl + "_" + lot); }}),
+      el("button", {class:"btn small", text:"🖨 Imprimer les fiches (imprimante normale)", onclick:function(){ imprimerDoc(docCartonsHtml(cl, plan, ui.etqPP, lot), ui.etqPP === "4L" ? "A4 landscape" : "A4 portrait", "8mm", "Fiches_cartons_" + cl + "_" + lot); }}),
       el("button", {class:"btn small sec", text:"📗 Fiches cartons (Excel)", onclick:function(){ exportFichesCartons(lot, cl, plan); }}),
       el("button", {class:"btn small sec", text:"🏷 Base NiceLabel (Excel)", onclick:function(){ exportNiceLabel(lot, cl, plan); }})));
     card.appendChild(el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px", text:"NiceLabel 2017 : dans votre étiquette, Base de données › Excel, choisissez ce fichier et la feuille « Etiquettes » (une ligne = une étiquette). Champs : N_CARTON, CARTON_SUR, MODELE, TAILLE, QUANTITE, CODE_ACL, EAN, LOT, PEREMPTION, DEST_NOM…"}));
@@ -2290,6 +2308,9 @@ var PK_DOC_CSS = [
   "#pk-doc-zone .p4 .etq-dest{font-size:8.5pt}#pk-doc-zone .p4 .etq-num{font-size:13pt}#pk-doc-zone .p4 .etq-tab{font-size:9.5pt}",
   "#pk-doc-zone .p2 .etq-dest{font-size:11pt}#pk-doc-zone .p2 .etq-num{font-size:18pt}#pk-doc-zone .p2 .etq-tab{font-size:12pt}",
   "#pk-doc-zone .etq-info{width:100%;margin-top:2mm;font-family:Arial,Helvetica,sans-serif}",
+  "#pk-doc-zone .p4l .etq-page{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;height:190mm;gap:5mm}",
+  "#pk-doc-zone .p4l .etq{padding:3mm 4mm}#pk-doc-zone .p4l .etq-logo img{width:30mm}#pk-doc-zone .p4l .etq-dest{font-size:9.5pt}",
+  "#pk-doc-zone .p4l .etq-num{font-size:16pt;margin-top:2mm}#pk-doc-zone .p4l .etq-tab{font-size:11pt}#pk-doc-zone .p4l .etq-info{font-size:11pt}",
   "#pk-doc-zone .etq-info td{padding:1.2mm 2mm;text-align:left}#pk-doc-zone .etq-info td:first-child{width:45%}",
   "#pk-doc-zone .p4 .etq-info{font-size:9.5pt}#pk-doc-zone .p2 .etq-info{font-size:12pt}#pk-doc-zone .p1 .etq-info{font-size:16pt}",
   "#pk-doc-zone .p1 .etq-dest{font-size:15pt}#pk-doc-zone .p1 .etq-num{font-size:26pt}#pk-doc-zone .p1 .etq-tab{font-size:16pt}",
@@ -2333,8 +2354,8 @@ function imprimerEmballage(lot, client, type){
   if (type === "cartons"){
     colis = colis.filter(function(c){ return ui.etqOuv || !c.ouvert; });
     if (!colis.length){ toast("Aucun carton fermé à imprimer pour l'instant."); return; }
-    var pp = [1, 2, 4].indexOf(ui.etqPP) >= 0 ? ui.etqPP : 4;
-    imprimerDoc(docCartonsHtml(client, colis, pp, lot), "A4 portrait", "8mm", "Cartons_" + client + "_" + lot + "_" + today());
+    var pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L";
+    imprimerDoc(docCartonsHtml(client, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", "Cartons_" + client + "_" + lot + "_" + today());
   } else {
     if (!colis.length){ toast("Aucun carton pour l'instant."); return; }
     imprimerDoc(docColisageHtml(lot, client, colis), "A4 landscape", "10mm", "Colisage_" + client + "_" + lot + "_" + today());
@@ -2342,7 +2363,7 @@ function imprimerEmballage(lot, client, type){
 }
 function cartonsCards(lot, lines){
   var clients = sortedUnique(lines.map(function(l){ return l.client; })), tot = stageTotals(), out = [];
-  if ([1, 2, 4].indexOf(ui.etqPP) < 0) ui.etqPP = 4;
+  if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
   clients.forEach(function(cli){
     var r = colisRegle(cli), emb = 0, man = cartonsManuels(lot, cli).length > 0;
     lines.forEach(function(l){ if (l.client === cli) emb += (tot[l.id] || {}).emb || 0; });
@@ -2362,7 +2383,7 @@ function cartonsCards(lot, lines){
       if (colis.length) card.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:"Cartons N° " + plages(colis.map(function(c){ return c.n; }))}));
       var seg = el("div", {class:"seg"});
       seg.appendChild(el("span", {class:"mut", style:"align-self:center", text:"Étiquettes par page :"}));
-      [1, 2, 4].forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
+      PP_CHOIX.forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 (paysage)" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
       card.appendChild(seg);
       if (ouverts.length){
         var cb = el("input", {type:"checkbox", style:"width:18px;height:18px;min-height:0"}); cb.checked = !!ui.etqOuv;
@@ -2657,15 +2678,15 @@ function totalGrid(lot, client, colis){
 }
 function toutImprimer(lot, client){
   var colis = cartonsDocs(lot, client); if (!colis.length){ toast("Aucun carton pour l'instant."); return; }
-  var pp = [1, 2, 4].indexOf(ui.etqPP) >= 0 ? ui.etqPP : 4;
-  var css = "<style>@page fiches{size:A4 portrait;margin:8mm}@page colis{size:A4 landscape;margin:10mm}@page total{size:A4 portrait;margin:10mm}" +
+  var pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L";
+  var css = "<style>@page fiches{size:A4 " + (pp === "4L" ? "landscape" : "portrait") + ";margin:8mm}@page colis{size:A4 landscape;margin:10mm}@page total{size:A4 portrait;margin:10mm}" +
     "#pk-doc-zone .sec-fiches{page:fiches}#pk-doc-zone .sec-colis{page:colis;break-before:page;page-break-before:always}#pk-doc-zone .sec-total{page:total;break-before:page;page-break-before:always}</style>";
   imprimerDoc(css + '<div class="sec-fiches">' + docCartonsHtml(client, colis, pp, lot) + '</div><div class="sec-colis">' + docColisageHtml(lot, client, colis) + '</div><div class="sec-total">' + totalHtmlColis(lot, client, colis) + '</div>',
     "A4 portrait", "8mm", "Export_" + client + "_" + lot + "_" + today());
 }
 function toutExcel(lot, client){
   var colis = cartonsDocs(lot, client); if (!colis.length){ toast("Aucun carton pour l'instant."); return; }
-  var f = fichesCartonsGrid(lot, client, colis);
+  var f = fichesCartonsGrid(lot, client, colis, ui.etqPP);
   saveFile(nomFichier("Export_" + client + "_" + lot + "_" + today().replace(/-/g, "")) + ".xlsx", xlsxBuild([
     {name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors},
     {name:"Liste de colisage", grid:colisageGrid(lot, client, colis)},
