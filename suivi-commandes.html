@@ -473,7 +473,7 @@ function envoisCoupe(lot){
 function figerEnvoiImplicite(lot){ var e = envoisCoupe(lot); if (e.length === 1 && e[0].implicite){ delete e[0].implicite; ensureLot(lot); S.lots[lot].envois = e; } }
 function ordreEnvoye(lot){ var e = envoisCoupe(lot); return e.length ? e[e.length - 1].q : 0; }
 function complementCoupe(lot){ var e = envoisCoupe(lot); return e.length ? Math.max(0, ordreLot(lot) - ordreEnvoye(lot)) : 0; }
-function marquerEnvoiCoupe(lot, date, note){ ensureLot(lot); (S.lots[lot].envois = S.lots[lot].envois || []).push({d:date || today(), q:ordreLot(lot), n:note || ""}); }
+function marquerEnvoiCoupe(lot, date, note){ ensureLot(lot); (S.lots[lot].envois = S.lots[lot].envois || []).push({d:date || today(), q:ordreLot(lot), n:note || ""}); figerPlans(lot); }
 
 /* ---------- sauvegarde (base de données de la page, sinon mémoire du téléphone) ---------- */
 function safeId(s){ return String(s).replace(/[^A-Za-z0-9_-]/g,"_"); }
@@ -1116,6 +1116,8 @@ function zipStore(files){
 function xesc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function colName(i){ var s = ""; i++; while (i > 0){ var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
 function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
+  var sst = [], sstIdx = {};
+  function sstId(t){ if (!(t in sstIdx)){ sstIdx[t] = sst.length; sst.push(t); } return sstIdx[t]; }
   var fonts = [], fills = [], xfs = [], fk = {}, flk = {}, xk = {};
   function fontId(st){ var k = (st.sz || 10) + "|" + (st.b ? 1 : 0) + "|" + (st.fg || "000000"); if (!(k in fk)){ fk[k] = fonts.length; fonts.push('<font>' + (st.b ? '<b/>' : '') + '<sz val="' + (st.sz || 10) + '"/><color rgb="FF' + (st.fg || "000000") + '"/><name val="Arial"/><family val="2"/></font>'); } return fk[k]; }
   function fillId(st){ if (!st.bg) return 0; if (!(st.bg in flk)){ flk[st.bg] = fills.length + 2; fills.push('<fill><patternFill patternType="solid"><fgColor rgb="FF' + st.bg + '"/><bgColor indexed="64"/></patternFill></fill>'); } return flk[st.bg]; }
@@ -1138,7 +1140,7 @@ function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
         var ref = colName(c) + (ri + 1), s = xf(cell.st), v = cell.v;
         if (v === "" || v === null || v === undefined) x += '<c r="' + ref + '" s="' + s + '"/>';
         else if (typeof v === "number") x += '<c r="' + ref + '" s="' + s + '"><v>' + v + '</v></c>';
-        else x += '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' + xesc(v) + '</t></is></c>';
+        else x += '<c r="' + ref + '" s="' + s + '" t="s"><v>' + sstId(String(v)) + '</v></c>';
       }
       x += '</row>';
     });
@@ -1153,11 +1155,12 @@ function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
     '<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border><border><left style="medium"><color auto="1"/></left><right style="medium"><color auto="1"/></right><top style="medium"><color auto="1"/></top><bottom style="medium"><color auto="1"/></bottom><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + (xfs.length + 1) + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' + xfs.join("") + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
   var files = [
-    {name:"[Content_Types].xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/>' + sheets.map(function(s, i){ return s.image && s.anchors && s.anchors.length ? '<Override PartName="/xl/drawings/drawing' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : ''; }).join("") + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + sheets.map(function(s, i){ return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join("") + '</Types>'},
+    {name:"[Content_Types].xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/>' + sheets.map(function(s, i){ return s.image && s.anchors && s.anchors.length ? '<Override PartName="/xl/drawings/drawing' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : ''; }).join("") + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' + sheets.map(function(s, i){ return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join("") + '</Types>'},
     {name:"_rels/.rels", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
     {name:"xl/workbook.xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + sheets.map(function(s, i){ return '<sheet name="' + xesc(s.name.replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 31)) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join("") + '</sheets></workbook>'},
-    {name:"xl/_rels/workbook.xml.rels", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map(function(s, i){ return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join("") + '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
-    {name:"xl/styles.xml", data:styles}
+    {name:"xl/_rels/workbook.xml.rels", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map(function(s, i){ return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join("") + '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId' + (sheets.length + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>'},
+    {name:"xl/styles.xml", data:styles},
+    {name:"xl/sharedStrings.xml", data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + sst.length + '" uniqueCount="' + sst.length + '">' + sst.map(function(t){ return '<si><t xml:space="preserve">' + xesc(t) + '</t></si>'; }).join("") + '</sst>'}
   ];
   sheetXml.forEach(function(x, i){ files.push({name:"xl/worksheets/sheet" + (i + 1) + ".xml", data:x}); });
   /* images (logo) : une image par feuille, placée à plusieurs endroits (sh.image = {data:Uint8Array, ext}, sh.anchors = [{row, col, cx, cy}] en EMU) */
@@ -1361,6 +1364,8 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
       vc.appendChild(el("p", {class:"mut", text:"Vous pouvez ajouter des pièces à tout moment, quel que soit l'avancement de la commande : l'ordre de coupe et les consommations se recalculent, la coupe se rouvre pour le complément" + (envoisCoupe(ui.lot).length ? " et le complément à envoyer au centre de coupe est signalé dans le Flux." : ".")}));
       var cpl = complementCoupe(ui.lot);
       if (cpl) vc.appendChild(el("div", {class:"msg", style:"background:#fff3cd;color:#5c3b00"}, el("b", {text:fmt(cpl) + " pièce(s) à couper ajoutée(s) depuis l'envoi au centre de coupe. "}), el("button", {class:"btn small", text:"Envoyer le complément", onclick:function(){ ui.tab = "flux"; ui.stage = "env"; ui.sxOpen = true; ui.fv = {}; ui.pend = null; render(); }})));
+      var fp = fichesPrevuesCards(ui.lot);
+      if (fp.length) vc.appendChild(el("div", {class:"msg"}, el("b", {text:"Fiches cartons prêtes : "}), fp.map(function(c){ return c.querySelector("h2").textContent; }).join(" · ") + " ", el("button", {class:"btn small", text:"Imprimer les fiches", onclick:function(){ ui.tab = "flux"; ui.stage = "env"; ui.sxOpen = true; ui.fv = {}; ui.pend = null; render(); }})));
       var mods = (info.modifs || []).slice(-15).reverse();
       if (mods.length){
         var jm = el("div", {style:"margin-top:10px"}, el("div", {class:"mut", style:"font-weight:600;margin-bottom:4px", text:"Modifications après validation (" + (info.modifs || []).length + ")"}));
@@ -2149,13 +2154,98 @@ function fichesCartonsGrid(lot, client, colis){
   });
   return {grid:g, anchors:anchors};
 }
-function exportFichesCartons(lot, client){
-  var colis = cartonsLot(lot, client).filter(function(c){ return ui.etqOuv || !c.ouvert; });
+function exportFichesCartons(lot, client, colis){
+  colis = colis || cartonsLot(lot, client).filter(function(c){ return ui.etqOuv || !c.ouvert; });
   if (!colis.length){ toast("Aucun carton à imprimer pour l'instant."); return; }
   var f = fichesCartonsGrid(lot, client, colis);
   saveFile(nomFichier("Fiches_cartons_" + client + "_" + lot + "_" + today().replace(/-/g, "")) + ".xlsx",
     xlsxBuild([{name:"Cartons " + client, grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]));
 }
+
+/* ---------- Cartons prévus (dès la validation de la commande) ----------
+   Pour un client « une seule taille » (ALLOGA) : la commande est découpée en cartons de 60 pièces par taille
+   (60, 60, … puis le reste), dans l'ordre des modèles et des tailles. Les fiches peuvent être imprimées avant la coupe.
+   À l'envoi au centre de coupe, la liste est figée : les numéros ne changent plus ; des pièces ajoutées ensuite
+   donnent de nouveaux cartons à la fin, des pièces retirées réduisent les derniers cartons de la taille. */
+function planBrut(lot, client, R){
+  var out = [];
+  filtered(lot, client).forEach(function(l){ var q = l.qty; while (q > 0){ var x = Math.min(R.n, q); out.push([l.id, x]); q -= x; } });
+  return out;
+}
+function planAjuste(lot, client, R, plan){
+  var p = plan.filter(function(x){ var l = lineById(x[0]); return l && l.lot === lot && l.client === client; }).map(function(x){ return [x[0], x[1]]; }), sum = {};
+  p.forEach(function(x){ sum[x[0]] = (sum[x[0]] || 0) + x[1]; });
+  filtered(lot, client).forEach(function(l){
+    var d = l.qty - (sum[l.id] || 0);
+    while (d > 0){ var x = Math.min(R.n, d); p.push([l.id, x]); d -= x; }
+    if (d < 0){ var r = -d; for (var i = p.length - 1; i >= 0 && r > 0; i--){ if (p[i][0] !== l.id) continue; var k = Math.min(p[i][1], r); p[i][1] -= k; r -= k; } }
+  });
+  return p.filter(function(x){ return x[1] > 0; });
+}
+function planCartons(lot, client){
+  var R = regleColis(client); if (!R || !R.t1 || !lotReady(lot)) return [];
+  var fige = ((S.lots[lot] || {}).plans || {})[client];
+  var p = fige ? planAjuste(lot, client, R, fige) : planBrut(lot, client, R);
+  return p.map(function(x, i){ var l = lineById(x[0]); return {n:i + 1, prevu:true, items:[{lineId:l.id, lib:l.lib, size:l.size, q:x[1]}], q:x[1], poids:poidsCarton(R, x[1]), ouvert:false}; });
+}
+function figerPlans(lot){
+  ensureLot(lot); var L = S.lots[lot];
+  sortedUnique(filtered(lot, "*").map(function(l){ return l.client; })).forEach(function(cl){
+    var R = regleColis(cl); if (!R || !R.t1) return;
+    L.plans = L.plans || {};
+    if (!L.plans[cl]) L.plans[cl] = planCartons(lot, cl).map(function(c){ return [c.items[0].lineId, c.q]; });
+  });
+}
+/* Base de données pour NiceLabel 2017 : une ligne par carton (= une étiquette), noms de champs simples, valeurs en texte */
+var NL_CHAMPS = ["N_CARTON", "NB_CARTONS", "CARTON_SUR", "CLIENT", "DEST_NOM", "DEST_ADR1", "DEST_ADR2", "DEST_ADR3", "DEST_ADR4", "DEST_TEL", "MODELE", "TAILLE", "QUANTITE", "CODE_ACL", "EAN", "SKU", "DESIGNATION", "LOT", "PEREMPTION", "COMMANDE"];
+function niceLabelLignes(lot, client, colis){
+  var d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}, per = peremption(lot), nb = colis.length;
+  return colis.map(function(c){
+    var it = c.items, ref = it.length === 1 ? (refArticle(it[0].lib, it[0].size) || {}) : {};
+    function j(f){ return it.map(f).join(" + "); }
+    return [String(c.n), String(nb), c.n + "/" + nb, client, d.nom, d.lignes[0] || "", d.lignes[1] || "", d.lignes[2] || "", d.lignes.slice(3).join(" ") , d.tel || "",
+      j(function(x){ return nomDoc(x.lib); }), j(function(x){ return x.size; }), String(c.q), j(function(x){ return aclDe(x); }),
+      j(function(x){ return (refArticle(x.lib, x.size) || {}).ean || ""; }), j(function(x){ return (refArticle(x.lib, x.size) || {}).sku || ""; }),
+      j(function(x){ var r = refArticle(x.lib, x.size); return r && r.nom ? r.nom + " - " + x.size : nomDoc(x.lib) + " - " + x.size; }),
+      lot, per, "PERCKO"];
+  });
+}
+function exportNiceLabel(lot, client, colis){
+  if (!colis || !colis.length){ toast("Aucun carton pour l'instant."); return; }
+  var rows = [NL_CHAMPS].concat(niceLabelLignes(lot, client, colis));
+  var nom = nomFichier("NiceLabel_cartons_" + client + "_" + lot) + ".xlsx", data;
+  var g = {cols:NL_CHAMPS.map(function(h){ return Math.max(12, h.length + 2); }), rows:[], merges:[]};
+  rows.forEach(function(r, i){ r.forEach(function(v, k){ gset(g, i, k, v, {sz:10}); }); });
+  data = xlsxBuild([{name:"Etiquettes", grid:g, first:1}]);
+  saveFile(nom, data);
+}
+/* carte « Fiches cartons » des cartons prévus : imprimante normale (A4), Excel, base NiceLabel */
+function fichesPrevuesCards(lot){
+  var out = [];
+  sortedUnique(filtered(lot, "*").map(function(l){ return l.client; })).forEach(function(cl){
+    var plan = planCartons(lot, cl); if (!plan.length) return;
+    var fige = !!(((S.lots[lot] || {}).plans || {})[cl]), parT = {}, ordre = [];
+    plan.forEach(function(c){ var k = nomDoc(c.items[0].lib) + " " + c.items[0].size; if (!parT[k]){ parT[k] = {n:0, q:0}; ordre.push(k); } parT[k].n++; parT[k].q += c.q; });
+    var card = el("div", {class:"card cartons"}, el("h2", {text:"Fiches cartons " + cl + " (" + plan.length + " cartons prévus)"}),
+      el("p", {class:"mut", style:"margin:0 0 6px", text:(fige ? "Liste figée à l'envoi au centre de coupe : les numéros ne changent plus." : "Calculée sur la commande validée ; elle sera figée à l'envoi au centre de coupe.") + " Lot " + lot + " · péremption " + (peremption(lot) || "?") + "."}));
+    var t = el("table"), tb = el("tbody");
+    t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Cartons"}), el("th", {text:"Pièces"}))));
+    ordre.forEach(function(k){ tb.appendChild(el("tr", null, el("td", {class:"l", text:k}), el("td", {text:String(parT[k].n)}), el("td", {text:fmt(parT[k].q)}))); });
+    t.appendChild(tb); card.appendChild(el("div", {class:"tw"}, t));
+    var seg = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center", text:"Fiches par page (A4) :"}));
+    if ([1, 2, 4].indexOf(ui.etqPP) < 0) ui.etqPP = 4;
+    [1, 2, 4].forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
+    card.appendChild(seg);
+    card.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
+      el("button", {class:"btn small", text:"🖨 Imprimer les fiches (imprimante normale)", onclick:function(){ imprimerDoc(docCartonsHtml(cl, plan, ui.etqPP, lot), "A4 portrait", "8mm", "Fiches_cartons_" + cl + "_" + lot); }}),
+      el("button", {class:"btn small sec", text:"📗 Fiches cartons (Excel)", onclick:function(){ exportFichesCartons(lot, cl, plan); }}),
+      el("button", {class:"btn small sec", text:"🏷 Base NiceLabel (Excel)", onclick:function(){ exportNiceLabel(lot, cl, plan); }})));
+    card.appendChild(el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px", text:"NiceLabel 2017 : dans votre étiquette, Base de données › Excel, choisissez ce fichier et la feuille « Etiquettes » (une ligne = une étiquette). Champs : N_CARTON, CARTON_SUR, MODELE, TAILLE, QUANTITE, CODE_ACL, EAN, LOT, PEREMPTION, DEST_NOM…"}));
+    out.push(card);
+  });
+  return out;
+}
+
 /* liste total : quantités mises en carton pour ce client (y compris le surplus d'un autre client) ; sinon, quantités emballées */
 function docTotalHtml(lot, client){
   var tot = stageTotals(), libs = [], by = {}, man = cartonsLot(lot, client).filter(function(c){ return c.manuel; });
@@ -2278,6 +2368,7 @@ function cartonsCards(lot, lines){
       }
       actions.appendChild(el("button", {class:"btn small", text:"📦 Étiquettes cartons (" + (ui.etqOuv ? colis.length : fermes.length) + ")", onclick:function(){ imprimerEmballage(lot, cli, "cartons"); }}));
       actions.appendChild(el("button", {class:"btn small sec", text:"📗 Fiches cartons (Excel)", onclick:function(){ exportFichesCartons(lot, cli); }}));
+      actions.appendChild(el("button", {class:"btn small sec", text:"🏷 Base NiceLabel (Excel)", onclick:function(){ exportNiceLabel(lot, cli, cartonsLot(lot, cli).filter(function(c){ return ui.etqOuv || !c.ouvert; })); }}));
       actions.appendChild(el("button", {class:"btn small sec", text:"📋 Liste de colisage", onclick:function(){ imprimerEmballage(lot, cli, "colisage"); }}));
     } else {
       card.appendChild(el("p", {class:"mut", style:"margin:0", text:fmt(emb) + " pièce(s) emballée(s). Saisissez les cartons à l'étape Emballage (ou définissez la règle de colisage " + cli + " dans Réglages) pour obtenir les étiquettes et la liste de colisage."}));
@@ -2361,11 +2452,18 @@ function sxEmballage(v, lot, rows){
     ui.ct = {cl:cl, lot:lot, sel:[], q:{}, kg:""};
     if (edit){ edit.it.forEach(function(x){ var l = lineById(x[0]); if (!l) return; ui.ct.q[l.id] = x[1]; var k = l.client + "|" + l.lib; if (ui.ct.sel.indexOf(k) < 0) ui.ct.sel.push(k); }); ui.ct.kg = edit.kg === null || edit.kg === undefined ? "" : String(edit.kg); }
   }
-  var E = ui.ct, n = edit ? edit.n : prochainNumero(lot, cl), t1 = !!(R && R.t1);
+  var planCl = (!edit && R && R.t1) ? planCartons(lot, cl) : [], faitsN = {};
+  cartonsManuels(lot, cl).forEach(function(c){ faitsN[c.n] = 1; });
+  var prevu = planCl.filter(function(c){ return !faitsN[c.n]; })[0] || null;
+  if (prevu && !ui.ct.manuel && !Object.keys(ui.ct.q).some(function(id){ return ui.ct.q[id] > 0; })){
+    var l0 = lineById(prevu.items[0].lineId); ui.ct.sel = [l0.client + "|" + l0.lib]; ui.ct.q = {}; ui.ct.q[l0.id] = prevu.items[0].q; ui.ct.nPrevu = prevu.n;
+  }
+  var E = ui.ct, t1 = !!(R && R.t1), n = edit ? edit.n : (E.nPrevu && !faitsN[E.nPrevu] ? E.nPrevu : prochainNumero(lot, cl));
   function reste(l){ return (R && R.cde && l.client === cl) ? Math.max(0, l.qty - enCarton(lot, cl, l.id, editId)) : Infinity; }
   var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
   var head = el("div", {class:"sx-carton"}, el("div", {class:"sx-cnum", text:"📦 Carton N°" + n}), el("div", {class:"mut", text:(edit ? "Modification du carton — " : "Nouveau carton — ") + cl + (t1 ? " · une seule taille, " + R.n + " pièces" : "")}));
   if (cl === "ALLOGA") head.appendChild(el("div", {class:"mut", style:"margin-top:4px", text:"Lot " + lot + " · péremption " + (peremption(lot) || "?")}));
+  if (!edit && E.nPrevu && n === E.nPrevu) head.appendChild(el("div", {class:"msg", style:"margin-top:8px", text:"Carton prévu : sa fiche est déjà prête. Remplissez-le comme indiqué puis validez."}));
   if (edit) head.appendChild(el("button", {class:"sx-chip", style:"margin-top:8px", text:"Annuler la modification", onclick:function(){ ui.ctEdit = null; ui.ct = null; render(true); }}));
   v.appendChild(head);
   v.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:4px 0 6px", text:t1 ? "1. Choisissez le modèle" : "1. Choisissez le ou les modèles du carton"}));
@@ -2373,6 +2471,7 @@ function sxEmballage(v, lot, rows){
   arts.forEach(function(a){ var m = fmm[a.lib], on = E.sel.indexOf(a.key) >= 0;
     ch.appendChild(el("button", {class:"sx-chip" + (on ? " on" : ""), style:on && m ? "background:#" + m[5] + ";color:#" + m[6] + ";border-color:#" + m[5] : "", text:(on ? "✓ " : "") + nomDoc(a.lib) + (a.sur ? " (surplus " + a.src + ")" : ""), onclick:function(){
       var i = E.sel.indexOf(a.key);
+      E.manuel = true; E.nPrevu = null;
       if (t1){ E.sel = i >= 0 ? [] : [a.key]; E.q = {}; }
       else if (i >= 0){ E.sel.splice(i, 1); a.lines.forEach(function(l){ delete E.q[l.id]; }); }
       else E.sel.push(a.key);
@@ -2419,7 +2518,7 @@ function sxEmballage(v, lot, rows){
       v.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:10px 0 6px", text:"2. Choisissez la taille"}));
       var szs = el("div", {class:"sx-opts"});
       a.lines.forEach(function(l){ var on = choisi && choisi.id === l.id, rs = reste(l);
-        szs.appendChild(el("button", {class:"sx-chip sx-szc" + (on ? " on" : "") + (rs === 0 && !on ? " vide" : ""), onclick:function(){ E.q = {}; E.q[l.id] = R ? Math.min(R.n, rs) : 0; render(true); }},
+        szs.appendChild(el("button", {class:"sx-chip sx-szc" + (on ? " on" : "") + (rs === 0 && !on ? " vide" : ""), onclick:function(){ E.manuel = true; E.nPrevu = null; E.q = {}; E.q[l.id] = R ? Math.min(R.n, rs) : 0; render(true); }},
           el("b", {text:l.size}), el("span", {text:rs === Infinity ? "" : (rs ? "reste " + rs : "complet")}))); });
       v.appendChild(szs);
       if (choisi){
@@ -2458,7 +2557,7 @@ function sxEmballage(v, lot, rows){
       box.appendChild(rec);
       box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:edit ? "✔ Oui, enregistrer" : "✔ Oui, valider le carton", onclick:function(){
         var keep = E.sel.slice();
-        var ok = commit(function(){ enregistrerCarton(lot, c); ui.pend = null; ui.ctEdit = null; ui.ct = {cl:cl, lot:lot, sel:keep, q:{}, kg:""}; });
+        var ok = commit(function(){ enregistrerCarton(lot, c); ui.pend = null; ui.ctEdit = null; ui.ct = planCl.length ? null : {cl:cl, lot:lot, sel:keep, q:{}, kg:""}; });
         if (!ok) return;
         if (edit){ toast("Carton N°" + n + " modifié"); render(true); return; }
         ui.pend = {bravo:true};
@@ -2524,7 +2623,7 @@ function envoiCoupeCard(lot, ready){
     });
     c.appendChild(h);
   }
-  return c;
+  return el("div", null, [c].concat(fichesPrevuesCards(lot)));
 }
 
 /* ---------- Réglages ajoutés ---------- */
