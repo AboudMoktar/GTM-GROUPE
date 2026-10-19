@@ -301,6 +301,15 @@ button.step{cursor:pointer}
 .sx-ok{width:70px;height:70px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:var(--sub);color:var(--ok);font-size:36px;font-weight:700}
 .colle{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--sub);font-weight:600}
 .colle b{font-family:var(--cond);font-size:17px}
+.colle small{font-weight:500;color:var(--mut);margin-left:6px}
+table.stk td input{width:84px}
+table.stk td.neg{color:var(--bad);font-weight:700}
+table.stk.enl td{white-space:normal;vertical-align:middle}
+.enl-d{font-size:12.5px;color:var(--mut);font-weight:500;margin-top:2px}
+.enl-d.neg{color:var(--bad);font-weight:700}
+.enl-d b.okc{color:var(--ok)}
+nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav.n8 button{font-size:10px;letter-spacing:-.2px;padding-left:0;padding-right:0}
 .pill.warn{background:#fff3cd;color:#7a4f00}
 .alerte{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:10px;margin-bottom:6px;background:var(--sub);width:100%;border:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .alerte.bad{background:var(--bad-bg);color:var(--bad)}
@@ -367,7 +376,7 @@ function ncTotals(){ var t = {}; S.moves.forEach(function(m){ if (!m.nc) return;
 function lotReady(lot){ var i = S.lots[lot]; if (i && i.ready) return true; if (i) return false; return S.lines.some(function(l){ return l.lot === lot; }) && S.moves.length > 0; }
 function ensureLot(lot){ if (!S.lots[lot]) S.lots[lot] = {received:today(), ready:""}; }
 function lotMonth(lot){ var m = /(\d{4})(\d{2})/.exec(String(lot || "")); if (m && +m[2] >= 1 && +m[2] <= 12) return {y:+m[1], m:+m[2]}; return null; }
-var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{proche:3, bloque:7}, motifs:[], colis:{}, colleU:"g", cartons:{}};
+var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{proche:3, bloque:7}, motifs:[], colis:{}, colleU:"g", cartons:{}, stk:[]};
 /* ---------- application groupe (cadre) ---------- */
 function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
 var HOST = hostStore();
@@ -493,6 +502,7 @@ function desiredDocs(){
       d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ var a = [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; if (m.motif || m.ct) a.push(m.motif || ""); if (m.ct) a.push(m.ct); return a; })};
     if (S.cartons[lot] && S.cartons[lot].length) d["cartons-"+safeId(lot)] = {lot:lot, cartons:S.cartons[lot]};
   });
+  if (S.stk.length) d["stock-mv"] = {mv:S.stk.map(function(m){ return [m.id, m.d, m.t, m.a, m.q, m.dest || "", m.lot || "", m.n || ""]; })};
   return JSON.parse(JSON.stringify(d)); /* Firebase refuse les valeurs « undefined » */
 }
 function persist(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
@@ -521,7 +531,7 @@ function flush(){
 }
 function applyDocs(docs){
   var lines = [], moves = [], ver = 0;
-  S.nomen = []; S.rules = []; S.stock = {}; S.lots = {}; S.cartons = {};
+  S.nomen = []; S.rules = []; S.stock = {}; S.lots = {}; S.cartons = {}; S.stk = [];
   Object.keys(docs).forEach(function(id){
     var d = docs[id];
     if (id === "cfg"){
@@ -533,6 +543,8 @@ function applyDocs(docs){
       (d.lines || []).forEach(function(a){ lines.push({id:a[0],lot:d.lot,year:a[1],client:a[2],model:a[3],lib:a[4],size:a[5],qty:a[6],cc:a[7] ? 1 : 0}); });
     } else if (id.indexOf("moves-") === 0){
       (d.moves || []).forEach(function(a){ var mv = {id:a[0],date:a[1],lineId:a[2],stage:a[3],qty:a[4],note:a[5],nc:a[6] || 0}; if (a[7]) mv.motif = a[7]; if (a[8]) mv.ct = a[8]; moves.push(mv); });
+    } else if (id === "stock-mv"){
+      S.stk = (d.mv || []).map(function(a){ return {id:a[0], d:a[1], t:a[2], a:a[3], q:+a[4] || 0, dest:a[5] || "", lot:a[6] || "", n:a[7] || ""}; });
     } else if (id.indexOf("cartons-") === 0){
       S.cartons[d.lot] = (d.cartons || []).map(function(c){ return {id:c.id, n:c.n, cl:c.cl, d:c.d, it:(c.it || []).map(function(x){ return [x[0], x[1]]; }), kg:c.kg === undefined ? null : c.kg}; });
     }
@@ -551,7 +563,7 @@ function applyDocs(docs){
 function defaults(){
   S.nomen = DEF_NOMEN.map(function(a){ return {model:a[0],lib:a[1],size:a[2],t1:a[3],t2:a[4],cc:a[5],ca:a[6],ca2:a[7]}; });
   S.rules = DEF_RULES.map(function(a){ return {model:a[0],s1:a[1],m1:a[2],s2:a[3],m2:a[4],m3:a[5]}; });
-  S.stock = {}; cfgOptions({});
+  S.stock = {}; S.stk = S.stk || []; cfgOptions({});
 }
 /* réglages ajoutés : seuils d'alerte, motifs de non-conformité, règles de colisage par client, unité de la colle */
 var DEF_MOTIFS = ["Défaut tissu","Erreur de coupe","Couture / assemblage","Collage","Tache / salissure","Mesure / taille","Autre"];
@@ -838,12 +850,15 @@ function exportFlux(lot, base, pdf){
 }
 function exportSuivi(){ exportFlux(ui.lot, "Flux", false); }
 function exportSuiviPdf(){ exportFlux(ui.lot, "Flux", true); }
-function exportFiches(){
-  var sheets = [{name:"PROGES", grid:ficheGrid(ui.lot, ui.client, "c"), first:1}, {name:"GADH", grid:ficheGrid(ui.lot, ui.client, "a")}];
-  saveFile("Fiches_" + ui.lot + "_" + today().replace(/-/g,"") + ".xlsx", xlsxBuild(sheets));
+/* un fichier par centre : kind "c" = PROGES (coupe), "a" = GADH (assemblage) */
+function nomFicheCentre(kind){ return "Consommation_" + (kind === "c" ? "PROGES" : "GADH") + "_" + ui.lot + "_" + today().replace(/-/g,""); }
+function exportFiches(kind){
+  kind = kind === "a" ? "a" : "c";
+  saveFile(nomFicheCentre(kind) + ".xlsx", xlsxBuild([{name:kind === "c" ? "PROGES" : "GADH", grid:ficheGrid(ui.lot, ui.client, kind), first:1}]));
 }
-function exportFichesPdf(){
-  saveFile("Fiches_" + ui.lot + "_" + today().replace(/-/g,"") + ".pdf", pdfBuild([ficheGrid(ui.lot, ui.client, "c"), ficheGrid(ui.lot, ui.client, "a")]));
+function exportFichesPdf(kind){
+  kind = kind === "a" ? "a" : "c";
+  saveFile(nomFicheCentre(kind) + ".pdf", pdfBuild([ficheGrid(ui.lot, ui.client, kind)]));
 }
 function exportCommande(client, year){
   saveFile("COMMANDE_" + client + "_" + ui.lot + ".xlsx", xlsxBuild([{name:"COMMANDE " + client, grid:commandeGrid(ui.lot, year, client), first:1}]));
@@ -935,19 +950,22 @@ function ficheGrid(lot, client, kind){
   /* Besoin total en tissu : tableau sous la fiche (colonnes C:D) */
   var bt0 = r + 1, TT = {b:1, sz:11, fg:"FFFFFF", bg:"1D3557", al:"c", bd:"t"}, TH = {b:1, sz:10, fg:"C00000", al:"c", bd:"t"};
   g.screenRows = r;
-  gset(g, bt0, 2, "Consommation totale en tissu", TT); gset(g, bt0, 3, "", TT); gmerge(g, bt0, 2, bt0, 3);
-  gset(g, bt0 + 1, 2, "Réf (tissu)", TH); gset(g, bt0 + 1, 3, "Qté (ML)", TH);
-  var sumML = 0;
-  forder.forEach(function(f, i){ gset(g, bt0 + 2 + i, 2, f, {b:1, sz:10, al:"l", bd:"t"}); gset(g, bt0 + 2 + i, 3, roundv(fab[f]), {sz:11, al:"c", bd:"t"}); sumML += fab[f]; });
+  /* « Qté envoyée » : enlèvements du stock (onglet Stock) pour cette commande et ce centre */
+  var env = envoyeLot(lot, name);
+  function envCell(rr, val, st){ gset(g, rr, 4, val, st); gset(g, rr, 5, "", st); gmerge(g, rr, 4, rr, 5); }
+  gset(g, bt0, 2, "Consommation totale en tissu", TT); for (var tc = 3; tc <= 5; tc++) gset(g, bt0, tc, "", TT); gmerge(g, bt0, 2, bt0, 5);
+  gset(g, bt0 + 1, 2, "Réf (tissu)", TH); gset(g, bt0 + 1, 3, "Qté (ML)", TH); envCell(bt0 + 1, "Qté envoyée", TH);
+  var sumML = 0, sumEnv = 0;
+  forder.forEach(function(f, i){ gset(g, bt0 + 2 + i, 2, f, {b:1, sz:10, al:"l", bd:"t"}); gset(g, bt0 + 2 + i, 3, roundv(fab[f]), {sz:11, al:"c", bd:"t"}); envCell(bt0 + 2 + i, roundv(env[f] || 0), {sz:11, al:"c", bd:"t"}); sumML += fab[f]; sumEnv += env[f] || 0; });
   var bt1 = bt0 + 2 + forder.length;
-  gset(g, bt1, 2, "TOTAL", {b:1, sz:10, fg:"FF0000", al:"l", bd:"t"}); gset(g, bt1, 3, roundv(sumML), {b:1, sz:11, fg:"FF0000", al:"c", bd:"t"});
-  g.colle = kind === "a" ? c.colle : 0;
-  if (g.colle){   /* colle adhésive (assemblage GADH) : sous le total tissu, hors total des mètres */
-    gset(g, bt1 + 1, 2, "Colle adhésive (" + S.colleU + ")", {b:1, sz:10, al:"l", bd:"t"}); gset(g, bt1 + 1, 3, roundv(g.colle), {b:1, sz:11, al:"c", bd:"t"});
+  gset(g, bt1, 2, "TOTAL", {b:1, sz:10, fg:"FF0000", al:"l", bd:"t"}); gset(g, bt1, 3, roundv(sumML), {b:1, sz:11, fg:"FF0000", al:"c", bd:"t"}); envCell(bt1, roundv(sumEnv), {b:1, sz:11, fg:"FF0000", al:"c", bd:"t"});
+  g.colle = kind === "a" ? c.colle : 0; g.colleEnv = kind === "a" ? (env[COLLE] || 0) : 0;
+  if (g.colle || g.colleEnv){   /* colle adhésive (assemblage GADH) : sous le total tissu, hors total des mètres */
+    gset(g, bt1 + 1, 2, "Colle adhésive (" + S.colleU + ")", {b:1, sz:10, al:"l", bd:"t"}); gset(g, bt1 + 1, 3, roundv(g.colle), {b:1, sz:11, al:"c", bd:"t"}); envCell(bt1 + 1, roundv(g.colleEnv), {b:1, sz:11, al:"c", bd:"t"});
     bt1++;
   }
-  g.keep = [bt0, bt1]; g.sumML = roundv(sumML);
-  g.fabs = forder.map(function(f){ return [f, roundv(fab[f])]; });
+  g.keep = [bt0, bt1]; g.sumML = roundv(sumML); g.sumEnv = roundv(sumEnv);
+  g.fabs = forder.map(function(f){ return [f, roundv(fab[f]), roundv(env[f] || 0)]; });
   g.name = name; g.isFiche = true;
   return g;
 }
@@ -1195,21 +1213,22 @@ var ICONS = {
   fiche:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
   suivi:'<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
   flux:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  stock:'<path d="M3 8l9-5 9 5v12H3z"/><path d="M7 20v-7h10v7M7 16h10"/>',
   arch:'<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
   reg:'<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>'
 };
-var TABS = [["dash","Tableau","▦"],["cmd","Commandes","1"],["fiche","Fiches","2"],["suivi","Suivi","3"],["flux","Flux","4"],["arch","Archive","▣"],["reg","Réglages","⚙"]];
+var TABS = [["dash","Tableau","▦"],["cmd","Commandes","1"],["fiche","Fiches","2"],["suivi","Suivi","3"],["flux","Flux","4"],["stock","Stock","▤"],["arch","Archive","▣"],["reg","Réglages","⚙"]];
 function tabIcon(k){ var b = el("b"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICONS[k] + "</svg>"; return b; }
 if (VUE === "gadh") TABS = [["dash","Tableau","▦"],["flux","Flux","4"],["fiche","Fiche GADH","2"],["suivi","Suivi","3"],["arch","Archive","▣"]];
 function drawTabs(){
-  var t = document.getElementById("tabs"); t.innerHTML = "";
+  var t = document.getElementById("tabs"); t.innerHTML = ""; t.className = TABS.length > 7 ? "n8" : "";
   TABS.forEach(function(x){ t.appendChild(el("button", {class:ui.tab === x[0] ? "on" : "", onclick:function(){ ui.tab = x[0]; if (x[0] === "flux"){ ui.sxOpen = false; ui.pend = null; } render(); }}, tabIcon(x[0]), el("span", {text:x[1]}))); });
 }
 function render(keepScroll){
   var v = document.getElementById("view");
   var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(".tw"), function(e){ return [e.scrollLeft, e.scrollTop]; });
   refreshSelectors(); drawTabs(); v.innerHTML = "";
-  ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, arch:vArch, reg:vReg})[ui.tab](v);
+  ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, stock:vStock, arch:vArch, reg:vReg})[ui.tab](v);
   if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(".tw"), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
   else v.scrollTop = 0;
 }
@@ -1401,39 +1420,51 @@ function vFiches(v){
   [["c","Coupe (PROGES)"],["a","Assemblage (GADH)"],["t","Total & stock"]].forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.fiche = x[0]; render(); }})); });
   if (VUE !== "gadh"){ v.appendChild(seg);
   v.appendChild(pager(["c","a","t"], ui.fiche, function(k){ ui.fiche = k; render(); }, {c:"Coupe (PROGES)", a:"Assemblage (GADH)", t:"Total & stock"}[ui.fiche])); }
-  v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Exporter en Excel", onclick:exportFiches}), el("button", {class:"btn sec", text:"Exporter en PDF", onclick:exportFichesPdf})));
+  [["c", "PROGES"], ["a", "GADH"]].forEach(function(k){
+    if (VUE === "gadh" && k[0] === "c") return;
+    if (ui.fiche !== "t" && ui.fiche !== k[0]) return;
+    v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"📗 " + k[1] + " (Excel)", onclick:function(){ exportFiches(k[0]); }}), el("button", {class:"btn sec", text:"📕 " + k[1] + " (PDF)", onclick:function(){ exportFichesPdf(k[0]); }})));
+  });
   if (ui.fiche === "t") return vTotal(v);
   var g = ficheGrid(ui.lot, ui.client, ui.fiche);
   var tbl = gridHTML(g);
   v.appendChild(el("div", {class:"xlwrap tall"}, tbl));
   var fb = el("div", {class:"card fabcard"}, el("h2", {text:"Consommation totale en tissu"}), el("div", {class:"mut", text:"Fiche " + (ui.fiche === "c" ? "coupe (PROGES)" : "assemblage (GADH)") + " — lot " + (ui.lot || "—")}));
   var ft = el("table", {class:"fabt"}), fbody = el("tbody");
-  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}))));
-  (g.fabs || []).forEach(function(f){ fbody.appendChild(el("tr", null, el("td", {class:"l", text:f[0]}), el("td", {class:"b", text:fmt(f[1], 1)}))); });
-  fbody.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(g.sumML || 0, 1)})));
+  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}), el("th", {text:"Qté envoyée"}))));
+  (g.fabs || []).forEach(function(f){ fbody.appendChild(el("tr", null, el("td", {class:"l", text:f[0]}), el("td", {class:"b", text:fmt(f[1], 1)}), el("td", {class:"b", text:fmt(f[2] || 0, 1)}))); });
+  fbody.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(g.sumML || 0, 1)}), el("td", {text:fmt(g.sumEnv || 0, 1)})));
   ft.appendChild(fbody); fb.appendChild(ft);
-  if (ui.fiche === "a") fb.appendChild(colleBloc(g.colle));
+  if (ui.fiche === "a") fb.appendChild(colleBloc(g.colle, g.colleEnv));
+  if (VUE !== "gadh") fb.appendChild(envoyeNote(ui.lot, g.name));
   v.appendChild(fb);
 }
 /* colle adhésive de l'assemblage : total, ou rappel de la saisir dans la nomenclature */
-function colleBloc(q){
-  if (q) return el("div", {class:"colle"}, el("span", {text:"Colle adhésive"}), el("b", {text:fmt(q, q % 1 ? 2 : 0) + " " + S.colleU}));
+function colleBloc(q, env){
+  var envTxt = env === undefined ? null : el("small", {text:"envoyée : " + fmt(env, env % 1 ? 2 : 0) + " " + S.colleU});
+  if (q) return el("div", {class:"colle"}, el("span", {text:"Colle adhésive"}), el("span", null, el("b", {text:fmt(q, q % 1 ? 2 : 0) + " " + S.colleU}), envTxt));
   return el("p", {class:"mut", style:"margin:10px 0 0", text:"Colle adhésive : consommation par pièce à saisir dans Réglages › Nomenclature (colonne Colle)."});
 }
-function fabTable(title, sub, fabs, key){
+/* rappel sous les totaux : d'où vient la quantité envoyée */
+function envoyeNote(lot, dest){
+  return el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px"}, "Qté envoyée = enlèvements du stock pour cette commande vers " + dest + ". ",
+    el("button", {class:"btn small sec", text:"Saisir un enlèvement", onclick:function(){ ui.tab = "stock"; ui.stLot = lot; ui.stDest = dest; ui.stQ = {}; render(); }}));
+}
+function fabTable(title, sub, fabs, key, env){
   var fb = el("div", {class:"card fabcard"}, el("h2", {text:title}), el("div", {class:"mut", text:sub}));
-  var ft = el("table", {class:"fabt"}), tb = el("tbody"), sum = 0;
-  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}))));
-  fabs.forEach(function(f){ if (!f[key]) return; sum += f[key]; tb.appendChild(el("tr", null, el("td", {class:"l", text:f.fabric}), el("td", {class:"b", text:fmt(f[key], 1)}))); });
-  if (!sum) tb.appendChild(el("tr", null, el("td", {class:"l", text:"Aucune consommation"}), el("td")));
-  tb.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(sum, 1)})));
+  var ft = el("table", {class:"fabt"}), tb = el("tbody"), sum = 0, se = 0;
+  ft.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Réf (tissu)"}), el("th", {text:"Qté (ML)"}), env ? el("th", {text:"Qté envoyée"}) : null)));
+  fabs.forEach(function(f){ if (!f[key]) return; sum += f[key]; var e = env ? env[f.fabric] || 0 : 0; se += e; tb.appendChild(el("tr", null, el("td", {class:"l", text:f.fabric}), el("td", {class:"b", text:fmt(f[key], 1)}), env ? el("td", {class:"b", text:fmt(e, 1)}) : null)); });
+  if (!sum) tb.appendChild(el("tr", null, el("td", {class:"l", text:"Aucune consommation"}), el("td"), env ? el("td") : null));
+  tb.appendChild(el("tr", {class:"tot"}, el("td", {class:"l", text:"TOTAL"}), el("td", {text:fmt(sum, 1)}), env ? el("td", {text:fmt(se, 1)}) : null));
   ft.appendChild(tb); fb.appendChild(ft); return fb;
 }
 function vTotal(v){
   var c = conso(ui.lot, ui.client);
   if (!c.fabs.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande, ou références absentes de la nomenclature."}))); return; }
-  v.appendChild(fabTable("Coupe (PROGES) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "coupe"));
-  var fa = fabTable("Assemblage (GADH) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "ass"); fa.appendChild(colleBloc(c.colle));
+  var eP = envoyeLot(ui.lot, "PROGES"), eG = envoyeLot(ui.lot, "GADH");
+  v.appendChild(fabTable("Coupe (PROGES) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "coupe", eP));
+  var fa = fabTable("Assemblage (GADH) — consommation totale", "Lot " + (ui.lot || "—"), c.fabs, "ass", eG); fa.appendChild(colleBloc(c.colle, eG[COLLE] || 0));
   v.appendChild(fa);
   var card = el("div", {class:"card"}, el("h2", {text:"Stock de tissu (coupe + assemblage)"}));
   var t = el("table"), tb = el("tbody"), tt = 0;
@@ -1449,6 +1480,168 @@ function vTotal(v){
   t.appendChild(tb); card.appendChild(el("div", {class:"tw"}, t));
   card.appendChild(el("p", {class:"mut", text:"Saisissez le stock réel (cases jaunes) pour obtenir le solde."}));
   v.appendChild(card);
+}
+/* ---------- Gestion de stock (TEK-TREND) : tissus et colle ----------
+   Entrée = réception (fournisseur) ; Enlèvement = sortie du magasin vers le centre de coupe (PROGES) ou d'assemblage (GADH),
+   pour une commande. Les enlèvements d'une commande donnent la « quantité envoyée » des fiches de consommation. */
+var COLLE = "COLLE";
+var DESTS = [["PROGES", "PROGES (coupe)"], ["GADH", "GADH (assemblage)"]];
+function artNom(a){ return a === COLLE ? "Colle adhésive" : a; }
+function artUnite(a){ return a === COLLE ? S.colleU : "ML"; }
+function artDec(a, q){ return a === COLLE && q % 1 === 0 ? 0 : (a === COLLE ? 2 : 1); }
+function stockArticles(){
+  var o = []; function add(x){ if (x && x !== COLLE && o.indexOf(x) < 0) o.push(x); }
+  S.nomen.forEach(function(n){ add(n.t1); add(n.t2); }); S.stk.forEach(function(m){ add(m.a); });
+  o.sort(); o.push(COLLE); return o;
+}
+function stockEtat(){
+  var e = {}; S.stk.forEach(function(m){ var x = e[m.a] || (e[m.a] = {ent:0, sor:0}); if (m.t === "E") x.ent = r2(x.ent + m.q); else x.sor = r2(x.sor + m.q); });
+  return e;
+}
+/* quantité envoyée (enlevée du stock) pour une commande et un centre : {article: quantité} */
+function envoyeLot(lot, dest){
+  var o = {}; S.stk.forEach(function(m){ if (m.t === "S" && m.lot === lot && m.dest === dest) o[m.a] = r2((o[m.a] || 0) + m.q); });
+  return o;
+}
+/* besoin de la commande pour un centre (fiches de consommation) : [[article, quantité]] */
+function besoinsLot(lot, dest){
+  var c = conso(lot, "*"), o = [];
+  c.fabs.forEach(function(f){ var q = dest === "PROGES" ? f.coupe : f.ass; if (q) o.push([f.fabric, q]); });
+  if (dest === "GADH" && c.colle) o.push([COLLE, c.colle]);
+  return o;
+}
+function enregistrerEnlevement(lot, dest, date, note, qs){
+  var n = 0;
+  Object.keys(qs).forEach(function(a){
+    var q = qs[a]; if (!q) return;
+    if (q < 0){ var deja = envoyeLot(lot, dest)[a] || 0; if (deja + q < 0) throw new Error(artNom(a) + " : correction supérieure à la quantité déjà envoyée (" + fmt(deja, artDec(a, deja)) + ")."); }
+    S.stk.push({id:nid("K"), d:date || today(), t:"S", a:a, q:r2(q), dest:dest, lot:lot, n:note || ""}); n++;
+  });
+  if (!n) throw new Error("Aucune quantité saisie.");
+  return n;
+}
+function enregistrerEntree(a, q, date, note){
+  a = cleanTxt(a || ""); if (!a) throw new Error("Choisissez l'article.");
+  if (!(q > 0)) throw new Error("Quantité reçue manquante.");
+  S.stk.push({id:nid("K"), d:date || today(), t:"E", a:a, q:r2(q), dest:"", lot:"", n:note || ""});
+}
+function numStk(v){ var x = parseFloat(String(v || "").replace(",", ".")); return isNaN(x) ? 0 : x; }
+function vStock(v){
+  var lots = sortedUnique(S.lines.map(function(l){ return l.lot; })).filter(lotReady);
+  if (!ui.stLot || lots.indexOf(ui.stLot) < 0) ui.stLot = lots.indexOf(ui.lot) >= 0 ? ui.lot : (lots[lots.length - 1] || "");
+  if (!ui.stDest) ui.stDest = "PROGES";
+  if (!ui.stQ) ui.stQ = {};
+  var etat = stockEtat();
+
+  /* 1. Enlèvement pour une commande */
+  var c1 = el("div", {class:"card"}, el("h2", {text:"Enlèvement pour une commande"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Sortie de tissu et de colle du magasin vers le centre de coupe ou d'assemblage. La quantité envoyée s'ajoute automatiquement aux fiches de consommation."}));
+  if (!lots.length){ c1.appendChild(el("p", {class:"mut", text:"Aucune commande validée pour l'instant."})); v.appendChild(c1); }
+  else {
+    var sl = sel(lots.slice().reverse().map(function(x){ return [x, x]; }), ui.stLot);
+    sl.addEventListener("change", function(){ ui.stLot = sl.value; ui.stQ = {}; render(true); });
+    c1.appendChild(el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Commande"}, sl)));
+    var sg = el("div", {class:"seg"});
+    DESTS.forEach(function(d){ sg.appendChild(el("button", {class:ui.stDest === d[0] ? "on" : "", text:d[1], onclick:function(){ ui.stDest = d[0]; ui.stQ = {}; render(true); }})); });
+    c1.appendChild(sg);
+    var bes = besoinsLot(ui.stLot, ui.stDest), env = envoyeLot(ui.stLot, ui.stDest), ins = {};
+    Object.keys(env).forEach(function(a){ if (!bes.some(function(b){ return b[0] === a; })) bes.push([a, 0]); });
+    if (!bes.length) c1.appendChild(el("p", {class:"mut", text:"Aucune consommation pour ce centre (références absentes de la nomenclature ?)."}));
+    else {
+      var t = el("table", {class:"stk enl"}), tb = el("tbody");
+      t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article · besoin de la commande"}), el("th", {text:"À enlever"}))));
+      bes.forEach(function(b){
+        var a = b[0], dj = env[a] || 0, reste = r2(Math.max(0, b[1] - dj)), e = etat[a], st = e ? r2(e.ent - e.sor) : null, dc = artDec(a, b[1]);
+        var inp = el("input", {type:"number", inputmode:"decimal", step:"0.01", class:"ed", value:ui.stQ[a] === undefined ? "" : ui.stQ[a], placeholder:"0"});
+        inp.addEventListener("input", function(){ ui.stQ[a] = inp.value; });
+        ins[a] = inp;
+        var u = " " + artUnite(a);
+        tb.appendChild(el("tr", {class:reste ? "" : "ok"}, el("td", {class:"l"}, el("b", {text:artNom(a)}),
+            el("div", {class:"enl-d"}, "Besoin " + fmt(b[1], dc) + u + " · envoyé " + fmt(dj, dc) + " · ", el("b", {class:reste ? "" : "okc", text:reste ? "reste " + fmt(reste, dc) + u : "✔ complet"})),
+            el("div", {class:"enl-d" + (st !== null && st < 0 ? " neg" : "")}, "En stock : " + (st === null ? "—" : fmt(st, artDec(a, st)) + u))),
+          el("td", null, inp)));
+      });
+      t.appendChild(tb); c1.appendChild(el("div", {class:"tw"}, t));
+      var dt = el("input", {type:"date", value:ui.stDate || today()}); dt.addEventListener("change", function(){ ui.stDate = dt.value; });
+      var nt = el("input", {type:"text", placeholder:"N° bon de sortie, chauffeur… (facultatif)", value:ui.stNote || ""}); nt.addEventListener("input", function(){ ui.stNote = nt.value; });
+      c1.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Date"}, dt), el("label", {text:"Note"}, nt)));
+      c1.appendChild(el("div", {class:"actions", style:"margin-top:8px"},
+        el("button", {class:"btn sec", text:"Remplir avec le reste", onclick:function(){
+          bes.forEach(function(b){ var r = r2(Math.max(0, b[1] - (env[b[0]] || 0))); ui.stQ[b[0]] = r ? String(r) : ""; ins[b[0]].value = ui.stQ[b[0]]; });
+        }}),
+        el("button", {class:"btn", text:"✔ Valider l'enlèvement", onclick:function(){
+          var qs = {}; Object.keys(ins).forEach(function(a){ qs[a] = numStk(ins[a].value); });
+          var lot = ui.stLot, dest = ui.stDest;
+          commit(function(){ enregistrerEnlevement(lot, dest, ui.stDate || today(), ui.stNote || "", qs); ui.stQ = {}; ui.stNote = ""; },
+            "Enlèvement enregistré (" + lot + " → " + dest + ") : quantité envoyée mise à jour sur la fiche " + dest + ".");
+        }})));
+      c1.appendChild(el("p", {class:"mut", style:"margin:6px 0 0;font-size:12px", text:"Pour corriger une erreur, saisissez une quantité négative ou supprimez la ligne dans « Mouvements » plus bas."}));
+    }
+    v.appendChild(c1);
+  }
+
+  /* 2. Stock actuel */
+  var arts = stockArticles(), c2 = el("div", {class:"card"}, el("h2", {text:"Stock actuel"}));
+  var t2 = el("table", {class:"stk"}), tb2 = el("tbody"), aucun = true;
+  t2.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Entrées"}), el("th", {text:"Enlèvements"}), el("th", {text:"Stock"}))));
+  arts.forEach(function(a){
+    var e = etat[a] || {ent:0, sor:0}, st = r2(e.ent - e.sor); if (e.ent || e.sor) aucun = false;
+    tb2.appendChild(el("tr", null, el("td", {class:"l"}, el("b", {text:artNom(a)}), el("span", {class:"mut", text:" " + artUnite(a)})),
+      el("td", {text:fmt(e.ent, artDec(a, e.ent))}), el("td", {text:fmt(e.sor, artDec(a, e.sor))}), el("td", {class:"b" + (st < 0 ? " neg" : ""), text:fmt(st, artDec(a, st))})));
+  });
+  t2.appendChild(tb2); c2.appendChild(el("div", {class:"tw"}, t2));
+  if (aucun) c2.appendChild(el("p", {class:"mut", style:"margin:6px 0 0", text:"Saisissez les réceptions (entrées) pour suivre le stock ; un stock négatif signale une réception non saisie."}));
+  c2.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small sec", text:"📗 Stock et mouvements (Excel)", onclick:exportStock})));
+  v.appendChild(c2);
+
+  /* 3. Entrée (réception) */
+  var c3 = el("div", {class:"card"}, el("h2", {text:"Entrée en stock (réception)"}));
+  var sa = sel(arts.map(function(a){ return [a, artNom(a) + " (" + artUnite(a) + ")"]; }).concat([["+", "Autre tissu…"]]), ui.stArt || arts[0]);
+  var autre = el("input", {type:"text", placeholder:"Nom du tissu", style:sa.value === "+" ? "" : "display:none"});
+  sa.addEventListener("change", function(){ ui.stArt = sa.value; autre.style.display = sa.value === "+" ? "" : "none"; });
+  var qe = el("input", {type:"number", inputmode:"decimal", step:"0.01", placeholder:"Quantité"});
+  var de = el("input", {type:"date", value:today()}), ne = el("input", {type:"text", placeholder:"Fournisseur, BL… (facultatif)"});
+  c3.appendChild(el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Article"}, sa, autre)));
+  c3.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Quantité reçue"}, qe), el("label", {text:"Date"}, de)));
+  c3.appendChild(el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Note"}, ne)));
+  c3.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn", text:"✔ Enregistrer l'entrée", onclick:function(){
+    var a = sa.value === "+" ? autre.value : sa.value, q = numStk(qe.value);
+    commit(function(){ enregistrerEntree(a, q, de.value, ne.value); ui.stArt = sa.value === "+" ? cleanTxt(autre.value) : sa.value; }, "Entrée enregistrée");
+  }})));
+  v.appendChild(c3);
+
+  /* 4. Mouvements */
+  var c4 = el("div", {class:"card"}, el("h2", {text:"Mouvements"}));
+  var mv = S.stk.slice().sort(function(x, y){ return x.d < y.d ? 1 : x.d > y.d ? -1 : 0; });
+  if (ui.stFiltre) mv = mv.filter(function(m){ return m.lot === ui.stFiltre; });
+  var sf = sel([["", "Tous"]].concat(sortedUnique(S.stk.map(function(m){ return m.lot; }).filter(Boolean)).map(function(x){ return [x, x]; })), ui.stFiltre || "");
+  sf.addEventListener("change", function(){ ui.stFiltre = sf.value; render(true); });
+  c4.appendChild(el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Commande"}, sf)));
+  if (!mv.length) c4.appendChild(el("p", {class:"mut", text:"Aucun mouvement."}));
+  else {
+    var t4 = el("table", {class:"stk"}), tb4 = el("tbody"), lim = ui.stTout ? mv.length : 30;
+    t4.appendChild(el("thead", null, el("tr", null, el("th", {text:"Date"}), el("th", {class:"l", text:"Mouvement"}), el("th", {class:"l", text:"Article"}), el("th", {text:"Qté"}), el("th", {class:"l", text:"Note"}), el("th"))));
+    mv.slice(0, lim).forEach(function(m){
+      var id = m.id;
+      tb4.appendChild(el("tr", null, el("td", {text:dmy(m.d)}),
+        el("td", {class:"l", text:m.t === "E" ? "Entrée" : "Enlèvement " + m.lot + " → " + m.dest}),
+        el("td", {class:"l", text:artNom(m.a)}), el("td", {class:"b", text:(m.t === "E" ? "+" : "−") + fmt(Math.abs(m.q), artDec(m.a, m.q)) + (m.q < 0 && m.t !== "E" ? " (corr.)" : "")}),
+        el("td", {class:"l mut", text:m.n || ""}),
+        el("td", null, confirmBtn("✕", "sec", function(){ commit(function(){ S.stk = S.stk.filter(function(x){ return x.id !== id; }); }, "Mouvement supprimé"); }))));
+    });
+    t4.appendChild(tb4); c4.appendChild(el("div", {class:"tw"}, t4));
+    if (mv.length > lim) c4.appendChild(el("button", {class:"btn small sec", style:"margin-top:8px", text:"Tout afficher (" + mv.length + ")", onclick:function(){ ui.stTout = true; render(true); }}));
+  }
+  v.appendChild(c4);
+}
+function exportStock(){
+  var etat = stockEtat(), rows1 = [["Article", "Unité", "Entrées", "Enlèvements", "Stock"]];
+  stockArticles().forEach(function(a){ var e = etat[a] || {ent:0, sor:0}; rows1.push([artNom(a), artUnite(a), e.ent, e.sor, r2(e.ent - e.sor)]); });
+  var rows2 = [["Date", "Mouvement", "Commande", "Destination", "Article", "Unité", "Quantité", "Note"]];
+  S.stk.slice().sort(function(x, y){ return x.d < y.d ? -1 : x.d > y.d ? 1 : 0; }).forEach(function(m){
+    rows2.push([dmy(m.d), m.t === "E" ? "Entrée" : "Enlèvement", m.lot || "", m.dest || "", artNom(m.a), artUnite(m.a), m.t === "E" ? m.q : -m.q, m.n || ""]);
+  });
+  saveXlsx("Stock_tissus_colle_" + today().replace(/-/g, "") + ".xlsx", [{name:"Stock", cols:[26, 8, 12, 14, 12], rows:rows1}, {name:"Mouvements", cols:[11, 13, 14, 12, 26, 8, 11, 30], rows:rows2}]);
 }
 function pager(list, cur, setter, label){
   var i = list.indexOf(cur), n = list.length;
