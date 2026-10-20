@@ -50,6 +50,34 @@ window.grpSuiviStore = {
   imprimer: (html, titre) => suiviImprimer(html, titre)
 };
 
+// Gestion de stock TEK-TREND (onglet Stock du suivi) : données dans le dossier
+// Firebase tek/ (la GADH ne les lit pas). Une fiche par enregistrement :
+//  - stk_mv/<id>     : mouvements (entrée, sortie, retour, perte, ajustement) — jamais modifiés,
+//                      une erreur se corrige par une écriture inverse ;
+//  - stk_cf/<id>     : commandes fournisseurs (propositions validées) ;
+//  - stk_params/<ref>: seuil minimum, fournisseur, emplacement, conditionnement, délai.
+// Écrire fiche par fiche évite qu'une saisie faite en même temps sur un autre
+// téléphone en écrase une autre.
+const STK_CLES = {mv:'stk_mv', cf:'stk_cf', sp:'stk_params'};
+window.grpStockStore = {
+  dispo: () => !!currentUser && activeModule !== 'gadh' && (typeof userSocietes !== 'function' || userSocietes().indexOf('tek') >= 0),
+  lire: () => ({mv: getJSON('stk_mv', {}) || {}, cf: getJSON('stk_cf', {}) || {}, sp: getJSON('stk_params', {}) || {}}),
+  utilisateur: () => (currentUser && (currentUser.nom || currentUser.username)) || '',
+  ecrire: (coll, id, rec) => {
+    const cle = STK_CLES[coll]; if(!cle || !id) return false;
+    if(currentUser && currentUser.role === 'viewer') return false;
+    if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(cle)) return false;
+    const plein = CACHE_PREFIX + cle, tout = getJSON(cle, {}) || {};
+    if(rec === null) delete tout[id]; else tout[id] = rec;
+    memoryCache[plein] = tout;
+    try { window.localStorage.setItem(plein, JSON.stringify(tout)); } catch(e) {}
+    const chemin = firebaseCheminDe(cle) + '/' + id;
+    if(typeof hlEcrire === 'function') hlEcrire(chemin, rec === null ? null : rec, {cle, sous:id});
+    else if(typeof firebaseReady !== 'undefined' && firebaseReady && fbRootRef) fbRootRef.child(chemin).set(rec === null ? null : rec).catch(() => showToast('⚠️ Non synchronisé (vérifiez la connexion)'));
+    return true;
+  }
+};
+
 // Impression des documents du suivi (étiquettes cartons, colisage, liste total) :
 // le cadre seul s'imprime mal sur téléphone, on imprime donc depuis cette page.
 // Le HTML reçu contient ses propres styles (#pk-doc-zone, @page).
