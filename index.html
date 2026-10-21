@@ -1066,6 +1066,7 @@ function renderModuleSelect(){
         <p style="text-align:center;color:var(--ink-soft);font-size:12.5px;margin:0 0 20px;">Connecté en tant que ${esc(currentUser.nom)}</p>
         <div style="display:flex;flex-direction:column;gap:12px;">
           ${[
+            ['tek-dashboard', ICONS.stats, 'Tableau de bord', 'Rendement, chaîne, RH, commandes en un coup d\'œil'],
             ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
             ['chaine', ICONS.team, 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
             ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
@@ -1328,7 +1329,7 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
@@ -2908,6 +2909,7 @@ window.onload = init;
 <script src="./fiche-chaine-module.js"></script>
 <script src="./suivi-chaine-module.js"></script>
 <script src="./nav-historique-module.js"></script>
+<script src="./tek-dashboard-module.js"></script>
 <script src="./hors-ligne-module.js"></script>
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
