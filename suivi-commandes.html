@@ -312,6 +312,8 @@ table.stk tr.barre td{opacity:.55}
 td.okc{color:var(--ok);font-weight:700}
 .fabt tr.fam td{background:var(--sub);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;padding:6px 12px}
 .stk-seg button{font-size:13px}
+.sx-modif{margin-top:14px;border:1px dashed var(--line)}
+.sx-modif .sx-row .sx-af{font-size:12.5px}
 .fam-bloc{border:1px solid var(--line);border-left:6px solid var(--fc);border-radius:12px;margin:12px 0;overflow:hidden;background:var(--card)}
 .fam-bloc .fam-titre{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--fb);color:var(--fc);font-weight:800;font-size:15px;letter-spacing:.02em;text-transform:uppercase}
 .fam-bloc .fam-titre b{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
@@ -530,6 +532,11 @@ function desiredDocs(){
   if (S.stk.length) d["stock-mv"] = {mv:S.stk.map(function(m){ return [m.id, m.d, m.t, m.a, m.q, m.dest || "", m.lot || "", m.n || ""]; })};
   return JSON.parse(JSON.stringify(d)); /* Firebase refuse les valeurs « undefined » */
 }
+/* quitter le suivi (autre module, fermeture) juste après une saisie : enregistrer tout de suite, sans attendre le délai */
+function flushNow(){ if (!dirty || !HOST) return; clearTimeout(saveTimer); try { flush(); dirty = false; } catch (e) {} }
+window.addEventListener("pagehide", flushNow);
+window.addEventListener("beforeunload", flushNow);
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden") flushNow(); });
 function persist(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
 function flush(){
   var want = desiredDocs(), ops = [];
@@ -3850,6 +3857,7 @@ function sxPoste(v, lot, rows, st){
       el("div", {class:"sx-nm", text:fait ? "Rien à faire ici pour l'instant" : "Pas encore de pièces à cette étape"}),
       el("div", {class:"mut", text:fait ? fmt(fait) + " pièce(s) déjà passée(s) à cette étape." : "Les pièces arrivent ici après « " + (SX_NOM[SX_PREV[st]] || "") + " »."}),
       (!G && nx) ? el("button", {class:"sx-go", style:"margin-top:14px;width:100%", text:"Aller à : " + SX_NOM[nx] + " (" + fmt(sxAFaire(nx, lot, rows).a) + " à faire)", onclick:function(){ sxOuvrir(nx); }}) : null));
+    sxModifCard(v, lot, rows, st);
     extras(); return;
   }
   /* date et référence */
@@ -3898,7 +3906,83 @@ function sxPoste(v, lot, rows, st){
   bar.appendChild(barTxt); bar.appendChild(go); v.appendChild(bar); majBar();
   if (st === "cp") v.appendChild(el("div", {class:"actions", style:"margin-top:10px"},
     confirmBtn("Clôturer la coupe (accepter l'écart)", "sec", function(){ commit(function(){ var tot = stageTotals(), ncT = ncTotals(); rows.forEach(function(l){ if (((tot[l.id] || {}).cp || 0) + ((ncT[l.id] || {}).cp || 0) > 0) l.cc = 1; }); }, "Coupe clôturée"); })));
+  sxModifCard(v, lot, rows, st);
   extras();
+}
+
+/* ---------- Modifier une étape déjà validée (mode simple) ----------
+   Corrige le cumul (pièces bonnes) d'une étape, taille par taille. La correction est enregistrée comme un mouvement
+   daté « Modification de l'étape » (le détail reste dans l'historique). Les règles restent les mêmes : une étape ne peut pas
+   descendre sous l'étape suivante. Retour GADH : la confection automatique suit la correction ; Expédition / Retour :
+   « prêt à expédier » / « assemblage » sont complétés si on ajoute des pièces. Coupe : possibilité de rouvrir une coupe clôturée. */
+function modifierEtape(st, vals, motif, date){
+  var tot = stageTotals(), mv = [], d8 = date || today(), note = "Modification de l'étape" + (cleanTxt(motif) ? " : " + cleanTxt(motif) : "");
+  Object.keys(vals).forEach(function(id){
+    var nv = vals[id], cur = (tot[id] || {})[st] || 0; if (nv === null || nv === undefined || isNaN(nv)) return;
+    if (nv < 0) throw new Error("Quantité négative impossible.");
+    var d = nv - cur; if (!d) return;
+    mv.push({id:nid("M"), date:d8, lineId:id, stage:st, qty:d, nc:0, note:note});
+    if (st === "ret"){ var c = (tot[id] || {}).conf || 0, dc = d > 0 ? d : Math.max(-c, d); if (dc) mv.push({id:nid("M"), date:d8, lineId:id, stage:"conf", qty:dc, nc:0, note:"Confection (auto, modification du retour)"}); }
+  });
+  if (!mv.length) throw new Error("Aucune quantité modifiée.");
+  var auto = sxAutoMoves(st, mv.filter(function(m){ return m.stage === st && m.qty > 0; }), d8).filter(function(m){ return m.stage !== "conf"; });
+  var all = mv.concat(auto);
+  checkMoves(all);
+  all.forEach(function(m){ S.moves.push(m); });
+  return mv.filter(function(m){ return m.stage === st; }).length;
+}
+var SX_MODIF = {cp:1, gadh:1, exp:1};
+function sxModifCard(v, lot, rows, st){
+  var G = VUE === "gadh";
+  if (!(SX_MODIF[st] || (G && st === "ret"))) return;
+  var tot = stageTotals(), ncT = ncTotals(), fait = 0, rouv = st === "cp" && rows.some(function(l){ return l.cc; });
+  rows.forEach(function(l){ fait += (tot[l.id] || {})[st] || 0; });
+  if (!fait && !rouv) return;
+  var nom = G ? "Retour à TEK-TREND" : SX_NOM[st];
+  if (ui.sxMod !== st){
+    v.appendChild(el("div", {class:"card sx-modif"}, el("button", {class:"btn sec", style:"width:100%", text:"✏️ Modifier « " + nom + " » (" + fmt(fait) + " pièce(s) validée(s))", onclick:function(){ ui.sxMod = st; ui.sxModV = {}; ui.sxModM = ""; render(true); setTimeout(function(){ var c = document.querySelector(".sx-modif"); if (c) c.scrollIntoView({block:"start"}); }, 30); }})));
+    return;
+  }
+  var c = el("div", {class:"card sx-modif"}, el("h2", {text:"✏️ Modifier « " + nom + " »"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Changez la quantité validée (pièces bonnes) taille par taille, puis enregistrez. Une étape ne peut pas descendre sous l'étape suivante : corrigez d'abord l'étape suivante si besoin." + (st === "ret" ? " La confection suit automatiquement." : "")}));
+  var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
+  var gk = {}, groups = [];
+  rows.forEach(function(l){ var t = tot[l.id] || {}; if (!t[st] && !(st === "cp" ? cutQty(l.qty, l.model) : 0) && !(SX_PREV[st] && t[SX_PREV[st]])) return; var k = l.lib + "|" + l.client; if (!gk[k]){ gk[k] = {l:l, ls:[]}; groups.push(gk[k]); } gk[k].ls.push(l); });
+  var ins = {};
+  groups.forEach(function(gr){
+    var m = fmm[gr.l.lib], card = el("div", {class:"sx-art"});
+    card.appendChild(el("div", {class:"hd", style:m ? "background:#" + m[5] + ";color:#" + m[6] : ""}, el("span", {text:nomDoc(gr.l.lib)}), el("span", {class:"cli", text:gr.l.client})));
+    gr.ls.forEach(function(l){
+      var t = tot[l.id] || {}, cur = t[st] || 0, n = (ncT[l.id] || {})[st] || 0, nxt = null;
+      for (var i = STG_KEYS.indexOf(st) + 1; i < STG_KEYS.length && !nxt; i++) if (STG_KEYS[i] !== "ctl" && (t[STG_KEYS[i]] || 0)) nxt = STG_KEYS[i];
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", value:String(ui.sxModV[l.id] !== undefined ? ui.sxModV[l.id] : cur)});
+      inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+      inp.addEventListener("input", function(){ ui.sxModV[l.id] = inp.value === "" ? cur : num(inp.value); });
+      ins[l.id] = inp;
+      var info = "Validé : " + fmt(cur) + (n ? " · " + fmt(n) + " défaut(s)" : "") + (nxt ? " · minimum " + fmt(t[nxt] || 0) + " (" + stageName(nxt) + ")" : "");
+      card.appendChild(el("div", {class:"sx-row"}, el("div", {class:"sx-sz", text:l.size}), el("div", {class:"sx-mid"}, el("div", {class:"sx-af", text:info}),
+        el("div", {class:"sx-step"}, el("button", {text:"−", onclick:function(){ inp.value = String(Math.max(0, num(inp.value) - 1)); ui.sxModV[l.id] = num(inp.value); }}), inp, el("button", {text:"+", onclick:function(){ inp.value = String(num(inp.value) + 1); ui.sxModV[l.id] = num(inp.value); }}))), el("span")));
+    });
+    c.appendChild(card);
+  });
+  var mo = el("input", {placeholder:"Motif de la modification (ex. erreur de saisie)", value:ui.sxModM || ""});
+  mo.addEventListener("input", function(){ ui.sxModM = mo.value; });
+  c.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Motif"}, mo)));
+  var rv = null;
+  if (rouv){ rv = el("input", {type:"checkbox"}); c.appendChild(el("label", {class:"mut", style:"display:flex;align-items:center;gap:8px;margin:8px 0 0"}, rv, "Rouvrir la coupe (elle était clôturée avec écart)")); }
+  c.appendChild(el("div", {class:"actions", style:"margin-top:10px"},
+    el("button", {class:"btn sec", text:"Annuler", onclick:function(){ ui.sxMod = null; ui.sxModV = {}; render(true); }}),
+    confirmBtn("✔ Enregistrer les modifications", "", function(){
+      var vals = {}; Object.keys(ins).forEach(function(id){ vals[id] = num(ins[id].value); });
+      var ouvrir = rv && rv.checked, motif = ui.sxModM || "";
+      var ok = commit(function(){
+        var n = 0, err = null;
+        try { n = modifierEtape(st, vals, motif); } catch (e) { if (!(ouvrir && /Aucune quantité/.test(e.message))) throw e; }
+        if (ouvrir) rows.forEach(function(l){ l.cc = 0; });
+        ui.sxMod = null; ui.sxModV = {}; ui.sxModM = "";
+      }, "« " + nom + " » modifiée");
+    })));
+  v.appendChild(c);
 }
 
 /* pièces avec défaut : nombre + motif, en grands boutons */
