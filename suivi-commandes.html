@@ -604,6 +604,7 @@ function loadHost(){
   chargerStock();
   try { if (reprendreAnciensMouvements()) setTimeout(persist, 0); } catch (e) {}
   try { if (appliquerMajNomenclature()){ assurerTissus(); setTimeout(persist, 0); } } catch (e) { console.error(e); }
+  try { conditionnementsFils(); } catch (e) {}
 }
 /* appelé par l'application groupe à chaque mise à jour (autre appareil) ; on ne redessine pas sous une saisie en cours */
 window.suiviRecharger = function(){
@@ -1615,6 +1616,25 @@ function appliquerMajNomenclature(){
   return true;
 }
 
+/* Fils à coudre : comptés en mètres, achetés en cônes de 5000 m ou 10000 m (validé le 21/10) :
+   longueur lue dans la désignation (« 5000m », « 10000m »), sinon COATS EPIC = 5000 m et COATS GRAMAX = 10000 m.
+   Renseigné une seule fois si le conditionnement est vide (une valeur saisie dans Stock › Articles n'est jamais écrasée). */
+function coneFil(ref){
+  var m = S.mat[ref]; if (!m || ref.indexOf("FIL-") !== 0) return 0;
+  var x = /(\d{4,5})\s*m\b/i.exec(m[0]); if (x) return +x[1];
+  if (/EPIC/i.test(ref)) return 5000; if (/GRAMAX/i.test(ref)) return 10000; return 0;
+}
+function conditionnementsFils(){
+  if (VUE === "gadh" || lectureSeule() || (HOST && !STK)) return 0;
+  var n = 0;
+  Object.keys(S.mat).forEach(function(r){
+    var c = coneFil(r), sp = S.sp[r] || {}; if (!c || sp.cond) return;
+    var nv = JSON.parse(JSON.stringify(sp)); nv.cond = c;
+    try { stkEcrire("sp", r, nv); n++; } catch (e) {}
+  });
+  return n;
+}
+
 /* ---------- données de stock ---------- */
 S.mv = {}; S.cf = {}; S.sp = {};
 function stockHote(){ try { return (window.parent && window.parent !== window && window.parent.grpStockStore) || null; } catch (e) { return null; } }
@@ -1981,7 +2001,7 @@ function stkAchats(v, E){
     var box = el("div", {class:"stk-prop"}, el("h3", {text:f})), ins = {}, tb = el("tbody");
     props[f].forEach(function(p){
       var a = art(p.ref), sp = S.sp[p.ref] || {}, i = el("input", {type:"number", inputmode:"decimal", step:"0.01", min:"0", class:"ed", value:String(p.q)}); ins[p.ref] = i;
-      tb.appendChild(el("tr", null, ligneArt(p.ref, a.u + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i)));
+      tb.appendChild(el("tr", null, ligneArt(p.ref, a.u + (sp.cond ? " · soit " + fmt(p.q / sp.cond, 0) + " × " + fmt(sp.cond, 0) + " " + a.u + (p.ref.indexOf("FIL-") === 0 ? " (cônes)" : "") : "") + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i)));
     });
     var t = el("table", {class:"stk enl"}); t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"À commander"})))); t.appendChild(tb);
     box.appendChild(el("div", {class:"tw"}, t));
@@ -2024,7 +2044,7 @@ function stkArticles(v, E){
   t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {class:"l", text:"Famille"}), el("th", {text:"Unité"}), el("th", {text:"Seuil"}), el("th", {class:"l", text:"Fournisseur"}), el("th"))));
   refs.forEach(function(r){
     var m = S.mat[r], sp = S.sp[r] || {};
-    tb.appendChild(el("tr", null, ligneArt(r, sp.empl ? "empl. " + sp.empl : ""), el("td", {class:"l", text:m[1]}), el("td", {text:m[2]}), el("td", {text:sp.seuil ? fmt(sp.seuil, artDec(r, sp.seuil)) : ""}), el("td", {class:"l", text:sp.fourn || ""}),
+    tb.appendChild(el("tr", null, ligneArt(r, [sp.cond ? (r.indexOf("FIL-") === 0 ? "cône " : "cond. ") + fmt(sp.cond, 0) + " " + m[2] : "", sp.empl ? "empl. " + sp.empl : ""].filter(Boolean).join(" · ")), el("td", {class:"l", text:m[1]}), el("td", {text:m[2]}), el("td", {text:sp.seuil ? fmt(sp.seuil, artDec(r, sp.seuil)) : ""}), el("td", {class:"l", text:sp.fourn || ""}),
       el("td", null, el("button", {class:"btn small sec", text:"Modifier", onclick:function(){ ui.stEdit = r; render(true); setTimeout(function(){ var f = document.getElementById("stk-edit"); if (f) f.scrollIntoView({block:"start"}); }, 30); }}))));
   });
   t.appendChild(tb); c0.appendChild(el("div", {class:"tw"}, t));
