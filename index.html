@@ -1070,6 +1070,7 @@ function renderModuleSelect(){
             ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
             ['chaine', ICONS.team, 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
             ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
+            ['gadh-tableau', ICONS.stats, 'Tableau de bord', 'Rendement, RH, commandes en un coup d\'œil'],
             ['gadh', ICONS.gadh, 'GADH Tunisia', 'Production, personnel, pointage'],
             ['commandes', '<span style="font-size:24px;line-height:1;">📦</span>', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
             ['machines', ICONS.wrench, 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
@@ -1280,7 +1281,7 @@ function navItems(){
 function appBrandingHTML(){
   // Logo officiel de la société, sur une pastille blanche (lisible sur la barre bleu nuit comme sur la barre latérale).
   const soc = (activeModule === 'mgt') ? 'mgt'
-    : (activeModule === 'gadh' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
+    : (activeModule === 'gadh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
   return `<div class="logo-wrap" style="align-items:flex-start;"><span style="display:inline-flex;align-items:center;background:#fff;border-radius:9px;padding:3px 9px;">${societeLogo(soc, 34, societeMot(soc), 120)}</span></div>`;
 }
 function renderShell(){
@@ -1329,7 +1330,7 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
@@ -2910,6 +2911,7 @@ window.onload = init;
 <script src="./suivi-chaine-module.js"></script>
 <script src="./nav-historique-module.js"></script>
 <script src="./tek-dashboard-module.js"></script>
+<script src="./gadh-dashboard-module.js"></script>
 <script src="./hors-ligne-module.js"></script>
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
