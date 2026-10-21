@@ -312,6 +312,14 @@ table.stk tr.barre td{opacity:.55}
 td.okc{color:var(--ok);font-weight:700}
 .fabt tr.fam td{background:var(--sub);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;padding:6px 12px}
 .stk-seg button{font-size:13px}
+.fam-bloc{border:1px solid var(--line);border-left:6px solid var(--fc);border-radius:12px;margin:12px 0;overflow:hidden;background:var(--card)}
+.fam-bloc .fam-titre{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--fb);color:var(--fc);font-weight:800;font-size:15px;letter-spacing:.02em;text-transform:uppercase}
+.fam-bloc .fam-titre b{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+.fam-bloc .tw{border:0;border-radius:0}
+.fam-bloc table.stk th{background:var(--fc)}
+.fam-bloc tr.vide td{color:var(--mut)}
+.fam-pas{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--fb);color:var(--fc)}
+.fabt tr.fam td.fam-c{background:var(--fb);color:var(--fc);box-shadow:inset 5px 0 0 var(--fc)}
 .fabt div.ecart{white-space:nowrap;font-size:12.5px;font-weight:700;color:var(--mut)}.fabt div.ecart.neg{color:var(--bad)}.fabt div.ecart.okc{color:var(--ok)}
 .stk-tuiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 12px}
 .stk-tuile{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;color:var(--ink);cursor:pointer}
@@ -1542,6 +1550,17 @@ function vTotal(v){
 var ETAPES_MAT = [["PROGES", "Coupe PROGES"], ["MMGT", "Coupe MMGT"], ["GADH", "Assemblage GADH"], ["CONF", "Confection TEK-TREND"], ["EMB", "Emballage TEK-TREND"]];
 var DESTS = ETAPES_MAT;
 var FAMILLES = ["Tissu", "Colle", "Accessoire", "Packaging"];
+/* couleur de chaque famille : [foncé (titre, bordure), clair (fond)] — écran, Excel et PDF */
+var FAM_COUL = {Tissu:["1F5F8B", "DCEAF5"], Colle:["B35C00", "FCE9D6"], Accessoire:["2E7D4F", "E0F1E6"], Packaging:["6B3FA0", "ECE3F6"], "?":["555555", "EEEEEE"]};
+var FAM_PLUR = {Tissu:"Tissus", Colle:"Colles", Accessoire:"Accessoires", Packaging:"Packaging", "?":"Autres"};
+function famCoul(f){ return FAM_COUL[f] || FAM_COUL["?"]; }
+function famStyle(f){ var c = famCoul(f); return "--fc:#" + c[0] + ";--fb:#" + c[1]; }
+function famPastille(f){ return el("span", {class:"fam-pas", style:famStyle(f), text:f === "?" ? "Autre" : f}); }
+/* bloc coloré d'une famille : titre + tableau */
+function famBloc(f, n, table){
+  return el("div", {class:"fam-bloc", style:famStyle(f)}, el("div", {class:"fam-titre"}, el("span", {text:FAM_PLUR[f] || f}), el("b", {text:n + " article" + (n > 1 ? "s" : "")})), el("div", {class:"tw"}, table));
+}
+function famillesPresentes(fams){ var o = FAMILLES.filter(function(f){ return fams.indexOf(f) >= 0; }); if (fams.some(function(f){ return FAMILLES.indexOf(f) < 0; })) o.push("?"); return o; }
 var REF_COLLE_LEG = "COLLE-ADHESIVE";   /* ancienne colonne « Colle » de la nomenclature de coupe */
 var DEF_MAT = {
   "TIS-CARESSE-NOIR": ["Caresse Noir", "Tissu", "m", "Caresse Noir"],
@@ -1841,18 +1860,27 @@ function stkTableau(v, E){
   c1.appendChild(el("p", {class:"mut", style:"margin:6px 0 0;font-size:12px", text:"Stock servi dans l'ordre des dates de livraison. Réservé = besoin des commandes validées non clôturées − déjà sorti (calculé automatiquement)."}));
   v.appendChild(c1);
   /* articles */
-  var c2 = el("div", {class:"card"}, el("h2", {text:"Stock par article"}), el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Famille"}, filtreFamille())));
-  var t = el("table", {class:"stk"}), tb = el("tbody");
-  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), el("th", {text:"Réservé"}), el("th", {text:"Disponible"}), el("th", {text:"Attendu"}), el("th", {text:"Manque"}))));
-  arts.filter(function(a){ return !ui.stFam || a.fam === ui.stFam; }).forEach(function(a){
-    tb.appendChild(el("tr", {class:a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : ""}, ligneArt(a.ref, a.u + (a.seuil ? " · seuil " + fmt(a.seuil, artDec(a.ref, a.seuil)) : "")),
-      el("td", {class:a.phys < 0 ? "neg" : "", text:fmt(a.phys, artDec(a.ref, a.phys))}), el("td", {text:fmt(a.res, artDec(a.ref, a.res))}),
-      el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:fmt(a.dispo, artDec(a.ref, a.dispo))}), el("td", {text:a.att ? fmt(a.att, artDec(a.ref, a.att)) : ""}),
-      el("td", {class:a.manque ? "neg" : "", text:a.manque ? fmt(a.manque, artDec(a.ref, a.manque)) : ""})));
+  var c2 = el("div", {class:"card"}, el("h2", {text:"Fiche stock par famille"}), el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Famille"}, filtreFamille())));
+  var tous = E.arts.filter(function(a){ return S.mat[a.ref] || a.phys || a.res || a.att; });
+  famillesPresentes(tous.map(function(a){ return a.fam; })).filter(function(f){ return !ui.stFam || f === ui.stFam; }).forEach(function(f){
+    var list = tous.filter(function(a){ return (FAMILLES.indexOf(a.fam) < 0 ? "?" : a.fam) === f; });
+    var t = el("table", {class:"stk" + (PC ? "" : " enl")}), tb = el("tbody");
+    t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), PC ? el("th", {text:"Réservé"}) : null, el("th", {text:"Disponible"}), PC ? el("th", {text:"Attendu"}) : null, PC ? el("th", {text:"Manque"}) : null)));
+    list.forEach(function(a){
+      var vide = !a.phys && !a.res && !a.att, d = function(q){ return fmt(q, artDec(a.ref, q)); };
+      var sous = PC ? a.u + (a.seuil ? " · seuil " + d(a.seuil) : "") : [a.u, a.seuil ? "seuil " + d(a.seuil) : "", a.res ? "réservé " + d(a.res) : "", a.att ? "attendu " + d(a.att) : ""].filter(Boolean).join(" · ");
+      var td0 = ligneArt(a.ref, sous);
+      if (!PC && a.manque) td0.appendChild(el("div", {class:"enl-d neg", text:"Manque " + d(a.manque) + " " + a.u}));
+      tb.appendChild(el("tr", {class:(a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : "") + (vide ? " vide" : "")}, td0,
+        el("td", {class:a.phys < 0 ? "neg" : "", text:d(a.phys)}), PC ? el("td", {text:a.res ? d(a.res) : ""}) : null,
+        el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:d(a.dispo)}), PC ? el("td", {text:a.att ? d(a.att) : ""}) : null,
+        PC ? el("td", {class:a.manque ? "neg" : "", text:a.manque ? d(a.manque) : ""}) : null));
+    });
+    t.appendChild(tb); c2.appendChild(famBloc(f, list.length, t));
   });
-  if (!tb.children.length) tb.appendChild(el("tr", null, el("td", {class:"l mut", text:"Aucun article à suivre pour l'instant."}), el("td"), el("td"), el("td"), el("td"), el("td")));
-  t.appendChild(tb); c2.appendChild(el("div", {class:"tw"}, t));
-  c2.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small sec", text:"📗 Stock et mouvements (Excel)", onclick:function(){ exportStock(E); }})));
+  if (!tous.length) c2.appendChild(el("p", {class:"mut", text:"Aucun article."}));
+  c2.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small sec", text:"📗 Fiche stock (Excel)", onclick:function(){ exportStock(E); }}),
+    el("button", {class:"btn small sec", text:"📕 Fiche stock (PDF)", onclick:function(){ exportStockPdf(E); }})));
   v.appendChild(c2);
   /* derniers mouvements */
   var c3 = el("div", {class:"card"}, el("h2", {text:"Mouvements récents"}));
@@ -2040,14 +2068,15 @@ function stkArticles(v, E){
   var c0 = el("div", {class:"card"}, el("h2", {text:"Articles"}), el("div", {class:"row", style:"margin:6px 0"}, el("label", {text:"Famille"}, filtreFamille())));
   var nbMv = {}; mvListe().forEach(function(m){ nbMv[m.ref] = (nbMv[m.ref] || 0) + 1; });
   var refs = Object.keys(S.mat).filter(function(r){ return !ui.stFam || S.mat[r][1] === ui.stFam; }).sort(function(a, b){ var fa = FAMILLES.indexOf(S.mat[a][1]), fb = FAMILLES.indexOf(S.mat[b][1]); return fa - fb || (S.mat[a][0] < S.mat[b][0] ? -1 : 1); });
-  var t = el("table", {class:"stk"}), tb = el("tbody");
-  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {class:"l", text:"Famille"}), el("th", {text:"Unité"}), el("th", {text:"Seuil"}), el("th", {class:"l", text:"Fournisseur"}), el("th"))));
+  var tbs = {};
   refs.forEach(function(r){
-    var m = S.mat[r], sp = S.sp[r] || {};
-    tb.appendChild(el("tr", null, ligneArt(r, [sp.cond ? (r.indexOf("FIL-") === 0 ? "cône " : "cond. ") + fmt(sp.cond, 0) + " " + m[2] : "", sp.empl ? "empl. " + sp.empl : ""].filter(Boolean).join(" · ")), el("td", {class:"l", text:m[1]}), el("td", {text:m[2]}), el("td", {text:sp.seuil ? fmt(sp.seuil, artDec(r, sp.seuil)) : ""}), el("td", {class:"l", text:sp.fourn || ""}),
+    var m = S.mat[r], sp = S.sp[r] || {}, f = FAMILLES.indexOf(m[1]) < 0 ? "?" : m[1];
+    if (!tbs[f]){ var t0 = el("table", {class:"stk"}); t0.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Unité"}), el("th", {text:"Seuil"}), el("th", {class:"l", text:"Fournisseur"}), el("th")))); tbs[f] = {t:t0, tb:el("tbody"), n:0}; t0.appendChild(tbs[f].tb); }
+    var tb = tbs[f].tb; tbs[f].n++;
+    tb.appendChild(el("tr", null, ligneArt(r, [sp.cond ? (r.indexOf("FIL-") === 0 ? "cône " : "cond. ") + fmt(sp.cond, 0) + " " + m[2] : "", sp.empl ? "empl. " + sp.empl : ""].filter(Boolean).join(" · ")), el("td", {text:m[2]}), el("td", {text:sp.seuil ? fmt(sp.seuil, artDec(r, sp.seuil)) : ""}), el("td", {class:"l", text:sp.fourn || ""}),
       el("td", null, el("button", {class:"btn small sec", text:"Modifier", onclick:function(){ ui.stEdit = r; render(true); setTimeout(function(){ var f = document.getElementById("stk-edit"); if (f) f.scrollIntoView({block:"start"}); }, 30); }}))));
   });
-  t.appendChild(tb); c0.appendChild(el("div", {class:"tw"}, t));
+  famillesPresentes(Object.keys(tbs).map(function(f){ return f === "?" ? "_" : f; })).forEach(function(f){ if (tbs[f]) c0.appendChild(famBloc(f, tbs[f].n, tbs[f].t)); });
   c0.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small", text:"+ Nouvel article", onclick:function(){ ui.stEdit = "+"; render(true); setTimeout(function(){ var f = document.getElementById("stk-edit"); if (f) f.scrollIntoView({block:"start"}); }, 30); }})));
   v.appendChild(c0);
   if (ui.stEdit){
@@ -2115,17 +2144,48 @@ function stkMouvements(v, E){
   c.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small sec", text:"📗 Stock et mouvements (Excel)", onclick:function(){ exportStock(E); }})));
   v.appendChild(c);
 }
+/* fiche stock d'une famille (Excel / PDF) : bandeau et entêtes aux couleurs de la famille */
+function ficheStockGrid(f, arts){
+  var c = famCoul(f), g = {cols:[31, 38, 7, 10, 10, 10, 10, 10, 8, 16, 12], rows:[], merges:[], landscape:true}, n = 11;
+  var T = {b:1, sz:13, fg:"FFFFFF", bg:c[0], al:"l", bd:"t"}, H = {b:1, sz:10, fg:c[0], bg:c[1], al:"c", wrap:1, bd:"m"};
+  gset(g, 0, 0, "FICHE STOCK — " + (FAM_PLUR[f] || f).toUpperCase(), T); for (var k = 1; k < n; k++) gset(g, 0, k, "", T); gmerge(g, 0, 0, 0, 7);
+  gset(g, 0, 8, "au " + dmy(today()) + "/" + today().slice(0, 4).slice(2), {b:1, sz:10, fg:"FFFFFF", bg:c[0], al:"r", bd:"t"}); gmerge(g, 0, 8, 0, 10); g.rows[0].h = 24;
+  ["Référence", "Désignation", "Unité", "Physique", "Réservé", "Disponible", "Attendu", "Manque", "Seuil", "Fournisseur", "Emplacement"].forEach(function(h, i){ gset(g, 1, i, h, H); });
+  g.rows[1].h = 28; g.sticky = 2;
+  arts.forEach(function(a, i){
+    var r = 2 + i, z = i % 2 ? {bg:"FAFAFA"} : {}, sp = S.sp[a.ref] || {};
+    function st(o){ var x = {sz:10, al:"c", bd:"t"}; Object.keys(z).forEach(function(k){ x[k] = z[k]; }); Object.keys(o || {}).forEach(function(k){ x[k] = o[k]; }); return x; }
+    gset(g, r, 0, a.ref, st({al:"l"})); gset(g, r, 1, a.des, st({al:"l", wrap:1})); gset(g, r, 2, a.u, st());
+    gset(g, r, 3, roundv(a.phys), st({b:1, fg:a.phys < 0 ? "C00000" : "000000"})); gset(g, r, 4, a.res ? roundv(a.res) : "", st());
+    gset(g, r, 5, roundv(a.dispo), st({b:1, fg:a.dispo < 0 ? "C00000" : "000000"})); gset(g, r, 6, a.att ? roundv(a.att) : "", st());
+    gset(g, r, 7, a.manque ? roundv(a.manque) : "", st({b:1, fg:"C00000", bg:a.manque ? "F8D7D7" : z.bg})); gset(g, r, 8, a.seuil || "", st({bg:a.sousSeuil ? "FFF2CC" : z.bg}));
+    gset(g, r, 9, a.fourn || "", st({al:"l"})); gset(g, r, 10, sp.empl || "", st({al:"l"}));
+    g.rows[r].h = a.des.length > 40 || a.ref.length > 29 ? 28 : 16;
+  });
+  return g;
+}
+function fichesStock(E){
+  var tous = E.arts.filter(function(a){ return S.mat[a.ref] || a.phys || a.res || a.att; });
+  return famillesPresentes(tous.map(function(a){ return a.fam; })).map(function(f){ return {f:f, grid:ficheStockGrid(f, tous.filter(function(a){ return (FAMILLES.indexOf(a.fam) < 0 ? "?" : a.fam) === f; }))}; });
+}
+function exportStockPdf(E){ saveFile("Fiche_stock_TEK-TREND_" + today().replace(/-/g, "") + ".pdf", pdfBuild(fichesStock(E || etatStock()).map(function(x){ return x.grid; }))); }
+function grilleSimple(rows, cols){
+  var n = cols.length; rows.forEach(function(r){ n = Math.max(n, r.length); });
+  var g = {cols:[], rows:[], merges:[]}; for (var k = 0; k < n; k++) g.cols.push(cols[k] || 14);
+  rows.forEach(function(row, i){ var cells = []; row.forEach(function(v, ci){ cells[ci] = {v:v, st:i ? ((v === "" || v === null || v === undefined) ? {sz:10} : {sz:10, bd:"t"}) : {sz:10, b:1, fg:"FFFFFF", bg:"0B2C4D", al:"c", bd:"t"}}; }); g.rows.push({h:15, cells:cells}); });
+  return g;
+}
 function exportStock(E){
   E = E || etatStock();
-  var r1 = [["Référence", "Désignation", "Famille", "Unité", "Physique", "Réservé", "Disponible", "Attendu", "Manque", "Seuil", "Fournisseur"]];
-  E.arts.forEach(function(a){ r1.push([a.ref, a.des, a.fam, a.u, a.phys, a.res, a.dispo, a.att, a.manque, a.seuil || "", a.fourn]); });
   var r2r = [["Date", "Mouvement", "Commande", "Étape", "Référence", "Article", "Unité", "Quantité", "Document", "Motif", "Utilisateur"]];
   mvListe().sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : (a.ts || 0) - (b.ts || 0); }).forEach(function(m){
     r2r.push([dmy(m.d), (m.corr ? "Annulation " : "") + MV_TYPES[m.t], m.lot || "", m.et ? etapeNom(m.et) : "", m.ref, artNom(m.ref), artUnite(m.ref), mvEffet(m), m.doc || "", m.motif || "", m.u || ""]);
   });
   var r3 = [["N°", "Fournisseur", "Date", "Réception prévue", "Statut", "Référence", "Article", "Commandé", "Reçu", "Reliquat"]];
   cfListe().forEach(function(cf){ var rec = cfRecu(cf), rel = cfReliquats(cf); (cf.lignes || []).forEach(function(l){ r3.push([cf.num, cf.fourn, dmy(cf.d), cf.prev ? dmy(cf.prev) : "", cf.st, l.ref, artNom(l.ref), l.q, rec[l.ref] || 0, cf.st === "commandee" ? (rel[l.ref] || 0) : 0]); }); });
-  saveXlsx("Stock_TEK-TREND_" + today().replace(/-/g, "") + ".xlsx", [{name:"Stock", cols:[22, 34, 11, 8, 11, 11, 11, 11, 11, 9, 18], rows:r1}, {name:"Mouvements", cols:[10, 18, 13, 20, 22, 30, 8, 11, 14, 30, 14], rows:r2r}, {name:"Achats", cols:[13, 18, 10, 12, 11, 22, 30, 11, 11, 11], rows:r3}]);
+  var sheets = fichesStock(E).map(function(x, i){ return {name:FAM_PLUR[x.f] || x.f, grid:x.grid, first:i === 0}; });
+  sheets.push({name:"Mouvements", grid:grilleSimple(r2r, [10, 18, 13, 20, 22, 30, 8, 11, 14, 30, 14])}, {name:"Achats", grid:grilleSimple(r3, [13, 18, 10, 12, 11, 22, 30, 11, 11, 11])});
+  saveFile("Fiche_stock_TEK-TREND_" + today().replace(/-/g, "") + ".xlsx", xlsxBuild(sheets));
 }
 
 /* ---------- fiche « Consommation de toute la commande » (théorique et réel) ---------- */
@@ -2145,8 +2205,8 @@ function ficheCommandeGrid(lot){
   heads.forEach(function(h, i){ gset(g, 3, i, h, H); }); g.rows[3].h = 28; g.sticky = 4;
   var r = 4, fam = "";
   rows.forEach(function(x){
-    var st = x.fam !== fam ? {b:1, sz:10, al:"l", bd:"t"} : L; fam = x.fam;
-    gset(g, r, 0, x.fam, st); gset(g, r, 1, x.ref, L); gset(g, r, 2, x.des, L); gset(g, r, 3, x.u, C);
+    var fc = famCoul(x.fam), st = {b:1, sz:10, al:"l", bd:"t", fg:fc[0], bg:fc[1]}; fam = x.fam;
+    gset(g, r, 0, FAM_PLUR[x.fam] || x.fam, st); gset(g, r, 1, x.ref, L); gset(g, r, 2, x.des, L); gset(g, r, 3, x.u, C);
     ["PROGES", "MMGT", "GADH", "CONF", "EMB"].forEach(function(e, i){ gset(g, r, 4 + i, x[e] ? roundv(x[e]) : "", C); });
     gset(g, r, 9, roundv(x.theo), {b:1, sz:11, al:"c", bd:"t"});
     gset(g, r, 10, reel ? roundv(x.reel) : "", {b:1, sz:11, al:"c", bd:"t"});
@@ -2163,7 +2223,7 @@ function vFicheCommande(v){
   var t = el("table", {class:"fabt"}), tb = el("tbody"), fam = "";
   t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Théorique"}), reel ? el("th", {text:"Réel · écart", style:"min-width:78px"}) : null)));
   rows.forEach(function(x){
-    if (x.fam !== fam){ fam = x.fam; tb.appendChild(el("tr", {class:"fam"}, el("td", {class:"l", colspan:reel ? "3" : "2", text:fam === "?" ? "Autres" : fam + (fam === "Tissu" ? "s" : fam === "Colle" ? "s" : fam === "Accessoire" ? "s" : "")}))); }
+    if (x.fam !== fam){ fam = x.fam; tb.appendChild(el("tr", {class:"fam"}, el("td", {class:"l fam-c", style:famStyle(fam), colspan:reel ? "3" : "2", text:FAM_PLUR[fam] || fam}))); }
     var et = ETAPES_MAT.filter(function(e){ return x[e[0]]; }).map(function(e){ return e[1] + " " + fmt(x[e[0]], artDec(x.ref, x[e[0]])); }).join(" · ");
     tb.appendChild(el("tr", null, el("td", {class:"l"}, el("b", {text:x.des}), el("div", {class:"enl-d", text:x.u + (et ? " · " + et : "")})),
       el("td", {class:"b", text:fmt(x.theo, artDec(x.ref, x.theo))}),
