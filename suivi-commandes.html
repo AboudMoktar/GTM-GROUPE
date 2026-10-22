@@ -1802,6 +1802,79 @@ function annulerMouvement(id, motif){
   stkEcrire("mv", nid2, c);
   if (m.t === "E" && m.cf && S.cf[m.cf] && S.cf[m.cf].st === "soldee" && S.cf[m.cf].solde){ var c2 = JSON.parse(JSON.stringify(S.cf[m.cf])); if (Object.keys(cfReliquats(c2)).length){ c2.st = "commandee"; delete c2.solde; stkEcrire("cf", c2.id, c2); } }
 }
+/* =====================================================================
+   IMPORT « Fiche de stock PERCKO » (Excel multi-feuilles reçu du magasin) :
+   met à jour le stock compté (inventaire) à partir des libellés déjà
+   présents dans la nomenclature des articles (S.mat). Correspondance
+   EXACTE sur le nom normalisé (pas d'approximation) : un libellé du
+   fichier qui ne correspond à aucun article connu est simplement signalé,
+   jamais deviné ni créé tout seul.
+   Feuilles reprises (matière appartenant au client PERCKO, par opposition
+   au Packaging produit qui reste propriété TEK-TREND) : Bistrech,
+   Monostrech, Attaches, Accesoires Gilet, Velcro, Brassière, Exosquelette
+   (sauf sa ligne « Packaging »). La feuille Packagings n'est pas reprise. */
+var FICHE_STOCK_FEUILLES = {
+  "Bistrech":1, "Monostrech":1, "Attaches":1, "Accesoires Gilet":1, "Velcro":1, "Brassière":1, "Exosquelette":1
+};
+function normNom(s){
+  return cleanTxt(s).toUpperCase()
+    .replace(/[ÀÂÄ]/g,"A").replace(/[ÉÈÊË]/g,"E").replace(/[ÎÏ]/g,"I").replace(/[ÔÖ]/g,"O").replace(/[ÙÛÜ]/g,"U").replace(/Ç/g,"C")
+    .replace(/[^A-Z0-9]+/g," ").trim();
+}
+/* entête → index de colonne, sur les 10 premières lignes de la feuille */
+function ficheStockEntete(rows, motCle){
+  for (var hi = 0; hi < rows.length && hi < 10; hi++){
+    var col = {}; rows[hi].forEach(function(v, c){ col[upperHead(v)] = c; });
+    var pk = Object.keys(col).filter(function(k){ return k.indexOf(motCle) === 0; })[0];
+    var qk = Object.keys(col).filter(function(k){ return k.indexOf("QUANTIT") === 0; })[0];
+    if (pk !== undefined && qk !== undefined) return {hi:hi, pCol:col[pk], qCol:col[qk]};
+  }
+  return null;
+}
+function ficheStockLignes(feuille){
+  var nom = cleanTxt(feuille.name), rows = feuille.rows, out = [];
+  if (!FICHE_STOCK_FEUILLES[nom]) return out;
+  var exosq = nom === "Exosquelette";
+  var ent = ficheStockEntete(rows, exosq ? "PRODUIT" : nom === "Brassière" ? "DESCRIPTIF" : "PRODUIT");
+  if (!ent) return out;
+  for (var i = ent.hi + 1; i < rows.length; i++){
+    var r = rows[i], p = cleanTxt(r[ent.pCol]); if (!p) continue;
+    if (exosq && normNom(p) === "PACKAGING") continue;
+    var qv = r[ent.qCol], q = (qv === "" || qv === null || qv === undefined) ? null : parseFloat(String(qv).replace(",", "."));
+    if (q !== null && isNaN(q)) q = null;
+    out.push({feuille:nom, nom:p, q:q});
+  }
+  return out;
+}
+function ficheStockIndex(){
+  var idx = {};
+  Object.keys(S.mat).forEach(function(ref){
+    var m = S.mat[ref]; [m[0], m[3]].forEach(function(n){ if (n) idx[normNom(n)] = ref; });
+  });
+  return idx;
+}
+function ficheStockApparier(sheets){
+  var idx = ficheStockIndex(), trouves = [], nonTrouves = [];
+  sheets.forEach(function(f){
+    ficheStockLignes(f).forEach(function(l){
+      var ref = idx[normNom(l.nom)];
+      if (ref) trouves.push({feuille:l.feuille, nom:l.nom, q:l.q, ref:ref});
+      else nonTrouves.push({feuille:l.feuille, nom:l.nom, q:l.q});
+    });
+  });
+  return {trouves:trouves, nonTrouves:nonTrouves};
+}
+function ficheStockImporter(sheets, nomFichierSrc){
+  if (lectureSeule()) throw new Error("Lecture seule : votre profil permet de consulter, pas de modifier.");
+  var ap = ficheStockApparier(sheets), motif = "Import fiche de stock PERCKO" + (nomFichierSrc ? " (" + nomFichierSrc + ")" : ""), importes = 0, inchanges = 0, erreurs = [];
+  ap.trouves.forEach(function(l){
+    if (l.q === null){ inchanges++; return; }
+    try { enregistrerAjustement("I", l.ref, l.q, today(), motif); importes++; }
+    catch (e){ if (/Aucun écart/.test(e.message)) inchanges++; else erreurs.push(artNom(l.ref) + " : " + e.message); }
+  });
+  persist();
+  return {importes:importes, inchanges:inchanges, erreurs:erreurs, nonTrouves:ap.nonTrouves};
+}
 function prochainNumCf(){ var y = today().slice(0, 4), n = 0; cfListe().forEach(function(c){ var m = /^CF-(\d{4})-(\d+)$/.exec(c.num || ""); if (m && m[1] === y) n = Math.max(n, +m[2]); }); return "CF-" + y + "-" + String(n + 1).padStart(3, "0"); }
 function creerCommandeFournisseur(fourn, datePrev, lignes, note){
   fourn = cleanTxt(fourn); if (!fourn) throw new Error("Indiquez le fournisseur.");
@@ -1846,6 +1919,33 @@ function filtreFamille(onch){
   return s;
 }
 function ligneArt(ref, extra){ return el("td", {class:"l"}, el("b", {text:artNom(ref)}), el("div", {class:"enl-d", text:ref + (extra ? " · " + extra : "")})); }
+function ficheStockImportCard(){
+  var c = el("div", {class:"card"}, el("h2", {text:"Importer la fiche de stock (Excel)"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Fichier reçu du magasin (feuilles Bistrech, Monostrech, Attaches, Accesoires Gilet, Velcro, Brassière, Exosquelette). Les libellés doivent correspondre exactement à ceux déjà dans la nomenclature des articles ; sinon la ligne est signalée ci-dessous, sans rien modifier."}));
+  var f = el("input", {type:"file", accept:".xlsx", id:"fFicheStock"});
+  c.appendChild(f);
+  c.appendChild(el("p", null, el("button", {class:"btn small", text:"Importer", onclick:function(){
+    if (!f.files.length){ toast("Choisissez un fichier .xlsx"); return; }
+    var nomF = f.files[0].name;
+    readWorkbook(f.files[0]).then(function(sh){
+      var res;
+      try { res = ficheStockImporter(sh, nomF); } catch (e){ toast(e.message); return; }
+      ui.stImportRes = res; toast(res.importes + " article(s) mis à jour"); render();
+    }).catch(function(e){ toast(e.message); });
+  }})));
+  if (ui.stImportRes){
+    var r = ui.stImportRes;
+    c.appendChild(el("p", {class:"mut", style:"margin:8px 0 0", text:r.importes + " mis à jour · " + r.inchanges + " déjà à jour · " + r.nonTrouves.length + " non reconnu(s)" + (r.erreurs.length ? " · " + r.erreurs.length + " erreur(s)" : "")}));
+    if (r.erreurs.length) r.erreurs.forEach(function(m){ c.appendChild(el("div", {class:"enl-d neg"}, m)); });
+    if (r.nonTrouves.length){
+      c.appendChild(el("div", {class:"enl-d", style:"margin-top:6px", text:"À corriger (libellé absent de la nomenclature) :"}));
+      var ul = el("div", {class:"stk-scroll", style:"max-height:200px;overflow:auto;margin-top:4px"});
+      r.nonTrouves.forEach(function(l){ ul.appendChild(el("div", {class:"enl-d", style:"padding:2px 0", text:l.feuille + " — " + l.nom + (l.q !== null ? " (" + l.q + ")" : "")})); });
+      c.appendChild(ul);
+    }
+  }
+  return c;
+}
 function stkTableau(v, E){
   var arts = E.arts.filter(function(a){ return a.phys || a.res || a.att || a.seuil || a.besoin; });
   var sous = E.arts.filter(function(a){ return a.sousSeuil; }), rup = E.arts.filter(function(a){ return a.rupture; }), manq = E.arts.filter(function(a){ return a.manque > 0; });
@@ -1855,6 +1955,7 @@ function stkTableau(v, E){
     tuile("Sous le seuil", sous.length, sous.length ? "warn" : ""), tuile("Ruptures", rup.length, rup.length ? "bad" : ""),
     tuile("Besoins non couverts", manq.length, manq.length ? "bad" : ""), tuile("Commandes bloquées", bloq.length, bloq.length ? "bad" : "ok"),
     tuile("Achats en attente", cfs.length, "", function(){ ui.stSec = "ach"; render(); })));
+  if (!lectureSeule()) v.appendChild(ficheStockImportCard());
   /* commandes */
   var c1 = el("div", {class:"card"}, el("h2", {text:"Commandes : matières"}));
   if (!E.cmd.length) c1.appendChild(el("p", {class:"mut", text:"Aucune commande validée en cours."}));
