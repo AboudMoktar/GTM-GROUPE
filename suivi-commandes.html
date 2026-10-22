@@ -2447,49 +2447,70 @@ function exportStock(E){
 }
 
 /* ---------- État de stock envoyé au client PERCKO après chaque commande coupée ----------
-   Organisé par famille produit (Sous-vêtements / Brassière / Exosquelette), un article pouvant
-   apparaître dans plusieurs familles s'il est coché pour plusieurs. Inclut tous les articles
-   PERCKO, plus les articles TEK-TREND cochés « visible client » (packs, élastique, boutons
-   pression…) — réglage fait une fois dans Stock › Affectation ou sur l'article, qui reste pour
-   les prochains envois tant qu'il n'est pas changé. */
-function ficheClientGrid(f, arts){
-  var c = PFAM_COUL[f] || PFAM_COUL["?"], g = {cols:[22, 36, 8, 12, 12], rows:[], merges:[], landscape:true};
-  var T = {b:1, sz:13, fg:"FFFFFF", bg:c[0], al:"l", bd:"t"}, H = {b:1, sz:10, fg:c[0], bg:c[1], al:"c", wrap:1, bd:"m"};
-  gset(g, 0, 0, "ÉTAT DE STOCK PERCKO — " + (PFAM_PLUR[f] || f).toUpperCase(), T); gset(g, 0, 1, "", T); gset(g, 0, 2, "", T); gmerge(g, 0, 0, 0, 2);
-  gset(g, 0, 3, "au " + dmy(today()), {b:1, sz:10, fg:"FFFFFF", bg:c[0], al:"r", bd:"t"}); gset(g, 0, 4, "", {b:1, sz:10, fg:"FFFFFF", bg:c[0], al:"r", bd:"t"}); gmerge(g, 0, 3, 0, 4);
+   Une seule liste, classée par famille produit (Sous-vêtements / Brassière / Exosquelette),
+   une colonne « Famille » fusionnée verticalement à gauche de chaque bloc (un article coché dans
+   plusieurs familles apparaît dans chacune). Inclut tous les articles PERCKO, plus les articles
+   TEK-TREND cochés « visible client » (packs, élastique, boutons pression…) — réglage fait une
+   fois dans Stock › Affectation ou sur l'article, qui reste pour les prochains envois tant qu'il
+   n'est pas changé.
+   Colonnes : Famille, Référence, Désignation, Unité, Fournisseur, Seuil, Physique, En commande, Disponible.
+     - Physique = quantité réellement en stock (comptée via les mouvements / l'import de la fiche de stock).
+     - En commande = quantité déjà commandée au fournisseur, pas encore reçue.
+     - Disponible = Physique − Réservé (réservé par les commandes PERCKO validées, non encore sorties) :
+       c'est la quantité qui reste une fois toutes les commandes en cours déduites.
+   Pour le PDF (qui peut répartir un même bloc de famille sur plusieurs pages), le libellé de famille
+   est répété sur chaque ligne plutôt que fusionné, pour qu'il reste toujours visible ; pour l'Excel
+   (pas de pagination), la cellule est une vraie fusion verticale sur tout le bloc. */
+var ETAT_CLIENT_COLS = ["Famille", "Référence", "Désignation", "Unité", "Fournisseur", "Seuil", "Physique", "En commande", "Disponible"];
+function fichesClientGroupes(E){
+  var tous = E.arts.filter(function(a){ return clientInclus(a.ref); });
+  return PERCKO_FAMILLES.concat(["?"]).map(function(f){
+    var list = (f === "?" ? tous.filter(function(a){ return !pfamArr(a.ref).length; }) : tous.filter(function(a){ return pfamArr(a.ref).indexOf(f) >= 0; }));
+    return {f:f, list:list.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; })};
+  }).filter(function(x){ return x.list.length; });
+}
+function ficheClientGridUnique(E, repeterFamille){
+  var groupes = fichesClientGroupes(E);
+  if (!groupes.length) return null;
+  var cols = [16, 20, 34, 7, 16, 8, 9, 11, 11], n = cols.length;
+  var g = {cols:cols, rows:[], merges:[], landscape:true};
+  var TBG = "0B2C4D";
+  var T = {b:1, sz:13, fg:"FFFFFF", bg:TBG, al:"l", bd:"t"};
+  for (var k = 0; k < n - 2; k++) gset(g, 0, k, k === 0 ? "ÉTAT DE STOCK PERCKO" : "", T); gmerge(g, 0, 0, 0, n - 3);
+  gset(g, 0, n - 2, "au " + dmy(today()), {b:1, sz:10, fg:"FFFFFF", bg:TBG, al:"r", bd:"t"}); gset(g, 0, n - 1, "", {b:1, sz:10, fg:"FFFFFF", bg:TBG, al:"r", bd:"t"}); gmerge(g, 0, n - 2, 0, n - 1);
   g.rows[0].h = 24;
-  ["Référence", "Désignation", "Unité", "Physique", "Disponible"].forEach(function(h, i){ gset(g, 1, i, h, H); });
-  g.rows[1].h = 28; g.sticky = 2;
-  arts.forEach(function(a, i){
-    var r = 2 + i, z = i % 2 ? {bg:"FAFAFA"} : {};
-    function st(o){ var x = {sz:10, al:"c", bd:"t"}; Object.keys(z).forEach(function(k){ x[k] = z[k]; }); Object.keys(o || {}).forEach(function(k){ x[k] = o[k]; }); return x; }
-    gset(g, r, 0, a.ref, st({al:"l"})); gset(g, r, 1, a.des, st({al:"l", wrap:1})); gset(g, r, 2, a.u, st());
-    gset(g, r, 3, roundv(a.phys), st({b:1, fg:a.phys < 0 ? "C00000" : "000000"})); gset(g, r, 4, roundv(a.dispo), st({b:1, fg:a.dispo < 0 ? "C00000" : "000000"}));
-    g.rows[r].h = a.des.length > 40 || a.ref.length > 29 ? 28 : 16;
+  var H = {b:1, sz:10, fg:"FFFFFF", bg:"17959F", al:"c", wrap:1, bd:"m"};
+  ETAT_CLIENT_COLS.forEach(function(h, i){ gset(g, 1, i, h, H); });
+  g.rows[1].h = 30; g.sticky = 2;
+  var r = 2;
+  groupes.forEach(function(grp){
+    var c = PFAM_COUL[grp.f] || PFAM_COUL["?"], startR = r;
+    grp.list.forEach(function(a, i){
+      var z = i % 2 ? {bg:"FAFAFA"} : {};
+      function st(o){ var x = {sz:10, al:"c", bd:"t"}; Object.keys(z).forEach(function(k){ x[k] = z[k]; }); Object.keys(o || {}).forEach(function(k){ x[k] = o[k]; }); return x; }
+      var famSt = {sz:10, b:1, al:"c", fg:"FFFFFF", bg:c[0], bd:"m", wrap:1};
+      gset(g, r, 0, (repeterFamille || i === 0) ? (grp.f === "?" ? "Non classé" : grp.f) : "", famSt);
+      gset(g, r, 1, a.ref, st({al:"l"})); gset(g, r, 2, a.des, st({al:"l", wrap:1})); gset(g, r, 3, a.u, st());
+      gset(g, r, 4, a.fourn || "", st({al:"l"})); gset(g, r, 5, a.seuil || "", st());
+      gset(g, r, 6, roundv(a.phys), st({b:1, fg:a.phys < 0 ? "C00000" : "000000"}));
+      gset(g, r, 7, a.att ? roundv(a.att) : "", st());
+      gset(g, r, 8, roundv(a.dispo), st({b:1, fg:a.dispo < 0 ? "C00000" : "000000"}));
+      g.rows[r].h = a.des.length > 40 || a.ref.length > 29 ? 28 : 16;
+      r++;
+    });
+    if (!repeterFamille && r - 1 > startR) gmerge(g, startR, 0, r - 1, 0);
   });
   return g;
 }
-function fichesClientPercko(E){
-  var tous = E.arts.filter(function(a){ return clientInclus(a.ref); });
-  var sheets = [];
-  PERCKO_FAMILLES.forEach(function(f){
-    var list = tous.filter(function(a){ return pfamArr(a.ref).indexOf(f) >= 0; });
-    if (list.length) sheets.push({f:f, grid:ficheClientGrid(f, list)});
-  });
-  var sansFam = tous.filter(function(a){ return !pfamArr(a.ref).length; });
-  if (sansFam.length) sheets.push({f:"?", grid:ficheClientGrid("?", sansFam)});
-  return sheets;
-}
 function exportFicheClientPercko(E){
-  var fi = fichesClientPercko(E || etatStock());
-  if (!fi.length){ toast("Aucun article à inclure (voir Stock › Affectation)."); return; }
-  var sheets = fi.map(function(x, i){ return {name:PFAM_PLUR[x.f] || x.f, grid:x.grid, first:i === 0}; });
-  saveFile("Etat_stock_PERCKO_" + today().replace(/-/g, "") + ".xlsx", xlsxBuild(sheets));
+  var g = ficheClientGridUnique(E || etatStock(), false);
+  if (!g){ toast("Aucun article à inclure (voir Stock › Affectation)."); return; }
+  saveFile("Etat_stock_PERCKO_" + today().replace(/-/g, "") + ".xlsx", xlsxBuild([{name:"État PERCKO", grid:g, first:true}]));
 }
 function exportFicheClientPerckoPdf(E){
-  var fi = fichesClientPercko(E || etatStock());
-  if (!fi.length){ toast("Aucun article à inclure (voir Stock › Affectation)."); return; }
-  saveFile("Etat_stock_PERCKO_" + today().replace(/-/g, "") + ".pdf", pdfBuild(fi.map(function(x){ return x.grid; })));
+  var g = ficheClientGridUnique(E || etatStock(), true);
+  if (!g){ toast("Aucun article à inclure (voir Stock › Affectation)."); return; }
+  saveFile("Etat_stock_PERCKO_" + today().replace(/-/g, "") + ".pdf", pdfBuild([g]));
 }
 
 /* ---------- fiche « Consommation de toute la commande » (théorique et réel) ---------- */
