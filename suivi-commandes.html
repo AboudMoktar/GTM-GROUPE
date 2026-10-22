@@ -1909,6 +1909,101 @@ function ficheStockImporter(sheets, nomFichierSrc){
   persist();
   return {importes:importes, inchanges:inchanges, erreurs:erreurs, nonTrouves:ap.nonTrouves};
 }
+
+/* ---------- Stock complet : export de tous les articles pour modification hors-ligne, puis rechargement ----------
+   Contrairement à l'import ci-dessus (réservé aux articles PERCKO, apparié par nom exact), celui-ci couvre
+   TOUS les articles de la nomenclature et s'apparie par Référence (déjà une clé unique et stable) : Propriétaire,
+   Famille(s) produit, Visible client, Fournisseur, Seuil et Stock physique compté sont mis à jour si la colonne
+   est reconnue ; une référence absente de la nomenclature est seulement signalée, jamais créée ou devinée.
+   Désignation / Famille (matière) / Unité restent en lecture seule : ce fichier ne renomme jamais un article. */
+var STOCK_COMPLET_COLS = ["Référence", "Désignation", "Famille matière", "Unité", "Propriétaire", "Famille(s) produit", "Visible client", "Fournisseur", "Seuil", "Stock physique compté"];
+function exportStockComplet(){
+  var phys = physiques();
+  var rows = [STOCK_COMPLET_COLS.slice()];
+  Object.keys(S.mat).sort(function(a, b){ return artNom(a) < artNom(b) ? -1 : 1; }).forEach(function(ref){
+    var m = S.mat[ref], sp = S.sp[ref] || {};
+    rows.push([ref, m[0], m[1], m[2], sp.prop || "", pfamArr(ref).join(", "), sp.clientVisible ? "OUI" : "NON", sp.fourn || "", sp.seuil || "", phys[ref] || 0]);
+  });
+  var g = grilleSimple(rows, [22, 34, 14, 7, 12, 26, 10, 16, 8, 16]); g.landscape = true;
+  saveFile("Stock_complet_" + today().replace(/-/g, "") + ".xlsx", xlsxBuild([{name:"Stock complet", grid:g, first:true}]));
+}
+function stockCompletEntete(rows){
+  for (var ri = 0; ri < Math.min(5, rows.length); ri++){
+    var row = rows[ri] || [], idx = {};
+    for (var ci = 0; ci < row.length; ci++){
+      STOCK_COMPLET_COLS.forEach(function(c){ if (upperHead(row[ci]) === upperHead(c)) idx[c] = ci; });
+    }
+    if (idx["Référence"] !== undefined) return {hi:ri, idx:idx};
+  }
+  return null;
+}
+function stockCompletImporter(sheets, nomFichierSrc){
+  if (lectureSeule()) throw new Error("Lecture seule : votre profil permet de consulter, pas de modifier.");
+  var feuille = sheets[0]; if (!feuille || !feuille.rows.length) throw new Error("Fichier vide.");
+  var ent = stockCompletEntete(feuille.rows);
+  if (!ent) throw new Error("Colonne « Référence » introuvable dans le fichier.");
+  var idx = ent.idx, motif = "Mise à jour stock complet" + (nomFichierSrc ? " (" + nomFichierSrc + ")" : "");
+  var majFiche = 0, majQte = 0, inchanges = 0, nonReconnus = [], erreurs = [];
+  feuille.rows.slice(ent.hi + 1).forEach(function(row){
+    var ref = cleanTxt(row[idx["Référence"]]); if (!ref) return;
+    if (!S.mat[ref]){ if (nonReconnus.indexOf(ref) < 0) nonReconnus.push(ref); return; }
+    var sp0 = S.sp[ref] || {}, sp = Object.assign({}, sp0);
+    if (idx["Propriétaire"] !== undefined){
+      var pv = cleanTxt(row[idx["Propriétaire"]]);
+      if (pv){ var mP = PROPRIETAIRES.filter(function(x){ return x.toUpperCase() === pv.toUpperCase(); })[0]; if (mP) sp.prop = mP; else erreurs.push(ref + " : propriétaire « " + pv + " » non reconnu"); }
+      else sp.prop = "";
+    }
+    if (idx["Famille(s) produit"] !== undefined){
+      var fv = cleanTxt(row[idx["Famille(s) produit"]]);
+      if (fv){
+        var fams = [], bad = [];
+        fv.split(/[,;\/]+/).map(cleanTxt).filter(Boolean).forEach(function(t){
+          var mF = PERCKO_FAMILLES.filter(function(x){ return x.toUpperCase() === t.toUpperCase(); })[0] || (PFAM_ALIAS[t] && PERCKO_FAMILLES.indexOf(PFAM_ALIAS[t]) >= 0 ? PFAM_ALIAS[t] : null);
+          if (mF){ if (fams.indexOf(mF) < 0) fams.push(mF); } else bad.push(t);
+        });
+        if (bad.length) erreurs.push(ref + " : famille(s) non reconnue(s) « " + bad.join(", ") + " »");
+        sp.pfam = fams;
+      } else sp.pfam = [];
+    }
+    if (idx["Visible client"] !== undefined) sp.clientVisible = ["OUI", "VRAI", "YES", "1", "X"].indexOf(cleanTxt(row[idx["Visible client"]]).toUpperCase()) >= 0;
+    if (idx["Fournisseur"] !== undefined) sp.fourn = cleanTxt(row[idx["Fournisseur"]]);
+    if (idx["Seuil"] !== undefined) sp.seuil = numStk(row[idx["Seuil"]]) || 0;
+    Object.keys(sp).forEach(function(k){ if (!sp[k] || (Array.isArray(sp[k]) && !sp[k].length)) delete sp[k]; });
+    if (JSON.stringify(sp) !== JSON.stringify(sp0)){ stkEcrire("sp", ref, Object.keys(sp).length ? sp : null); S.sp[ref] = sp; majFiche++; }
+    if (idx["Stock physique compté"] !== undefined){
+      var qv = row[idx["Stock physique compté"]];
+      if (qv !== "" && qv !== null && qv !== undefined){
+        try { enregistrerAjustement("I", ref, numStk(qv), today(), motif); majQte++; }
+        catch (e){ if (/Aucun écart/.test(e.message)) inchanges++; else erreurs.push(ref + " : " + e.message); }
+      }
+    }
+  });
+  persist();
+  return {majFiche:majFiche, majQte:majQte, inchanges:inchanges, nonReconnus:nonReconnus, erreurs:erreurs};
+}
+function stockCompletCard(){
+  var c = el("div", {class:"card"}, el("h2", {text:"Stock complet (export / mise à jour)"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Exportez tous les articles, modifiez Propriétaire, Famille(s) produit, Visible client, Fournisseur, Seuil et Stock physique compté dans Excel, puis rechargez le fichier : les colonnes reconnues sont mises à jour (correspondance par Référence). Désignation, Famille (matière) et Unité ne sont pas modifiées par cet import."}));
+  c.appendChild(el("div", {class:"actions"}, el("button", {class:"btn small sec", text:"📗 Exporter tout le stock", onclick:function(){ exportStockComplet(); }})));
+  var f = el("input", {type:"file", accept:".xlsx", id:"fStockComplet", style:"margin-top:8px"});
+  c.appendChild(f);
+  c.appendChild(el("p", null, el("button", {class:"btn small", text:"Importer", onclick:function(){
+    if (!f.files.length){ toast("Choisissez un fichier .xlsx"); return; }
+    var nomF = f.files[0].name;
+    readWorkbook(f.files[0]).then(function(sh){
+      var res;
+      try { res = stockCompletImporter(sh, nomF); } catch (e){ toast(e.message); return; }
+      ui.stCompletRes = res; toast(res.majFiche + " fiche(s) · " + res.majQte + " quantité(s) mise(s) à jour"); render();
+    }).catch(function(e){ toast(e.message); });
+  }})));
+  if (ui.stCompletRes){
+    var r = ui.stCompletRes;
+    c.appendChild(el("p", {class:"mut", style:"margin:8px 0 0", text:r.majFiche + " fiche(s) mise(s) à jour · " + r.majQte + " quantité(s) ajustée(s) · " + r.inchanges + " déjà à jour" + (r.nonReconnus.length ? " · " + r.nonReconnus.length + " référence(s) inconnue(s)" : "") + (r.erreurs.length ? " · " + r.erreurs.length + " erreur(s)" : "")}));
+    if (r.nonReconnus.length) c.appendChild(el("div", {class:"enl-d neg", style:"margin-top:4px", text:"Références inconnues : " + r.nonReconnus.join(", ")}));
+    if (r.erreurs.length) r.erreurs.forEach(function(m){ c.appendChild(el("div", {class:"enl-d neg"}, m)); });
+  }
+  return c;
+}
 function prochainNumCf(){ var y = today().slice(0, 4), n = 0; cfListe().forEach(function(c){ var m = /^CF-(\d{4})-(\d+)$/.exec(c.num || ""); if (m && m[1] === y) n = Math.max(n, +m[2]); }); return "CF-" + y + "-" + String(n + 1).padStart(3, "0"); }
 function creerCommandeFournisseur(fourn, datePrev, lignes, note){
   fourn = cleanTxt(fourn); if (!fourn) throw new Error("Indiquez le fournisseur.");
@@ -1990,6 +2085,7 @@ function stkTableau(v, E){
     tuile("Besoins non couverts", manq.length, manq.length ? "bad" : ""), tuile("Commandes bloquées", bloq.length, bloq.length ? "bad" : "ok"),
     tuile("Achats en attente", cfs.length, "", function(){ ui.stSec = "ach"; render(); })));
   if (!lectureSeule()) v.appendChild(ficheStockImportCard());
+  if (!lectureSeule()) v.appendChild(stockCompletCard());
   /* commandes */
   var c1 = el("div", {class:"card"}, el("h2", {text:"Commandes : matières"}));
   if (!E.cmd.length) c1.appendChild(el("p", {class:"mut", text:"Aucune commande validée en cours."}));
