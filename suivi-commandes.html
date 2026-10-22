@@ -1819,6 +1819,8 @@ var FICHE_STOCK_FEUILLES = {
 /* Stock client PERCKO organisé par famille produit (et non par type de matière) :
    tee-shirts/gilets (tissus, attaches, accessoires gilet, velcro), brassières, exosquelettes. */
 var PERCKO_FAMILLES = ["Tee-shirts", "Brassière", "Exosquelette"];
+/* Propriétaire du stock : articles achetés/détenus par le client PERCKO, ou appartenant à TEK-TREND. */
+var PROPRIETAIRES = ["PERCKO", "TEK-TREND"];
 var FICHE_STOCK_PFAM = {
   "Bistrech":"Tee-shirts", "Monostrech":"Tee-shirts", "Attaches":"Tee-shirts", "Accesoires Gilet":"Tee-shirts", "Velcro":"Tee-shirts",
   "Brassière":"Brassière", "Exosquelette":"Exosquelette"
@@ -1875,8 +1877,8 @@ function ficheStockImporter(sheets, nomFichierSrc){
   if (lectureSeule()) throw new Error("Lecture seule : votre profil permet de consulter, pas de modifier.");
   var ap = ficheStockApparier(sheets), motif = "Import fiche de stock PERCKO" + (nomFichierSrc ? " (" + nomFichierSrc + ")" : ""), importes = 0, inchanges = 0, erreurs = [];
   ap.trouves.forEach(function(l){
-    var pfam = FICHE_STOCK_PFAM[l.feuille];
-    if (pfam && (S.sp[l.ref] || {}).pfam !== pfam){ var sp = Object.assign({}, S.sp[l.ref] || {}); sp.pfam = pfam; stkEcrire("sp", l.ref, sp); }
+    var pfam = FICHE_STOCK_PFAM[l.feuille], sp0 = S.sp[l.ref] || {};
+    if ((pfam && sp0.pfam !== pfam) || sp0.prop !== "PERCKO"){ var sp = Object.assign({}, sp0, {prop:"PERCKO"}); if (pfam) sp.pfam = pfam; stkEcrire("sp", l.ref, sp); }
     if (l.q === null){ inchanges++; return; }
     try { enregistrerAjustement("I", l.ref, l.q, today(), motif); importes++; }
     catch (e){ if (/Aucun écart/.test(e.message)) inchanges++; else erreurs.push(artNom(l.ref) + " : " + e.message); }
@@ -1910,7 +1912,7 @@ function propositionsAchat(E){
 }
 
 /* ---------- écran ---------- */
-var STK_SECTIONS = [["tb", "Tableau de bord"], ["sor", "Sorties"], ["ent", "Entrées"], ["ach", "Achats"], ["art", "Articles"], ["mv", "Mouvements"]];
+var STK_SECTIONS = [["tb", "Tableau de bord"], ["aff", "Affectation"], ["sor", "Sorties"], ["ent", "Entrées"], ["ach", "Achats"], ["art", "Articles"], ["mv", "Mouvements"]];
 function vStock(v){
   if (!stockDispo()){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Le stock est réservé à TEK-TREND."}))); return; }
   if (!ui.stSec) ui.stSec = "tb";
@@ -1919,7 +1921,7 @@ function vStock(v){
   v.appendChild(seg);
   if (lectureSeule()) v.appendChild(el("div", {class:"msg", text:"Lecture seule : vous consultez le stock sans pouvoir le modifier."}));
   var E = etatStock();
-  ({tb:stkTableau, sor:stkSorties, ent:stkEntrees, ach:stkAchats, art:stkArticles, mv:stkMouvements})[ui.stSec](v, E);
+  ({tb:stkTableau, aff:stkAffectation, sor:stkSorties, ent:stkEntrees, ach:stkAchats, art:stkArticles, mv:stkMouvements})[ui.stSec](v, E);
 }
 function tuile(lbl, val, cls, go){ return el("button", {class:"stk-tuile " + (cls || ""), onclick:go || null}, el("b", {text:String(val)}), el("span", {text:lbl})); }
 function filtreFamille(onch){
@@ -1999,31 +2001,108 @@ function stkTableau(v, E){
   c2.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn small sec", text:"📗 Fiche stock (Excel)", onclick:function(){ exportStock(E); }}),
     el("button", {class:"btn small sec", text:"📕 Fiche stock (PDF)", onclick:function(){ exportStockPdf(E); }})));
   v.appendChild(c2);
-  /* stock client PERCKO, organisé par famille produit (tee-shirts, brassière, exosquelette) plutôt que par type de matière */
-  var pArts = E.arts.filter(function(a){ return (S.sp[a.ref] || {}).pfam; });
-  if (pArts.length){
-    var c2b = el("div", {class:"card"}, el("h2", {text:"Stock client PERCKO par famille"}));
-    PERCKO_FAMILLES.forEach(function(pf){
-      var list = pArts.filter(function(a){ return (S.sp[a.ref] || {}).pfam === pf; });
-      if (!list.length) return;
-      var t = el("table", {class:"stk" + (PC ? "" : " enl")}), tb = el("tbody");
-      t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), el("th", {text:"Disponible"}))));
-      list.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; }).forEach(function(a){
-        var d = function(q){ return fmt(q, artDec(a.ref, q)); };
-        tb.appendChild(el("tr", {class:a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : ""}, ligneArt(a.ref, a.u),
-          el("td", {class:a.phys < 0 ? "neg" : "", text:d(a.phys)}), el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:d(a.dispo)})));
-      });
-      t.appendChild(tb); c2b.appendChild(famBloc(pf, list.length, t));
-    });
-    c2b.appendChild(el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px", text:"Famille attribuée automatiquement à l'import de la fiche de stock, modifiable sur chaque article (Stock › Articles › Modifier)."}));
-    v.appendChild(c2b);
-  }
+  /* stock par propriétaire : PERCKO (organisé par famille produit) ou TEK-TREND (par famille matière), ou tout */
+  var c2b = stkProprietaireCard(E);
+  if (c2b) v.appendChild(c2b);
   /* derniers mouvements */
   var c3 = el("div", {class:"card"}, el("h2", {text:"Mouvements récents"}));
   var der = mvListe().sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); }).slice(0, 6);
   if (!der.length) c3.appendChild(el("p", {class:"mut", text:"Aucun mouvement."}));
   der.forEach(function(m){ c3.appendChild(el("div", {class:"enl-d", style:"padding:4px 0;border-bottom:1px solid var(--line)"}, dmy(m.d) + " · " + mvLibelle(m) + " · ", el("b", {text:artNom(m.ref) + " " + (mvEffet(m) >= 0 ? "+" : "−") + fq(m.ref, Math.abs(m.q))}))); });
   v.appendChild(c3);
+}
+function stkProprietaireBloc(owner, list){
+  var wrap = el("div", null);
+  var groupes = owner === "PERCKO" ? PERCKO_FAMILLES : famillesPresentes(list.map(function(a){ return a.fam; }));
+  var vus = 0;
+  groupes.forEach(function(g){
+    var sub = owner === "PERCKO" ? list.filter(function(a){ return (S.sp[a.ref] || {}).pfam === g; }) : list.filter(function(a){ return (FAMILLES.indexOf(a.fam) < 0 ? "?" : a.fam) === g; });
+    if (!sub.length) return;
+    vus += sub.length;
+    var t = el("table", {class:"stk" + (PC ? "" : " enl")}), tb = el("tbody");
+    t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), el("th", {text:"Disponible"}))));
+    sub.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; }).forEach(function(a){
+      var d = function(q){ return fmt(q, artDec(a.ref, q)); };
+      tb.appendChild(el("tr", {class:a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : ""}, ligneArt(a.ref, a.u),
+        el("td", {class:a.phys < 0 ? "neg" : "", text:d(a.phys)}), el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:d(a.dispo)})));
+    });
+    t.appendChild(tb); wrap.appendChild(famBloc(g, sub.length, t));
+  });
+  if (owner === "PERCKO"){
+    var sansFam = list.filter(function(a){ return !(S.sp[a.ref] || {}).pfam; });
+    if (sansFam.length){
+      vus += sansFam.length;
+      var t2 = el("table", {class:"stk" + (PC ? "" : " enl")}), tb2 = el("tbody");
+      t2.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), el("th", {text:"Disponible"}))));
+      sansFam.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; }).forEach(function(a){
+        var d = function(q){ return fmt(q, artDec(a.ref, q)); };
+        tb2.appendChild(el("tr", {class:a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : ""}, ligneArt(a.ref, a.u),
+          el("td", {class:a.phys < 0 ? "neg" : "", text:d(a.phys)}), el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:d(a.dispo)})));
+      });
+      t2.appendChild(tb2); wrap.appendChild(famBloc("?", sansFam.length, t2));
+    }
+  }
+  return vus ? wrap : null;
+}
+function stkProprietaireCard(E){
+  var tousP = E.arts.filter(function(a){ return (S.sp[a.ref] || {}).prop; });
+  if (!tousP.length) return null;
+  if (!ui.stProp) ui.stProp = "TOUT";
+  var c = el("div", {class:"card"}, el("h2", {text:"Stock par propriétaire"}));
+  var seg = el("div", {class:"seg", style:"margin:6px 0"});
+  [["TOUT", "Tout"], ["PERCKO", "PERCKO"], ["TEK-TREND", "TEK-TREND"]].forEach(function(s){
+    seg.appendChild(el("button", {class:ui.stProp === s[0] ? "on" : "", text:s[1], onclick:function(){ ui.stProp = s[0]; render(); }}));
+  });
+  c.appendChild(seg);
+  var montre = ui.stProp === "TOUT" ? PROPRIETAIRES : [ui.stProp];
+  var rien = true;
+  montre.forEach(function(owner){
+    var list = tousP.filter(function(a){ return (S.sp[a.ref] || {}).prop === owner; });
+    if (!list.length) return;
+    if (ui.stProp === "TOUT") c.appendChild(el("h3", {style:"margin:10px 0 4px;font-size:14px", text:owner}));
+    var bloc = stkProprietaireBloc(owner, list);
+    if (bloc){ c.appendChild(bloc); rien = false; }
+  });
+  if (rien) c.appendChild(el("p", {class:"mut", text:"Aucun article " + (ui.stProp === "TOUT" ? "affecté." : "" + ui.stProp + ".")}));
+  c.appendChild(el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px", text:"Propriétaire et famille modifiables en lot dans Stock › Affectation, ou sur chaque article (Stock › Articles › Modifier)."}));
+  return c;
+}
+function stkAffectation(v, E){
+  var c = el("div", {class:"card"}, el("h2", {text:"Affecter les articles : PERCKO ou TEK-TREND"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Pour chaque article, choisissez le propriétaire (PERCKO ou TEK-TREND) et, pour les articles PERCKO, la famille produit. Puis Enregistrer en une seule fois."}));
+  var refs = Object.keys(S.mat).sort(function(a, b){ return artNom(a) < artNom(b) ? -1 : 1; });
+  var t = el("table", {class:"stk" + (PC ? "" : " enl")}), tb = el("tbody");
+  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Propriétaire"}), el("th", {text:"Famille produit (PERCKO)"}))));
+  refs.forEach(function(ref){
+    var sp0 = S.sp[ref] || {};
+    var selP = sel([["", "—"]].concat(PROPRIETAIRES.map(function(x){ return [x, x]; })), sp0.prop || "");
+    selP.id = "aff-prop-" + ref;
+    var selF = sel([["", "—"]].concat(PERCKO_FAMILLES.map(function(x){ return [x, x]; })), sp0.pfam || "");
+    selF.id = "aff-pfam-" + ref;
+    tb.appendChild(el("tr", null, ligneArt(ref), el("td", null, selP), el("td", null, selF)));
+  });
+  t.appendChild(tb);
+  c.appendChild(el("div", {class:"stk-scroll", style:"max-height:520px;overflow:auto"}, t));
+  if (!lectureSeule()){
+    c.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn", text:"✔ Enregistrer", onclick:function(){
+      var n = 0, erreurs = [];
+      refs.forEach(function(ref){
+        var selP = document.getElementById("aff-prop-" + ref), selF = document.getElementById("aff-pfam-" + ref);
+        if (!selP || !selF) return;
+        var prop = selP.value, pfam = selF.value, sp0 = S.sp[ref] || {};
+        if ((sp0.prop || "") === prop && (sp0.pfam || "") === pfam) return;
+        var sp = Object.assign({}, sp0, {prop:prop, pfam:pfam});
+        Object.keys(sp).forEach(function(k){ if (!sp[k]) delete sp[k]; });
+        try { stkEcrire("sp", ref, Object.keys(sp).length ? sp : null); S.sp[ref] = sp; n++; }
+        catch (e){ erreurs.push(artNom(ref) + " : " + e.message); }
+      });
+      if (n) persist();
+      toast(n ? n + " article(s) mis à jour" : "Aucun changement");
+      if (erreurs.length) toast(erreurs[0]);
+      render();
+    }})));
+  }
+  v.appendChild(c);
 }
 var MV_TYPES = {E:"Réception", S:"Sortie", R:"Retour", P:"Perte / rebut", A:"Ajustement"};
 function mvLibelle(m){
@@ -2223,13 +2302,14 @@ function stkArticles(v, E){
     var iU = el("input", {type:"text", value:m0[2], placeholder:"m, kg, pièce, rouleau…"}); if (!neuf && nbMv[r0]){ iU.disabled = true; iU.title = "Unité figée : l'article a déjà des mouvements"; }
     var iS = el("input", {type:"number", inputmode:"decimal", step:"0.01", value:sp0.seuil || ""}), iF = el("input", {type:"text", value:sp0.fourn || ""}), iE = el("input", {type:"text", value:sp0.empl || ""});
     var iC = el("input", {type:"number", inputmode:"decimal", step:"0.01", value:sp0.cond || "", placeholder:"ex. 50 (m par rouleau)"}), iD = el("input", {type:"number", inputmode:"numeric", value:sp0.delai || "", placeholder:"jours"});
+    var iProp = sel([["", "—"]].concat(PROPRIETAIRES.map(function(x){ return [x, x]; })), sp0.prop || "");
     var iP = sel([["", "—"]].concat(PERCKO_FAMILLES.map(function(x){ return [x, x]; })), sp0.pfam || "");
     f.appendChild(el("div", {class:"row"}, el("label", {text:"Référence"}, iRef), el("label", {text:"Famille"}, iFam)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Désignation"}, iDes)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Unité de stock"}, iU), el("label", {text:"Seuil minimum"}, iS)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Fournisseur"}, iF), el("label", {text:"Délai (jours)"}, iD)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Emplacement"}, iE), el("label", {text:"Conditionnement"}, iC)));
-    f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Stock client PERCKO"}, iP)));
+    f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Propriétaire"}, iProp), el("label", {text:"Famille produit (PERCKO)"}, iP)));
     if (!neuf && nbMv[r0]) f.appendChild(el("p", {class:"mut", style:"font-size:12px", text:"L'unité ne peut plus changer : l'article a déjà " + nbMv[r0] + " mouvement(s)."}));
     f.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn sec", text:"Fermer", onclick:function(){ ui.stEdit = null; render(true); }}),
       el("button", {class:"btn", text:"✔ Enregistrer l'article", onclick:function(){
@@ -2242,7 +2322,7 @@ function stkArticles(v, E){
           if (!neuf && nbMv[ref] && u !== S.mat[ref][2]) throw new Error("Unité figée (mouvements existants).");
           if (lectureSeule()) throw new Error("Lecture seule.");
           var old = S.mat[ref] || [], rec = [des, iFam.value, u]; if (old[3]) rec.push(old[3]);
-          var sp = {seuil:numStk(iS.value) || 0, fourn:cleanTxt(iF.value), empl:cleanTxt(iE.value), cond:numStk(iC.value) || 0, delai:Math.round(numStk(iD.value)) || 0, pfam:iP.value || ""};
+          var sp = {seuil:numStk(iS.value) || 0, fourn:cleanTxt(iF.value), empl:cleanTxt(iE.value), cond:numStk(iC.value) || 0, delai:Math.round(numStk(iD.value)) || 0, prop:iProp.value || "", pfam:iP.value || ""};
           Object.keys(sp).forEach(function(k){ if (!sp[k]) delete sp[k]; });
           if (JSON.stringify(sp) !== JSON.stringify(S.sp[ref] || {})) stkEcrire("sp", ref, Object.keys(sp).length ? sp : null);
           S.mat[ref] = rec; ui.stEdit = null;
