@@ -784,7 +784,15 @@ html[data-mgt-theme="light"] .mgtBackHomeBtn{background:#ef3f08!important;color:
 </style>
 
 <body>
-<input checked="" class="sidebarToggleInput" id="sidebarCollapse" type="checkbox"/>
+<input class="sidebarToggleInput" id="sidebarCollapse" type="checkbox"/>
+<script>
+// Decide IMMEDIATEMENT (avant que le reste de la page ne s'affiche) si le menu lateral
+// doit etre visible ou non, au lieu d'attendre que setup() s'en charge une seconde plus
+// tard : sans ca, sur telephone, le menu lateral complet (avec son ancien encart
+// "DATABASE Connecte" et la mention "Cree par...") s'affiche brievement avant de se
+// refermer, ce qui ressemble a un chargement d'une autre application.
+document.getElementById('sidebarCollapse').checked = window.innerWidth > 900;
+</script>
 <aside class="sidebar">
 <div class="sidebarHead">
 <div class="sidebarLogo">MGT</div>
