@@ -1463,6 +1463,24 @@ async function dbPut(store,val){
   if(idx>=0) arr[idx]=val; else arr.push(val);
   writeArr(store, arr);
 }
+// Ecrit PLUSIEURS enregistrements en UNE seule fois (une seule synchronisation Firebase)
+// au lieu d'un dbPut() par enregistrement. Pour un store synchronise (crm_clients,
+// crm_history...), dbPut() ré-écrit le tableau COMPLET à chaque appel : utilisé en boucle
+// (ex. import de 700+ clients), ça déclenche autant d'écritures Firebase du tableau entier,
+// ce qui sature la connexion et peut faire paraître l'application bloquée pendant plusieurs
+// minutes. dbPutMany() fait la même fusion mais ne ré-écrit qu'une seule fois à la fin.
+async function dbPutMany(store, vals){
+  if(!Array.isArray(vals) || !vals.length) return;
+  const arr = readArr(store);
+  const cp = STORE_COMPOUND[store];
+  for(const val of vals){
+    let idx=-1;
+    if(cp) idx=arr.findIndex(it=>cp.every(f=>String(it[f])===String(val[f])));
+    else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
+    if(idx>=0) arr[idx]=val; else arr.push(val);
+  }
+  writeArr(store, arr);
+}
 // ===== Queues v2 (Etape A) : stores avec keyPath:'id' =====
 let QUEUE_SYNC_STORE='sync_queue';
 function queuesReady(){ return QUEUE_SYNC_STORE==='sync_queue_v2' && QUEUE_HISTORY_STORE==='history_queue_v2'; }
@@ -2716,17 +2734,22 @@ function restoreFromBackupFile(file){
       const existing = await dbAll('crm_clients');
       const existingIds = new Set(existing.map(c => String(c.ID)));
       let traite = 0;
+      const aAjouter = [];
       for(const c of toImport){
         traite++;
         if(!c || typeof c !== 'object' || !c.ID) continue;
         const id = String(c.ID);
         if(existingIds.has(id)){ report.clientsSkip++; continue; }
-        await dbPut('crm_clients', c);
+        aAjouter.push(c);
         report.clients++;
-        if(traite % 25 === 0 || traite === toImport.length){
-          restoreBackupShowBusy('Import en cours… ' + traite + ' / ' + toImport.length + ' clients traités.');
+        if(traite % 50 === 0 || traite === toImport.length){
+          restoreBackupShowBusy('Preparation… ' + traite + ' / ' + toImport.length + ' clients traites.');
         }
       }
+      // Un seul envoi groupe vers Firebase pour tous les nouveaux clients, au lieu d'un
+      // envoi par client (voir dbPutMany) : c'est ce qui rendait l'import très long/bloqué.
+      restoreBackupShowBusy('Enregistrement de ' + aAjouter.length + ' clients…');
+      await dbPutMany('crm_clients', aAjouter);
 
       restoreBackupShowBusy('Mise à jour de la liste des clients…');
       try { await rebuildClientCache(); refreshFilters(); updateStats(); render(); } catch(e){}
@@ -2953,13 +2976,18 @@ dmt.getHistoryTags = async function(historyId) { try { const all = await dbAll('
 // ===== Migration : Planning[] -> crm_history =====
 async function migratePlanningToHistory() {
   const all = await dm.getAllClients();
+  // Un seul dbAll() + un seul dbPutMany() a la fin (au lieu d'un dbGet + dbPut par
+  // evenement) : avec 700+ clients, chacun ayant plusieurs entrees de planning, l'ancienne
+  // version pouvait declencher des milliers d'ecritures Firebase du tableau complet d'un coup.
+  const existingHistory = await dbAll('crm_history');
+  const existingIds = new Set(existingHistory.map(h => String(h.id)));
   let migrated = 0, skipped = 0;
+  const aAjouter = [];
   for (const c of all) {
     const list = Array.isArray(c.Planning) ? c.Planning : [];
     for (const a of list) {
       if (!a || (!a.date && !a.relanceDate && !a.type && !a.objective && !a.status)) { skipped++; continue; }
-      const existing = await dbGet('crm_history', a.id);
-      if (existing) { skipped++; continue; }
+      if (a.id && existingIds.has(String(a.id))) { skipped++; continue; }
       const eventType = mapPlanningTypeToEventType(a.type);
       const entry = {
         id: a.id || ('H' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
@@ -2981,10 +3009,12 @@ async function migratePlanningToHistory() {
         _updated_at: new Date().toISOString()
       };
       if (a.photoData) entry.description = '[photo:' + (a.photoName || 'photo') + ']';
-      await dbPut('crm_history', entry);
+      existingIds.add(String(entry.id));
+      aAjouter.push(entry);
       migrated++;
     }
   }
+  await dbPutMany('crm_history', aAjouter);
   await dms.set('migration_planning_to_history_done', '1', 'Migration Planning->history effectuee');
   toast('Migration: ' + migrated + ' evenements crees, ' + skipped + ' ignores.');
   return { migrated, skipped };
