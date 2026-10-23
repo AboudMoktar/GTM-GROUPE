@@ -1053,7 +1053,14 @@ window.switchModule = () => {
   else switchSociete();
 };
 window.addEventListener('message', (ev) => {
-  if(ev && ev.data && ev.data.type === 'gtm-mgt-back') switchModule();
+  if(!(ev && ev.data && ev.data.type === 'gtm-mgt-back')) return;
+  // Pour un compte qui n'a accès qu'au module MGT (ex. secrétaire MGT), il n'y a
+  // ni autre module ni autre société à proposer : switchModule() renverrait
+  // silencieusement vers MGT (seule option), donnant l'impression que le bouton
+  // « ← GTM Groupe » ne fait rien. Dans ce cas, le bouton sert de déconnexion :
+  // c'est la seule façon de sortir de MGT pour ce compte.
+  if(typeof peutChangerDeModule === 'function' && peutChangerDeModule()) switchModule();
+  else logout();
 });
 function peutChangerDeModule(){ return modulesDeSociete(activeSociete).length > 1 || peutChangerDeSociete(); }
 function renderModuleSelect(){
