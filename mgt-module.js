@@ -104,8 +104,18 @@ function mgtNavItems(){
     {tab:'mgt-devis', label:'Ventes', icon:ICONS.target, show:true},
     {tab:'mgt-sav', label:'SAV', icon:ICONS.wrench, show:true},
     {tab:'fact-liste', label:'Factures', icon:ICONS.invoice, show:true},
-    {tab:'mgt-parametres', label:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
+    {tab:'mgt-parametres', label:'Params', icon:ICONS.params, show:mgtPeutVoirParametres()}
   ].filter(i => i.show);
+}
+// Accès à l'onglet Params (contient la sauvegarde client : import/export JSON) : les profils "admin" habituels
+// (Responsable, Secrétaire MGT, Technico-commercial MGT...), et aussi l'Administrateur système (profil
+// sysadmin) : il "voit tout sans modifier" au quotidien, mais restaurer une sauvegarde est une tâche de
+// maintenance explicitement prévue pour ce profil (comme la création de comptes). La Direction, elle, reste
+// strictement lecture seule : pas d'exception.
+function mgtPeutVoirParametres(){
+  if(!currentUser) return false;
+  if(currentUser.role === 'admin') return true;
+  return !!currentUser.profil && currentUser.profil === 'sysadmin';
 }
 function mgtSection(container, titre, actions){
   container.innerHTML = `<div class="flex-header"><h2>${titre}</h2>${actions ? `<div class="actions">${actions}</div>` : ''}</div><div id="mgt-body"></div>`;

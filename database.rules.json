@@ -33,7 +33,7 @@
       },
       "mgt": {
         ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true)",
-        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine')",
+        ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true || root.child('groupe1/users_v2/'+auth.uid).child('societes/mgt').val() === true) && (root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'admin' || root.child('groupe1/users_v2/'+auth.uid).child('role').val() === 'chef_chaine' || root.child('groupe1/users_v2/'+auth.uid).child('profil').val() === 'sysadmin')",
         "mgt_demandes": {
           "$id": {
             ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).child('portail/type').val() === 'mgt' && !data.exists() && newData.child('clientId').val() === root.child('groupe1/users_v2/'+auth.uid).child('portail/clientId').val() && newData.child('statut').val() === 'attente'"

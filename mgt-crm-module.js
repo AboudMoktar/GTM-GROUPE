@@ -420,7 +420,7 @@ window.mgtNavItems = function(){
     {tab:'mgt-offres', label:'Ventes', icon:ICONS.target, show:true},
     {tab:'mgt-sav', label:'SAV', icon:ICONS.wrench, show:true},
     {tab:'fact-liste', label:'Factures', icon:ICONS.invoice, show:true},
-    {tab:'mgt-parametres', label:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
+    {tab:'mgt-parametres', label:'Params', icon:ICONS.params, show:mgtPeutVoirParametres()}
   ].filter(i => i.show);
 };
 MGT_GROUPES.ventes = {racine:'mgt-offres', onglets:[['mgt-offres', 'Offres'], ['mgt-projets', 'Projets'], ['mgt-devis', 'Devis'], ['mgt-ca', 'CA']]};
