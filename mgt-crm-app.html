@@ -868,7 +868,7 @@ html[data-mgt-theme="light"] .mgtBackHomeBtn{background:#ef3f08!important;color:
     <div>
       <div class="pilotageEyebrow">Administration du CRM</div>
       <h2>Paramètres</h2>
-      <div class="settingsSub">Outils de gestion, sauvegarde, recherche globale et synchronisation Supabase.</div>
+      <div class="settingsSub">Outils de gestion, sauvegarde et recherche globale.</div>
     </div>
   </div>
   <div class="settingsSection">
@@ -876,16 +876,10 @@ html[data-mgt-theme="light"] .mgtBackHomeBtn{background:#ef3f08!important;color:
     <div id="settingsCommandHost"></div>
   </div>
   <div class="settingsSection" style="display:block!important">
-    <div class="settingsSectionHead"><strong>Récupérer les anciennes données</strong><span>Avant le passage sur Firebase — à utiliser une seule fois</span></div>
+    <div class="settingsSectionHead"><strong>Base clients (CRM)</strong><span>Importer une sauvegarde JSON exportée du CRM MGT</span></div>
     <div style="display:flex!important;flex-wrap:wrap;gap:8px;padding:12px 14px">
-      <button class="iconBtn secondary" id="mainImportLocalBtn" title="Récupérer les anciennes données restées sur cet appareil (sans mot de passe)" style="display:inline-flex!important;flex:1 1 180px;border-color:#126b45;color:#126b45"> Récupérer (appareil)</button>
-      <button class="iconBtn secondary" id="mainImportSupabaseBtn" title="Importer les anciennes données depuis Supabase" style="display:inline-flex!important;flex:1 1 180px;border-color:#1a5fa8;color:#1a5fa8"> Récupérer (Supabase)</button>
-      <button class="iconBtn secondary" id="mainRestoreBackupBtn" title="Restaurer un fichier de sauvegarde (.json) exporté par cette application" style="display:inline-flex!important;flex:1 1 180px;border-color:#7a1aa8;color:#7a1aa8"> Restaurer un fichier de sauvegarde</button>
+      <button class="iconBtn secondary" id="mainRestoreBackupBtn" title="Restaurer un fichier de sauvegarde (.json) exporté par cette application" style="display:inline-flex!important;flex:1 1 180px;border-color:#7a1aa8;color:#7a1aa8"> Importer une sauvegarde</button>
     </div>
-  </div>
-  <div class="settingsSection">
-    <div class="settingsSectionHead"><strong>Synchronisation Supabase</strong><span>Connexion, état, file d’attente et diagnostic</span></div>
-    <div id="settingsSyncHost"></div>
   </div>
 </section>
 <section class="pilotagePanel">
@@ -3602,12 +3596,14 @@ const MODULES={
   commercial:{id:'commercial',label:'Commercial',crumbs:['Commercial'],open:function(){const p=document.getElementById('offerDashboardModal'); if(p){p.hidden=false; renderOffersModule();}}},
   stock:{id:'stock',label:'Listing',crumbs:['Listing'],placeholder:'Listing'},
   settings:{id:'settings',label:'Parametres',crumbs:['Parametres'],view:'settings',open:function(){
-    const bar=document.querySelector('.commandBar'),sync=document.querySelector('.syncPanel');
-    const barHost=document.getElementById('settingsCommandHost'),syncHost=document.getElementById('settingsSyncHost');
+    // Le panneau de synchronisation Supabase (.syncPanel) est un reste de l'ancienne
+    // version du CRM : la synchronisation passe maintenant par GTM Groupe (Firebase),
+    // donc on ne l'affiche plus dans Paramètres (il reste caché, style="display:none"
+    // dans son HTML d'origine).
+    const bar=document.querySelector('.commandBar');
+    const barHost=document.getElementById('settingsCommandHost');
     if(bar&&barHost&&!barHost.contains(bar)) barHost.appendChild(bar);
-    if(sync&&syncHost&&!syncHost.contains(sync)) syncHost.appendChild(sync);
     if(bar) bar.style.display='flex';
-    if(sync) sync.style.display='block';
   }}
 };
 const MODULE_PARENT={'planning':'calendar','annual':'calendar','visits':'communication','appointments':'communication','tasks':'communication'};
