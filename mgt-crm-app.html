@@ -2655,6 +2655,29 @@ function restoreFromBackupFile(file){
       const data = JSON.parse(String(reader.result || ''));
       if(!data || typeof data !== 'object') throw new Error('Fichier illisible (pas un JSON valide).');
 
+      // Les PDF/photos joints aux offres et au planning sont parfois enregistrés en base64
+      // directement dans le JSON : sur un gros fichier, ça peut représenter 40+ Mo à elles
+      // seules et faire ramer (voire planter) le navigateur d'un téléphone pendant l'import.
+      // On les retire ici (elles restent consultables depuis l'ancien système si besoin) —
+      // le reste de la fiche client (contacts, historique, offres, factures...) est conservé
+      // intégralement.
+      let piecesOmises = 0;
+      const toutClients = Array.isArray(data.clients) ? data.clients : [];
+      for(const c of toutClients){
+        if(!c || typeof c !== 'object') continue;
+        for(const key of ['Offres', 'Planning']){
+          const arr = Array.isArray(c[key]) ? c[key] : null;
+          if(!arr) continue;
+          for(const item of arr){
+            if(!item || typeof item !== 'object') continue;
+            for(const [champ, drapeau] of [['pdfData','pdfOmis'],['photoData','photoOmise']]){
+              const v = item[champ];
+              if(typeof v === 'string' && v.length > 2000){ item[champ] = ''; item[drapeau] = true; piecesOmises++; }
+            }
+          }
+        }
+      }
+
       let toImport = [];
       if(Array.isArray(data.clients) && data.clients.length){
         // Format "backup complet" (exportFullBackup) : liste de clients à la racine.
@@ -2721,7 +2744,7 @@ function restoreFromBackupFile(file){
         'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
         '(offres, factures, machines, visites et planning inclus dans chaque fiche client)',
         'Historique (SAV / fiche client) : ' + histReport.migrated + ' évènements ajoutés' + (histReport.skipped ? ', ' + histReport.skipped + ' déjà présents' : ''),
-      ].join('\n'));
+      ].concat(piecesOmises ? ['Pièces jointes (PDF/photos) retirées pour alléger l\'import : ' + piecesOmises] : []).join('\n'));
     } catch(err) {
       alert('Erreur pendant la restauration : ' + (err && err.message ? err.message : err));
     } finally {
