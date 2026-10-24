@@ -126,7 +126,20 @@ function hlEcrireConfirme(chemin, valeur, ref, timeoutMs){
   hlMajBadge();
   if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true});
   const t0 = Date.now();
-  const requete = fbRootRef.child(chemin).set(valeur === undefined ? null : valeur);
+  // set() peut lever une erreur IMMÉDIATEMENT (avant même d'envoyer quoi que ce soit au
+  // réseau), par exemple si la donnée contient une valeur "undefined" quelque part —
+  // sans ce filet, ce genre d'erreur remontait jusqu'à l'écran comme un vague "problème
+  // de connexion", alors que la connexion n'y était pour rien et que la vraie cause
+  // (visible ci-dessous) restait invisible.
+  let requete;
+  try {
+    requete = fbRootRef.child(chemin).set(valeur === undefined ? null : valeur);
+  } catch(err){
+    const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b); hlMajBadge();
+    console.error('Erreur de synchronisation Firebase (immédiate) :', err);
+    const msg = (err && err.message) || String(err);
+    return Promise.resolve({ok:false, raison:"Refusé avant l'envoi : " + msg});
+  }
   // Nettoyage normal de la boîte d'attente dès que le serveur répond VRAIMENT —
   // même si notre délai ci-dessous s'est déjà écoulé entre-temps (la requête
   // réseau n'est jamais annulée, on se contente de ne plus attendre sa réponse
