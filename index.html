@@ -1361,7 +1361,12 @@ function appBrandingHTML(){
 }
 function renderShell(){
   if(activeModule === 'mgt'){
-    document.getElementById('app').innerHTML = `<iframe id="mgt-crm-frame" src="./mgt-crm-app.html" title="CRM MGT" style="position:fixed;inset:0;width:100%;height:100%;height:100dvh;border:0;background:#111418;"></iframe>`;
+    // Fond du cadre pendant le chargement du CRM : celui du thème choisi dans le CRM (même
+    // réglage, même appareil). Il était toujours sombre, d'où un écran sombre bref avant
+    // l'affichage du CRM en thème clair.
+    let fondCrm = '#111418';
+    try { if(localStorage.getItem('mgt_crm_theme_v1') === 'light') fondCrm = '#f3f5f7'; } catch(e) {}
+    document.getElementById('app').innerHTML = `<iframe id="mgt-crm-frame" src="./mgt-crm-app.html" title="CRM MGT" style="position:fixed;inset:0;width:100%;height:100%;height:100dvh;border:0;background:${fondCrm};"></iframe>`;
     return;
   }
   const items = navItems();
