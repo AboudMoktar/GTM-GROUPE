@@ -4412,6 +4412,155 @@ document.addEventListener('click',function(e){
   if(e.target&&e.target.id==='projetDetailCloseBtn'){const m=document.getElementById('projetDetailModal'); if(m) m.hidden=true;}
 });
 
+// ===== Accélération des écrans (fiches clients) =====
+// Avec une vraie base (des centaines de clients), les écrans du CRM mettaient de quelques
+// secondes à plusieurs minutes à s'afficher sur un téléphone : pour un seul affichage, le score
+// de chaque client était recalculé des milliers de fois (à chaque comparaison des tris, puis à
+// nouveau dans chaque vue), pour chaque client on reparcourait les actions de TOUS les clients
+// pour retrouver les siennes, et l'écran Offres reconstruisait la liste de tous les projets pour
+// chaque carte. Ces résultats ne peuvent pas changer au cours d'un même calcul : on les garde le
+// temps de ce calcul seulement (vidés dès qu'il se termine, après chaque enregistrement et à
+// chaque rechargement des données). Les résultats affichés sont exactement les mêmes.
+// Installation en deux temps : ici, juste avant le tout premier affichage (lancé pendant le
+// chargement de la page), puis en fin de fichier pour les fonctions redéfinies plus bas.
+window.__mgtInstallerAcceleration = function(){
+  var A = window.__mgtAccel;
+  if(!A){
+    A = window.__mgtAccel = {tache: null, versionClientsChargee: null, signatureRendue: null};
+    A.T = function(){
+      if(!A.tache){
+        A.tache = {rank: new WeakMap(), status: new WeakMap(), nextVisit: new WeakMap(), s45: new WeakMap(), apa: null, index: null, rows: new Map(), projets: null, projetIndex: null};
+        var vide = function(){ A.tache = null; };
+        if(typeof queueMicrotask === 'function') queueMicrotask(vide); else Promise.resolve().then(vide);
+      }
+      return A.tache;
+    };
+    A.vider = function(){ A.tache = null; };
+    window.__mgtTache = A.T;
+    window.__mgtTacheVider = A.vider;
+    // Identifiant (fourni par GTM Groupe) de la donnée actuellement en mémoire pour un store.
+    A.versionDe = function(store){
+      var h = gtmHost();
+      if(!h || typeof h.gtmVersionDonnee !== 'function') return null;
+      try { return String(h.gtmVersionDonnee('mgt_' + store)); } catch(e){ return null; }
+    };
+    A.signature = function(versionClients){
+      if(versionClients === null) return null;
+      var parts = SYNCED_STORES.map(function(s){ return s === 'crm_clients' ? versionClients : A.versionDe(s); });
+      return parts.indexOf(null) >= 0 ? null : parts.join('|');
+    };
+    // Vrai seulement si le dernier affichage complet a été fait avec exactement les données
+    // actuelles (même liste de clients chargée, mêmes historique / réglages / étiquettes) : l'avis
+    // "données mises à jour" qui suit un enregistrement fait ici n'apporte alors rien de nouveau.
+    window.__mgtAvisInutile = function(){
+      var sig = A.signature(A.versionDe('crm_clients'));
+      return sig !== null && sig === A.signatureRendue;
+    };
+  } else {
+    // Seconde installation (fin de fichier) : repartir de calculs frais, faits avec les
+    // définitions finales de toutes les fonctions.
+    A.vider();
+  }
+  var T = A.T, vider = A.vider;
+  function deja(nom){ var f = window[nom]; return typeof f !== 'function' || !!f.__mgtAccel; }
+  function poser(nom, f){ f.__mgtAccel = true; window[nom] = f; }
+
+  // Toutes les actions de planning : calculées une fois par calcul d'affichage.
+  if(!deja('allPlanningActions')){
+    var apaOrig = window.allPlanningActions;
+    A.apa = function(){ var t = T(); if(!t.apa) t.apa = apaOrig(); return t.apa; };
+    poser('allPlanningActions', A.apa);
+  }
+  // Index « actions de chaque client », dans le même ordre que la liste complète.
+  A.actionsDuClient = function(c){
+    var t = T();
+    if(!t.index){
+      t.index = new Map();
+      (A.apa || window.allPlanningActions)().forEach(function(a){
+        var k = String(a && a.client ? a.client[fields.id] : undefined);
+        var l = t.index.get(k); if(!l){ l = []; t.index.set(k, l); } l.push(a);
+      });
+    }
+    return t.index.get(String(c[fields.id])) || [];
+  };
+  // Même filtre que plannedActions d'origine, appliqué aux seules actions du client.
+  if(!deja('plannedActions') && A.apa){
+    poser('plannedActions', function(c){ return A.actionsDuClient(c).filter(function(a){ return String(a.client[fields.id]) === String(c[fields.id]) && actionIsPlanned(a) && parseDateValue(actionMainDate(a)); }); });
+  }
+  // Exécute une fonction d'origine (qui filtre déjà par client) en ne lui donnant que les
+  // actions de ce client : même résultat, sans reparcourir celles de tous les autres.
+  function avecActionsDe(c, fn){
+    var avant = window.allPlanningActions;
+    window.allPlanningActions = function(){ return A.actionsDuClient(c); };
+    try { return fn(c); } finally { window.allPlanningActions = avant; }
+  }
+  function memo(nom, cache, isoler){
+    if(deja(nom)) return;
+    var orig = window[nom];
+    poser(nom, function(c){
+      if(!c || typeof c !== 'object') return orig(c);
+      var m = T()[cache];
+      if(m.has(c)) return m.get(c);
+      var v = (isoler && A.apa) ? avecActionsDe(c, orig) : orig(c);
+      m.set(c, v);
+      return v;
+    });
+  }
+  memo('clientRankData', 'rank', false);
+  memo('clientStatusData', 'status', true);
+  memo('clientNextVisit', 'nextVisit', true);
+
+  // Liste filtrée/triée de l'écran Clients : demandée plusieurs fois par affichage.
+  if(!deja('clientListRows')){
+    var clrOrig = window.clientListRows;
+    poser('clientListRows', function(){
+      var cle = ['clientListSearch','clientListActivityFilter','clientListVisitFilter','clientListRegionFilter','clientListCityFilter','clientListCommercialFilter','clientListGroupFilter','clientListLastVisitFilter'].map(clientListVal).join('\u0001');
+      var t = T();
+      if(!t.rows.has(cle)) t.rows.set(cle, clrOrig());
+      return t.rows.get(cle).slice();
+    });
+  }
+  // Projets (auto + manuels) de tous les clients : l'écran Offres le reconstruisait pour CHAQUE
+  // carte d'offre (plus de 2 minutes sur ordinateur avec 727 clients).
+  if(!deja('projetEntries')){
+    var peOrig = window.projetEntries;
+    poser('projetEntries', function(){ var t = T(); if(!t.projets) t.projets = peOrig(); return t.projets.slice(); });
+  }
+
+  // Affichage complet : on retient avec quelles données il a été fait (voir __mgtAvisInutile).
+  if(!deja('render')){
+    var renderOrig = window.render;
+    poser('render', function(){
+      var sig = A.signature(A.versionClientsChargee);
+      var r = renderOrig.apply(this, arguments);
+      A.signatureRendue = sig;
+      return r;
+    });
+  }
+  // Tout changement de données vide immédiatement les résultats mémorisés.
+  if(!deja('rebuildClientCache')){
+    var rbOrig = window.rebuildClientCache;
+    poser('rebuildClientCache', async function(){
+      var vc = A.versionDe('crm_clients');
+      vider();
+      try {
+        var r = await rbOrig.apply(this, arguments);
+        A.versionClientsChargee = (dm && dm._dmCache !== null) ? vc : null;
+        return r;
+      } finally { vider(); }
+    });
+  }
+  if(!deja('invalidateApaCache')){
+    var iaOrig = window.invalidateApaCache;
+    poser('invalidateApaCache', function(){ vider(); return iaOrig.apply(this, arguments); });
+  }
+  ['writeArr', 'writeArrConfirme'].forEach(function(nom){
+    if(deja(nom)) return;
+    var orig = window[nom];
+    poser(nom, async function(){ vider(); try { return await orig.apply(this, arguments); } finally { vider(); } });
+  });
+};
+window.__mgtInstallerAcceleration();
 initApp().then(async()=>{setup(); try{await importBillingHistory2026(); await rebuildClientCache(); if(typeof renderBillingModule==='function')renderBillingModule();}catch(e){console.warn('[FACTURATION] import historique 2026',e);} }).catch(e=>{console.warn('initApp failed, forcing setup:',e); setTimeout(setup,100);});
 </script>
 <script>
@@ -6690,7 +6839,15 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
 (function(){
   'use strict';
   function money45(n){try{return typeof amount==='function'?amount(n):Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}catch(e){return (Number(n||0).toFixed(2)+' €');}}
+  // Calculé une seule fois par client et par affichage (voir « Accélération des écrans » en
+  // fin de fichier) : cette fonction est appelée à chaque comparaison des tris de l'écran.
   function client45Stats(c){
+    const t=typeof window.__mgtTache==='function'?window.__mgtTache():null;
+    if(!t||!c||typeof c!=='object')return client45StatsCalcul(c);
+    if(t.s45.has(c))return t.s45.get(c);
+    const v=client45StatsCalcul(c);t.s45.set(c,v);return v;
+  }
+  function client45StatsCalcul(c){
     const fs=Array.isArray(c.Factures)?c.Factures:[];
     const f26=fs.filter(f=>String(f.date||'').slice(0,4)==='2026');
     const ca=f26.reduce((s,f)=>s+Number(f.amount||0),0);
@@ -6775,7 +6932,9 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
   function render45(){ensure45UI();update45Stats();const view=window.__mgt45View||'cards';set45View(view);if(view==='list'&&typeof window.__mgt45OriginalRender==='function')window.__mgt45OriginalRender();}
   window.__mgt45View='cards';window.__mgt45Quick='';
   window.__mgt45OriginalRender=window.renderPagedClients;
-  window.renderPagedClients=function(){ensure45UI();if(typeof window.__mgt45OriginalRender==='function')window.__mgt45OriginalRender();render45Cards();update45Stats();set45View(window.__mgt45View||'cards');};
+  // set45View() redessine déjà les cartes quand elles sont affichées : les dessiner aussi
+  // juste avant (comme auparavant) faisait tout le travail deux fois à chaque affichage.
+  window.renderPagedClients=function(){ensure45UI();if(typeof window.__mgt45OriginalRender==='function')window.__mgt45OriginalRender();update45Stats();set45View(window.__mgt45View||'cards');};
   const oldSetup=window.setup;
   window.setup=function(){oldSetup();ensure45UI();render45();};
 })();
@@ -7036,19 +7195,19 @@ function phase6Esc(v){return esc(v==null?'':v);}
 function phase6FilteredActions(){const q=((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr');return allPlanningActions().filter(a=>matchesPilot(a.client,a)&&parseDateValue(actionMainDate(a))&&!norm(a.status).includes('archive')&&(!q||[a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q)));}
 function phase6EventPill(a,compact){calendarActionMap[a.eventId]=a;const t=phase6ActionTime(a);return '<button type="button" class="phase6Event '+(compact?'compact ':'')+actionTypeClass(a)+'" data-event-id="'+phase6Esc(a.eventId)+'" title="'+phase6Esc((a.type||'Action')+' — '+(a.client[fields.name]||'')+' — '+(a.objective||''))+'"><span class="phase6EventTime">'+(t?phase6Esc(t)+' ':'')+'</span><span class="phase6EventText">'+phase6Esc(a.client[fields.name]||a.type||'Action')+'</span></button>';}
 function phase6BindEvents(root){root.querySelectorAll('[data-event-id]').forEach(el=>{const get=()=>calendarActionMap[el.dataset.eventId];el.onclick=e=>{e.stopPropagation();const a=get();if(a)openTaskDetail(a);};el.ondblclick=e=>{e.preventDefault();e.stopPropagation();const a=get();if(a){document.getElementById('taskDetailModal').hidden=true;showEventContext(a);openEventEditor(a);}};});root.querySelectorAll('[data-add-date]').forEach(b=>b.onclick=e=>{e.stopPropagation();openEventEditor(null,b.dataset.addDate);});root.querySelectorAll('[data-day-open]').forEach(b=>b.onclick=()=>{pilotCalendarDate=parseDateValue(b.dataset.dayOpen)||new Date();pilotCalendarMode='day';const m=document.getElementById('calendarMode');if(m)m.value='day';renderCalendar();});}
-function phase6RenderCalendar(){const el=document.getElementById('planningCalendar');if(!el)return;calendarActionMap={};const title=document.getElementById('calendarTitle');const actions=phase6FilteredActions();const mode=pilotCalendarMode||'week';const fmtDay=d=>d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'}).replace('.','');
+function phase6RenderCalendar(){const el=document.getElementById('planningCalendar');if(!el)return;calendarActionMap={};const title=document.getElementById('calendarTitle');const actions=phase6FilteredActions();/* Actions regroupées par jour UNE fois (même test que sameDay : minuit local), dans leur ordre d'origine : chaque case du calendrier prend celles de son jour au lieu de relire toutes les actions (des centaines de milliers de lectures de dates par affichage). */const parJour=new Map();actions.forEach(a=>{const k=dateOnly(parseDateValue(actionMainDate(a))).getTime();let l=parJour.get(k);if(!l){l=[];parJour.set(k,l);}l.push(a);});const actionsDuJour=d=>parJour.get(dateOnly(d).getTime())||[];const mode=pilotCalendarMode||'week';const fmtDay=d=>d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'}).replace('.','');
  if(mode==='month'){
   const year=pilotCalendarDate.getFullYear(),month=pilotCalendarDate.getMonth(),first=new Date(year,month,1),start=startOfWeek(first),last=new Date(year,month+1,0),end=addDays(startOfWeek(last),6),days=[];for(let d=new Date(start);d<=end;d=addDays(d,1))days.push(new Date(d));
   if(title)title.textContent=monthTitle(pilotCalendarDate);
   let html='<div class="phase6Month"><div class="phase6Dow">'+['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(x=>'<div>'+x+'</div>').join('')+'</div><div class="phase6MonthGrid">';
-  days.forEach(day=>{const iso=dateIso(day),list=actions.filter(a=>sameDay(parseDateValue(actionMainDate(a)),day)),today=sameDay(day,new Date()),out=day.getMonth()!==month,selected=iso===dateIso(pilotCalendarDate);html+='<div class="phase6MonthDay '+(out?'out ':'')+(today?'isToday ':'')+(selected?'isSelected':'')+'" data-day-open="'+iso+'"><button class="phase6DateNum" type="button" data-day-open="'+iso+'"><span>'+day.getDate()+'</span></button><div class="phase6Pills">'+list.slice(0,3).map(a=>phase6EventPill(a,true)).join('')+(list.length>3?'<button type="button" class="phase6More" data-day-open="'+iso+'">+ '+(list.length-3)+' autres</button>':'')+'</div></div>';});html+='</div></div>';el.innerHTML=html;
+  days.forEach(day=>{const iso=dateIso(day),list=actionsDuJour(day).slice(),today=sameDay(day,new Date()),out=day.getMonth()!==month,selected=iso===dateIso(pilotCalendarDate);html+='<div class="phase6MonthDay '+(out?'out ':'')+(today?'isToday ':'')+(selected?'isSelected':'')+'" data-day-open="'+iso+'"><button class="phase6DateNum" type="button" data-day-open="'+iso+'"><span>'+day.getDate()+'</span></button><div class="phase6Pills">'+list.slice(0,3).map(a=>phase6EventPill(a,true)).join('')+(list.length>3?'<button type="button" class="phase6More" data-day-open="'+iso+'">+ '+(list.length-3)+' autres</button>':'')+'</div></div>';});html+='</div></div>';el.innerHTML=html;
  } else if(mode==='day'){
-  const day=new Date(pilotCalendarDate),iso=dateIso(day),list=actions.filter(a=>sameDay(parseDateValue(actionMainDate(a)),day)).sort((a,b)=>phase6ActionTime(a).localeCompare(phase6ActionTime(b)));const timed=list.filter(a=>phase6ActionTime(a)),allDay=list.filter(a=>!phase6ActionTime(a));
+  const day=new Date(pilotCalendarDate),iso=dateIso(day),list=actionsDuJour(day).slice().sort((a,b)=>phase6ActionTime(a).localeCompare(phase6ActionTime(b)));const timed=list.filter(a=>phase6ActionTime(a)),allDay=list.filter(a=>!phase6ActionTime(a));
   if(title)title.textContent=day.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   let html='<div class="phase6DayView"><div class="phase6DayBanner"><div class="phase6TodayNumber '+(sameDay(day,new Date())?'isToday':'')+'">'+day.getDate()+'</div><div><strong>'+day.toLocaleDateString('fr-FR',{weekday:'long',month:'long',year:'numeric'})+'</strong><div class="phase6Muted">'+list.length+' action(s) planifiée(s)</div></div><button class="phase6Add" data-add-date="'+iso+'">+ Nouvelle action</button></div><div class="phase6AllDay"><span>Toute la journée</span><div>'+allDay.map(a=>phase6EventPill(a,false)).join('')+'</div></div><div class="phase6DayTimeline">'+Array.from({length:16},(_,i)=>8+i).map(h=>{const hh=String(h).padStart(2,'0');const slot=timed.filter(a=>phase6ActionTime(a).slice(0,2)===hh);return '<div class="phase6Hour"><span>'+hh+':00</span><div>'+slot.map(a=>phase6EventPill(a,false)).join('')+'</div></div>';}).join('')+'</div><p class="phase6Note">Les actions peuvent avoir une heure de début et une heure de fin, facultatives. Celles avec un horaire apparaissent dans le créneau correspondant ; celles sans horaire restent dans « Toute la journée ».</p></div>';el.innerHTML=html;
  } else {
   const start=startOfWeek(pilotCalendarDate),days=Array.from({length:7},(_,i)=>addDays(start,i));if(title)title.textContent=phase6DateLabel(days[0],{day:'numeric',month:'short'})+' – '+phase6DateLabel(days[6],{day:'numeric',month:'short',year:'numeric'});
-  let html='<div class="phase6Week"><div class="phase6WeekHead"><div class="phase6TimeHead"></div>'+days.map(d=>'<button type="button" class="phase6WeekDay '+(sameDay(d,new Date())?'isToday ':'')+(dateIso(d)===dateIso(pilotCalendarDate)?'isSelected':'')+'" data-day-open="'+dateIso(d)+'"><span>'+d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','')+'</span><strong>'+d.getDate()+'</strong></button>').join('')+'</div><div class="phase6AllDayRow"><div class="phase6TimeLabel">Toute la journée</div>'+days.map(d=>{const list=actions.filter(a=>sameDay(parseDateValue(actionMainDate(a)),d)&&!phase6ActionTime(a));return '<div class="phase6AllDayCell">'+list.slice(0,4).map(a=>phase6EventPill(a,true)).join('')+(list.length>4?'<button class="phase6More" data-day-open="'+dateIso(d)+'">+ '+(list.length-4)+' autres</button>':'')+'<button type="button" class="phase6TinyAdd" data-add-date="'+dateIso(d)+'" aria-label="Ajouter une action">+</button></div>';}).join('')+'</div><div class="phase6WeekHours">'+Array.from({length:16},(_,i)=>8+i).map(h=>{const hh=String(h).padStart(2,'0');return '<div class="phase6HourRow"><div class="phase6TimeLabel">'+hh+':00</div>'+days.map(d=>{const slot=actions.filter(a=>sameDay(parseDateValue(actionMainDate(a)),d)&&phase6ActionTime(a).slice(0,2)===hh);return '<div class="phase6HourCell">'+slot.map(a=>phase6EventPill(a,true)).join('')+'</div>';}).join('')+'</div>';}).join('')+'</div><p class="phase6Note">Les actions avec un horaire apparaissent dans le créneau correspondant ; celles sans horaire restent dans « Toute la journée ». Les horaires sont facultatifs.</p></div>';
+  let html='<div class="phase6Week"><div class="phase6WeekHead"><div class="phase6TimeHead"></div>'+days.map(d=>'<button type="button" class="phase6WeekDay '+(sameDay(d,new Date())?'isToday ':'')+(dateIso(d)===dateIso(pilotCalendarDate)?'isSelected':'')+'" data-day-open="'+dateIso(d)+'"><span>'+d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','')+'</span><strong>'+d.getDate()+'</strong></button>').join('')+'</div><div class="phase6AllDayRow"><div class="phase6TimeLabel">Toute la journée</div>'+days.map(d=>{const list=actionsDuJour(d).filter(a=>!phase6ActionTime(a));return '<div class="phase6AllDayCell">'+list.slice(0,4).map(a=>phase6EventPill(a,true)).join('')+(list.length>4?'<button class="phase6More" data-day-open="'+dateIso(d)+'">+ '+(list.length-4)+' autres</button>':'')+'<button type="button" class="phase6TinyAdd" data-add-date="'+dateIso(d)+'" aria-label="Ajouter une action">+</button></div>';}).join('')+'</div><div class="phase6WeekHours">'+Array.from({length:16},(_,i)=>8+i).map(h=>{const hh=String(h).padStart(2,'0');return '<div class="phase6HourRow"><div class="phase6TimeLabel">'+hh+':00</div>'+days.map(d=>{const slot=actionsDuJour(d).filter(a=>phase6ActionTime(a).slice(0,2)===hh);return '<div class="phase6HourCell">'+slot.map(a=>phase6EventPill(a,true)).join('')+'</div>';}).join('')+'</div>';}).join('')+'</div><p class="phase6Note">Les actions avec un horaire apparaissent dans le créneau correspondant ; celles sans horaire restent dans « Toute la journée ». Les horaires sont facultatifs.</p></div>';
   el.innerHTML=html;
  }
  phase6BindEvents(el);
@@ -8464,6 +8623,13 @@ html[data-mgt-theme="light"] .offresCardActions button[data-projet-open]{backgro
   function groupCounts(rows){ var g={MORGAN:0,MACPI:0,AUTRE:0}; rows.forEach(function(x){ g[offerMarqueGroup(x.offer)]++; }); return g; }
   function pickDefaultTab(rows){ var c=groupCounts(rows); var o=['MORGAN','MACPI','AUTRE']; for(var i=0;i<o.length;i++){ if(c[o[i]]>0) return o[i]; } return 'MORGAN'; }
   function findProjetRow(id){
+    // Index par identifiant, construit une fois par affichage (voir « Accélération des
+    // écrans » en fin de fichier) ; en cas de doublon, le premier trouvé gagne, comme avant.
+    var t=typeof window.__mgtTache==='function'?window.__mgtTache():null;
+    if(t){
+      if(!t.projetIndex){ var rs=projetEntries(); t.projetIndex=new Map(); for(var j=rs.length-1;j>=0;j--) t.projetIndex.set(String(rs[j].projet.id),rs[j]); }
+      return t.projetIndex.get(String(id))||null;
+    }
     var rows=projetEntries();
     for(var i=0;i<rows.length;i++){ if(String(rows[i].projet.id)===String(id)) return rows[i]; }
     return null;
@@ -10086,6 +10252,12 @@ html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff!i
 window.addEventListener('message', function(ev){
   if(!(ev && ev.data && ev.data.type === 'gtm-mgt-data-updated')) return;
   Promise.resolve().then(async function(){
+    // Rien de nouveau par rapport au dernier affichage complet (typiquement l'écho d'un
+    // enregistrement que cette page vient de faire et d'afficher) : on se contente de remettre
+    // à jour filtres et compteurs (instantané) au lieu de redessiner tous les écrans.
+    try{
+      if(typeof window.__mgtAvisInutile === 'function' && window.__mgtAvisInutile()){ refreshFilters(); updateStats(); return; }
+    }catch(e){}
     try{
       await rebuildClientCache();
       const sid = state.selected && state.selected[fields.id];
@@ -10120,3 +10292,26 @@ document.addEventListener('click', function(ev){
   try { openRestoreBackupPicker(); } catch(e){}
 });
 </script>
+<script>
+// Seconde installation de l'accélération des écrans (voir « Accélération des écrans » plus haut,
+// juste avant le premier affichage) : couvre les fonctions redéfinies plus bas dans ce fichier.
+if(typeof window.__mgtInstallerAcceleration === 'function') window.__mgtInstallerAcceleration();
+// Rattrapage : si GTM Groupe a envoyé l'avis "données mises à jour" pendant le chargement de
+// cette page (avant que l'écoute de cet avis ne soit en place, plus haut dans ce fichier mais
+// après le premier affichage), cet avis était perdu et l'écran pouvait rester sur des données
+// anciennes (ex. une copie locale) jusqu'à la modification suivante — d'où l'impression de
+// devoir fermer et rouvrir l'application. Une fois la page entièrement chargée, on se renvoie
+// donc cet avis : s'il n'y a rien de nouveau, rien n'est redessiné (voir __mgtAvisInutile).
+(function(){
+  function rattraper(){ try { window.postMessage({type:'gtm-mgt-data-updated'}, '*'); } catch(e){} }
+  if(document.readyState === 'complete') setTimeout(rattraper, 0);
+  else window.addEventListener('load', function(){ setTimeout(rattraper, 0); });
+})();
+</script>
+<style>
+/* Listes de centaines de cartes (offres, clients) : le navigateur ne calcule la mise en page
+   que des cartes visibles à l'écran (les autres sont calculées au moment où on les fait
+   défiler). Sans cela, ouvrir l'écran Offres obligeait à mettre en page plus d'un millier de
+   cartes d'un coup — près d'une seconde sur ordinateur, plusieurs sur téléphone. */
+.offresCard,.mgt45Card{content-visibility:auto;contain-intrinsic-size:auto 260px}
+</style>

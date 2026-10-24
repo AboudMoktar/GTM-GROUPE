@@ -164,12 +164,45 @@ function hlDepuisFirebase(valeur){
   }
   return hlConvertirCles(valeur, hlCleDepuisFirebase);
 }
+// Dernier bloc de texte connu pour chaque donnée envoyée en un seul bloc, avec sa valeur déjà
+// décodée. Firebase renvoie TOUT le dossier à chaque changement, même d'une seule donnée :
+// sans cela, chaque bloc (ex. 727 fiches client) était redécodé à chaque fois, et prenait une
+// nouvelle identité en mémoire — le CRM ne pouvait donc pas savoir que rien n'avait changé et
+// redessinait tous ses écrans. Un texte identique garde désormais exactement la même valeur.
+const hlTexteConnu = {};
+function hlMemoriserTexte(cle, texte, valeur){
+  if(typeof texte === 'string' && valeur !== undefined && valeur !== null) hlTexteConnu[cle] = {texte, valeur};
+}
 // Pour un dossier entier reçu de Firebase ({cle: valeur, …}).
 function hlDossierDepuisFirebase(data){
   const out = {};
-  Object.keys(data || {}).forEach(k => { out[hlCleDepuisFirebase(k)] = hlDepuisFirebase(data[k]); });
+  Object.keys(data || {}).forEach(k => {
+    const cle = hlCleDepuisFirebase(k), v = data[k];
+    if(typeof v === 'string' && v.indexOf(HL_TEXTE_JSON) === 0){
+      const connu = hlTexteConnu[cle];
+      if(connu && connu.texte === v){ out[cle] = connu.valeur; return; }
+      const val = hlDepuisFirebase(v);
+      hlMemoriserTexte(cle, v, val);
+      out[cle] = val;
+      return;
+    }
+    out[cle] = hlDepuisFirebase(v);
+  });
   return out;
 }
+// Identifiant de la valeur actuellement en mémoire pour une clé : change dès que la donnée est
+// remplacée, reste le même tant qu'elle ne l'est pas (sert au CRM MGT à éviter de tout
+// redessiner quand Firebase lui renvoie des données identiques à celles déjà affichées).
+const hlIdentites = new WeakMap();
+let hlIdentiteSuivante = 1;
+window.gtmVersionDonnee = function(key){
+  const v = memoryCache[CACHE_PREFIX + key];
+  if(v === undefined) return 'u';
+  if(v === null || typeof v !== 'object') return 'p:' + typeof v + ':' + String(v).slice(0, 60);
+  let n = hlIdentites.get(v);
+  if(!n){ n = hlIdentiteSuivante++; hlIdentites.set(v, n); }
+  return 'o' + n;
+};
 
 // --- Écriture vers Firebase (point unique) ---
 // ref = {cle, sous} : où se trouve la valeur localement (sous = sous-clé, ex. une
@@ -187,7 +220,11 @@ function hlEcrire(chemin, valeur, ref){
   if(!firebaseReady || !fbRootRef) return;
   let requete;
   try {
-    requete = fbRootRef.child(chemin).set(hlPourFirebase(valeur, ref));
+    const envoi = hlPourFirebase(valeur, ref);
+    // ref.memoire : l'appelant garantit que la mémoire de l'app contient déjà exactement
+    // cette valeur (setJSON) — on retient l'association texte -> valeur (voir hlTexteConnu).
+    if(ref && ref.memoire && typeof envoi === 'string') hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
+    requete = fbRootRef.child(chemin).set(envoi);
   } catch(err){
     // Donnée refusée AVANT l'envoi (format) : la renvoyer plus tard échouerait exactement
     // de la même façon. Sans ce filet, l'erreur remontait jusqu'à l'écran appelant
@@ -245,7 +282,9 @@ function hlEcrireConfirme(chemin, valeur, ref, timeoutMs){
   // (visible ci-dessous) restait invisible.
   let requete;
   try {
-    requete = fbRootRef.child(chemin).set(hlPourFirebase(valeur, ref));
+    const envoi = hlPourFirebase(valeur, ref);
+    if(ref && ref.memoire && typeof envoi === 'string') hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
+    requete = fbRootRef.child(chemin).set(envoi);
   } catch(err){
     const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b); hlMajBadge();
     console.error('Erreur de synchronisation Firebase (immédiate) :', err);

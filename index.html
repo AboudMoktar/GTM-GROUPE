@@ -683,7 +683,8 @@ function detachFirebaseDataListeners(){
   fbFirstLoad = true;
 }
 function syncToFirebase(key, value){
-  if(typeof hlEcrire === 'function'){ hlEcrire(firebaseCheminDe(key), value, {cle: key}); return; }
+  // memoire:true -> setJSON vient de placer exactement cette valeur en mémoire (voir hlEcrire).
+  if(typeof hlEcrire === 'function'){ hlEcrire(firebaseCheminDe(key), value, {cle: key, memoire: true}); return; }
   if(!firebaseReady || !fbRootRef) return;
   fbRootRef.child(firebaseCheminDe(key)).set(value).then(function(){
     setSyncBadge('ok');
@@ -842,7 +843,7 @@ function gtmEcrireEtConfirmer(key, value, timeoutMs){
     // on l'indique clairement plutôt que de laisser planter l'écran sans explication.
     return Promise.resolve({ok:false, raison:"Donnée invalide avant l'envoi : " + ((err && err.message) || String(err))});
   }
-  if(typeof hlEcrireConfirme === 'function') return hlEcrireConfirme(firebaseCheminDe(key), value, {cle:key}, timeoutMs);
+  if(typeof hlEcrireConfirme === 'function') return hlEcrireConfirme(firebaseCheminDe(key), value, {cle:key, memoire:true}, timeoutMs);
   if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true}); // hors ligne : la file d'attente habituelle prendra le relais
   const t = timeoutMs || 35000;
   const t0 = Date.now();
