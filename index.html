@@ -812,6 +812,33 @@ function setJSON(key, value){
   syncToFirebase(key, value);
   return true;
 }
+// Comme setJSON (même enregistrement local, même file d'attente hors-ligne au cas où la
+// connexion lâche), mais renvoie en plus une PROMESSE qui ne se résout que lorsque le
+// SERVEUR Firebase a réellement confirmé l'écriture. setJSON seul ne permettait pas de le
+// savoir : un enregistrement pouvait sembler réussi localement (écran, mémoire du
+// téléphone) tout en étant REFUSÉ par le serveur sans que personne ne s'en aperçoive (par
+// exemple si le compte connecté n'a pas les droits nécessaires sur ce dossier) — c'est
+// exactement le genre de défaillance invisible qui a fait croire à tort qu'un import de
+// clients avait réussi. Réservé aux enregistrements importants (ex. un import) : l'utiliser
+// partout doublerait inutilement chaque écriture normale.
+function gtmEcrireEtConfirmer(key, value, timeoutMs){
+  const ok = setJSON(key, value);
+  if(ok === false) return Promise.resolve({ok:false, raison:"Données pas encore chargées sur cet appareil."});
+  if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true}); // hors ligne : la file d'attente habituelle prendra le relais
+  const t = timeoutMs || 20000;
+  return new Promise(function(resolve){
+    let fini = false;
+    const minuteur = setTimeout(function(){ if(!fini){ fini = true; resolve({ok:false, raison:"Pas de confirmation du serveur dans le délai prévu (vérifiez la connexion)."}); } }, t);
+    fbRootRef.child(firebaseCheminDe(key)).set(value).then(function(){
+      if(fini) return; fini = true; clearTimeout(minuteur); resolve({ok:true});
+    }).catch(function(err){
+      if(fini) return; fini = true; clearTimeout(minuteur);
+      const msg = (err && (err.message || err.code)) || String(err);
+      resolve({ok:false, raison: /permission/i.test(msg) ? "Refusé par le serveur : droits insuffisants sur ce compte pour enregistrer dans MGT." : ("Refusé par le serveur : " + msg)});
+    });
+  });
+}
+window.gtmEcrireEtConfirmer = gtmEcrireEtConfirmer;
 
 let currentUser = null;
 // `currentUser` est déclaré avec `let` : il n'est pas accessible comme `window.currentUser`
