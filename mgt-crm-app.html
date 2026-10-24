@@ -2817,14 +2817,30 @@ function restoreFromBackupFile(file){
       }
 
       const existing = await dbAll('crm_clients');
-      const existingIds = new Set(existing.map(c => String(c.ID)));
+      const existingById = new Map(existing.map(c => [String(c.ID), c]));
       let traite = 0;
+      let sortisCorbeille = 0;
       const aAjouter = [];
       for(const c of toImport){
         traite++;
         if(!c || typeof c !== 'object' || !c.ID) continue;
         const id = String(c.ID);
-        if(existingIds.has(id)){ report.clientsSkip++; continue; }
+        const dejaLa = existingById.get(id);
+        if(dejaLa){
+          // Client de la sauvegarde qui se trouve à la CORBEILLE sur cet appareil : avant, il
+          // était compté "déjà présent" et restait caché (non compté au tableau de bord). Une
+          // restauration le fait réapparaître ; sa fiche actuelle est conservée telle quelle.
+          if(dejaLa._deleted_at && !c._deleted_at){
+            const r = Object.assign({}, dejaLa);
+            delete r._deleted_at; delete r._deleted_by;
+            r._updated_at = new Date().toISOString();
+            aAjouter.push(r);
+            sortisCorbeille++;
+          } else {
+            report.clientsSkip++;
+          }
+          continue;
+        }
         aAjouter.push(c);
         report.clients++;
         if(traite % 50 === 0 || traite === toImport.length){
@@ -2848,14 +2864,21 @@ function restoreFromBackupFile(file){
       let histErreur = null;
       try { histReport = await migratePlanningToHistory(); } catch(e){ histErreur = (e && e.message) ? e.message : String(e); }
 
+      // Total réellement présent (hors corbeille) après restauration : c'est ce chiffre que le
+      // tableau de bord doit afficher, y compris après actualisation.
+      let totalVisibles = null;
+      try { totalVisibles = (await dbAll('crm_clients')).filter(c => !c._deleted_at).length; } catch(e){}
       alert([
         'Restauration terminée.',
         'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
+      ].concat(sortisCorbeille ? ['Clients ressortis de la corbeille : ' + sortisCorbeille] : [])
+       .concat(totalVisibles !== null ? ['Total clients dans la base : ' + totalVisibles] : [])
+       .concat([
         '(offres, factures, machines, visites et planning inclus dans chaque fiche client)',
         histErreur
           ? '⚠️ Historique (SAV / fiche client) NON enregistré : ' + histErreur
           : 'Historique (SAV / fiche client) : ' + histReport.migrated + ' évènements ajoutés' + (histReport.skipped ? ', ' + histReport.skipped + ' déjà présents' : ''),
-      ].concat(piecesOmises ? ['Pièces jointes (PDF/photos) retirées pour alléger l\'import : ' + piecesOmises] : []).join('\n'));
+      ]).concat(piecesOmises ? ['Pièces jointes (PDF/photos) retirées pour alléger l\'import : ' + piecesOmises] : []).join('\n'));
     } catch(err) {
       alert('Erreur pendant la restauration : ' + (err && err.message ? err.message : err));
     } finally {
