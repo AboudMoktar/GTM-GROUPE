@@ -619,7 +619,10 @@ function attachFirebaseDataListeners(){
   fbListenRefs = dossiers.map(d => fbRootRef.child(d));
   fbListenRefs.forEach(function(ref, i){
     ref.on('value', function(snap){
-      const data = snap.val() || {};
+      const brut = snap.val() || {};
+      // Remet les données dans leur forme d'origine (voir hlPourFirebase / hlDepuisFirebase
+      // dans hors-ligne-module.js : noms de clés convertis, données du CRM MGT en un bloc).
+      const data = (typeof hlDossierDepuisFirebase === 'function') ? hlDossierDepuisFirebase(brut) : brut;
       if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier(dossiers[i], data, true);
       else Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
       onFirebaseData();
@@ -630,7 +633,9 @@ function attachFirebaseDataListeners(){
     const usersRef = fbRootRef.child('users_v2');
     fbListenRefs.push(usersRef);
     usersRef.on('value', function(snap){
-      if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier('users_v2', {users_v2: snap.val() || {}}, true);
+      const brutU = snap.val() || {};
+      const usersData = (typeof hlDepuisFirebase === 'function') ? hlDepuisFirebase(brutU) : brutU;
+      if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier('users_v2', {users_v2: usersData}, true);
       else memoryCache[CACHE_PREFIX+'users_v2'] = snap.val() || {};
       onFirebaseData();
     }, onError);

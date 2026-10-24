@@ -73,6 +73,104 @@ function hlAppliquerLocal(cle, sous, valeur){
   try { window.localStorage.setItem(CACHE_PREFIX + cle, JSON.stringify(v === undefined ? null : v)); } catch(e) {}
 }
 
+// --- Format des données échangées avec Firebase ---
+// 1) Firebase refuse tout nom de clé contenant . # $ / [ ] (ou vide, ou caractère de
+//    contrôle). Or certaines données utilisent directement des libellés lisibles comme
+//    noms de champ (ex. "Gouvernorat / Zone", "Ville / Delegation" dans CHAQUE fiche
+//    client du CRM MGT) : l'enregistrement échouait alors AVANT même l'envoi réseau —
+//    c'est pour cela que les clients du CRM n'ont jamais pu être enregistrés sur le
+//    serveur. Ces caractères sont remplacés à l'envoi par des équivalents autorisés
+//    (formes Unicode « pleine chasse ») et remis à l'identique à la réception : le
+//    reste de l'application voit toujours les libellés d'origine. Sans effet sur les
+//    clés déjà valides (presque toutes).
+// 2) Les données du CRM MGT (mgt_crm_*) sont envoyées d'un seul bloc de texte (JSON).
+//    Ce CRM a été écrit pour un stockage qui rend EXACTEMENT ce qu'on lui donne, alors
+//    que Firebase, en arborescence, supprime les listes vides et peut transformer une
+//    liste en objet (source de plantages subtils à la relecture). Un seul bloc de texte
+//    s'enregistre aussi bien plus vite que des centaines de milliers de petits champs.
+const HL_TEXTE_JSON = '__gtm_json_v1:';
+const HL_TEXTE_MAX_OCTETS = 9500000; // limite Firebase : 10 Mo par texte
+const HL_VERS_FB = {'.':'．', '#':'＃', '$':'＄', '/':'／', '[':'［', ']':'］'};
+const HL_DEPUIS_FB = {'．':'.', '＃':'#', '＄':'$', '／':'/', '［':'[', '］':']'};
+const HL_CLE_VIDE = '∅';
+const HL_RE_CLE_INTERDITE = /[.#$\/\[\]\u0000-\u001F\u007F]/;
+const HL_RE_CLE_CODEE = /[．＃＄／［］␀-␟␡]/;
+function hlCleVersFirebase(k){
+  if(k === '') return HL_CLE_VIDE;
+  if(!HL_RE_CLE_INTERDITE.test(k)) return k;
+  let r = '';
+  for(const ch of k){
+    const c = ch.charCodeAt(0);
+    r += HL_VERS_FB[ch] || (c < 32 ? String.fromCharCode(0x2400 + c) : (c === 127 ? '␡' : ch));
+  }
+  return r;
+}
+function hlCleDepuisFirebase(k){
+  if(k === HL_CLE_VIDE) return '';
+  if(!HL_RE_CLE_CODEE.test(k)) return k;
+  let r = '';
+  for(const ch of k){
+    const c = ch.charCodeAt(0);
+    r += HL_DEPUIS_FB[ch] || ((c >= 0x2400 && c <= 0x241F) ? String.fromCharCode(c - 0x2400) : (c === 0x2421 ? '\u007F' : ch));
+  }
+  return r;
+}
+// Convertit les NOMS de clés (jamais les valeurs) de toute l'arborescence. Ne recrée que
+// les objets réellement modifiés : sur une donnée sans clé à convertir (presque toutes),
+// la même référence est renvoyée telle quelle, sans copie.
+function hlConvertirCles(v, conv){
+  if(Array.isArray(v)){
+    let copie = null;
+    for(let i = 0; i < v.length; i++){
+      const x = hlConvertirCles(v[i], conv);
+      if(x !== v[i]){ if(!copie) copie = v.slice(); copie[i] = x; }
+    }
+    return copie || v;
+  }
+  if(v && typeof v === 'object'){
+    const cles = Object.keys(v);
+    let copie = null;
+    for(let i = 0; i < cles.length; i++){
+      const k = cles[i], nk = conv(k), x = hlConvertirCles(v[k], conv);
+      if(!copie && (nk !== k || x !== v[k])){
+        copie = {};
+        for(let j = 0; j < i; j++) copie[cles[j]] = v[cles[j]];
+      }
+      if(copie) copie[nk] = x;
+    }
+    return copie || v;
+  }
+  return v;
+}
+function hlCleEnTexte(ref){ return !!ref && !ref.sous && typeof ref.cle === 'string' && ref.cle.indexOf('mgt_crm_') === 0; }
+function hlOctets(s){
+  if(s.length * 3 <= HL_TEXTE_MAX_OCTETS) return s.length; // forcément sous la limite
+  try { return new TextEncoder().encode(s).length; } catch(e){ return s.length * 3; }
+}
+// Donnée prête à être envoyée. La forme JSON retire aussi ce que Firebase refuserait
+// (valeurs "undefined", NaN…) — exactement comme ce qui est déjà gardé sur le téléphone.
+function hlPourFirebase(valeur, ref){
+  if(valeur === undefined || valeur === null) return null;
+  const texte = JSON.stringify(valeur);
+  if(texte === undefined) return null;
+  if(hlCleEnTexte(ref) && hlOctets(texte) <= HL_TEXTE_MAX_OCTETS) return HL_TEXTE_JSON + texte;
+  return hlConvertirCles(JSON.parse(texte), hlCleVersFirebase);
+}
+// Inverse exact, pour une valeur reçue de Firebase.
+function hlDepuisFirebase(valeur){
+  if(typeof valeur === 'string' && valeur.indexOf(HL_TEXTE_JSON) === 0){
+    try { return JSON.parse(valeur.slice(HL_TEXTE_JSON.length)); }
+    catch(e){ console.error('Donnée illisible reçue de Firebase :', e); return null; }
+  }
+  return hlConvertirCles(valeur, hlCleDepuisFirebase);
+}
+// Pour un dossier entier reçu de Firebase ({cle: valeur, …}).
+function hlDossierDepuisFirebase(data){
+  const out = {};
+  Object.keys(data || {}).forEach(k => { out[hlCleDepuisFirebase(k)] = hlDepuisFirebase(data[k]); });
+  return out;
+}
+
 // --- Écriture vers Firebase (point unique) ---
 // ref = {cle, sous} : où se trouve la valeur localement (sous = sous-clé, ex. une
 // fiche client dans mgt_clients).
@@ -87,7 +185,21 @@ function hlEcrire(chemin, valeur, ref){
   const n = e.n;
   hlMajBadge();
   if(!firebaseReady || !fbRootRef) return;
-  fbRootRef.child(chemin).set(valeur === undefined ? null : valeur).then(function(){
+  let requete;
+  try {
+    requete = fbRootRef.child(chemin).set(hlPourFirebase(valeur, ref));
+  } catch(err){
+    // Donnée refusée AVANT l'envoi (format) : la renvoyer plus tard échouerait exactement
+    // de la même façon. Sans ce filet, l'erreur remontait jusqu'à l'écran appelant
+    // (enregistrement interrompu) — et quand elle survenait pendant la réception des
+    // données au démarrage, elle interrompait toute la mise à jour de l'écran.
+    console.error('Erreur de synchronisation Firebase (donnée refusée avant envoi) :', chemin, err);
+    const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b);
+    showToast('⚠️ Enregistrement impossible : format de donnée refusé par le serveur');
+    hlMajBadge();
+    return;
+  }
+  requete.then(function(){
     const b = hlBoite();
     if(b[chemin]){
       if(b[chemin].n === n) delete b[chemin];
@@ -133,7 +245,7 @@ function hlEcrireConfirme(chemin, valeur, ref, timeoutMs){
   // (visible ci-dessous) restait invisible.
   let requete;
   try {
-    requete = fbRootRef.child(chemin).set(valeur === undefined ? null : valeur);
+    requete = fbRootRef.child(chemin).set(hlPourFirebase(valeur, ref));
   } catch(err){
     const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b); hlMajBadge();
     console.error('Erreur de synchronisation Firebase (immédiate) :', err);
@@ -304,7 +416,7 @@ async function hlChargerCopies(){
   if(!firebaseConfigured() || !currentUser || !currentUser.uid) return;
   const dossiers = hlDossiersAttendus();
   await Promise.all(dossiers.map(d => hlAvecDelai(hlIdb('readonly', st => st.get(hlCleCopie(d))), 3000).then(rec => {
-    if(rec && rec.data && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, rec.data, false);
+    if(rec && rec.data && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, hlDossierDepuisFirebase(rec.data), false);
   }).catch(() => {})));
 }
 function hlOublierCompte(uid){
