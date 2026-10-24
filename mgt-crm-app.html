@@ -1515,15 +1515,22 @@ async function dbPut(store,val){
 // ce qui sature la connexion et peut faire paraître l'application bloquée pendant plusieurs
 // minutes. dbPutMany() fait la même fusion mais ne ré-écrit qu'une seule fois à la fin.
 async function dbPutMany(store, vals){
-  if(!Array.isArray(vals) || !vals.length) return;
   const arr = readArr(store);
   const cp = STORE_COMPOUND[store];
-  for(const val of vals){
-    let idx=-1;
-    if(cp) idx=arr.findIndex(it=>cp.every(f=>String(it[f])===String(val[f])));
-    else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
-    if(idx>=0) arr[idx]=val; else arr.push(val);
+  if(Array.isArray(vals) && vals.length){
+    for(const val of vals){
+      let idx=-1;
+      if(cp) idx=arr.findIndex(it=>cp.every(f=>String(it[f])===String(val[f])));
+      else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
+      if(idx>=0) arr[idx]=val; else arr.push(val);
+    }
   }
+  // Important : on confirme TOUJOURS avec le serveur, même quand il n'y a "rien de
+  // nouveau" à ajouter localement (vals vide). Avant ce correctif, ce cas ne déclenchait
+  // AUCUNE écriture ni vérification : un import pouvait afficher "727 déjà présents"
+  // (vrai seulement localement) sans jamais confirmer que le serveur avait bien, lui
+  // aussi, ces 727 clients — c'est précisément ce qui laissait l'écran revenir à une
+  // ancienne valeur (ex. 319) au rechargement suivant, sans aucun message d'erreur.
   await writeArrConfirme(store, arr);
 }
 // Comme writeArr, mais attend en plus la VRAIE confirmation du serveur Firebase avant de
