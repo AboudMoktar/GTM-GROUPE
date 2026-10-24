@@ -121,6 +121,16 @@ function hlEcritureAutorisee(key){
   }
   return false;
 }
+// Même vérification que hlEcritureAutorisee, mais SANS déclencher de message —
+// pour qu'une page comme le module MGT (dans son propre cadre) puisse ATTENDRE
+// que les données soient prêtes avant d'écrire, au lieu de découvrir après coup
+// qu'un enregistrement (ex. un import de centaines de clients) a été ignoré.
+window.gtmDonneesPretes = function(key){
+  if(!firebaseConfigured() || !currentUser) return true;
+  if(typeof isPortail === 'function' && isPortail()) return true;
+  const d = (typeof firebaseDossierDe === 'function') ? firebaseDossierDe(key) : null;
+  return !d || hlDossiersCharges.has(d);
+};
 
 // --- Réception des données d'un dossier (serveur ou copie locale) ---
 function hlClesEnAttente(){ const s = new Set(); Object.values(hlBoite()).forEach(e => s.add(e.cle)); return s; }
