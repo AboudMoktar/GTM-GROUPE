@@ -35,7 +35,9 @@ window.navAccueil = function(){
 function navMajBarre(){
   const app = document.getElementById('app'), body = document.querySelector('.app-body');
   if(!app || !body || !currentUser) return;
-  const profond = activeTab !== navAccueilTab() && activeModule && activeModule !== 'admin';
+  // Gestion Rendement : la barre « TEK TREND » reste en haut sur tous les onglets, comme dans
+  // l'application Gestion Rendement d'origine (pas de barre compacte ← 🏠).
+  const profond = activeTab !== navAccueilTab() && activeModule && activeModule !== 'admin' && activeModule !== 'rendement';
   app.classList.toggle('en-profondeur', !!profond);
   let barre = document.getElementById('deepbar');
   if(!profond){ if(barre) barre.remove(); return; }
