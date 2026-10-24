@@ -825,10 +825,18 @@ function gtmEcrireEtConfirmer(key, value, timeoutMs){
   const ok = setJSON(key, value);
   if(ok === false) return Promise.resolve({ok:false, raison:"Données pas encore chargées sur cet appareil."});
   if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true}); // hors ligne : la file d'attente habituelle prendra le relais
-  const t = timeoutMs || 20000;
+  const t = timeoutMs || 35000;
+  const t0 = Date.now();
   return new Promise(function(resolve){
     let fini = false;
-    const minuteur = setTimeout(function(){ if(!fini){ fini = true; resolve({ok:false, raison:"Pas de confirmation du serveur dans le délai prévu (vérifiez la connexion)."}); } }, t);
+    const minuteur = setTimeout(function(){
+      if(fini) return; fini = true;
+      // Indique en plus ce que l'application pensait de la connexion au moment de l'échec,
+      // pour distinguer une vraie coupure réseau d'un blocage plus précis (ex. pare-feu qui
+      // bloque Firebase alors que le Wi-Fi/4G est bien actif).
+      const etat = hlConnecte === true ? "l'application se croyait en ligne" : (hlConnecte === false ? "l'application se savait hors ligne" : "état de connexion inconnu");
+      resolve({ok:false, raison:"Pas de confirmation du serveur après " + Math.round((Date.now()-t0)/1000) + "s (" + etat + "). Vérifiez votre connexion internet (essayez de changer de Wi-Fi/4G) puis réessayez."});
+    }, t);
     fbRootRef.child(firebaseCheminDe(key)).set(value).then(function(){
       if(fini) return; fini = true; clearTimeout(minuteur); resolve({ok:true});
     }).catch(function(err){
