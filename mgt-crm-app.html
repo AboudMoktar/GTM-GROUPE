@@ -3,6 +3,27 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
+<script>
+// Thème clair/sombre appliqué AVANT tout le reste (styles compris) : ainsi le tout premier
+// affichage est déjà dans le bon thème, au lieu d'un bref passage en sombre (thème par défaut).
+// Pendant le chargement, seul le fond uni du thème est affiché : les styles de cette page sont
+// répartis tout au long du fichier, et le navigateur affichait sinon des états à moitié mis en
+// forme (anciens en-têtes, panneaux sombres) pendant plusieurs secondes sur téléphone. La page
+// apparaît d'un coup une fois entièrement chargée (filet de sécurité : au bout de 8 s au plus).
+// La couleur de fond posée ici est retirée à ce moment-là : les styles du thème prennent le
+// relais, y compris si on change de thème ensuite avec le bouton.
+try{
+  var __t = localStorage.getItem('mgt_crm_theme_v1') === 'light' ? 'light' : 'dark';
+  var __r = document.documentElement;
+  __r.setAttribute('data-mgt-theme', __t);
+  __r.style.background = __t === 'light' ? '#f3f5f7' : '#0f1115';
+  __r.classList.add('mgt-chargement');
+  var __montrer = function(){ __r.classList.remove('mgt-chargement'); __r.style.removeProperty('background'); };
+  window.addEventListener('load', function(){ requestAnimationFrame(function(){ setTimeout(__montrer, 0); }); }, {once:true});
+  setTimeout(__montrer, 8000);
+}catch(e){}
+</script>
+<style>html.mgt-chargement body{visibility:hidden!important}</style>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>MGT SARL - CRM V4.5.4</title>
 <script id="mgtAutomaticVersionLabel">(function(){function applyMgtVersionFromFilename(){var fallback='4.6.3';var path='';try{path=decodeURIComponent((window.location&&window.location.pathname)||'');}catch(e){path=(window.location&&window.location.pathname)||'';}var match=path.match(/(?:CRM[_ -]*MGT[_ -]*)?V(\d+(?:\.\d+)+)/i)||path.match(/V(\d+(?:\.\d+)+)/i);var version=match&&match[1]?match[1]:fallback;var label='CRM V'+version;var heading=document.querySelector('.brandText h1');if(heading)heading.textContent=label;document.title='MGT SARL - '+label;}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',applyMgtVersionFromFilename,{once:true});}else{applyMgtVersionFromFilename();}})();</script>
