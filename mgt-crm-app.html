@@ -1547,8 +1547,12 @@ async function writeArrConfirme(store, arr){
       if(!pret) throw new Error("Synchronisation pas encore prête : fermez puis réouvrez le module MGT, patientez quelques secondes, puis réessayez.");
       if(typeof h.gtmEcrireEtConfirmer === 'function'){
         let res;
+        // On garde le vrai message d'erreur (ex(e).message) au lieu d'un "problème de
+        // connexion" générique : un appel qui échoue immédiatement (ex. donnée invalide)
+        // n'a souvent rien à voir avec la connexion, et le message générique empêchait de
+        // trouver la vraie cause.
         try{ res = await h.gtmEcrireEtConfirmer('mgt_'+store, arr); }
-        catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
+        catch(e){ throw new Error("Enregistrement impossible : " + ((e && e.message) ? e.message : String(e))); }
         if(!res || res.ok !== true) throw new Error(res && res.raison ? res.raison : "Enregistrement non confirmé par le serveur.");
         return;
       }

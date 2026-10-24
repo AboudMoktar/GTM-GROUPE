@@ -829,8 +829,14 @@ function gtmEcrireEtConfirmer(key, value, timeoutMs){
   // rendait un délai dépassé bien plus probable alors que la connexion était pourtant bonne).
   if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(key)) return Promise.resolve({ok:false, raison:"Données pas encore chargées sur cet appareil."});
   let fullKey = CACHE_PREFIX + key;
-  memoryCache[fullKey] = JSON.parse(JSON.stringify(value));
-  try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {}
+  try {
+    memoryCache[fullKey] = JSON.parse(JSON.stringify(value));
+    try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {}
+  } catch(err){
+    // Erreur de conversion de la donnée elle-même (avant même d'essayer le réseau) :
+    // on l'indique clairement plutôt que de laisser planter l'écran sans explication.
+    return Promise.resolve({ok:false, raison:"Donnée invalide avant l'envoi : " + ((err && err.message) || String(err))});
+  }
   if(typeof hlEcrireConfirme === 'function') return hlEcrireConfirme(firebaseCheminDe(key), value, {cle:key}, timeoutMs);
   if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true}); // hors ligne : la file d'attente habituelle prendra le relais
   const t = timeoutMs || 35000;
