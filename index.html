@@ -1370,11 +1370,7 @@ function gtmStyleApp(){
 }
 window.gtmStyleApp = gtmStyleApp;
 function appBrandingHTML(){
-  // Modules TEK-TREND : même en-tête que l'application Gestion Rendement d'origine (« TEK TREND » écrit).
-  if(gtmStyleApp()) return `<div class="logo-wrap" style="align-items:flex-start;">
-    <div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div>
-    <div class="logo-sub">TECHNICAL WEAR</div>
-  </div>`;
+  // Toutes les sociétés : vrai logo (image) sur pastille blanche.
   // Logo officiel de la société, sur une pastille blanche (lisible sur la barre bleu nuit comme sur la barre latérale).
   const soc = (activeModule === 'mgt') ? 'mgt'
     : (activeModule === 'gadh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
