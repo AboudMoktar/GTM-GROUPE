@@ -798,12 +798,19 @@ function getJSON(key, fallback){
   try { const v = window.localStorage.getItem(fullKey); if(v) { memoryCache[fullKey] = JSON.parse(v); return JSON.parse(v); } } catch(e) {} 
   return fallback; 
 }
-function setJSON(key, value){ 
-  if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(key)) return;
+// Renvoie true si l'écriture a bien été prise en compte, false si elle a été
+// refusée (données pas encore chargées sur cet appareil — voir hlEcritureAutorisee).
+// Un appelant important (ex. un gros import) doit vérifier ce retour : avant cet
+// ajout, un refus passait totalement inaperçu (aucune valeur de retour), ce qui a
+// déjà fait croire à tort qu'un enregistrement avait réussi alors qu'il avait été
+// silencieusement abandonné.
+function setJSON(key, value){
+  if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(key)) return false;
   let fullKey = CACHE_PREFIX + key;
   memoryCache[fullKey] = JSON.parse(JSON.stringify(value));
-  try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {} 
+  try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {}
   syncToFirebase(key, value);
+  return true;
 }
 
 let currentUser = null;
@@ -2932,7 +2939,26 @@ window.onload = init;
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js').catch(function(err){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Sans ce qui suit, une mise à jour publiée (correction de bug, nouvelle
+      // fonctionnalité) peut rester invisible pendant longtemps sur un appareil déjà
+      // ouvert : le navigateur ne vérifie une nouvelle version qu'à certains moments
+      // précis, et même quand il la trouve, la page déjà ouverte continue de faire
+      // tourner l'ancien code tant qu'elle n'est pas rechargée. On force donc : (1) une
+      // vérification immédiate puis régulière, et (2) un rechargement automatique dès
+      // qu'une nouvelle version prend le relais.
+      var dejaRecharge = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if(dejaRecharge) return; // évite une boucle si ça se déclenche plusieurs fois
+        dejaRecharge = true;
+        location.reload();
+      });
+      reg.update().catch(function(){});
+      setInterval(function(){ reg.update().catch(function(){}); }, 5 * 60 * 1000);
+      document.addEventListener('visibilitychange', function(){
+        if(document.visibilityState === 'visible') reg.update().catch(function(){});
+      });
+    }).catch(function(err){
       console.error('Echec enregistrement du Service Worker :', err);
     });
   });
@@ -2940,5 +2966,3 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
 </script>
 </body>
 </html>
-
-</body></html>

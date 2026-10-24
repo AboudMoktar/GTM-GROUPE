@@ -1438,8 +1438,37 @@ function readArr(store){
   if(!_localArrays[store]){ try{ const raw=localStorage.getItem('mgtcrm_local_'+store); _localArrays[store]=raw?JSON.parse(raw):[]; }catch(e){ _localArrays[store]=[]; } }
   return _localArrays[store];
 }
-function writeArr(store, arr){
-  if(isSynced(store)){ const h=gtmHost(); if(h){ try{ h.setJSON('mgt_'+store, arr); return; }catch(e){} } }
+// Attend que GTM Groupe ait bien reçu les données existantes de ce dossier (Firebase)
+// avant d'écrire. Sans cette attente, un enregistrement fait juste après l'ouverture du
+// module (ex. un import) peut être silencieusement IGNORÉ par l'application (sécurité
+// anti-écrasement côté GTM Groupe), tout en semblant avoir réussi dans cet écran — c'est
+// exactement ce qui s'est produit une fois (727 clients affichés, mais jamais vraiment
+// enregistrés ; 319 au rechargement).
+function attendreSyncPrete(h, store, maxMs){
+  return new Promise(function(resolve){
+    if(!h || typeof h.gtmDonneesPretes !== 'function'){ resolve(true); return; } // ancienne version de GTM Groupe : rien à attendre
+    const t0 = Date.now();
+    (function essai(){
+      let pret = true;
+      try{ pret = h.gtmDonneesPretes('mgt_'+store); }catch(e){ pret = true; }
+      if(pret){ resolve(true); return; }
+      if(Date.now() - t0 >= maxMs){ resolve(false); return; }
+      setTimeout(essai, 400);
+    })();
+  });
+}
+async function writeArr(store, arr){
+  if(isSynced(store)){
+    const h=gtmHost();
+    if(h){
+      const pret = await attendreSyncPrete(h, store, 25000);
+      if(!pret) throw new Error("Synchronisation pas encore prête : fermez puis réouvrez le module MGT, patientez quelques secondes, puis réessayez.");
+      let ok;
+      try{ ok = h.setJSON('mgt_'+store, arr); }catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
+      if(ok === false) throw new Error("Enregistrement refusé par GTM Groupe (données pas encore chargées sur cet appareil). Réessayez dans quelques secondes.");
+      return;
+    }
+  }
   _localArrays[store]=arr;
   try{ localStorage.setItem('mgtcrm_local_'+store, JSON.stringify(arr)); }catch(e){}
 }
@@ -1458,15 +1487,15 @@ async function dbGet(store,key){
 }
 async function dbSet(store,key,val){
   if(store==='app_data'){ const o=appDataLocal(); o[key]=val; appDataSave(o); return; }
-  const arr=readArr(store); arr.push(val); writeArr(store,arr);
+  const arr=readArr(store); arr.push(val); await writeArr(store,arr);
 }
 async function dbDel(store,key){
   if(store==='app_data'){ const o=appDataLocal(); delete o[key]; appDataSave(o); return; }
-  writeArr(store, readArr(store).filter(it=>!matchKey(store,it,key)));
+  await writeArr(store, readArr(store).filter(it=>!matchKey(store,it,key)));
 }
 async function dbAll(store){ return readArr(store).slice(); }
 async function dbCount(store){ return readArr(store).length; }
-async function dbClear(store){ if(store==='app_data'){ appDataSave({}); return; } writeArr(store, []); }
+async function dbClear(store){ if(store==='app_data'){ appDataSave({}); return; } await writeArr(store, []); }
 async function dbPut(store,val){
   const arr=readArr(store);
   const cp=STORE_COMPOUND[store];
@@ -1474,7 +1503,7 @@ async function dbPut(store,val){
   if(cp) idx=arr.findIndex(it=>cp.every(f=>String(it[f])===String(val[f])));
   else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
   if(idx>=0) arr[idx]=val; else arr.push(val);
-  writeArr(store, arr);
+  await writeArr(store, arr);
 }
 // Ecrit PLUSIEURS enregistrements en UNE seule fois (une seule synchronisation Firebase)
 // au lieu d'un dbPut() par enregistrement. Pour un store synchronise (crm_clients,
@@ -1492,7 +1521,7 @@ async function dbPutMany(store, vals){
     else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
     if(idx>=0) arr[idx]=val; else arr.push(val);
   }
-  writeArr(store, arr);
+  await writeArr(store, arr);
 }
 // ===== Queues v2 (Etape A) : stores avec keyPath:'id' =====
 let QUEUE_SYNC_STORE='sync_queue';
@@ -2773,13 +2802,16 @@ function restoreFromBackupFile(file){
       // On alimente aussi la table d'historique séparée (utilisée par SAV et la fiche client)
       // à partir du planning de chaque client restauré, pour que cette vue soit à jour aussi.
       let histReport = { migrated: 0, skipped: 0 };
-      try { histReport = await migratePlanningToHistory(); } catch(e){}
+      let histErreur = null;
+      try { histReport = await migratePlanningToHistory(); } catch(e){ histErreur = (e && e.message) ? e.message : String(e); }
 
       alert([
         'Restauration terminée.',
         'Clients : ' + report.clients + ' importés' + (report.clientsSkip ? ', ' + report.clientsSkip + ' déjà présents (ignorés)' : ''),
         '(offres, factures, machines, visites et planning inclus dans chaque fiche client)',
-        'Historique (SAV / fiche client) : ' + histReport.migrated + ' évènements ajoutés' + (histReport.skipped ? ', ' + histReport.skipped + ' déjà présents' : ''),
+        histErreur
+          ? '⚠️ Historique (SAV / fiche client) NON enregistré : ' + histErreur
+          : 'Historique (SAV / fiche client) : ' + histReport.migrated + ' évènements ajoutés' + (histReport.skipped ? ', ' + histReport.skipped + ' déjà présents' : ''),
       ].concat(piecesOmises ? ['Pièces jointes (PDF/photos) retirées pour alléger l\'import : ' + piecesOmises] : []).join('\n'));
     } catch(err) {
       alert('Erreur pendant la restauration : ' + (err && err.message ? err.message : err));
