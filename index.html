@@ -822,8 +822,16 @@ function setJSON(key, value){
 // clients avait réussi. Réservé aux enregistrements importants (ex. un import) : l'utiliser
 // partout doublerait inutilement chaque écriture normale.
 function gtmEcrireEtConfirmer(key, value, timeoutMs){
-  const ok = setJSON(key, value);
-  if(ok === false) return Promise.resolve({ok:false, raison:"Données pas encore chargées sur cet appareil."});
+  // Enregistrement local (mémoire + téléphone) identique à setJSON, mais SANS passer par
+  // syncToFirebase : l'envoi réseau est fait une seule fois ci-dessous (hlEcrireConfirme),
+  // pour ne jamais envoyer deux fois la même donnée en même temps (ce qui doublait le temps
+  // de transfert des plus gros enregistrements, ex. un import de centaines de clients, et
+  // rendait un délai dépassé bien plus probable alors que la connexion était pourtant bonne).
+  if(typeof hlEcritureAutorisee === 'function' && !hlEcritureAutorisee(key)) return Promise.resolve({ok:false, raison:"Données pas encore chargées sur cet appareil."});
+  let fullKey = CACHE_PREFIX + key;
+  memoryCache[fullKey] = JSON.parse(JSON.stringify(value));
+  try { window.localStorage.setItem(fullKey, JSON.stringify(value)); } catch(e) {}
+  if(typeof hlEcrireConfirme === 'function') return hlEcrireConfirme(firebaseCheminDe(key), value, {cle:key}, timeoutMs);
   if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true}); // hors ligne : la file d'attente habituelle prendra le relais
   const t = timeoutMs || 35000;
   const t0 = Date.now();
@@ -831,9 +839,6 @@ function gtmEcrireEtConfirmer(key, value, timeoutMs){
     let fini = false;
     const minuteur = setTimeout(function(){
       if(fini) return; fini = true;
-      // Indique en plus ce que l'application pensait de la connexion au moment de l'échec,
-      // pour distinguer une vraie coupure réseau d'un blocage plus précis (ex. pare-feu qui
-      // bloque Firebase alors que le Wi-Fi/4G est bien actif).
       const etat = hlConnecte === true ? "l'application se croyait en ligne" : (hlConnecte === false ? "l'application se savait hors ligne" : "état de connexion inconnu");
       resolve({ok:false, raison:"Pas de confirmation du serveur après " + Math.round((Date.now()-t0)/1000) + "s (" + etat + "). Vérifiez votre connexion internet (essayez de changer de Wi-Fi/4G) puis réessayez."});
     }, t);
