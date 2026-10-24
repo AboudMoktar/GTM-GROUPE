@@ -22,7 +22,7 @@
 
 const SOCIETES = {
   tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', marque:['#006070', '#006070'], teinte:'#EEF6F7', modules:['rendement','rh','commandes','factures']},
-  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#8E2A5B', logo:'./logo-gadh.png', marque:['#8C1D40', '#DF9E19'], teinte:'#FAF3F6', modules:['gadh','machines','factures']},
+  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#9C335B', logo:'./logo-gadh.png', marque:['#C2346E', '#C5BA3C', '#138C94'], teinte:'#F8E4EC', modules:['gadh','machines','factures']},
   mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', logo:'./logo-mgt.png', marque:['#CB4E1D', '#CB4E1D'], teinte:'#FBEEE8', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];

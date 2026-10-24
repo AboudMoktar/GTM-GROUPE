@@ -1414,6 +1414,9 @@ function renderShell(){
 }
 
 function nav(tab){
+  // La page Rendement TEK-TREND ('dashboard') n'appartient qu'au module Rendement : depuis un autre
+  // module (GADH, MGT, RH…), on revient à l'accueil de ce module à la place.
+  if(tab === 'dashboard' && activeModule && activeModule !== 'rendement' && typeof navAccueilTab === 'function' && navAccueilTab() !== 'dashboard') tab = navAccueilTab();
   activeTab = tab;
   document.querySelectorAll('.bottomnav button, .sidebar nav button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b => b.classList.add('active'));
