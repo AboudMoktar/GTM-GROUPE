@@ -2,6 +2,9 @@
 const THEME_CLE = 'gtm_theme';
 function themeActuel(){ try { return localStorage.getItem(THEME_CLE) === 'dark' ? 'dark' : 'light'; } catch(e) { return 'light'; } }
 function themeAppliquer(t){
+  // Modules TEK-TREND : thème clair de l'application Gestion Rendement d'origine (le choix
+  // clair/sombre enregistré s'applique de nouveau dans les autres modules).
+  if(document.getElementById('main') && typeof gtmStyleApp === 'function' && gtmStyleApp()) t = 'light';
   document.documentElement.setAttribute('data-theme', t);
   const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', t === 'dark' ? '#0b1220' : '#0F3D66');
   document.querySelectorAll('iframe').forEach(f => { try { f.contentDocument.documentElement.setAttribute('data-theme', t); } catch(e) {} });
@@ -35,9 +38,9 @@ window.navAccueil = function(){
 function navMajBarre(){
   const app = document.getElementById('app'), body = document.querySelector('.app-body');
   if(!app || !body || !currentUser) return;
-  // Gestion Rendement : la barre « TEK TREND » reste en haut sur tous les onglets, comme dans
+  // Modules TEK-TREND : la barre « TEK TREND » reste en haut sur tous les onglets, comme dans
   // l'application Gestion Rendement d'origine (pas de barre compacte ← 🏠).
-  const profond = activeTab !== navAccueilTab() && activeModule && activeModule !== 'admin' && activeModule !== 'rendement';
+  const profond = activeTab !== navAccueilTab() && activeModule && activeModule !== 'admin' && !(typeof gtmStyleApp === 'function' && gtmStyleApp());
   app.classList.toggle('en-profondeur', !!profond);
   let barre = document.getElementById('deepbar');
   if(!profond){ if(barre) barre.remove(); return; }

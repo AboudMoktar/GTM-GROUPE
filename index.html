@@ -59,11 +59,11 @@
   html,body{background:#0d1721;}
   /* Fond sombre réservé à l'écran d'ouverture : une fois l'application affichée, fond normal. */
   html:has(.app-body),html:has(.app-body) body{background:var(--bg);}
-  /* Gestion Rendement : barre du haut identique à l'application Gestion Rendement d'origine
+  /* Modules TEK-TREND : barre du haut identique à l'application Gestion Rendement d'origine
      (synchro, compte, changer de module, déconnexion). */
-  html[data-module="rendement"] .user-chip .notif-btn,html[data-module="rendement"] .user-chip .theme-btn,html[data-module="rendement"] .user-chip .user-extra[title="Mon mot de passe"]{display:none !important;}
-  html[data-module="rendement"] .user-chip .user-extra{display:inline-flex !important;}
-  html[data-module="rendement"] .user-chip .user-menu-btn{background:transparent !important;border:0 !important;box-shadow:none !important;}
+  html[data-style-app] .user-chip .notif-btn,html[data-style-app] .user-chip .theme-btn,html[data-style-app] .user-chip .user-extra[title="Mon mot de passe"]{display:none !important;}
+  html[data-style-app] .user-chip .user-extra{display:inline-flex !important;}
+  html[data-style-app] .user-chip .user-menu-btn{background:transparent !important;border:0 !important;box-shadow:none !important;}
   .gtm-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden;color:#fff;background:radial-gradient(circle at 15% 15%,#004d5a 0%,transparent 40%),radial-gradient(circle at 85% 20%,#63122c 0%,transparent 40%),radial-gradient(circle at 80% 85%,#9e3912 0%,transparent 50%),#0d1721;}
   .gtm-splash svg.gs-deco{position:absolute;pointer-events:none;opacity:.2;}
   .gs-badge{position:relative;padding:22px 34px 18px;border-radius:30px;border:2px solid transparent;background:linear-gradient(rgba(13,23,33,.72),rgba(13,23,33,.72)) padding-box,linear-gradient(135deg,#1DB5C7,#8C1D40 50%,#FF7B47) border-box;box-shadow:0 0 40px rgba(29,181,199,.18),0 0 50px rgba(255,123,71,.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
@@ -1360,9 +1360,18 @@ function navItems(){
   return items.filter(i=>i.show);
 }
 
+// Modules TEK-TREND (Rendement, RH, Commandes, Suivi chaîne, Tableau de bord, Facturation TEK…) :
+// apparence identique à l'application Gestion Rendement d'origine. MGT et GADH gardent leur habillage.
+function gtmStyleApp(){
+  if(typeof activeModule === 'undefined' || !activeModule || activeModule === 'admin' || activeModule === 'mgt') return false;
+  if(activeModule === 'gadh' || activeModule === 'gadh-tableau') return false;
+  if((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh') return false;
+  return true;
+}
+window.gtmStyleApp = gtmStyleApp;
 function appBrandingHTML(){
-  // Gestion Rendement : même en-tête que l'application Gestion Rendement d'origine (« TEK TREND » écrit).
-  if(activeModule === 'rendement') return `<div class="logo-wrap" style="align-items:flex-start;">
+  // Modules TEK-TREND : même en-tête que l'application Gestion Rendement d'origine (« TEK TREND » écrit).
+  if(gtmStyleApp()) return `<div class="logo-wrap" style="align-items:flex-start;">
     <div class="logo-text"><span class="tek">TEK</span> <span class="trend">TREND</span></div>
     <div class="logo-sub">TECHNICAL WEAR</div>
   </div>`;
