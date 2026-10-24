@@ -1457,24 +1457,15 @@ function attendreSyncPrete(h, store, maxMs){
     })();
   });
 }
+// Ecriture NORMALE (rapide) : utilisée par chaque enregistrement individuel (une fiche
+// client modifiée, un tag ajouté...). Reste quasi instantanée comme avant — seule la
+// vérification "données chargées" (déjà en place) s'applique ici.
 async function writeArr(store, arr){
   if(isSynced(store)){
     const h=gtmHost();
     if(h){
       const pret = await attendreSyncPrete(h, store, 25000);
       if(!pret) throw new Error("Synchronisation pas encore prête : fermez puis réouvrez le module MGT, patientez quelques secondes, puis réessayez.");
-      // gtmEcrireEtConfirmer attend la VRAIE confirmation du serveur Firebase (pas
-      // seulement un enregistrement local) : sans ça, un enregistrement refusé par le
-      // serveur (ex. droits insuffisants sur ce compte) pouvait sembler réussi dans cet
-      // écran alors qu'il n'avait jamais vraiment été pris en compte.
-      if(typeof h.gtmEcrireEtConfirmer === 'function'){
-        let res;
-        try{ res = await h.gtmEcrireEtConfirmer('mgt_'+store, arr); }
-        catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
-        if(!res || res.ok !== true) throw new Error(res && res.raison ? res.raison : "Enregistrement non confirmé par le serveur.");
-        return;
-      }
-      // Ancienne version de GTM Groupe (sans confirmation) : comportement précédent.
       let ok;
       try{ ok = h.setJSON('mgt_'+store, arr); }catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
       if(ok === false) throw new Error("Enregistrement refusé par GTM Groupe (données pas encore chargées sur cet appareil). Réessayez dans quelques secondes.");
@@ -1533,7 +1524,36 @@ async function dbPutMany(store, vals){
     else { const kp=STORE_KEYS[store]; idx = kp ? arr.findIndex(it=>String(it[kp])===String(val[kp])) : -1; }
     if(idx>=0) arr[idx]=val; else arr.push(val);
   }
-  await writeArr(store, arr);
+  await writeArrConfirme(store, arr);
+}
+// Comme writeArr, mais attend en plus la VRAIE confirmation du serveur Firebase avant de
+// considérer l'écriture comme réussie — réservé aux gros enregistrements groupés (un
+// import) où une fausse impression de succès serait grave (voir l'incident "727 clients
+// affichés, 319 au rechargement" : l'écriture avait été refusée par le serveur sans que
+// personne ne le sache). Pour chaque enregistrement individuel du quotidien, writeArr()
+// (rapide, sans attente) reste utilisé pour ne pas ralentir toute l'application.
+async function writeArrConfirme(store, arr){
+  if(isSynced(store)){
+    const h=gtmHost();
+    if(h){
+      const pret = await attendreSyncPrete(h, store, 25000);
+      if(!pret) throw new Error("Synchronisation pas encore prête : fermez puis réouvrez le module MGT, patientez quelques secondes, puis réessayez.");
+      if(typeof h.gtmEcrireEtConfirmer === 'function'){
+        let res;
+        try{ res = await h.gtmEcrireEtConfirmer('mgt_'+store, arr); }
+        catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
+        if(!res || res.ok !== true) throw new Error(res && res.raison ? res.raison : "Enregistrement non confirmé par le serveur.");
+        return;
+      }
+      // Ancienne version de GTM Groupe (sans confirmation) : comportement précédent.
+      let ok;
+      try{ ok = h.setJSON('mgt_'+store, arr); }catch(e){ throw new Error("Enregistrement impossible (connexion). Réessayez."); }
+      if(ok === false) throw new Error("Enregistrement refusé par GTM Groupe (données pas encore chargées sur cet appareil). Réessayez dans quelques secondes.");
+      return;
+    }
+  }
+  _localArrays[store]=arr;
+  try{ localStorage.setItem('mgtcrm_local_'+store, JSON.stringify(arr)); }catch(e){}
 }
 // ===== Queues v2 (Etape A) : stores avec keyPath:'id' =====
 let QUEUE_SYNC_STORE='sync_queue';
