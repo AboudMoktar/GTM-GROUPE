@@ -79,6 +79,44 @@ html[data-theme="dark"][data-soc="gadh"] .card,html[data-theme="dark"][data-soc=
 html[data-theme="dark"][data-soc="gadh"] .bottomnav{background:rgba(36,24,38,.92);}
 html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active{color:#fff;}
 html[data-theme="dark"][data-soc="gadh"] .bottomnav button.active svg{color:#fff;background:none;}
+
+/* ===== GADH — thème clair aux couleurs du bas du logo (reflets rose, jaune et turquoise pâles) =====
+   Rose #C2336F · olive #A69C10 · turquoise #13939C ; fonds pâles #F8E4EC / #F6F3D6 / #DCEFF1.
+   Remplace l'habillage prune foncé dans le thème clair ; le thème sombre garde le sien. */
+html[data-soc="gadh"]:not([data-theme="dark"]){--accent:#B62E68;--accent-2:#C2336F;--accent-bg:#F8E4EC;--bg:#FBFAF8;--surface-2:#F7F5F1;--surface-3:#F0EDE7;--border:#E9E4DC;--border-soft:#F1EDE6;--ink:#2B2F36;}
+html[data-soc="gadh"]:not([data-theme="dark"]) body{background:linear-gradient(180deg,rgba(248,228,236,.55) 0%,rgba(246,243,214,.35) 38%,rgba(220,239,241,.35) 100%),#FBFAF8;background-attachment:fixed;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .topbar,
+html[data-soc="gadh"]:not([data-theme="dark"]) .deepbar{background:linear-gradient(90deg,#C2346E 0 33.3%,#C5BA3C 33.3% 66.6%,#138C94 66.6% 100%) left bottom/100% 3px no-repeat,linear-gradient(100deg,#F1D6E0 0%,#F2EFCD 52%,#CFE8EA 100%)!important;color:#2B2F36!important;border-radius:0 0 22px 22px;box-shadow:0 10px 24px -16px rgba(43,47,54,.35)!important;border-bottom:0!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .topbar *:not(svg):not(path):not(.notif-count):not(.sync-badge):not(.sync-badge *){color:#2B2F36;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .topbar button,
+html[data-soc="gadh"]:not([data-theme="dark"]) .topbar .user-menu-btn,
+html[data-soc="gadh"]:not([data-theme="dark"]) .deepbar button{background:rgba(255,255,255,.78)!important;color:#2B2F36!important;border:1px solid rgba(43,47,54,.08)!important;box-shadow:0 2px 6px -3px rgba(43,47,54,.25);}
+html[data-soc="gadh"]:not([data-theme="dark"]) .topbar svg,
+html[data-soc="gadh"]:not([data-theme="dark"]) .deepbar svg{color:#2B2F36;stroke:currentColor;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .deepbar .deep-titre{color:#2B2F36!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .card{background:#fff;border:1px solid #EFEAE3!important;border-radius:20px;box-shadow:0 10px 26px -20px rgba(43,47,54,.35)!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) main h2{color:#2B2F36;}
+html[data-soc="gadh"]:not([data-theme="dark"]) main h2::after{background:linear-gradient(90deg,#C2336F 0 33%,#C9BF2A 33% 66%,#13939C 66%);}
+html[data-soc="gadh"]:not([data-theme="dark"]) .btn-primary{background:#C2336F!important;color:#fff!important;border:0!important;border-radius:14px;box-shadow:0 8px 18px -10px rgba(194,51,111,.7)!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .btn-primary:hover{background:#B02A62!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .dd-jp:nth-child(4n+1),html[data-soc="gadh"]:not([data-theme="dark"]) .dd-bx:nth-child(3n+1){--c:#C2336F;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .dd-jp:nth-child(4n+2),html[data-soc="gadh"]:not([data-theme="dark"]) .dd-bx:nth-child(3n+2){--c:#8F870C;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .dd-jp:nth-child(4n+3),html[data-soc="gadh"]:not([data-theme="dark"]) .dd-bx:nth-child(3n+3){--c:#0F7F87;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .dd-jp:nth-child(4n+4){--c:#C2336F;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .dd-jp,html[data-soc="gadh"]:not([data-theme="dark"]) .dd-bx{box-shadow:0 10px 24px -20px rgba(43,47,54,.45)!important;border:1px solid color-mix(in srgb,var(--c,#C2336F) 14%,#fff)!important;background:linear-gradient(160deg,color-mix(in srgb,var(--c,#C2336F) 9%,#fff) 0%,#fff 70%)!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .bottomnav{background:rgba(255,255,255,.94)!important;border:1px solid #EFEAE3!important;box-shadow:0 14px 34px -14px rgba(43,47,54,.35)!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .bottomnav button{color:#5B616B!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .bottomnav button.active{background:#F8E4EC!important;color:#A8285F!important;box-shadow:none!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .bottomnav button.active svg{color:#A8285F!important;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .bottomnav button.active::after{background:#C9BF2A;}
+html[data-soc="gadh"]:not([data-theme="dark"]) .chip.on,html[data-soc="gadh"]:not([data-theme="dark"]) .badge{background:#F6F3D6;color:#5E5806;}
+@media (min-width:1024px){
+  html[data-soc="gadh"]:not([data-theme="dark"]) .sidebar{background:linear-gradient(180deg,#FCF1F5 0%,#FBFAEF 50%,#EEF7F8 100%)!important;border-right:1px solid #EFEAE3!important;}
+  html[data-soc="gadh"]:not([data-theme="dark"]) .sidebar nav button{color:#4A4F57!important;}
+  html[data-soc="gadh"]:not([data-theme="dark"]) .sidebar nav button.active{background:#F8E4EC!important;color:#A8285F!important;}
+  html[data-soc="gadh"]:not([data-theme="dark"]) .sidebar .side-sep{background:#EFEAE3;}
+  html[data-soc="gadh"]:not([data-theme="dark"]) .topbar{border-radius:0;}
+}
 html[data-theme="dark"][data-soc="mgt"]{--accent:#E8602A;--accent-2:#F07A44;--accent-bg:#3A1D13;}
 html[data-theme="dark"][data-soc="mgt"] .btn-primary{background:#C2410C;color:#fff;}
 html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120deg,#1B0D07 0%,#34170A 100%);}
@@ -88,7 +126,7 @@ html[data-theme="dark"][data-soc="mgt"] .topbar{background:linear-gradient(120de
     if(activeModule === 'mgt') return 'mgt';
     if(activeModule === 'gadh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; if(typeof activeSociete === 'undefined' || !activeSociete || activeSociete === 'tek') return 'tek'; return ''; };
   const meta0 = (document.querySelector('meta[name="theme-color"]')||{}).content;
-  const sync = () => { try { const mt = document.querySelector('meta[name="theme-color"]'); if(mt){ const w0 = quelle(); mt.content = w0 === 'gadh' ? '#5E1032' : w0 === 'tek' ? '#06323C' : w0 === 'mgt' ? '#2A130A' : (meta0 || mt.content); } const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
+  const sync = () => { try { const mt = document.querySelector('meta[name="theme-color"]'); if(mt){ const w0 = quelle(); mt.content = w0 === 'gadh' ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#5E1032' : '#F8E4EC') : w0 === 'tek' ? '#06323C' : w0 === 'mgt' ? '#2A130A' : (meta0 || mt.content); } const w = quelle(), r = document.documentElement; if(w){ if(r.getAttribute('data-soc') !== w) r.setAttribute('data-soc', w); } else if(r.hasAttribute('data-soc')) r.removeAttribute('data-soc'); } catch(e) {} };
   ['nav', 'renderShell', 'chooseModule', 'chooseSociete'].forEach(n => { const f = window[n]; if(typeof f === 'function') window[n] = function(){ const r = f.apply(this, arguments); sync(); return r; }; });
   setInterval(sync, 600); sync();
 })();

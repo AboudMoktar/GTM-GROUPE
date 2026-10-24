@@ -16,9 +16,12 @@ themeAppliquer(themeActuel());
 document.addEventListener('load', (e) => { if(e.target && e.target.tagName === 'IFRAME') themeAppliquer(themeActuel()); }, true);
 
 // --- Accueil du module courant ---
+// Doit couvrir TOUS les modules : un module oublié ici (Tableau de bord GADH ou TEK-TREND, Suivi
+// chaîne) renvoyait vers 'dashboard', c'est-à-dire la page Rendement de TEK-TREND, même dans GADH.
 function navAccueilTab(){
   return activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard'
-    : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'gadh' ? 'gadh-dashboard' : activeModule === 'commandes' ? 'commandes-home' : 'dashboard';
+    : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'gadh' ? 'gadh-dashboard' : activeModule === 'commandes' ? 'commandes-home'
+    : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'chaine' ? 'chaine-tableau' : 'dashboard';
 }
 window.navRetour = function(){
   if(history.state && typeof history.state.nh === 'number' && history.state.nh > 0) history.back();
