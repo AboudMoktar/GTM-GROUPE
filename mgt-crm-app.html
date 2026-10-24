@@ -792,6 +792,11 @@ html[data-mgt-theme="light"] .mgtBackHomeBtn{background:#ef3f08!important;color:
 // "DATABASE Connecte" et la mention "Cree par...") s'affiche brievement avant de se
 // refermer, ce qui ressemble a un chargement d'une autre application.
 document.getElementById('sidebarCollapse').checked = window.innerWidth > 900;
+// Applique IMMEDIATEMENT le theme clair/sombre choisi (au lieu d'attendre un script plus
+// bas dans la page, qui ne s'execute qu'une fois le reste du contenu deja affiche) : sans
+// ca, la page s'affiche brievement en sombre par defaut avant de passer au theme choisi
+// (clair), ce qui ressemble aussi a un chargement d'une autre application.
+try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getItem('mgt_crm_theme_v1') || 'dark'); }catch(e){}
 </script>
 <aside class="sidebar">
 <div class="sidebarHead">
