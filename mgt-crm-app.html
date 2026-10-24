@@ -9978,6 +9978,24 @@ html[data-mgt-theme="light"] #gtm-back-btn:hover{background:#ef3f08;color:#fff!i
     }
   }catch(e){}
 })();
+// Cette page est chargée dans un cadre (iframe) à part : le reste de GTM Groupe ne la
+// redessine jamais tout seul. Au tout premier chargement (ou juste après une connexion
+// un peu lente), elle peut donc afficher une copie des données pas encore tout à fait à
+// jour (le temps que Firebase confirme la toute dernière version). GTM Groupe prévient
+// maintenant cette page dès que des données fraîches arrivent (voir onFirebaseDataMaintenant
+// dans index.html), pour qu'elle se resynchronise au lieu de rester figée sur un ancien
+// chiffre (ex. un nombre de clients qui semble "revenir en arrière" après actualisation).
+window.addEventListener('message', function(ev){
+  if(!(ev && ev.data && ev.data.type === 'gtm-mgt-data-updated')) return;
+  Promise.resolve().then(async function(){
+    try{
+      await rebuildClientCache();
+      const sid = state.selected && state.selected[fields.id];
+      state.selected = sid ? CLIENTS.find(x => String(x[fields.id]) === String(sid)) || null : null;
+      refreshFilters(); updateStats(); render();
+    }catch(e){ console.warn('Resynchronisation apres donnees Firebase fraiches : echec', e); }
+  });
+});
 // Les deux boutons d'import (Supabase / cet appareil) sont câblés ici, par délégation sur tout
 // le document, au lieu de dépendre de la fonction "setup" de l'écran Clients : celle-ci ne
 // s'exécute que si l'écran Clients a déjà été ouvert une fois, donc un clic depuis

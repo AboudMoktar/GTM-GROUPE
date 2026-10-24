@@ -644,6 +644,15 @@ function onFirebaseDataMaintenant(){
   if(!currentUser) return;
   checkForNewMessages({messages: getJSON('messages', {})});
   updateNavBadges();
+  if(activeModule === 'mgt'){
+    // Le module MGT est une page à part (dans un cadre/iframe), pas redessinée par le
+    // reste de l'application : sans ce message, elle continue d'afficher ce qu'elle avait
+    // chargé au tout début (parfois une copie locale pas encore à jour), même après que
+    // les vraies données les plus récentes sont arrivées de Firebase.
+    const f = document.getElementById('mgt-crm-frame');
+    if(f && f.contentWindow) f.contentWindow.postMessage({type:'gtm-mgt-data-updated'}, '*');
+    return;
+  }
   if(!document.getElementById('main')){
     // Pas de module ouvert (choix de société / de module) : seul l'écran direction se rafraîchit.
     if(directionOuverte) renderDirection();
