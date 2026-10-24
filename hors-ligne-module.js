@@ -108,6 +108,59 @@ function hlEcrire(chemin, valeur, ref){
   });
 }
 
+// --- Écriture confirmée (ex. un import) : UNE SEULE requête réseau, avec délai ---
+// Utilisée quand l'appelant a besoin de savoir si le serveur a bien reçu la donnée.
+// Important : elle ne fait PAS une deuxième requête séparée en plus de l'écriture
+// normale — pour les plus grosses données (ex. des centaines de fiches client),
+// envoyer deux fois la même chose en même temps double le temps de transfert et
+// rend un délai dépassé bien plus probable alors que la connexion est bonne.
+function hlEcrireConfirme(chemin, valeur, ref, timeoutMs){
+  if(!firebaseConfigured()) return Promise.resolve({ok:true});
+  const boite = hlBoite();
+  const e = boite[chemin] || {cle: ref.cle, sous: ref.sous || null, base: hlEmpreinte(hlValeurServeur(ref.cle, ref.sous)), ts: Date.now(), n: 0};
+  e.n = (e.n || 0) + 1;
+  e.ts = Date.now();
+  boite[chemin] = e;
+  hlLSset(HL_BOITE, boite);
+  const n = e.n;
+  hlMajBadge();
+  if(!firebaseReady || !fbRootRef) return Promise.resolve({ok:true});
+  const t0 = Date.now();
+  const requete = fbRootRef.child(chemin).set(valeur === undefined ? null : valeur);
+  // Nettoyage normal de la boîte d'attente dès que le serveur répond VRAIMENT —
+  // même si notre délai ci-dessous s'est déjà écoulé entre-temps (la requête
+  // réseau n'est jamais annulée, on se contente de ne plus attendre sa réponse
+  // pour ce qu'on renvoie à l'appelant).
+  requete.then(function(){
+    const b = hlBoite();
+    if(b[chemin]){
+      if(b[chemin].n === n) delete b[chemin];
+      else b[chemin].base = hlEmpreinte(valeur);
+      hlLSset(HL_BOITE, b);
+    }
+    hlNoterServeur(ref.cle, ref.sous, valeur);
+    hlMajBadge();
+  }).catch(function(err){
+    if(err && /permission/i.test(String(err.code || err.message || ''))){
+      const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b);
+    }
+    hlMajBadge();
+  });
+  return hlAvecDelai(requete, timeoutMs || 35000).then(function(){
+    return {ok:true};
+  }).catch(function(err){
+    if(err && err.hlDelai){
+      const etat = hlConnecte === true ? "l'application se croyait en ligne" : (hlConnecte === false ? "l'application se savait hors ligne" : "état de connexion inconnu");
+      return {ok:false, raison:"Pas de confirmation du serveur après " + Math.round((Date.now()-t0)/1000) + "s (" + etat + "). Vérifiez votre connexion internet (essayez de changer de Wi-Fi/4G) puis réessayez."};
+    }
+    console.error('Erreur de synchronisation Firebase :', err);
+    const msg = (err && (err.message || err.code)) || String(err);
+    if(/permission/i.test(msg)) return {ok:false, raison:"Refusé par le serveur : droits insuffisants sur ce compte pour enregistrer dans MGT."};
+    return {ok:false, raison:"Refusé par le serveur : " + msg};
+  });
+}
+window.hlEcrireConfirme = hlEcrireConfirme;
+
 // Avant toute écriture : les vraies données du dossier doivent être en mémoire,
 // sinon on écraserait le serveur avec une base vide ou incomplète.
 function hlEcritureAutorisee(key){
@@ -133,7 +186,18 @@ window.gtmDonneesPretes = function(key){
 };
 
 // --- Réception des données d'un dossier (serveur ou copie locale) ---
-function hlClesEnAttente(){ const s = new Set(); Object.values(hlBoite()).forEach(e => s.add(e.cle)); return s; }
+// Une écriture restée sans réponse du serveur depuis longtemps (ex. une
+// coupure en plein envoi, un onglet resté ouvert des heures) ne doit plus
+// bloquer indéfiniment l'affichage des vraies données du serveur : passé ce
+// délai, on arrête de la considérer "en cours" pour l'affichage (elle reste
+// quand même dans la boîte pour être réessayée au prochain démarrage).
+const HL_ATTENTE_MAX_MS = 90000;
+function hlClesEnAttente(){
+  const s = new Set();
+  const maintenant = Date.now();
+  Object.values(hlBoite()).forEach(e => { if((maintenant - (e.ts || 0)) < HL_ATTENTE_MAX_MS) s.add(e.cle); });
+  return s;
+}
 function hlRecevoirDossier(dossier, data, depuisServeur){
   const enAttente = hlClesEnAttente();
   Object.keys(data || {}).forEach(k => {
