@@ -2947,9 +2947,23 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
       // tourner l'ancien code tant qu'elle n'est pas rechargée. On force donc : (1) une
       // vérification immédiate puis régulière, et (2) un rechargement automatique dès
       // qu'une nouvelle version prend le relais.
+      // Important : « controllerchange » se déclenche aussi la toute première fois
+      // qu'un Service Worker prend le contrôle de la page (ex. juste après avoir vidé
+      // le cache du téléphone) — pas seulement lors d'une vraie mise à jour. Sans cette
+      // distinction, la page se rechargeait dès son tout premier chargement, donnant
+      // l'impression que l'application plantait (rechargement en boucle au démarrage).
+      var dejaControlee = !!navigator.serviceWorker.controller;
       var dejaRecharge = false;
       navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if(!dejaControlee){ dejaControlee = true; return; } // première prise de contrôle : rien à recharger
         if(dejaRecharge) return; // évite une boucle si ça se déclenche plusieurs fois
+        // Garde-fou supplémentaire : si un rechargement pour mise à jour a déjà eu lieu
+        // il y a moins de 20 secondes, quelque chose tourne mal (ex. deux versions qui
+        // s'activent tour à tour) — on n'insiste pas, pour ne jamais recharger en boucle.
+        var dernier = 0;
+        try { dernier = Number(sessionStorage.getItem('__gtm_maj_ts') || 0); } catch(e) {}
+        if(Date.now() - dernier < 20000) return;
+        try { sessionStorage.setItem('__gtm_maj_ts', String(Date.now())); } catch(e) {}
         dejaRecharge = true;
         location.reload();
       });
