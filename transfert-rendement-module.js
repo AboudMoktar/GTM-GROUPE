@@ -79,7 +79,6 @@
       TR.jours = snapJours.val() || {};
       TR.reglages = {};
       for(const [k] of TR_REGLAGES){ const s = await racine.child(k).once('value'); if(s.exists()) TR.reglages[k] = s.val(); }
-      const sm = await racine.child('messages').once('value'); TR.messages = sm.val() || {};
       trAnalyser();
     } catch(err){
       const c = String(err && err.code || '');
@@ -111,8 +110,7 @@
       if(gtm === null) lignes.push({cle, nom, type: 'reglage', etat: 'nouveau', gr, gtm, choix: 'gr'});
       else if(canon(gtm) !== canon(gr)) lignes.push({cle, nom, type: 'reglage', etat: 'different', gr, gtm, choix: 'gr'});
     });
-    const msgsGtm = getJSON('messages', {}) || {};
-    TR.nouveauxMessages = Object.keys(TR.messages).filter(id => !(id in msgsGtm));
+    TR.nouveauxMessages = []; // onglet Messages retiré de GTM : les messages ne sont plus repris
     TR.lignes = lignes;
     trAfficher();
   }
@@ -201,7 +199,7 @@
       try {
         if(container && (typeof firebaseConfigured !== 'function' || firebaseConfigured())){
           const c = document.createElement('div'); c.className = 'card';
-          c.innerHTML = '<h3 style="margin-top:0;">Données de l\'application Gestion Rendement</h3><p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 10px;">L\'application Gestion Rendement enregistre dans une autre base que GTM. Récupérez ses journées de production, ses réglages et ses messages : vous voyez les différences et choisissez avant tout enregistrement. À relancer quand vous voulez.</p><button class="btn btn-primary" onclick="trOuvrir()">Récupérer les données de Gestion Rendement</button>';
+          c.innerHTML = '<h3 style="margin-top:0;">Données de l\'application Gestion Rendement</h3><p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 10px;">L\'application Gestion Rendement enregistre dans une autre base que GTM. Récupérez ses journées de production et ses réglages : vous voyez les différences et choisissez avant tout enregistrement. À relancer quand vous voulez.</p><button class="btn btn-primary" onclick="trOuvrir()">Récupérer les données de Gestion Rendement</button>';
           container.appendChild(c);
         }
       } catch(x){}

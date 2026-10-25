@@ -654,7 +654,6 @@ function onFirebaseData(){ clearTimeout(fbDebounce); fbDebounce = setTimeout(onF
 function onFirebaseDataMaintenant(){
   setSyncBadge('ok');
   if(!currentUser) return;
-  checkForNewMessages({messages: getJSON('messages', {})});
   updateNavBadges();
   if(activeModule === 'mgt'){
     // Le module MGT est une page à part (dans un cadre/iframe), pas redessinée par le
@@ -1353,7 +1352,7 @@ function navItems(){
     {tab:'fiche-chaine', label:'Fiche chaîne', icon:ICONS.team, show:canSaisie(currentUser.role) || currentUser.role==='viewer'},
     {tab:'historique', label:'Historique', icon:ICONS.historique, show:true},
     {tab:'stats', label:'Stats', icon:ICONS.stats, show:true},
-    {tab:'messages', label:'Messages', icon:ICONS.messages, show:true},
+    // Onglet Messages retiré (sans utilité) ; les anciens messages restent dans la base.
     {tab:'params', label:'Params', icon:ICONS.params, show:currentUser.role==='admin'},
     {tab:'sessions', label:'Sessions', icon:ICONS.sessions, show:true}
   ];
@@ -1433,6 +1432,7 @@ function renderShell(){
 function nav(tab){
   // La page Rendement TEK-TREND ('dashboard') n'appartient qu'au module Rendement : depuis un autre
   // module (GADH, MGT, RH…), on revient à l'accueil de ce module à la place.
+  if(tab === 'messages') tab = 'dashboard'; // onglet retiré : un ancien lien ramène au Tableau
   if(tab === 'dashboard' && activeModule && activeModule !== 'rendement' && typeof navAccueilTab === 'function' && navAccueilTab() !== 'dashboard') tab = navAccueilTab();
   activeTab = tab;
   document.querySelectorAll('.bottomnav button, .sidebar nav button').forEach(b => b.classList.remove('active'));
