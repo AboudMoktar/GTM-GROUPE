@@ -4,6 +4,10 @@
 <head>
 <meta charset="utf-8"/>
 <script>
+// Mise en forme des montants : un seul formateur par nombre de décimales (toLocaleString avec
+// options en recrée un à chaque appel : ~0,1 s pour afficher la liste des factures).
+var mgtNombreFr=(function(){var c={};return function(n,d){var f=c[d]||(c[d]=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}));return f.format(n);};})();
+
 // Thème clair/sombre appliqué AVANT tout le reste (styles compris) : ainsi le tout premier
 // affichage est déjà dans le bon thème, au lieu d'un bref passage en sombre (thème par défaut).
 // Pendant le chargement, seul le fond uni du thème est affiché : les styles de cette page sont
@@ -1134,7 +1138,7 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <div>
 <div class="pilotageEyebrow">Module OFFRE</div>
 <h2>Offres en cours <span class="clientCountBadge" id="offresCount">0</span></h2>
-<div class="offresSub">Toutes les offres de tous les clients, sans seuil ni filtre de marque. Suivi : type, marque (MORGAN / MACPI / LOTUS / AUTRE), machine, montant, echeance, validation client et statut commercial.</div>
+<div class="offresSub">Toutes les offres par marque (Morgan, Macpi, autres), classées par avancement du projet.</div>
 </div>
 <div class="offresModuleActions">
 <button class="primary" id="offresAddBtn" title="Ajouter une nouvelle offre" aria-label="Ajouter une nouvelle offre">+ Ajouter une offre</button><button class="secondary" id="offresRefreshBtn" title="Actualiser la liste des offres">Actualiser</button>
@@ -2107,7 +2111,7 @@ function renderDashboardCA(targetId='caClientsDashboard'){
   const rankMap=new Map();
   yearRows.forEach(x=>{const id=x.clientId;if(!rankMap.has(id))rankMap.set(id,{client:x.client,id,name:x.clientName,total:0,count:0});const r=rankMap.get(id);r.total+=amountOf(x);r.count++;});
   const ranking=[...rankMap.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'fr')).slice(0,5);
-  const fmt=n=>Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fmt=n=>mgtNombreFr(Number(n||0),0)+' €';
   const pct=n=>total?Math.round((n/total)*1000)/10:0;
   const activity=[['MACHINE','Machines',sums.MACHINE],['PIECE','Pièces',sums.PIECE],['INTERVENTION','Services',sums.INTERVENTION]];
   const activityHtml=activity.map(a=>'<div class="caActivityRow"><div class="caActivityLabel"><i class="caDot"></i>'+esc(a[1])+'</div><div class="caBar"><span style="width:'+Math.min(100,total?(a[2]/Math.max(...activity.map(x=>x[2]),1))*100:0)+'%"></span></div><div class="caActivityValue">'+esc(fmt(a[2]))+'<small>'+esc(pct(a[2]))+' % du CA</small></div></div>').join('');
@@ -2415,7 +2419,7 @@ function renderSearchResults(){const box=document.getElementById('searchResults'
 function openSearch(){renderSearchResults();}
 function isReminderTask(a){return !isFieldVisit(a)&&actionIsPlanned(a)&&!norm(a.status).includes('archive');}
 function taskReminderEntries(){return allPlanningActions().filter(isReminderTask).map(a=>({a:a,d:actionDays(a)})).sort((x,y)=>(x.d===null?9999:x.d)-(y.d===null?9999:y.d));}
-function renderTaskReminders(){const list=document.getElementById('taskReminderList'); if(!list) return; const pr=document.getElementById('taskPriorityFilter').value, user=document.getElementById('taskUserFilter').value, df=document.getElementById('taskDateFilter').value; let rows=taskReminderEntries(); if(pr) rows=rows.filter(x=>norm(x.a.priority).includes(norm(pr))); if(user) rows=rows.filter(x=>actionCommercial(x.a)===user); if(df==='late') rows=rows.filter(x=>x.d!==null&&x.d<0); if(df==='soon') rows=rows.filter(x=>x.d!==null&&x.d>=0&&x.d<=7); if(df==='none') rows=rows.filter(x=>x.d===null); list.innerHTML=rows.map(x=>{const a=x.a, late=x.d!==null&&x.d<0, soon=x.d!==null&&x.d>=0&&x.d<=7; calendarActionMap[a.eventId]=a; return '<div class="taskCard '+(late?'late':soon?'soon':'')+'"><strong>'+esc(a.type||'tache')+' - '+esc(a.client[fields.name]||'-')+'</strong><div>'+esc([dateFr(actionMainDate(a)),a.priority,actionCommercial(a)].filter(x=>x&&String(x).trim()).join(' · '))+'</div><div class="muted">'+esc(a.objective||'')+'</div>'+previewImageHtml(a.photoName,a.photoData)+'<div class="taskActions"><button class="secondary" data-task-report="'+esc(a.eventId)+'">Reporter</button><button data-task-done="'+esc(a.eventId)+'">Terminer</button></div></div>';}).join('')||'<div class="empty">Aucune tache a relancer.</div>'; list.querySelectorAll('[data-task-report]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskReport,'report')); list.querySelectorAll('[data-task-done]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskDone,'done'));}
+function renderTaskReminders(){const list=document.getElementById('taskReminderList'); if(!list) return; const pr=document.getElementById('taskPriorityFilter').value, user=document.getElementById('taskUserFilter').value, df=document.getElementById('taskDateFilter').value; let rows=taskReminderEntries(); if(pr) rows=rows.filter(x=>norm(x.a.priority).includes(norm(pr))); if(user) rows=rows.filter(x=>actionCommercial(x.a)===user); if(df==='late') rows=rows.filter(x=>x.d!==null&&x.d<0); if(df==='soon') rows=rows.filter(x=>x.d!==null&&x.d>=0&&x.d<=7); if(df==='none') rows=rows.filter(x=>x.d===null); rows.forEach(x=>{calendarActionMap[x.a.eventId]=x.a;}); mgtRemplirProgressif(list,rows,x=>{const a=x.a, late=x.d!==null&&x.d<0, soon=x.d!==null&&x.d>=0&&x.d<=7; return '<div class="taskCard '+(late?'late':soon?'soon':'')+'"><strong>'+esc(a.type||'tache')+' - '+esc(a.client[fields.name]||'-')+'</strong><div>'+esc([dateFr(actionMainDate(a)),a.priority,actionCommercial(a)].filter(x=>x&&String(x).trim()).join(' · '))+'</div><div class="muted">'+esc(a.objective||'')+'</div>'+previewImageHtml(a.photoName,a.photoData)+'<div class="taskActions"><button class="secondary" data-task-report="'+esc(a.eventId)+'">Reporter</button><button data-task-done="'+esc(a.eventId)+'">Terminer</button></div></div>';},root=>{root.querySelectorAll('[data-task-report]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskReport,'report')); root.querySelectorAll('[data-task-done]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskDone,'done'));},'<div class="empty">Aucune tache a relancer.</div>');}
 function openTaskReminders(){calendarActionMap={}; const users=uniq(taskReminderEntries().map(x=>actionCommercial(x.a))); const sel=document.getElementById('taskUserFilter'); const cur=sel.value; sel.innerHTML='<option value="">Tous utilisateurs</option>'+users.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join(''); sel.value=users.includes(cur)?cur:''; renderTaskReminders();}
  async function updateReminderTask(eventId,mode){const a=calendarActionMap[eventId]; if(!a) return; const c=a.client; const p=planningPatchFor(c); let idx=p.list.findIndex(x=>String(x.id||'')===String(a.eventId)); const evt={id:idx>=0?(p.list[idx].id||a.eventId):'T'+Date.now(),date:mode==='report'?dateToInput(addDays(new Date(),7)):actionMainDate(a),type:a.type||'tache administrative',priority:a.priority||'Moyenne',status:mode==='done'?'Termine':'En attente',commercial:actionCommercial(a),objective:a.objective||'',photoName:a.photoName||'',photoData:a.photoData||'',source:'manuel'}; if(idx>=0) p.list[idx]=Object.assign({},p.list[idx],evt); else p.list.push(evt); const eventsMeta=[{eventId:String(evt.id),mode:(idx>=0?'edit':'add')}]; await commitPlanning(c,p.patch,p.list,eventsMeta); renderTaskReminders();}
 renderOffersModule=function(){const panel=document.getElementById('offerDashboardModal'); if(!panel||panel.hidden) return; refreshOfferFilters(); const body=document.getElementById('offersDashboardBody'); if(!body) return; let rows=offerEntries(); const q=norm(offerFilterVal('offerSearchFilter')), c=offerFilterVal('offerClientFilter'), t=offerFilterVal('offerTypeFilter'), s=offerFilterVal('offerStatusFilter'), sort=offerFilterVal('offerSort'); if(q) rows=rows.filter(x=>norm([x.client[fields.name],offerTypeLabel(x.offer),offerBusinessStatus(x.offer),x.offer.note,x.offer.progress].join(' ')).includes(q)); if(c) rows=rows.filter(x=>x.client[fields.name]===c); if(t) rows=rows.filter(x=>norm(offerTypeLabel(x.offer))===norm(t)); if(s) rows=rows.filter(x=>norm(offerBusinessStatus(x.offer))===norm(s)); rows.sort((a,b)=>{if(sort==='date-asc') return (parseDateValue(quoteSentDate(a.offer))||0)-(parseDateValue(quoteSentDate(b.offer))||0); if(sort==='amount-desc') return quoteAmount(b.offer)-quoteAmount(a.offer); return (parseDateValue(quoteSentDate(b.offer))||0)-(parseDateValue(quoteSentDate(a.offer))||0);}); body.innerHTML=rows.length?rows.map(x=>{const st=offerBusinessStatus(x.offer); const cls=st==='Confirme'?'ok':st==='Negociation'?'nego':st==='Relance'?'relance':''; const pdf=x.offer.pdfData?'<a class="pdfLink" download="'+esc(x.offer.pdfName||'devis.pdf')+'" href="'+esc(x.offer.pdfData)+'">Voir PDF</a>':'-'; return '<tr><td><button class="dashClientBtn" data-client-id="'+esc(x.client[fields.id])+'">'+esc(x.client[fields.name]||'-')+'</button></td><td>'+esc(offerTypeLabel(x.offer))+'</td><td>'+esc(money(quoteAmount(x.offer)))+'</td><td>'+esc(dateFr(quoteSentDate(x.offer)))+'</td><td><span class="offerStatus '+cls+'">'+esc(st)+'</span></td><td>'+pdf+'</td><td><button class="secondary offreEditDashBtn" data-offre-edit="'+esc(x.client[fields.id])+'|'+x.index+'" title="Modifier l\'offre" aria-label="Modifier l\'offre"><span aria-hidden="true" class="offreEditDashIcon">✎</span><span class="offreEditDashLabel">Modifier</span></button><button class="pdfBtn" data-offer-pdf="'+esc(x.client[fields.id])+'|'+x.index+'">Importer PDF</button></td></tr>';}).join(''):'<tr><td colspan="7" class="empty">Aucune offre trouvee</td></tr>'; body.querySelectorAll('[data-client-id]').forEach(btn=>btn.onclick=()=>openClientById(btn.dataset.clientId)); body.querySelectorAll('[data-offer-pdf]').forEach(btn=>btn.onclick=()=>importOfferPdf(btn.dataset.offerPdf)); body.querySelectorAll('[data-offre-edit]').forEach(btn=>{const parts=String(btn.dataset.offreEdit).split('|'); btn.onclick=()=>openOffreEdit(parts[0],Number(parts[1]));});};
@@ -3321,7 +3325,7 @@ initApp().then(async()=>{await mgtPagePrete(); mgtLancerSetup(); try{await impor
  const months=['JANV','FEVR','MARS','AVRIL','MAI','JUIN','JUILLET','AOUT','SEPT','OCTO','NOV','DECE'];
  const types=['COMMISSION','PIECE','INTERVENTION','MACHINE','FORMATION','AUTRE'];
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const amount=n=>Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:3,maximumFractionDigits:3});
+ const amount=n=>mgtNombreFr(Number(n||0),3);
  const clientName=c=>String(c[fields.name]||'Sans nom');
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  const factures=()=>CLIENTS.flatMap(c=>(Array.isArray(c.Factures)?c.Factures:[]).map(f=>({...f,clientId:String(c[fields.id]),clientName:clientName(c)})));
@@ -5510,7 +5514,7 @@ var ICON_STAR='<svg fill="none" stroke="currentColor" stroke-linecap="round" str
 var ICON_DOC='<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>';
 var ICON_ALERT='<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg>';
 function fmtInt(n){try{return Number(n||0).toLocaleString('fr-FR');}catch(e){return String(n||0);}}
-function fmtDT(n){try{return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:3,maximumFractionDigits:3})+' DT';}catch(e){return '0,000 DT';}}
+function fmtDT(n){try{return mgtNombreFr(Number(n||0),3)+' DT';}catch(e){return '0,000 DT';}}
 function clientsArr(){try{return Array.isArray(CLIENTS)?CLIENTS:[];}catch(e){return [];}}
 function computeHomeStats(){
  var cs=clientsArr();
@@ -5604,6 +5608,31 @@ function start(){build();var b=document.getElementById('mgtBackHomeBtn');var app
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+<script id="mgt-rendu-progressif">
+// Listes de centaines de cartes (clients, offres) : les premières cartes s'affichent tout de suite,
+// les suivantes sont ajoutées par petits paquets pendant que le téléphone est libre. L'écran
+// apparaît immédiatement et reste utilisable au lieu de rester figé le temps de tout dessiner.
+// Un nouveau dessin de la même liste (filtre, recherche…) annule les paquets restants.
+window.mgtRemplirProgressif=function(wrap,items,versHtml,brancher,videHtml){
+  if(!wrap) return;
+  var jeton=(wrap.__mgtJeton||0)+1; wrap.__mgtJeton=jeton;
+  if(!items||!items.length){ wrap.innerHTML=videHtml||''; return; }
+  var PREMIER=20, PAS=40, i=Math.min(PREMIER,items.length);
+  wrap.innerHTML=items.slice(0,i).map(versHtml).join('');
+  if(brancher) brancher(wrap);
+  var premier=wrap.firstElementChild;
+  function suite(){
+    if(wrap.__mgtJeton!==jeton||wrap.firstElementChild!==premier||i>=items.length) return;
+    var t=document.createElement('div'); t.innerHTML=items.slice(i,i+PAS).map(versHtml).join('');
+    if(brancher) brancher(t);
+    var f=document.createDocumentFragment(); while(t.firstChild) f.appendChild(t.firstChild);
+    wrap.appendChild(f); i+=PAS;
+    if(i<items.length) planifier();
+  }
+  function planifier(){ if(window.requestIdleCallback) requestIdleCallback(suite,{timeout:120}); else setTimeout(suite,16); }
+  if(i<items.length) planifier();
+};
+</script>
 <style id="mgt-v45-clients-ui">
 /* MGT V4.5 — CLIENTS : cartes / liste / 360 — présentation uniquement */
 #clientModule .mgt45Portfolio{padding:14px 16px 0;background:var(--panel)}
@@ -5659,7 +5688,7 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
 <script>
 (function(){
   'use strict';
-  function money45(n){try{return typeof amount==='function'?amount(n):Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}catch(e){return (Number(n||0).toFixed(2)+' €');}}
+  function money45(n){try{return typeof amount==='function'?amount(n):mgtNombreFr(Number(n||0),2)+' €';}catch(e){return (Number(n||0).toFixed(2)+' €');}}
   // Calculé une seule fois par client et par affichage (voir « Accélération des écrans » en
   // fin de fichier) : cette fonction est appelée à chaque comparaison des tris de l'écran.
   function client45Stats(c){
@@ -5749,8 +5778,9 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
   // Les ~700 cartes ne sont dessinées que si l'écran Clients est affiché : au démarrage (sur
   // l'Accueil) ce travail coûtait près d'une seconde sur téléphone pour rien. Si l'écran est
   // encore masqué au moment du dessin (il s'affiche juste après), on dessine à l'image suivante.
-  function render45Cards(){const box=document.getElementById('mgt45Cards');if(!box)return;const mod45=document.getElementById('clientModule');if(mod45&&!mod45.getClientRects().length){box.dataset.aRedessiner='1';requestAnimationFrame(function(){if(box.dataset.aRedessiner&&mod45.getClientRects().length)render45Cards();});return;}delete box.dataset.aRedessiner;const rows=client45Rows();box.innerHTML=rows.map(c=>{const s=client45Stats(c),n=s.next;const status=s.situation==='inactive'?'inactive':s.situation;return `<article class="mgt45Card"><div class="mgt45StatusBar ${status}"></div><div class="mgt45CardBody"><div class="mgt45CardTop"><div class="mgt45Identity"><div class="mgt45Avatar">${esc(initials45(c[fields.name]))}</div><div><div class="mgt45Name">${esc(c[fields.name]||'Client sans nom')}</div><div class="mgt45Meta">${esc(shortLocation(c)||'Localisation non renseignée')}</div></div></div><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><span class="mgt45Badge ${s.situation}">${esc(s.label)}</span>${s.rank.score>=78?'<span class="mgt45Badge vip">★ VIP</span>':''}</div></div><div class="mgt45Commercial"><div class="mgt45Metric"><label>CA 2026</label><strong>${esc(money45(s.ca))}</strong></div><div class="mgt45Metric"><label>Solde</label><strong>${esc(money45(s.balance))}</strong></div></div><div class="mgt45Activity"><div><strong>${s.machines}</strong><span>Machines</span></div><div><strong>${s.visits}</strong><span>Visites</span></div><div><strong>${s.activeOffers}</strong><span>Offres actives</span></div></div><div class="mgt45Next"><b>Priorité :</b> ${esc(n?(dateFr(actionMainDate(n))+' — '+(n.objective||n.type||'Action commerciale')):'Aucune action planifiée')}</div><div class="mgt45Actions"><button type="button" data-mgt45-open="${esc(c[fields.id])}">Ouvrir</button><button type="button" class="secondary" data-mgt45-edit="${esc(c[fields.id])}">Modifier</button></div></div></article>`;}).join('')||'<div class="empty" style="grid-column:1/-1">Aucun client ne correspond à cette sélection.</div>';
-    box.querySelectorAll('[data-mgt45-open]').forEach(b=>b.onclick=e=>{e.stopPropagation();openClientById(b.dataset.mgt45Open);});box.querySelectorAll('[data-mgt45-edit]').forEach(b=>b.onclick=e=>{e.stopPropagation();const c=CLIENTS.find(x=>String(x[fields.id])===String(b.dataset.mgt45Edit));if(c)openClientDashboard(c,{edit:true});});
+  function render45Cards(){const box=document.getElementById('mgt45Cards');if(!box)return;const mod45=document.getElementById('clientModule');if(mod45&&!mod45.getClientRects().length){if(!box.__mgtImageSuivante){box.__mgtImageSuivante=true;requestAnimationFrame(function(){box.__mgtImageSuivante=false;if(mod45.getClientRects().length)render45Cards();});}return;}const rows=client45Rows();const carte45=c=>{const s=client45Stats(c),n=s.next;const status=s.situation==='inactive'?'inactive':s.situation;return `<article class="mgt45Card"><div class="mgt45StatusBar ${status}"></div><div class="mgt45CardBody"><div class="mgt45CardTop"><div class="mgt45Identity"><div class="mgt45Avatar">${esc(initials45(c[fields.name]))}</div><div><div class="mgt45Name">${esc(c[fields.name]||'Client sans nom')}</div><div class="mgt45Meta">${esc(shortLocation(c)||'Localisation non renseignée')}</div></div></div><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><span class="mgt45Badge ${s.situation}">${esc(s.label)}</span>${s.rank.score>=78?'<span class="mgt45Badge vip">★ VIP</span>':''}</div></div><div class="mgt45Commercial"><div class="mgt45Metric"><label>CA 2026</label><strong>${esc(money45(s.ca))}</strong></div><div class="mgt45Metric"><label>Solde</label><strong>${esc(money45(s.balance))}</strong></div></div><div class="mgt45Activity"><div><strong>${s.machines}</strong><span>Machines</span></div><div><strong>${s.visits}</strong><span>Visites</span></div><div><strong>${s.activeOffers}</strong><span>Offres actives</span></div></div><div class="mgt45Next"><b>Priorité :</b> ${esc(n?(dateFr(actionMainDate(n))+' — '+(n.objective||n.type||'Action commerciale')):'Aucune action planifiée')}</div><div class="mgt45Actions"><button type="button" data-mgt45-open="${esc(c[fields.id])}">Ouvrir</button><button type="button" class="secondary" data-mgt45-edit="${esc(c[fields.id])}">Modifier</button></div></div></article>`;};
+    const brancher45=root=>{root.querySelectorAll('[data-mgt45-open]').forEach(b=>b.onclick=e=>{e.stopPropagation();openClientById(b.dataset.mgt45Open);});root.querySelectorAll('[data-mgt45-edit]').forEach(b=>b.onclick=e=>{e.stopPropagation();const c=CLIENTS.find(x=>String(x[fields.id])===String(b.dataset.mgt45Edit));if(c)openClientDashboard(c,{edit:true});});};
+    mgtRemplirProgressif(box,rows,carte45,brancher45,'<div class="empty" style="grid-column:1/-1">Aucun client ne correspond à cette sélection.</div>');
   }
   function update45Stats(){const rows=client45Rows();let ca=0,b=0,follow=0,vip=0;CLIENTS.forEach(c=>{const s=client45Stats(c);ca+=s.ca;b+=s.balance;if(s.situation==='follow')follow++;if(s.rank.score>=78)vip++;});document.getElementById('mgt45Total').textContent=rows.length;document.getElementById('mgt45CA').textContent=money45(ca);document.getElementById('mgt45Balance').textContent=money45(b);document.getElementById('mgt45Follow').textContent=follow;document.getElementById('mgt45Vip').textContent=vip;}
   function populate45360(){const sel=document.getElementById('mgt45_360Select');if(!sel)return;const current=sel.value;sel.innerHTML='<option value="">Sélectionner un client</option>'+CLIENTS.slice().sort((a,b)=>String(a[fields.name]||'').localeCompare(String(b[fields.name]||''),'fr')).map(c=>`<option value="${esc(c[fields.id])}">${esc(c[fields.name]||'Client')}</option>`).join('');if(current)sel.value=current;}
@@ -5760,7 +5790,10 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
   window.__mgt45OriginalRender=window.renderPagedClients;
   // set45View() redessine déjà les cartes quand elles sont affichées : les dessiner aussi
   // juste avant (comme auparavant) faisait tout le travail deux fois à chaque affichage.
-  window.renderPagedClients=function(){ensure45UI();if(typeof window.__mgt45OriginalRender==='function')window.__mgt45OriginalRender();update45Stats();set45View(window.__mgt45View||'cards');};
+  // Liste clients calculée seulement si l'écran Clients est affiché (sinon : au démarrage et après
+  // chaque modification, tri et statistiques de 727 clients pour un écran caché). S'il s'affiche
+  // juste après (ouverture de l'écran), elle est calculée à l'image suivante.
+  window.renderPagedClients=function(){ensure45UI();const mod=document.getElementById('clientModule');if(mod&&!mod.getClientRects().length){if(!mod.__mgtImageSuivante){mod.__mgtImageSuivante=true;requestAnimationFrame(function(){mod.__mgtImageSuivante=false;if(mod.getClientRects().length)window.renderPagedClients();});}return;}if(typeof window.__mgt45OriginalRender==='function')window.__mgt45OriginalRender();update45Stats();set45View(window.__mgt45View||'cards');};
   const oldSetup=window.setup;
   window.setup=function(){oldSetup();ensure45UI();render45();};
 })();
@@ -7564,8 +7597,7 @@ html[data-mgt-theme="light"] .offresCardActions button[data-projet-open]{backgro
     document.querySelectorAll('#offresTabs [data-offres-tab]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-offres-tab')===tab); });
     var so=document.getElementById('offresSort'); if(so) so.value=sort;
     var statsEl=document.getElementById('offresStats'); if(statsEl) statsEl.innerHTML=offresStatsHtml(tabRows);
-    wrap.innerHTML=tabRows.length?tabRows.map(offerCard).join(''):'<div class="dashEmpty">Aucune offre dans cette vue.</div>';
-    bindCards(wrap);
+    mgtRemplirProgressif(wrap,tabRows,offerCard,bindCards,'<div class="dashEmpty">Aucune offre dans cette vue.</div>');
   }
 
   renderOffresModule=renderCards;
@@ -8163,6 +8195,8 @@ html[data-mgt-theme="light"] #offresModule .offresHomeIc{background:#fdece4;colo
     if(tabs) tabs.style.display='none';
     if(stats) stats.style.display=isHome?'none':'';
     if(isHome){
+      // compteur du titre : toutes les offres (les cartes ne sont dessinées qu'à l'ouverture d'une marque)
+      try{ var cnt=document.getElementById('offresCount'); if(cnt) cnt.textContent=offerEntries().length; }catch(e){}
       if(wrap) wrap.innerHTML='<div class="dashEmpty">Choisissez une famille d\'offres ci-dessus.</div>';
       if(stats) stats.innerHTML='';
     } else {
@@ -8173,7 +8207,9 @@ html[data-mgt-theme="light"] #offresModule .offresHomeIc{background:#fdece4;colo
 
   /* Le module s'ouvre toujours sur la page d'accueil. */
   try{
-    if(window.MODULES&&MODULES.offres){
+    // MODULES est une constante (pas window.MODULES) : l'ancien test était toujours faux, et Offres
+    // dessinait toutes les cartes de la première marque sous les tuiles de choix.
+    if(typeof MODULES!=='undefined'&&MODULES.offres){
       MODULES.offres.open=function(){ offresUIState.view=''; offresUIState.q=''; renderHub(); };
     }
   }catch(e){}
