@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v165';
+const CACHE_NAME = 'groupe-v166';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -57,7 +57,8 @@ const APP_SHELL = [
   './nav-historique-module.js',
   './tek-dashboard-module.js',
   './gadh-dashboard-module.js',
-  './hors-ligne-module.js'
+  './hors-ligne-module.js',
+  './transfert-rendement-module.js'
 ];
 // Bibliothèques Firebase (autre site) : indispensables pour démarrer hors ligne.
 const EXTERNES = [
