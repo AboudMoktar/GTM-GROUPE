@@ -8628,3 +8628,259 @@ body.mgt-module-active .app-body > header .headerGlobalSearch{display:none!impor
   if(document.readyState==='complete') demarrer(); else window.addEventListener('load',demarrer);
 })();
 </script>
+
+<script id="mgt-corrections-donnees">
+/* Corrections reprises de la nouvelle version du CRM (adaptées à GTM, sans Supabase) :
+   1) Calendrier : un enregistrement pouvait être refusé sans message (copie de fiche périmée) ;
+      on relit la fiche à jour et on n'envoie que ce qui change.
+   2) Facturation : l'import de l'historique Excel 2026 ne se relance plus à chaque ouverture
+      (il remettait les factures supprimées) ; supprimer une facture ; nettoyer les factures
+      importées automatiquement et jamais modifiées ; changer le client d'une facture la DÉPLACE.
+   3) Offres : une ligne vide n'est plus enregistrée ; les offres vides sont masquées (bouton pour
+      les supprimer) ; bouton Supprimer sur chaque offre (fiche, cartes, liste). */
+
+(function(){
+'use strict';
+window.MGT_CORR={ok:{}};
+function $(id){return document.getElementById(id);}
+function can(m,a){return typeof window.CRM_CAN==='function'?window.CRM_CAN(m,a):true;}
+function say(t){try{if(typeof toast==='function')toast(t);}catch(e){}}
+
+/* ============ 1) CALENDRIER : enregistrement fiable ============
+   Cause : commitPlanning envoyait une copie complète de la fiche avec son numéro de version.
+   Si la copie affichée était périmée, dm.updateClient rejetait l'enregistrement SANS erreur. */
+try{
+  var baseCommit=window.commitPlanning;
+  if(typeof baseCommit==='function'){
+    window.commitPlanning=async function(c,patch,list,eventsMeta){
+      var id=String(c[fields.id]);
+      var fresh=await dbGet('crm_clients',id);
+      if(!fresh){alert('Enregistrement impossible : la fiche client est introuvable. Rechargez le CRM.');throw new Error('fiche introuvable');}
+      var metas=Array.isArray(eventsMeta)?eventsMeta:[];
+      var base=Array.isArray(fresh.Planning)?fresh.Planning.slice():planningList(fresh).slice();
+      var finalList=list, resolved=metas.length>0;
+      metas.forEach(function(m){
+        var eid=String(m.eventId), evt=list.find(function(e){return e&&String(e.id)===eid;}), k=base.findIndex(function(e){return e&&String(e.id)===eid;});
+        if(m.mode==='del'){ if(k>=0) base.splice(k,1); }
+        else if(evt){ if(k>=0) base[k]=evt; else base.push(evt); }
+        else resolved=false;
+      });
+      if(resolved) finalList=base;
+      var minimal={Planning:finalList};
+      Object.keys(patch||{}).forEach(function(key){
+        if(key==='Planning'||key.charAt(0)==='_') return;
+        try{ if(JSON.stringify(patch[key])!==JSON.stringify(c[key])) minimal[key]=patch[key]; }catch(e){}
+      });
+      var res=await dm.updateClient(id,minimal);
+      if(!res){alert('L’enregistrement a échoué. Rien n’a été modifié : réessayez, ou rechargez le CRM si le problème continue.');throw new Error('enregistrement refusé');}
+      await rebuildClientCache();
+      state.selected=CLIENTS.find(function(x){return String(x[fields.id])===id;})||null;
+      render(); say('Planning synchronise.');
+    };
+    window.MGT_CORR.ok.calendrier=true;
+  }
+}catch(e){console.warn('[correction1] calendrier',e);}
+
+/* ============ utilitaires de rafraîchissement ============ */
+function refreshAll(){
+  ['renderOffresModule','renderOffersModule','renderBillingModule'].forEach(function(n){try{if(typeof window[n]==='function')window[n]();}catch(e){}});
+  try{ if(typeof render==='function') render(); }catch(e){}
+  try{ var s=state&&state.selected; if(s){ var c=CLIENTS.find(function(x){return String(x[fields.id])===String(s[fields.id]);}); if(c&&typeof renderDetail==='function'&&state.edit!==true) renderDetail(c); } }catch(e){}
+}
+
+/* ============ 2) FACTURATION ============ */
+try{
+  /* 2a) fin de l'import automatique relancé à chaque démarrage (il rajoutait les factures supprimées) */
+  var baseImport=window.importBillingHistory2026;
+  if(typeof baseImport==='function'){
+    window.MGT_BILLING_IMPORT_MANUEL=baseImport;
+    window.importBillingHistory2026=async function(){ return {added:0,duplicates:0,unmatched:[],desactive:true}; };
+    window.MGT_CORR.ok.importDesactive=true;
+  }
+  var IMPORT_SRC='Excel LETTRAGE CLIENT 2026';
+  function isAutoInvoice(f){ return f&&f.source===IMPORT_SRC&&Number(f.paid||0)===0&&String(f.note||'').indexOf('Import historique')===0; }
+  function autoInvoices(){ var out=[]; (CLIENTS||[]).forEach(function(c){ (Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){ if(isAutoInvoice(f)) out.push({cid:String(c[fields.id]),f:f}); }); }); return out; }
+
+  /* 2b) supprimer une facture */
+  window.mgtDeleteInvoice=async function(cid,fid,silent){
+    if(!can('billing','delete')){alert('Droit insuffisant : vous ne pouvez pas supprimer de facture avec votre profil.');return false;}
+    var fresh=await dbGet('crm_clients',String(cid)); if(!fresh){alert('Client introuvable.');return false;}
+    var list=Array.isArray(fresh.Factures)?fresh.Factures:[]; var f=list.find(function(x){return String(x.id)===String(fid);});
+    if(!f){say('Cette facture n’existe plus.');refreshAll();return false;}
+    if(!silent&&!confirm('Supprimer la facture '+(f.number||'')+' ?\nClient : '+(fresh[fields.name]||'Sans nom')+'\nMontant : '+Number(f.amount||0).toLocaleString('fr-FR')+'\n\nCette action est définitive.')) return false;
+    var res=await dm.updateClient(String(cid),{Factures:list.filter(function(x){return String(x.id)!==String(fid);})});
+    if(!res){alert('La suppression a échoué. Réessayez.');return false;}
+    if(!silent){await rebuildClientCache(); refreshAll(); say('Facture supprimée.');}
+    return true;
+  };
+  /* 2c) nettoyage des factures importées automatiquement */
+  window.mgtCleanAutoInvoices=async function(){
+    if(!can('billing','delete')){alert('Droit insuffisant : suppression de factures non autorisée pour votre profil.');return;}
+    var items=autoInvoices(); if(!items.length){say('Aucune facture importée automatiquement à nettoyer.');return;}
+    if(!confirm('Supprimer les '+items.length+' factures importées automatiquement depuis l’historique Excel 2026 ?\n\nSeules les factures non modifiées (aucun paiement saisi, note d’origine) sont concernées. Les factures que vous avez saisies ou corrigées sont conservées.\n\nCette action est définitive.')) return;
+    var byClient={}; items.forEach(function(x){(byClient[x.cid]=byClient[x.cid]||new Set()).add(String(x.f.id));});
+    var done=0;
+    for(var cid in byClient){
+      var fresh=await dbGet('crm_clients',cid); if(!fresh) continue;
+      var before=(fresh.Factures||[]).length, list=(fresh.Factures||[]).filter(function(f){return !(byClient[cid].has(String(f.id))&&isAutoInvoice(f));});
+      if(list.length===before) continue;
+      var r=await dm.updateClient(cid,{Factures:list});
+      if(r) done+=before-list.length;
+    }
+    await rebuildClientCache(); refreshAll(); say(done+' facture(s) supprimée(s).');
+  };
+
+  /* 2d) changer le client d'une facture = la DÉPLACER (avant : une copie était créée chez le nouveau client) */
+  var bform=$('billingForm');
+  if(bform){
+    bform.addEventListener('submit',async function(e){
+      var oldCid=bform.dataset.client||'', fid=bform.dataset.invoice||'', newCid=String($('billClient').value||'');
+      if(!fid||!oldCid||!newCid||oldCid===newCid) return;                       /* tous les autres cas : gestionnaire d'origine */
+      e.preventDefault(); e.stopImmediatePropagation();
+      var amt=Number($('billAmount').value), pd=Number($('billPaid').value||0), number=$('billNumber').value.trim();
+      if(!Number.isFinite(amt)||amt<0||!Number.isFinite(pd)||pd<0||pd>amt){alert('Vérifiez les montants : le payé doit être compris entre 0 et le total.');return;}
+      if(!number){alert('Le numéro de facture est obligatoire.');return;}
+      var obj={id:fid,number:number,date:$('billDate').value,amount:amt,paid:pd,type:$('billType').value,status:$('billStatus').value,note:$('billNote').value.trim(),updatedAt:new Date().toISOString()};
+      var oldRec=await dbGet('crm_clients',oldCid), newRec=await dbGet('crm_clients',newCid);
+      if(!oldRec||!newRec){alert('Client introuvable.');return;}
+      var oldPrev=(oldRec.Factures||[]).find(function(x){return String(x.id)===fid;}); if(oldPrev&&oldPrev.source) obj.source=oldPrev.source;
+      var newList=Array.isArray(newRec.Factures)?newRec.Factures.slice():[]; var k=newList.findIndex(function(x){return String(x.id)===fid;});
+      if(k>=0) newList[k]=obj; else newList.push(obj);
+      var oldList=(oldRec.Factures||[]).filter(function(x){return String(x.id)!==fid;});
+      var r1=await dm.updateClient(newCid,{Factures:newList}); if(!r1){alert('La facture n’a pas pu être enregistrée.');return;}
+      var r2=await dm.updateClient(oldCid,{Factures:oldList});
+      if(!r2) alert('La facture a été ajoutée au nouveau client mais n’a pas pu être retirée de l’ancien. Supprimez la ligne en double depuis la liste.');
+      await rebuildClientCache(); $('billingModal').hidden=true; refreshAll(); say('Facture déplacée vers '+(newRec[fields.name]||'le nouveau client')+'.');
+    },true);
+    window.MGT_CORR.ok.facturationDeplacement=true;
+  }
+
+  /* 2e) boutons « Supprimer » : sur chaque ligne, dans la fenêtre de modification, et nettoyage groupé */
+  function decorateBilling(){
+    var rows=$('billingRows');
+    if(rows){
+      rows.querySelectorAll('button[onclick^="editBillingInvoice("]').forEach(function(btn){
+        var next=btn.nextElementSibling;
+        if(!can('billing','delete')){ if(next&&next.hasAttribute('data-mgt-inv-del')) next.remove(); return; }
+        if(next&&next.hasAttribute('data-mgt-inv-del')) return;
+        var m=/editBillingInvoice\('([^']*)','([^']*)'\)/.exec(btn.getAttribute('onclick')||''); if(!m) return;
+        var d=document.createElement('button'); d.type='button'; d.className='secondary mgtDelBtn'; d.textContent='Supprimer'; d.title='Supprimer cette facture';
+        d.setAttribute('data-mgt-inv-del',m[1]+'|'+m[2]); d.style.marginLeft='6px'; btn.after(d);
+      });
+    }
+    var form=$('billingForm'), actions=form&&form.querySelector('button[type="submit"]')&&form.querySelector('button[type="submit"]').parentNode;
+    if(actions&&!$('mgtBillDelBtn')){ var b=document.createElement('button'); b.type='button'; b.id='mgtBillDelBtn'; b.className='secondary mgtDelBtn'; b.textContent='Supprimer cette facture'; actions.insertBefore(b,actions.firstChild); }
+    var db=$('mgtBillDelBtn'); if(db) db.hidden=!(form&&form.dataset.invoice)||!can('billing','delete');
+    var add=$('billingAddBtn'), n=autoInvoices().length, cb=$('mgtBillCleanBtn');
+    if(add&&!cb){ cb=document.createElement('button'); cb.type='button'; cb.id='mgtBillCleanBtn'; cb.className='secondary'; add.after(cb); cb.style.marginLeft='8px'; }
+    if(cb){ var hb=!(n>0&&can('billing','delete')), tb='Supprimer les '+n+' factures importées automatiquement'; if(cb.hidden!==hb) cb.hidden=hb; if(cb.textContent!==tb) cb.textContent=tb; }
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target.closest&&e.target.closest('[data-mgt-inv-del],#mgtBillDelBtn,#mgtBillCleanBtn'); if(!t) return;
+    if(t.id==='mgtBillCleanBtn'){ window.mgtCleanAutoInvoices(); return; }
+    if(t.id==='mgtBillDelBtn'){ var f=$('billingForm'); window.mgtDeleteInvoice(f.dataset.client,f.dataset.invoice).then(function(ok){ if(ok) $('billingModal').hidden=true; }); return; }
+    var p=String(t.getAttribute('data-mgt-inv-del')).split('|'); window.mgtDeleteInvoice(p[0],p[1]);
+  });
+  var rowsEl=$('billingRows'); if(rowsEl) new MutationObserver(decorateBilling).observe(rowsEl,{childList:true});
+  var modalEl=$('billingModal'); if(modalEl) new MutationObserver(decorateBilling).observe(modalEl,{attributes:true,attributeFilter:['hidden']});
+  document.addEventListener('mgt-crm-user-ready',decorateBilling);
+  decorateBilling();
+  window.MGT_CORR.ok.facturationSuppression=true;
+}catch(e){console.warn('[correction1] facturation',e);}
+
+/* ============ 3) OFFRES ============ */
+try{
+  var BLANK_KEYS=['type','acceptance','sentDate','amount','probability','reminder','result','note','machine','marque','commercial','echeance','invoiceRef','validationDate','validationNote','pdfData'];
+  function isBlankOffer(o){
+    if(!o) return true;
+    for(var i=0;i<BLANK_KEYS.length;i++){ var v=o[BLANK_KEYS[i]]; if(v!==undefined&&v!==null&&String(v).trim()!=='') return false; }
+    var pr=String(o.progress||'').trim(), st=String(o.status||'').trim();
+    return (pr===''||pr==='En attente')&&(st===''||st==='En attente');
+  }
+  window.mgtIsBlankOffer=isBlankOffer;
+  /* 3a) une ligne vide n'est plus enregistrée comme offre (le statut par défaut la rendait « significative ») */
+  window.collectOffers=function(){
+    var DEF={status:'En attente',progress:'En attente'};
+    return [...document.querySelectorAll('.offerEditRow')].map(function(row){
+      var obj={type:'',acceptance:'',sentDate:'',amount:'',probability:'',progress:'',status:'En attente',reminder:'',result:'',note:'',offerId:'',marque:'',devise:'EUR',machine:'',commercial:'',echeance:'',validation:'EN ATTENTE',invoiceRef:'',validationDate:'',validationNote:''};
+      row.querySelectorAll('[data-offer-field]').forEach(function(el){obj[el.dataset.offerField]=el.value.trim();});
+      var keys=['type','acceptance','sentDate','amount','probability','progress','status','reminder','result','note','machine','marque','commercial','echeance','invoiceRef','validationDate','validationNote'];
+      var meaningful=keys.some(function(k){return obj[k]&&obj[k]!==DEF[k];});
+      if(!obj.offerId&&!meaningful) return null;
+      if(!obj.offerId) obj.offerId='O'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+      return obj;
+    }).filter(Boolean);
+  };
+  /* 3b) les offres vides déjà enregistrées n'apparaissent plus (ni dans les compteurs, ni dans les listes) */
+  var baseValid=window.validOffers; if(typeof baseValid==='function') window.validOffers=function(c){return baseValid(c).filter(function(o){return !isBlankOffer(o);});};
+  var baseEntries=window.offerEntries; if(typeof baseEntries==='function') window.offerEntries=function(){return baseEntries().filter(function(x){return !isBlankOffer(x.offer);});};
+
+  function blankOffersCount(){ var n=0; (CLIENTS||[]).forEach(function(c){ (Array.isArray(c.Offres)?c.Offres:[]).forEach(function(o){ if(isBlankOffer(o)) n++; }); }); return n; }
+  window.mgtCleanBlankOffers=async function(){
+    if(!can('offres','delete')){alert('Droit insuffisant : suppression d’offres non autorisée pour votre profil.');return;}
+    var n=blankOffersCount(); if(!n){say('Aucune offre vide.');return;}
+    if(!confirm('Supprimer les '+n+' offres vides (sans type, montant, date ni commentaire) ?\n\nCes lignes ont été créées automatiquement et ne contiennent aucune information.')) return;
+    var done=0;
+    for(var i=0;i<CLIENTS.length;i++){
+      var c=CLIENTS[i]; if(!Array.isArray(c.Offres)||!c.Offres.some(isBlankOffer)) continue;
+      var cid=String(c[fields.id]), fresh=await dbGet('crm_clients',cid); if(!fresh||!Array.isArray(fresh.Offres)) continue;
+      var list=fresh.Offres.filter(function(o){return !isBlankOffer(o);}); if(list.length===fresh.Offres.length) continue;
+      var r=await dm.updateClient(cid,{Offres:list}); if(r){ done+=fresh.Offres.length-list.length;}
+    }
+    await rebuildClientCache(); refreshAll(); say(done+' offre(s) vide(s) supprimée(s).');
+  };
+
+  /* 3c) supprimer une offre (liste Offres en cours, cartes, fiche client) */
+  window.mgtDeleteOffer=async function(cid,idx){
+    if(!can('offres','delete')){alert('Droit insuffisant : vous ne pouvez pas supprimer d’offre avec votre profil.');return;}
+    var cached=CLIENTS.find(function(x){return String(x[fields.id])===String(cid);}); if(!cached) return;
+    var co=offerList(cached)[Number(idx)]; if(!co){say('Cette offre n’existe plus.');refreshAll();return;}
+    var label=(co.type||'Offre')+(co.amount?' – '+co.amount:'')+(co.sentDate?' – '+co.sentDate:'');
+    if(!confirm('Supprimer cette offre ?\n'+label+'\nClient : '+(cached[fields.name]||'')+'\n\nCette action est définitive.')) return;
+    var fresh=await dbGet('crm_clients',String(cid)); var list=Array.isArray(fresh&&fresh.Offres)?fresh.Offres.slice():[];
+    var k=-1; if(co.offerId) k=list.findIndex(function(o){return o&&o.offerId===co.offerId;});
+    if(k<0) k=list.findIndex(function(o){return JSON.stringify(o)===JSON.stringify(co);});
+    if(k<0){say('Offre introuvable (déjà supprimée ?).');refreshAll();return;}
+    list.splice(k,1);
+    var res=await dm.updateClient(String(cid),{Offres:list}); if(!res){alert('La suppression a échoué. Réessayez.');return;} await rebuildClientCache(); refreshAll(); say('Offre supprimée.');
+  };
+  var baseView=window.offersView;
+  if(typeof baseView==='function'){
+    window.offersView=function(c){
+      var list=validOffers(c); if(!list.length) return block('Offres','-');
+      var cid=esc(c[fields.id]), raw=offerList(c), canDel=can('offres','delete'), canEdit=can('offres','edit');
+      return '<div class="field" id="offresSection"><label>Offres</label><div class="historyList">'+list.map(function(o){
+        var idx=raw.indexOf(o);
+        var acts=(idx>=0&&(canEdit||canDel))?'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+(canEdit?'<button type="button" class="secondary" onclick="openOffreEdit(\''+cid+'\','+idx+')">Modifier</button>':'')+(canDel?'<button type="button" class="secondary mgtDelBtn" data-mgt-offre-del="'+cid+'|'+idx+'">Supprimer</button>':'')+'</div>':'';
+        return '<div class="offerCard"><div><strong>'+esc(o.type||'Offre')+'</strong> '+relanceBadge(o)+'</div><div class="contactMeta">Niveau acceptation : '+esc(o.acceptance||'-')+'</div><div class="contactMeta">Avancement : '+esc(o.progress||'-')+'</div><div class="contactMeta">Etat : '+esc(o.status||'-')+'</div><div class="contactMeta">Alerte relance : '+esc(o.reminder||'-')+'</div><div>'+esc(o.note||'')+'</div>'+acts+'</div>';
+      }).join('')+'</div></div>';
+    };
+  }
+  function decorateOffers(){
+    var allowed=can('offres','delete');
+    document.querySelectorAll('[data-offre-edit]').forEach(function(btn){
+      if(btn.dataset.mgtDeco===(allowed?'1':'0')) return; btn.dataset.mgtDeco=allowed?'1':'0';
+      var nx=btn.nextElementSibling, has=nx&&nx.hasAttribute('data-mgt-offre-del');
+      if(!allowed){ if(has) nx.remove(); return; }
+      if(has) return;
+      var d=document.createElement('button'); d.type='button'; d.className='secondary mgtDelBtn'; d.textContent='Supprimer'; d.title='Supprimer cette offre';
+      d.setAttribute('data-mgt-offre-del',btn.getAttribute('data-offre-edit')); d.style.marginLeft='6px'; btn.after(d);
+    });
+    var anchor=$('offresAddBtn'), cb=$('mgtOffreCleanBtn'); if(!anchor||!anchor.getClientRects().length) return; var n=blankOffersCount();
+    if(anchor&&!cb){ cb=document.createElement('button'); cb.type='button'; cb.id='mgtOffreCleanBtn'; cb.className='secondary'; anchor.after(cb); cb.style.marginLeft='8px'; }
+    if(cb){ var ho=!(n>0&&allowed), to='Supprimer les '+n+' offres vides'; if(cb.hidden!==ho) cb.hidden=ho; if(cb.textContent!==to) cb.textContent=to; }
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target.closest&&e.target.closest('[data-mgt-offre-del],#mgtOffreCleanBtn'); if(!t) return;
+    if(t.id==='mgtOffreCleanBtn'){ window.mgtCleanBlankOffers(); return; }
+    e.preventDefault(); e.stopPropagation(); var p=String(t.getAttribute('data-mgt-offre-del')).split('|'); window.mgtDeleteOffer(p[0],p[1]);
+  },true);
+  var pending=false;
+  new MutationObserver(function(){ if(pending) return; pending=true; requestAnimationFrame(function(){ pending=false; try{decorateOffers();}catch(e){} }); }).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('mgt-crm-user-ready',decorateOffers);
+  window.MGT_CORR.ok.offres=true;
+}catch(e){console.warn('[correction1] offres',e);}
+
+})();
+
+</script>
