@@ -930,7 +930,7 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <button class="navItem" data-module="commercial"><span class="navIcon"><svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span><span>Commercial</span></button>
 <button class="navItem" data-module="machines"><span class="navIcon"><svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span>Machines</span></button>
 <button class="navItem" data-module="stock"><span class="navIcon"><svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg></span><span>Listing</span></button>
-<button class="navItem" data-module="settings"><span class="navIcon"><svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="10" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="8" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="12" y2="3"></line><line x1="1" x2="7" y1="14" y2="14"></line><line x1="9" x2="15" y1="8" y2="8"></line><line x1="17" x2="23" y1="16" y2="16"></line></svg></span><span>Parametres</span></button>
+<button class="navItem" data-module="settings"><span class="navIcon"><svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="10" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="8" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="12" y2="3"></line><line x1="1" x2="7" y1="14" y2="14"></line><line x1="9" x2="15" y1="8" y2="8"></line><line x1="17" x2="23" y1="16" y2="16"></line></svg></span><span>Paramètres</span></button>
 </nav>
 <div class="sidebarFooter">
 <div class="dbStatus" data-db-state="connected">
@@ -1178,14 +1178,14 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <section class="taskModule" hidden="" id="taskModule">
 <div class="taskModuleHead">
 <div>
-<div class="pilotageEyebrow">Module taches &amp; rappels</div>
-<h2>Taches &amp; Rappels</h2>
-<div class="taskModuleSub">Relance des taches non terminees</div>
+<div class="pilotageEyebrow">Suivi des actions</div>
+<h2>Tâches &amp; Rappels</h2>
+<div class="taskModuleSub">Tâches clients et tâches internes, à traiter et terminées</div>
 </div>
 </div>
 <div class="taskFilters">
-<select id="taskPriorityFilter"><option value="">Toutes priorites</option><option>Haute</option><option>Moyenne</option><option>Faible</option></select>
-<select id="taskUserFilter"><option value="">Tous utilisateurs</option></select>
+<select id="taskPriorityFilter" aria-label="Importance"><option value="">Toutes importances</option><option>Haute</option><option>Moyenne</option><option>Faible</option></select>
+<select id="taskUserFilter" aria-label="Responsable"><option value="">Tous les responsables</option></select>
 <select id="taskDateFilter"><option value="">Toutes dates</option><option value="late">En retard</option><option value="soon">Proches</option><option value="none">Sans date</option></select>
 </div>
 <div class="taskReminderList" id="taskReminderList"></div>
@@ -2420,7 +2420,7 @@ function openSearch(){renderSearchResults();}
 function isReminderTask(a){return !isFieldVisit(a)&&actionIsPlanned(a)&&!norm(a.status).includes('archive');}
 function taskReminderEntries(){return allPlanningActions().filter(isReminderTask).map(a=>({a:a,d:actionDays(a)})).sort((x,y)=>(x.d===null?9999:x.d)-(y.d===null?9999:y.d));}
 function renderTaskReminders(){const list=document.getElementById('taskReminderList'); if(!list) return; const pr=document.getElementById('taskPriorityFilter').value, user=document.getElementById('taskUserFilter').value, df=document.getElementById('taskDateFilter').value; let rows=taskReminderEntries(); if(pr) rows=rows.filter(x=>norm(x.a.priority).includes(norm(pr))); if(user) rows=rows.filter(x=>actionCommercial(x.a)===user); if(df==='late') rows=rows.filter(x=>x.d!==null&&x.d<0); if(df==='soon') rows=rows.filter(x=>x.d!==null&&x.d>=0&&x.d<=7); if(df==='none') rows=rows.filter(x=>x.d===null); rows.forEach(x=>{calendarActionMap[x.a.eventId]=x.a;}); mgtRemplirProgressif(list,rows,x=>{const a=x.a, late=x.d!==null&&x.d<0, soon=x.d!==null&&x.d>=0&&x.d<=7; return '<div class="taskCard '+(late?'late':soon?'soon':'')+'"><strong>'+esc(a.type||'tache')+' - '+esc(a.client[fields.name]||'-')+'</strong><div>'+esc([dateFr(actionMainDate(a)),a.priority,actionCommercial(a)].filter(x=>x&&String(x).trim()).join(' · '))+'</div><div class="muted">'+esc(a.objective||'')+'</div>'+previewImageHtml(a.photoName,a.photoData)+'<div class="taskActions"><button class="secondary" data-task-report="'+esc(a.eventId)+'">Reporter</button><button data-task-done="'+esc(a.eventId)+'">Terminer</button></div></div>';},root=>{root.querySelectorAll('[data-task-report]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskReport,'report')); root.querySelectorAll('[data-task-done]').forEach(btn=>btn.onclick=()=>updateReminderTask(btn.dataset.taskDone,'done'));},'<div class="empty">Aucune tache a relancer.</div>');}
-function openTaskReminders(){calendarActionMap={}; const users=uniq(taskReminderEntries().map(x=>actionCommercial(x.a))); const sel=document.getElementById('taskUserFilter'); const cur=sel.value; sel.innerHTML='<option value="">Tous utilisateurs</option>'+users.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join(''); sel.value=users.includes(cur)?cur:''; renderTaskReminders();}
+function openTaskReminders(){calendarActionMap={}; const users=uniq(taskReminderEntries().map(x=>actionCommercial(x.a))); const sel=document.getElementById('taskUserFilter'); const cur=sel.value; sel.innerHTML='<option value="">Tous les responsables</option>'+users.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join(''); sel.value=users.includes(cur)?cur:''; renderTaskReminders();}
  async function updateReminderTask(eventId,mode){const a=calendarActionMap[eventId]; if(!a) return; const c=a.client; const p=planningPatchFor(c); let idx=p.list.findIndex(x=>String(x.id||'')===String(a.eventId)); const evt={id:idx>=0?(p.list[idx].id||a.eventId):'T'+Date.now(),date:mode==='report'?dateToInput(addDays(new Date(),7)):actionMainDate(a),type:a.type||'tache administrative',priority:a.priority||'Moyenne',status:mode==='done'?'Termine':'En attente',commercial:actionCommercial(a),objective:a.objective||'',photoName:a.photoName||'',photoData:a.photoData||'',source:'manuel'}; if(idx>=0) p.list[idx]=Object.assign({},p.list[idx],evt); else p.list.push(evt); const eventsMeta=[{eventId:String(evt.id),mode:(idx>=0?'edit':'add')}]; await commitPlanning(c,p.patch,p.list,eventsMeta); renderTaskReminders();}
 renderOffersModule=function(){const panel=document.getElementById('offerDashboardModal'); if(!panel||panel.hidden) return; refreshOfferFilters(); const body=document.getElementById('offersDashboardBody'); if(!body) return; let rows=offerEntries(); const q=norm(offerFilterVal('offerSearchFilter')), c=offerFilterVal('offerClientFilter'), t=offerFilterVal('offerTypeFilter'), s=offerFilterVal('offerStatusFilter'), sort=offerFilterVal('offerSort'); if(q) rows=rows.filter(x=>norm([x.client[fields.name],offerTypeLabel(x.offer),offerBusinessStatus(x.offer),x.offer.note,x.offer.progress].join(' ')).includes(q)); if(c) rows=rows.filter(x=>x.client[fields.name]===c); if(t) rows=rows.filter(x=>norm(offerTypeLabel(x.offer))===norm(t)); if(s) rows=rows.filter(x=>norm(offerBusinessStatus(x.offer))===norm(s)); rows.sort((a,b)=>{if(sort==='date-asc') return (parseDateValue(quoteSentDate(a.offer))||0)-(parseDateValue(quoteSentDate(b.offer))||0); if(sort==='amount-desc') return quoteAmount(b.offer)-quoteAmount(a.offer); return (parseDateValue(quoteSentDate(b.offer))||0)-(parseDateValue(quoteSentDate(a.offer))||0);}); body.innerHTML=rows.length?rows.map(x=>{const st=offerBusinessStatus(x.offer); const cls=st==='Confirme'?'ok':st==='Negociation'?'nego':st==='Relance'?'relance':''; const pdf=x.offer.pdfData?'<a class="pdfLink" download="'+esc(x.offer.pdfName||'devis.pdf')+'" href="'+esc(x.offer.pdfData)+'">Voir PDF</a>':'-'; return '<tr><td><button class="dashClientBtn" data-client-id="'+esc(x.client[fields.id])+'">'+esc(x.client[fields.name]||'-')+'</button></td><td>'+esc(offerTypeLabel(x.offer))+'</td><td>'+esc(money(quoteAmount(x.offer)))+'</td><td>'+esc(dateFr(quoteSentDate(x.offer)))+'</td><td><span class="offerStatus '+cls+'">'+esc(st)+'</span></td><td>'+pdf+'</td><td><button class="secondary offreEditDashBtn" data-offre-edit="'+esc(x.client[fields.id])+'|'+x.index+'" title="Modifier l\'offre" aria-label="Modifier l\'offre"><span aria-hidden="true" class="offreEditDashIcon">✎</span><span class="offreEditDashLabel">Modifier</span></button><button class="pdfBtn" data-offer-pdf="'+esc(x.client[fields.id])+'|'+x.index+'">Importer PDF</button></td></tr>';}).join(''):'<tr><td colspan="7" class="empty">Aucune offre trouvee</td></tr>'; body.querySelectorAll('[data-client-id]').forEach(btn=>btn.onclick=()=>openClientById(btn.dataset.clientId)); body.querySelectorAll('[data-offer-pdf]').forEach(btn=>btn.onclick=()=>importOfferPdf(btn.dataset.offerPdf)); body.querySelectorAll('[data-offre-edit]').forEach(btn=>{const parts=String(btn.dataset.offreEdit).split('|'); btn.onclick=()=>openOffreEdit(parts[0],Number(parts[1]));});};
 const baseRenderAllModules=render;
@@ -2540,11 +2540,11 @@ const MODULES={
   visits:{id:'visits',label:'Visites',crumbs:['Commercial','Visites'],placeholder:'Visites'},
   appointments:{id:'appointments',label:'Rendez-vous',crumbs:['Commercial','Rendez-vous'],placeholder:'Rendez-vous'},
   sav:{id:'sav',label:'SAV / Interventions',crumbs:['SAV / Interventions'],placeholder:'SAV / Interventions'},
-  tasks:{id:'tasks',label:'Taches & Rappels',crumbs:['Taches & Rappels'],open:openTaskReminders,view:'tasks'},
+  tasks:{id:'tasks',label:'Tâches & Rappels',crumbs:['Tâches & Rappels'],open:openTaskReminders,view:'tasks'},
   communication:{id:'communication',label:'Communication',crumbs:['Communication'],view:'communication',open:openCommunicationHub},
   commercial:{id:'commercial',label:'Commercial',crumbs:['Commercial'],open:function(){const p=document.getElementById('offerDashboardModal'); if(p){p.hidden=false; renderOffersModule();}}},
   stock:{id:'stock',label:'Listing',crumbs:['Listing'],placeholder:'Listing'},
-  settings:{id:'settings',label:'Parametres',crumbs:['Parametres'],view:'settings',open:function(){
+  settings:{id:'settings',label:'Paramètres',crumbs:['Paramètres'],view:'settings',open:function(){
     const bar=document.querySelector('.commandBar');
     const barHost=document.getElementById('settingsCommandHost');
     if(bar&&barHost&&!barHost.contains(bar)) barHost.appendChild(bar);
@@ -5501,6 +5501,7 @@ var HOME=[
  ['projetos','Projets'],
  ['offres','Offres en cours'],
  ['calendar','Calendrier commercial'],
+ ['tasks','Tâches & Rappels'],
  ['billing','Facturation & Lettrage'],
  ['clients','Clients'],
  ['global-search','Recherche'],
@@ -5576,7 +5577,7 @@ function build(){
  if(!home){home=document.createElement('section');home.id='mgtHomeDashboard';var anchor=document.querySelector('.app-body');var header=anchor&&anchor.querySelector('header');if(header) header.insertAdjacentElement('afterend',home);else if(anchor) anchor.insertBefore(home,anchor.firstChild);else document.body.appendChild(home)}
  var k; try{ k=computeHomeStats(); }catch(e){ k={total:0,prioA:0,offersActive:0,unpaidCount:0,impaye:0,monthMap:{},importanceCount:{}}; }
  var cards=HOME.map(function(x){
-  var n=nav(x[0]),ic=n&&n.querySelector('.navIcon');var svg=ic?ic.innerHTML:'<span>◆</span>';
+  var n=nav(x[0]),ic=n&&n.querySelector('.navIcon');var svg=x[0]==='tasks'?'<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>':(ic?ic.innerHTML:'<span>◆</span>');
   var badge='';
   if(x[0]==='clients'&&k.total) badge='<span class="mgtHomeCount">'+fmtInt(k.total)+'</span>';
   else if(x[0]==='offres'&&k.offersActive) badge='<span class="mgtHomeCount">'+fmtInt(k.offersActive)+'</span>';
@@ -8531,7 +8532,7 @@ body.mgt-module-active .app-body > header .headerGlobalSearch{display:none!impor
   'use strict';
   if(window.__mgtRetourV1) return; window.__mgtRetourV1=true;
   var pile=[], enRetour=false, aIgnorer=0, versAccueil=false;
-  var SEL='[id$="Modal"],#mgtNavSheet';
+  var SEL='[id$="Modal"],#mgtNavSheet,#tkMenu,#p7VisSheet';
   function ecran(){ return (typeof CURRENT_MODULE!=='undefined'&&CURRENT_MODULE)||'dashboard'; }
   function pousser(e){ pile.push(e); try{ history.pushState({mgtRetour:pile.length},''); }catch(x){} }
   function nomEcran(id){
@@ -8606,19 +8607,26 @@ body.mgt-module-active .app-body > header .headerGlobalSearch{display:none!impor
   });
   // Fenêtres (fiche client, filtres, offre, tâche, menu…) : une entrée d'historique à l'ouverture ;
   // fermée avec son propre bouton, l'entrée est retirée (pas d'appui sur Retour en trop).
+  // Une fenêtre qui en remplace une autre (ex. menu « Nouvelle tâche » → formulaire) : l'entrée
+  // d'historique est réutilisée (replaceState) au lieu d'un retour arrière suivi d'un ajout, que le
+  // navigateur traite dans le désordre (le parcours se décalait d'un cran).
+  function dansPile(id){ for(var i=0;i<pile.length;i++){ if(pile[i].t==='fenetre'&&pile[i].id===id) return true; } return false; }
   var obs=new MutationObserver(function(liste){
+    if(enRetour) return;
+    var ouverts=[], fermes=[];
     liste.forEach(function(mu){
       var m=mu.target; if(!m.matches||!m.matches(SEL)) return;
-      if(!m.hidden){
-        if(enRetour) return;
-        for(var i=0;i<pile.length;i++){ if(pile[i].t==='fenetre'&&pile[i].id===m.id) return; }
-        pousser({t:'fenetre',id:m.id});
-      } else if(!enRetour){
-        var h=pile[pile.length-1];
-        if(h&&h.t==='fenetre'&&h.id===m.id){ pile.pop(); aIgnorer++; try{ history.back(); }catch(e){ aIgnorer--; } }
-        else { for(var k=pile.length-1;k>=0;k--){ if(pile[k].t==='fenetre'&&pile[k].id===m.id){ pile.splice(k,1); break; } } }
-      }
+      var l=m.hidden?fermes:ouverts; if(l.indexOf(m)<0) l.push(m);
     });
+    ouverts=ouverts.filter(function(m){ return !dansPile(m.id); });
+    fermes.forEach(function(m){
+      var h=pile[pile.length-1];
+      if(h&&h.t==='fenetre'&&h.id===m.id){
+        if(ouverts.length){ var o=ouverts.shift(); pile[pile.length-1]={t:'fenetre',id:o.id}; try{ history.replaceState({mgtRetour:pile.length},''); }catch(e){} }
+        else { pile.pop(); aIgnorer++; try{ history.back(); }catch(e){ aIgnorer--; } }
+      } else { for(var k=pile.length-1;k>=0;k--){ if(pile[k].t==='fenetre'&&pile[k].id===m.id){ pile.splice(k,1); break; } } }
+    });
+    ouverts.forEach(function(m){ pousser({t:'fenetre',id:m.id}); });
   });
   function demarrer(){
     brancher(); majEntete();
@@ -8883,4 +8891,568 @@ try{
 
 })();
 
+</script>
+<style id="mgt-taches-v2-style">
+/* ===== Tâches & Rappels : onglets, cartes, menus (repris de la nouvelle version, adapté à GTM) ===== */
+#tkBar,#taskReminderList{--tkb:#ffffff;--tkf:#1b2433;--tkm:#566377;--tkl:#d3dae4;--tks:#eef2f7;--tkab:#c93200;--tklate:#fff1f1;--tkok:#f1faf3}
+html[data-mgt-theme="dark"] #tkBar,html[data-mgt-theme="dark"] #taskReminderList{--tkb:#171c24;--tkf:#eef2f8;--tkm:#a6b1c2;--tkl:#303947;--tks:#232b37;--tklate:#2b1a1d;--tkok:#16241b}
+#taskModule #taskDateFilter{display:none!important}
+#tkBar{display:grid;gap:10px;margin:0 0 12px;padding:12px 12px 0;box-sizing:border-box;max-width:100%;color:var(--tkf)}
+#tkBar .tkTabs{display:flex!important;flex-wrap:wrap;gap:6px}
+#tkBar .tkTabs button{all:unset;box-sizing:border-box;display:inline-flex!important;align-items:center;gap:6px;width:auto!important;min-height:36px;padding:6px 12px!important;border-radius:999px!important;font-size:13px!important;font-weight:800!important;line-height:1;cursor:pointer;background:var(--tks)!important;color:var(--tkf)!important;border:1px solid var(--tkl)!important;box-shadow:none!important;text-shadow:none!important}
+#tkBar .tkTabs button.on{background:var(--tkab)!important;color:#fff!important;border-color:var(--tkab)!important}
+#tkBar .tkTabs button b{font-weight:900;opacity:.85}
+#tkBar .tkTabs button:focus-visible,#tkBar #tkAdd:focus-visible{outline:2px solid var(--tkab);outline-offset:2px}
+#tkBar .tkTools{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+#tkBar .tkTools select{flex:0 1 280px;min-width:0;max-width:100%;min-height:44px;box-sizing:border-box}
+#tkBar #tkAdd{all:unset;box-sizing:border-box;flex:0 0 auto;padding:0 20px!important;margin-left:auto;min-height:44px;display:inline-flex!important;align-items:center;justify-content:center;border-radius:12px!important;font-size:14px!important;font-weight:800!important;cursor:pointer;background:var(--tkab)!important;color:#fff!important;border:0!important;box-shadow:none!important}
+#tkBar .tkLegend{font-size:11px;line-height:1.55;color:var(--tkm)!important}
+#taskReminderList .tkCard{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;box-sizing:border-box;width:100%;max-width:100%;border:1px solid var(--tkl)!important;border-left:6px solid var(--tkl)!important;border-radius:14px;padding:10px 10px 10px 8px;margin:0 0 10px;background:var(--tkb)!important;color:var(--tkf)!important;overflow:hidden}
+#taskReminderList .tkCard.tk-late{border-left-color:#dc2626!important;background:var(--tklate)!important}
+#taskReminderList .tkCard.tk-today{border-left-color:#f97316!important}
+#taskReminderList .tkCard.tk-soon{border-left-color:#d4a106!important}
+#taskReminderList .tkCard.tk-ok{border-left-color:#16a34a!important;background:var(--tkok)!important}
+#taskReminderList .tkState{all:unset;box-sizing:border-box;width:44px;height:44px;display:flex!important;align-items:center;justify-content:center;font-size:24px;line-height:1;cursor:pointer;border-radius:12px;background:var(--tks)!important}
+#taskReminderList .tkBody{min-width:0;cursor:pointer;overflow-wrap:anywhere;color:var(--tkf)!important}
+#taskReminderList .tkTop{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--tkf)!important}
+#taskReminderList .tkTop strong{color:var(--tkf)!important}
+#taskReminderList .tkTop .tkClient{color:var(--tkm)!important;font-weight:600}
+#taskReminderList .tkObj{font-size:13px;margin-top:4px;white-space:pre-wrap;color:var(--tkf)!important}
+#taskReminderList .tkMeta{font-size:12px;margin-top:5px;color:var(--tkm)!important}
+#taskReminderList .tkBody img{max-width:100%!important;width:auto!important;height:auto!important;max-height:90px;border-radius:8px;margin-top:6px;display:block}
+#taskReminderList .tkBody .contactMeta{display:none}
+#taskReminderList .tkAct{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+#taskReminderList .tkAct button{all:unset;box-sizing:border-box;min-height:36px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid var(--tkl)!important;background:var(--tks)!important;color:var(--tkf)!important;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer}
+#taskReminderList .tkAct button.tkDel{font-size:16px}
+#taskReminderList #tkMore{all:unset;box-sizing:border-box;width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;background:var(--tks)!important;color:var(--tkf)!important;border:1px solid var(--tkl)!important}
+#taskReminderList .empty{color:var(--tkm)!important}
+@media(max-width:700px){#tkBar .tkTools select,#tkBar #tkAdd{flex:1 1 150px;margin-left:0}#taskModule .taskFilters{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}#taskModule .taskFilters select{min-width:0;width:100%}}
+@media(max-width:400px){#taskReminderList .tkCard{grid-template-columns:auto minmax(0,1fr)}#taskReminderList .tkAct{grid-column:2;flex-direction:row}}
+@media(max-width:900px){#taskReminderList{padding-bottom:96px}}
+/* Feuilles du bas (choix de l'état, nouvelle tâche) */
+#tkMenu[hidden],#tkIntModal[hidden],#p7VisSheet[hidden]{display:none!important}
+#tkMenu,#tkIntModal,#p7VisSheet{position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;--tkb:#fff;--tkf:#1b2433;--tkm:#566377;--tkl:#d3dae4;--tks:#eef2f7}
+html[data-mgt-theme="dark"] #tkMenu,html[data-mgt-theme="dark"] #tkIntModal,html[data-mgt-theme="dark"] #p7VisSheet{--tkb:#171c24;--tkf:#eef2f8;--tkm:#a6b1c2;--tkl:#303947;--tks:#232b37}
+#tkMenu .tkMenuBox{width:100%;max-width:480px;box-sizing:border-box;background:var(--tkb);color:var(--tkf);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+#tkMenu .tkMenuTitle{font-weight:800;font-size:14px;color:var(--tkm);padding:2px 4px}
+#tkMenu button{all:unset;box-sizing:border-box;min-height:48px;display:flex!important;align-items:center;padding:0 14px;border-radius:12px;font-size:16px;font-weight:700;background:var(--tks)!important;color:var(--tkf)!important;border:1px solid var(--tkl)!important;cursor:pointer}
+#tkMenu button.tkMenuX{justify-content:center;color:var(--tkm)!important}
+#tkIntModal .tkIntBox{width:100%;max-width:520px;max-height:92vh;overflow:auto;box-sizing:border-box;background:var(--tkb);color:var(--tkf);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+#tkIntModal .tkIntHead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:16px;margin-bottom:8px}
+#tkIntModal label{display:block;font-size:12px;font-weight:700;color:var(--tkm);margin:8px 0 0;flex:1;min-width:0}
+#tkIntModal select,#tkIntModal input,#tkIntModal textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;min-height:44px;padding:8px 10px;font-size:15px;border-radius:10px;border:1px solid var(--tkl)!important;background:var(--tks)!important;color:var(--tkf)!important}
+#tkIntModal textarea{min-height:90px;resize:vertical}
+#tkIntModal .tkiRow{display:flex;gap:8px}
+#tkIntModal .tkiAct{display:flex;gap:8px;margin-top:14px}
+#tkIntModal button{all:unset;box-sizing:border-box;min-height:44px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;background:var(--tks)!important;color:var(--tkf)!important;border:1px solid var(--tkl)!important}
+#tkIntModal .tkiAct button{flex:1}
+#tkIntModal button.ok{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+#tkIntModal button.bad{color:#b91c1c!important}
+html[data-mgt-theme="dark"] #tkIntModal button.bad{color:#fca5a5!important}
+/* Détail d'une tâche */
+#taskDetailBody .tkDetIcons{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;font-weight:700}
+#taskDetailBody img{max-width:100%!important;height:auto!important;border-radius:8px}
+.tkDetActs{position:sticky;bottom:0;z-index:3;padding-top:8px;background:var(--panel,#fff)}
+/* Calendrier : déplacements / bureau, placement à l'heure */
+#calendarModule .phase6Event.p7-terrain{border-left-color:#16a34a!important;background:rgba(22,163,74,.2)!important}
+#calendarModule .phase6Event.p7-bureau{border-left-color:#7c5cdb!important;background:rgba(124,92,219,.18)!important}
+#calendarModule .phase6Event .p7Type{font-weight:800}
+#p7Legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--ink,#1b2433)}
+#p7Legend .p7L{padding:3px 9px;border-radius:999px;border-left:4px solid}
+#p7Legend .terr{border-color:#16a34a;background:rgba(22,163,74,.18)}
+#p7Legend .bur{border-color:#7c5cdb;background:rgba(124,92,219,.16)}
+#p7Legend #p7VisBtn{all:unset;box-sizing:border-box;margin-left:auto;min-height:34px;padding:6px 13px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;background:#fff7ed!important;color:#9a3412!important;border:1px solid #fdba74!important}
+html[data-mgt-theme="dark"] #p7Legend #p7VisBtn{background:#2a1d14!important;color:#fdba74!important;border-color:#7c3f17!important}
+#p7Legend #p7VisBtn:focus-visible{outline:2px solid #c93200;outline-offset:2px}
+html[data-mgt-theme="dark"] #p7Legend{color:#eef2f8}
+html[data-mgt-theme="light"] #p7Legend{color:#1b2433}
+#calendarModule .phase6Hour{height:60px;min-height:60px;box-sizing:border-box}
+#calendarModule .phase6HourRow{height:46px;min-height:46px;box-sizing:border-box}
+#calendarModule .phase6Event.p7Block{margin:0;box-sizing:border-box;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:1px;white-space:normal;overflow:hidden;pointer-events:auto;z-index:2;min-height:0!important;padding:3px 5px;text-align:left}
+#calendarModule .phase6Event.p7Block.p7Short{flex-direction:row;align-items:center;padding:1px 4px}
+#calendarModule .phase6Event.p7Block .phase6EventText{white-space:normal;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+#calendarModule .phase6Event.p7Block.p7Short .phase6EventText{white-space:nowrap}
+#calendarModule .phase6Event.p7Block .phase6EventTime{display:block;font-size:10px}
+#calendarModule .phase6WeekHours .phase6Event.p7Block{padding:2px 3px;font-size:8px;line-height:1.1}
+#calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventTime{font-size:8px;font-weight:800;white-space:nowrap}
+#calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventText{font-size:8px;line-height:1.1;overflow-wrap:anywhere}
+#calendarModule .phase6WeekHours .phase6Event.p7Block .p7Type{font-size:8px}
+#calendarModule .p7More{all:unset;box-sizing:border-box;min-width:20px;height:16px;padding:0 4px;border-radius:8px;background:#c93200;color:#fff;font-size:10px;font-weight:800;text-align:center;line-height:16px;z-index:4;cursor:pointer}
+@media(max-width:760px){
+#calendarModule .phase6Event .phase6EventTime{display:none!important}
+#calendarModule .phase6Event{font-size:10px;line-height:1.15;padding-top:2px;padding-bottom:2px}
+#calendarModule .phase6Event .phase6EventText{font-size:10px;line-height:1.15}
+#calendarModule .phase6Event .p7Type{font-size:10px}
+#calendarModule .phase6WeekHours .phase6Event.p7Block,#calendarModule .phase6WeekHours .phase6Event{font-size:8px;padding:2px 3px}
+#calendarModule .phase6WeekHours .phase6Event .p7Tx,#calendarModule .phase6WeekHours .phase6Event .p7Sep{display:none}
+#calendarModule .phase6HourRow{height:56px;min-height:56px}
+#calendarModule .phase6WeekHours .phase6Event.p7Block:not(.p7Short){flex-direction:column;align-items:center;justify-content:flex-start;gap:2px}
+#calendarModule .phase6WeekHours .phase6Event.p7Block:not(.p7Short) .phase6EventText{writing-mode:vertical-rl;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:calc(100% - 16px);font-size:9px;line-height:1.2}
+#calendarModule .phase6WeekHours .phase6Event .p7Type{font-size:9px}
+}
+/* Lisibilité : boutons orange de la fiche client (texte blanc sur orange plus foncé) */
+#clientDashboardModal #editBtn,#clientDashboardModal #quickVisitBtn,#editBtn,#quickVisitBtn{background-image:linear-gradient(135deg,#c2410c,#d9480f)!important;color:#fff!important}
+/* Feuille « Visites à planifier » */
+#p7VisSheet .p7Box{width:100%;max-width:520px;max-height:82vh;overflow:auto;box-sizing:border-box;background:var(--tkb);color:var(--tkf);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+#p7VisSheet .p7Head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
+#p7VisSheet .p7Sub,#p7VisSheet .p7Meta{font-size:12px;color:var(--tkm);margin:6px 0}
+#p7VisSheet .p7Chk{display:flex;gap:8px;align-items:center;font-size:12px;margin:6px 0 10px;color:var(--tkf)}
+#p7VisSheet .p7Row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--tkl)}
+#p7VisSheet .p7Row b{font-size:13px;overflow-wrap:anywhere}
+#p7VisSheet .p7Btns{display:flex;gap:6px;flex:none}
+#p7VisSheet button{all:unset;box-sizing:border-box;min-height:36px;padding:0 11px;display:inline-flex;align-items:center;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;background:var(--tks)!important;color:var(--tkf)!important;border:1px solid var(--tkl)!important}
+</style>
+<script id="mgt-taches-v2">
+/* ===== Tâches & Rappels, tâches internes, calendrier =====
+   Repris de la nouvelle version du CRM (hors Supabase) et adapté à GTM Groupe :
+   - les tâches internes (sans client) sont enregistrées dans Firebase avec le reste de MGT
+     (clé mgt_crm_taches_internes), donc partagées entre téléphones et ordinateurs ;
+   - la liste n'est calculée que lorsque l'écran Tâches est affiché (rapidité). */
+(function(){
+'use strict';
+/* ---------- Tâches internes (Firebase via GTM Groupe) ---------- */
+var CLE='mgt_crm_taches_internes', LOCAL='mgtcrm_local_taches_internes';
+var CATS=[['rapport','📊 Rapport'],['presentation','🖼️ Présentation'],['mailing','📣 Mailing'],['email','✉️ Email'],['offre','🟣 Offre'],['administrative','🗂️ Administratif'],['appel','📞 Appel'],['rappel','🔔 Rappel'],['autre','📌 Autre']];
+var STAT=[['En attente','⬜ À faire'],['En cours','🔄 En cours'],['Termine','✅ Terminé'],['Reporte','⏸️ Reporté'],['Archive','❎ Annulé / archivé']];
+var PRIO=[['Haute','🟥 Haute'],['Moyenne','🟧 Moyenne'],['Faible','🟨 Faible']];
+function hote(){try{var h=window.parent;return(h&&h!==window&&typeof h.getJSON==='function'&&typeof h.setJSON==='function')?h:null;}catch(e){return null;}}
+function copie(v){try{return JSON.parse(JSON.stringify(v));}catch(e){return [];}}
+function charger(){var h=hote(),v;
+  if(h){try{v=h.getJSON(CLE,[]);}catch(e){v=[];}}
+  else{try{v=JSON.parse(localStorage.getItem(LOCAL)||'[]');}catch(e){v=[];}}
+  return Array.isArray(v)?copie(v).filter(function(x){return x&&x.id;}):[];}
+async function enregistrer(l){var h=hote();
+  if(h){
+    try{if(typeof attendreSyncPrete==='function'){var pret=await attendreSyncPrete(h,'crm_taches_internes',20000);if(!pret){toast('Synchronisation pas encore prête : réessayez dans quelques secondes.');return false;}}}catch(e){}
+    var ok;try{ok=h.setJSON(CLE,l);}catch(e){ok=false;}
+    if(ok===false){toast('Enregistrement refusé (données pas encore chargées ou droits insuffisants).');return false;}
+    return true;}
+  try{localStorage.setItem(LOCAL,JSON.stringify(l));return true;}catch(e){toast('Enregistrement impossible sur cet appareil.');return false;}}
+function auj(){return dateToInput(new Date());}
+function qui(){try{return syncUser()||'';}catch(e){return '';}}
+function versAction(t){var c={};c[fields.id]='__INTERNE__';c[fields.name]='Interne MGT';
+  return{client:c,eventId:'int-'+t.id,_from:'internal',_int:t,source:'interne',type:t.type,priority:t.priority,status:t.status,date:t.date||'',objective:t.objective||'',commercial:t.commercial||'',startTime:t.startTime||'',endTime:t.endTime||'',dueDate:t.dueDate||'',doneAt:t.doneAt||''};}
+window.__tkIntActions=function(){return charger().map(versAction);};
+function libelle(a){if(a._from!=='internal')return a.type||'Tâche';var c=CATS.filter(function(x){return x[0]===a.type;})[0];return c?c[1].replace(/^\S+\s/,''):(a.type||'Tâche');}
+function appliquer(t,f){var fini=f.status==='Termine',etait=t.status==='Termine';f=Object.assign({},f);
+  if(fini&&!etait){f.dueDate=t.dueDate||t.date||'';f.date=auj();f.doneAt=auj();}
+  else if(f.status&&!fini&&etait){f.date=t.dueDate||t.date||'';f.doneAt='';f.dueDate='';}
+  Object.assign(t,f);t.updated=new Date().toISOString();t.updatedBy=qui();}
+function droit(act){try{if(typeof window.CRM_CAN==='function'&&!window.CRM_CAN('communication',act)){toast('Droit insuffisant pour cette action.');return false;}}catch(e){}return true;}
+/* Feuilles du bas : ouvertes / fermées par l'attribut hidden, pour que le bouton Retour du téléphone les ferme. */
+function ouvrirFeuille(m){m.hidden=true;document.body.appendChild(m);m.hidden=false;}
+function fermerFeuille(m){if(!m)return;m.hidden=true;setTimeout(function(){if(m.hidden&&m.parentNode)m.remove();},0);}
+window.__tkFeuille={ouvrir:ouvrirFeuille,fermer:fermerFeuille};
+function fermerTout(){['tkMenu','tkIntModal'].forEach(function(id){var m=document.getElementById(id);if(m&&!m.hidden)fermerFeuille(m);else if(m)m.remove();});}
+function options(arr,v){return arr.map(function(o){return'<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+o[1]+'</option>';}).join('');}
+var INT=window.__tkInt={label:libelle,
+  patch:async function(a,f){var l=charger(),t=l.filter(function(x){return x.id===a._int.id;})[0];if(!t)return;appliquer(t,f);if(await enregistrer(l))rafraichir(true);},
+  del:async function(a){if(!droit('delete'))return false;if(!confirm('Supprimer cette tâche interne ?\n'+libelle(a)+' – '+(a.objective||'').slice(0,60)))return false;
+    if(await enregistrer(charger().filter(function(x){return x.id!==a._int.id;}))){rafraichir(true);return true;}return false;},
+  edit:function(t){formulaire(t);},
+  chooser:function(){fermerTout();var m=document.createElement('div');m.id='tkMenu';
+    m.innerHTML='<div class="tkMenuBox" role="dialog" aria-modal="true" aria-label="Nouvelle tâche"><div class="tkMenuTitle">Nouvelle tâche</div><button type="button" data-k="client">👤 Tâche client (visite, offre, rappel…)</button><button type="button" data-k="int">🏢 Tâche interne (sans client)</button><button type="button" data-k="exp">⬇️ Exporter les tâches internes</button><button type="button" data-k="imp">⬆️ Importer des tâches internes (fichier)</button><button type="button" data-x="1" class="tkMenuX">Annuler</button></div>';
+    ouvrirFeuille(m);
+    m.onclick=function(e){var b=e.target.closest('[data-k]');if(b){var k=b.dataset.k;fermerTout();if(k==='client')openEventEditor(null);else if(k==='int')formulaire(null);else if(k==='exp')exporter();else importer();}else if(e.target===m||e.target.closest('[data-x]'))fermerTout();};}};
+function formulaire(t){fermerTout();var nouveau=!t;
+  t=t||{id:'I'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),type:'rapport',priority:'Moyenne',status:'En attente',date:auj(),objective:'',commercial:qui(),startTime:'',endTime:''};
+  var m=document.createElement('div');m.id='tkIntModal';
+  m.innerHTML='<div class="tkIntBox" role="dialog" aria-modal="true"><div class="tkIntHead"><strong>'+(nouveau?'Nouvelle tâche interne':'Tâche interne')+'</strong><button type="button" data-x="1">Fermer</button></div><div class="tkIntBody">'
+  +'<label>Catégorie<select id="tkiType">'+options(CATS,t.type)+'</select></label>'
+  +'<label>Intitulé / note<textarea id="tkiObj" rows="4" placeholder="Ex. : Préparer le rapport mensuel des ventes">'+esc(t.objective||'')+'</textarea></label>'
+  +'<div class="tkiRow"><label>Importance<select id="tkiPrio">'+options(PRIO,t.priority)+'</select></label><label>État<select id="tkiStat">'+options(STAT,t.status)+'</select></label></div>'
+  +'<div class="tkiRow"><label>Date<input type="date" id="tkiDate" value="'+esc(t.date||'')+'"></label><label>Responsable<input type="text" id="tkiWho" value="'+esc(t.commercial||'')+'"></label></div>'
+  +'<div class="tkiRow"><label>Début (facultatif)<input type="time" id="tkiS" value="'+esc(t.startTime||'')+'"></label><label>Fin (facultatif)<input type="time" id="tkiE" value="'+esc(t.endTime||'')+'"></label></div>'
+  +'<div class="tkiAct"><button type="button" id="tkiSave" class="ok">Enregistrer</button>'+(nouveau?'':'<button type="button" id="tkiDel" class="bad">Supprimer</button>')+'</div></div></div>';
+  ouvrirFeuille(m);
+  m.onclick=function(e){if(e.target===m||e.target.closest('[data-x]'))fermerTout();};
+  var bSave=document.getElementById('tkiSave');
+  bSave.onclick=async function(){if(!droit(nouveau?'create':'edit'))return;var obj=document.getElementById('tkiObj').value.trim();if(!obj){alert('Écrivez l’intitulé de la tâche.');return;}
+    var f={type:document.getElementById('tkiType').value,objective:obj,priority:document.getElementById('tkiPrio').value,status:document.getElementById('tkiStat').value,date:document.getElementById('tkiDate').value,commercial:document.getElementById('tkiWho').value.trim(),startTime:document.getElementById('tkiS').value,endTime:document.getElementById('tkiE').value};
+    bSave.disabled=true;
+    var l=charger(),cur=l.filter(function(x){return x.id===t.id;})[0];
+    if(cur){appliquer(cur,f);}else{var nt=Object.assign({},t,{id:t.id,created:new Date().toISOString(),createdBy:qui(),status:'En attente'});delete nt.updated;l.push(nt);appliquer(nt,f);}
+    if(await enregistrer(l)){fermerTout();rafraichir(true);toast('Tâche interne enregistrée.');}else bSave.disabled=false;};
+  var d=document.getElementById('tkiDel');if(d)d.onclick=async function(){if(await INT.del(versAction(t)))fermerTout();};
+  setTimeout(function(){try{document.getElementById('tkiObj').focus();}catch(e){}},50);}
+function exporter(){try{var l=charger(),data=JSON.stringify({app:'MGT_INTERNAL_TASKS',version:1,exported:new Date().toISOString(),tasks:l},null,1),b=new Blob([data],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='mgt_taches_internes_'+auj()+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);toast('Export des tâches internes : '+l.length+' tâche(s).');}catch(e){alert('Export impossible.');}}
+function importer(){if(!droit('create'))return;var i=document.createElement('input');i.type='file';i.accept='.json,application/json';
+  i.onchange=function(){var f=i.files&&i.files[0];if(!f)return;var r=new FileReader();
+    r.onload=async function(){try{var o=JSON.parse(r.result);if(!o||o.app!=='MGT_INTERNAL_TASKS'||!Array.isArray(o.tasks))throw 0;
+      var l=charger(),par={},ajout=0,maj=0;l.forEach(function(x){par[x.id]=x;});
+      o.tasks.forEach(function(x){if(!x||!x.id)return;var c=par[x.id];if(!c){l.push(x);par[x.id]=x;ajout++;}else if(String(x.updated||'')>String(c.updated||'')){Object.assign(c,x);maj++;}});
+      if(await enregistrer(l)){rafraichir(true);toast('Import : '+ajout+' tâche(s) ajoutée(s)'+(maj?', '+maj+' mise(s) à jour':'')+'.');}
+    }catch(e){alert('Fichier non reconnu (attendu : export des tâches internes MGT).');}};
+    r.readAsText(f);};
+  i.click();}
+
+/* ---------- Liste Tâches & Rappels ---------- */
+var ONGLETS=[['open','À traiter'],['today','Aujourd’hui'],['late','En retard'],['week','7 jours'],['nodate','Sans date'],['done','Terminées']];
+var onglet='open', LIM=60;
+var ICONE={offre:'🟣',devis:'🟣',rapport:'📊',email:'✉️',mailing:'📣',presentation:'🖼️',appel:'📞',rappel:'🔔',sav:'🔧',recouvrement:'💰',preparation:'🗂️',calcul:'🧮',suivi:'📦',recapitulatif:'📝',administrative:'🗂️',redaction:'✍️'};
+function ico(a){var s=norm(a.type||''),k=Object.keys(ICONE).find(function(x){return s.indexOf(x)>=0;});return k?ICONE[k]:'📌';}
+function imp(a){var p=norm(a.priority||'');if(p.indexOf('faible')>=0||p.indexOf('basse')>=0)return{i:'🟨',r:2};if(p.indexOf('haute')>=0||p.indexOf('urgent')>=0||p.indexOf('a -')===0)return{i:'🟥',r:0};return{i:'🟧',r:1};}
+function etat(a){var s=norm(a.status||'En attente');if(s.indexOf('archive')>=0)return{k:'archive',i:'❎',l:'Archivé'};if(s.indexOf('termine')>=0||s.indexOf('realise')>=0)return{k:'done',i:'✅',l:'Terminé'};if(s.indexOf('report')>=0)return{k:'report',i:'⏸️',l:'Reporté'};if(s.indexOf('cours')>=0)return{k:'doing',i:'🔄',l:'En cours'};return{k:'todo',i:'⬜',l:'À faire'};}
+function urg(s,d){if(s.k==='done'||s.k==='archive')return'ok';if(d===null)return'';if(d<0)return'late';if(d===0)return'today';if(d<=2)return'soon';return'';}
+function echeance(a,d,s){if(s.k==='done')return'Terminé le '+dateFr(actionMainDate(a));if(s.k==='archive')return s.l;if(d===null)return'Sans date';if(d<0)return'En retard de '+(-d)+' j';if(d===0)return'Aujourd’hui';if(d===1)return'Demain';return'Dans '+d+' j · '+dateFr(actionMainDate(a));}
+function lignes(){var r=[];try{r=allPlanningActions().filter(function(a){return !isFieldVisit(a)&&!a._gone;});}catch(e){}
+  try{r=r.concat(window.__tkIntActions());}catch(e){}
+  return r.map(function(a){var s=etat(a),d=actionDays(a);return{a:a,s:s,d:d,u:urg(s,d),im:imp(a)};});}
+function dansOnglet(x,t){var ouvert=x.s.k!=='done'&&x.s.k!=='archive';if(t==='done')return !ouvert;if(!ouvert)return false;if(t==='today')return x.d===0;if(t==='late')return x.d!==null&&x.d<0;if(t==='week')return x.d!==null&&x.d>=0&&x.d<=7;if(t==='nodate')return x.d===null;return true;}
+function enrichir(a){if(a._enr||a.source!=='manuel')return;a._enr=1;try{var it=planningList(a.client).find(function(x){return x&&String(x.id)===String(a.eventId);});if(it)['photoName','photoData','motif','dueDate','doneAt','offerId'].forEach(function(k){if(it[k]!==undefined&&a[k]===undefined)a[k]=it[k];});}catch(e){}}
+function preparer(){var list=document.getElementById('taskReminderList');if(!list||document.getElementById('tkBar'))return;
+  var bar=document.createElement('div');bar.id='tkBar';
+  bar.innerHTML='<div class="tkTabs" id="tkTabs" role="tablist" aria-label="Vues des tâches"></div><div class="tkTools"><select id="tkCat" aria-label="Catégorie"><option value="">Toutes catégories</option></select><button type="button" id="tkAdd">➕ Nouvelle tâche</button></div><div class="tkLegend">Importance : 🟥 haute · 🟧 moyenne · 🟨 faible &nbsp;|&nbsp; État : ⬜ à faire · 🔄 en cours · ⏸️ reporté · ✅ fait · ❎ archivé — touchez l’état pour le changer</div>';
+  list.parentNode.insertBefore(bar,list);
+  bar.addEventListener('click',function(e){var b=e.target.closest('[data-tk-tab]');if(b){onglet=b.dataset.tkTab;LIM=60;dessiner();return;}
+    if(e.target.closest('#tkAdd')&&droit('create'))INT.chooser();});
+  document.getElementById('tkCat').addEventListener('change',function(){LIM=60;dessiner();});
+  list.addEventListener('click',function(e){
+    if(e.target.closest('#tkMore')){LIM+=60;dessiner();return;}
+    var c=e.target.closest('[data-tk-cycle]'),r=e.target.closest('[data-tk-report]'),o=e.target.closest('[data-tk-open]'),dx=e.target.closest('[data-tk-del]');
+    if(dx)supprimer(dx.dataset.tkDel);
+    else if(c)menuEtat(c.dataset.tkCycle);
+    else if(r)modifier(r.dataset.tkReport,{date:dateToInput(addDays(new Date(),7)),status:'En attente'});
+    else if(o){var a=calendarActionMap[o.dataset.tkOpen];if(a){if(a._from==='internal')INT.edit(a._int);else openTaskDetail(a);}}});}
+var file=Promise.resolve();
+function enchainer(fn){file=file.then(fn).catch(function(e){try{console.error(e);}catch(x){}});return file;}
+function modifier(id,f){var a=calendarActionMap[id];if(!a||!droit('edit'))return;if(a._from==='internal')return INT.patch(a,f);
+  var avant={status:a.status,date:a.date},fini=f.status==='Termine',td=dateToInput(new Date());
+  a.status=f.status||a.status;if(fini)a.date=td;else if(f.date)a.date=f.date;dessiner();
+  return enchainer(async function(){try{
+    var c=CLIENTS.find(function(x){return String(x[fields.id])===String(a.client[fields.id]);})||a.client;
+    var p=planningPatchFor(c),i=p.list.findIndex(function(x){return x&&String(x.id||'')===String(a.eventId);}),ancien=false,eid,meta;
+    if(i<0&&a._from==='planning'&&String(a.eventId).indexOf('manual-')===0){i=p.list.findIndex(function(x){return x&&!x.id&&String(x.date||'')===String(avant.date||'')&&String(x.type||'visite')===String(a.type||'')&&String(x.objective||'')===String(a.objective||'');});ancien=i>=0;}
+    var auto=i<0;
+    if(!auto){var cur=p.list[i],k=etat(cur).k;
+      if(fini&&k!=='done'){f.dueDate=cur.dueDate||cur.date||'';f.date=td;f.doneAt=td;f.relanceDate='';}
+      else if(!fini&&k==='done'){f.date=f.date||cur.dueDate||cur.date||'';f.doneAt='';f.dueDate='';}
+      var maj=Object.assign({},cur,f);if(ancien)maj.id='E'+Date.now();p.list[i]=maj;eid=String(maj.id);meta=ancien?[]:[{eventId:eid,mode:'edit'}];}
+    else{var ne={id:'E'+Date.now(),date:avant.date||'',offerId:'',type:a.type||'',priority:a.priority||'',status:'En attente',commercial:a.commercial||'',objective:a.objective||'',motif:'',startTime:'',endTime:'',photoName:'',photoData:''};
+      if(fini){f.dueDate=ne.date;f.date=td;f.doneAt=td;f.relanceDate='';}p.list.push(Object.assign(ne,f));eid=ne.id;meta=[{eventId:eid,mode:'add'}];}
+    await commitPlanning(c,p.patch,p.list,meta);
+    if(auto){var c2=CLIENTS.find(function(x){return String(x[fields.id])===String(a.client[fields.id]);});if(c2)await addSuppressedAction(c2,a.eventId);}
+  }catch(e){a.status=avant.status;a.date=avant.date;try{toast('Modification impossible, réessayez.');}catch(x){}}
+  dessiner();});}
+function supprimer(id){var a=calendarActionMap[id];if(!a)return;if(a._from==='internal')return INT.del(a);if(!droit('delete'))return;
+  if(!confirm('Supprimer cette tâche ?\n'+(a.type||'')+' – '+((a.client&&a.client[fields.name])||'')))return;a._gone=true;dessiner();
+  return enchainer(async function(){try{await deleteCalendarAction(a,true);}catch(e){a._gone=false;try{toast('Suppression impossible, réessayez.');}catch(x){}}dessiner();});}
+var OPT=[['En attente','⬜','À faire'],['En cours','🔄','En cours'],['Termine','✅','Terminé'],['Reporte','⏸️','Reporté'],['Archive','❎','Annulé / archivé']];
+function menuEtat(id){var a=calendarActionMap[id];if(!a)return;fermerTout();var cur=etat(a).l,m=document.createElement('div');m.id='tkMenu';
+  m.innerHTML='<div class="tkMenuBox" role="dialog" aria-modal="true"><div class="tkMenuTitle">'+esc(libelle(a))+' · choisir l’état</div>'+OPT.map(function(o){return'<button type="button" data-st="'+o[0]+'">'+o[1]+' '+o[2]+(norm(o[2]).indexOf(norm(cur))===0?' ✔':'')+'</button>';}).join('')+'<button type="button" data-x="1" class="tkMenuX">Annuler</button></div>';
+  ouvrirFeuille(m);
+  m.onclick=function(e){var b=e.target.closest('[data-st]');if(b){fermerTout();modifier(id,{status:b.dataset.st});}else if(e.target===m||e.target.closest('[data-x]'))fermerTout();};}
+function ecranVisible(){var m=document.getElementById('taskModule');return !!(m&&!m.hidden&&m.getClientRects().length);}
+var attente=false;
+function dessiner(){var list=document.getElementById('taskReminderList');if(!list)return;
+  /* Écran caché : rien à calculer maintenant (la liste se fait à l'ouverture). */
+  if(!ecranVisible()){if(!attente){attente=true;requestAnimationFrame(function(){attente=false;if(ecranVisible())dessiner();});}return;}
+  preparer();
+  var pr=(document.getElementById('taskPriorityFilter')||{}).value||'',us=(document.getElementById('taskUserFilter')||{}).value||'',sel=document.getElementById('tkCat');
+  var tout=lignes();
+  var types=uniq(tout.map(function(x){return x.a._from==='internal'?libelle(x.a):(x.a.type||'');}));
+  if(sel){var cur=sel.value;sel.innerHTML='<option value="">Toutes catégories</option>'+types.map(function(t){return'<option>'+esc(t)+'</option>';}).join('');sel.value=types.indexOf(cur)>=0?cur:'';}
+  var su=document.getElementById('taskUserFilter');if(su){var gens=uniq(tout.map(function(x){return actionCommercial(x.a);}));var cle=gens.join('|');if(su.dataset.tk!==cle||su.options.length!==gens.length+1){su.dataset.tk=cle;su.innerHTML='<option value="">Tous les responsables</option>'+gens.map(function(u){return'<option value="'+esc(u)+'">'+esc(u)+'</option>';}).join('');su.value=gens.indexOf(us)>=0?us:'';us=su.value;}}
+  var cat=sel?sel.value:'';
+  var base=tout.filter(function(x){return(!pr||norm(x.a.priority).indexOf(norm(pr))>=0)&&(!us||actionCommercial(x.a)===us)&&(!cat||(x.a._from==='internal'?libelle(x.a):x.a.type)===cat);});
+  var n={};ONGLETS.forEach(function(t){n[t[0]]=0;});base.forEach(function(x){ONGLETS.forEach(function(t){if(dansOnglet(x,t[0]))n[t[0]]++;});});
+  document.getElementById('tkTabs').innerHTML=ONGLETS.map(function(t){return'<button type="button" role="tab" aria-selected="'+(onglet===t[0])+'" data-tk-tab="'+t[0]+'" class="'+(onglet===t[0]?'on':'')+'">'+t[1]+'<b>'+n[t[0]]+'</b></button>';}).join('');
+  var rang={late:0,today:1,soon:2,'':3,ok:4};
+  var v=base.filter(function(x){return dansOnglet(x,onglet);}).sort(onglet==='done'?function(p,q){return String(actionMainDate(q.a)).localeCompare(String(actionMainDate(p.a)));}:function(p,q){return rang[p.u]-rang[q.u]||(p.d===null?9999:p.d)-(q.d===null?9999:q.d)||p.im.r-q.im.r;});
+  list.innerHTML=v.slice(0,LIM).map(function(x){var a=x.a;enrichir(a);calendarActionMap[a.eventId]=a;var auto=String(a.source||'').indexOf('auto')===0,id=esc(a.eventId);
+    return'<div class="tkCard '+(x.u?'tk-'+x.u:'')+'"><button type="button" class="tkState" data-tk-cycle="'+id+'" title="État : '+esc(x.s.l)+' (toucher pour changer)" aria-label="État : '+esc(x.s.l)+'">'+x.s.i+'</button>'
+    +'<div class="tkBody" data-tk-open="'+id+'"><div class="tkTop"><span title="Importance">'+x.im.i+'</span><span>'+ico(a)+'</span><strong>'+esc(libelle(a))+'</strong><span class="tkClient">· '+esc((a.client&&a.client[fields.name])||'-')+'</span></div>'
+    +(a.objective?'<div class="tkObj">'+esc(a.objective)+'</div>':'')+previewImageHtml(a.photoName,a.photoData)
+    +'<div class="tkMeta">'+esc(echeance(a,x.d,x.s))+' · '+esc(x.s.l)+(actionCommercial(a)?' · '+esc(actionCommercial(a)):'')+(auto?' · automatique':'')+'</div></div>'
+    +'<div class="tkAct">'+(x.s.k==='done'||x.s.k==='archive'?'':'<button type="button" data-tk-report="'+id+'" title="Reporter de 7 jours">↻ +7 j</button>')+'<button type="button" class="tkDel" data-tk-del="'+id+'" title="Supprimer" aria-label="Supprimer la tâche">🗑</button></div></div>';}).join('')||'<div class="empty">Rien dans cette vue.</div>';
+  if(v.length>LIM)list.insertAdjacentHTML('beforeend','<button type="button" id="tkMore">Afficher plus ('+(v.length-LIM)+' restantes)</button>');}
+var signature='';
+function rafraichir(force){signature=JSON.stringify(charger());if(force||ecranVisible())dessiner();}
+window.renderTaskReminders=dessiner;
+window.__tk={st:etat,imp:imp,dl:echeance,patch:modifier};
+/* Données Firebase reçues : redessiner si les tâches internes ont changé (autre appareil). */
+window.addEventListener('message',function(ev){if(!(ev&&ev.data&&ev.data.type==='gtm-mgt-data-updated'))return;
+  setTimeout(function(){var s=JSON.stringify(charger());if(s!==signature){signature=s;if(ecranVisible())dessiner();}},0);});
+
+/* ---------- Détail d'une tâche : icônes, bouton Terminer ---------- */
+var detailOrigine=window.openTaskDetail;
+if(typeof detailOrigine==='function')window.openTaskDetail=function(a){var r=detailOrigine.apply(this,arguments);
+  try{if(!a)return r;var body=document.getElementById('taskDetailBody'),first=body&&body.firstElementChild;
+    if(first&&!first.querySelector('.tkDetIcons')){var s=etat(a),im=imp(a),d=actionDays(a),bar=document.createElement('div');bar.className='tkDetIcons';
+      bar.innerHTML='<span>'+im.i+' Importance '+['haute','moyenne','faible'][im.r]+'</span><span>'+s.i+' '+esc(s.l)+'</span><span>'+esc(echeance(a,d,s))+'</span>';
+      first.insertBefore(bar,first.children[1]||null);}
+    var eb=document.getElementById('taskDetailEditBtn');if(eb&&eb.parentNode)eb.parentNode.classList.add('tkDetActs');
+    var db=document.getElementById('taskDetailDoneBtn');
+    if(db){var kk=etat(a).k;db.style.display=(kk==='done'||kk==='archive')?'none':'';
+      db.onclick=function(){document.getElementById('taskDetailModal').hidden=true;calendarActionMap[a.eventId]=a;modifier(a.eventId,{status:'Termine'});};}
+  }catch(e){}
+  return r;};
+
+/* ---------- Calendrier ---------- */
+var apaOrigine=window.allPlanningActions,src=null,res=null,resCal=null;
+function lc(v){return String(v||'').toLowerCase().trim();}
+function cid(a){return String(a.client&&a.client[fields.id]);}
+function rappelVisite(a){return a._from==='generated'&&lc(a.type)==='visite'&&/visite periodique automatique|rappel visite/.test(lc(a.objective));}
+/* Actions automatiques : doublons d'une action déjà saisie à la main masqués, « suivi fournisseur » automatique retiré,
+   actions automatiques supprimées par l'utilisateur masquées ; dans le calendrier, les rappels de visite vont dans « Visites à planifier ». */
+if(typeof apaOrigine==='function')window.allPlanningActions=function(){var r=apaOrigine.apply(this,arguments);
+  if(r!==src||!res){var autoCles={},aAuto={},sup={},i,a;
+    for(i=0;i<r.length;i++){a=r[i];if(a.source==='auto'){var c=cid(a);aAuto[c]=1;autoCles[c+'|'+lc(a.type)+'|'+lc(a.objective)]=1;}}
+    for(i=0;i<r.length;i++){a=r[i];if(a.source!=='auto'&&aAuto[cid(a)])autoCles[cid(a)+'|'+lc(a.type)+'|'+lc(a.objective)]=2;}
+    var out=[];for(i=0;i<r.length;i++){a=r[i];var k=cid(a),s=a.client&&a.client.SuppressedActions;
+      if(s&&s.length){var s2=sup[k];if(!s2){s2=sup[k]={};s.forEach(function(x){s2[String(x)]=1;});}if(s2[String(a.eventId)])continue;}
+      if(a.source==='auto'){if(lc(a.type)==='suivi fournisseur')continue;if(autoCles[k+'|'+lc(a.type)+'|'+lc(a.objective)]===2)continue;}
+      out.push(a);}
+    src=r;res=out;resCal=null;}
+  if(window.__p7cal&&!window.__p7showV){if(!resCal)resCal=res.filter(function(a){return !rappelVisite(a);});return resCal;}
+  return res;};
+/* Modifier une action automatique la remplace : l'automatique d'origine n'est plus proposée. */
+var svOrigine=window.saveEventWithPhoto;
+if(typeof svOrigine==='function')window.saveEventWithPhoto=async function(){var cur=currentEventEdit?{src:currentEventEdit.source,eid:currentEventEdit.eventId,cid:currentEventEdit.clientId}:null;var r=await svOrigine.apply(this,arguments);
+  try{if(cur&&cur.src&&cur.src!=='manuel'&&cur.eid&&currentEventEdit===null){var c=CLIENTS.find(function(x){return String(x[fields.id])===String(cur.cid);});if(c)await addSuppressedAction(c,cur.eid);}}catch(e){}return r;};
+/* Suppression d'événements issus de l'historique ou d'anciennes saisies sans identifiant. */
+var dcaOrigine=window.deleteCalendarAction;
+if(typeof dcaOrigine==='function')window.deleteCalendarAction=async function(a,sans){try{if(a&&a.client){var c=CLIENTS.find(function(x){return String(x[fields.id])===String(a.client[fields.id]);});if(c){
+  if(a._from==='history'){if(!sans&&!confirm('Supprimer cet événement du calendrier ?'))return;await addSuppressedAction(c,a.eventId);render();toast('Événement retiré du calendrier.');try{hideCalendarContext();}catch(e){}return;}
+  if(a._from==='planning'&&String(a.eventId).indexOf('manual-')===0){var p=planningPatchFor(c),i=p.list.findIndex(function(x){return x&&!x.id&&String(x.date||'')===String(a.date||'')&&String(x.type||'visite')===String(a.type||'')&&String(x.objective||'')===String(a.objective||'');});
+    if(i>=0){if(!sans&&!confirm('Supprimer cet événement du calendrier ?'))return;p.list.splice(i,1);await commitPlanning(c,p.patch,p.list,[]);try{hideCalendarContext();}catch(e){}return;}}}}}catch(e){console.error(e);}
+  return dcaOrigine.apply(this,arguments);};
+var TERRAIN=/visite|sav|install|livraison|depann|formation|demonstration|intervention|deplacement|tournee|salon|mission/;
+function groupe(a){return TERRAIN.test(norm(a.type||''))?'terrain':'bureau';}
+function joli(t){t=String(t||'Action').replace(/_/g,' ').toLowerCase();if(t==='sav')return 'SAV';return t.charAt(0).toUpperCase()+t.slice(1);}
+function minutes(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return m?(+m[1])*60+(+m[2]):null;}
+/* Vues jour / semaine : chaque action placée à son heure, sur la durée prévue ; actions simultanées côte à côte. */
+function placerHeures(){try{var el=document.getElementById('planningCalendar');if(!el)return;var jour=el.querySelector('.phase6DayTimeline'),sem=el.querySelector('.phase6WeekHours'),root=jour||sem;if(!root||root.dataset.p7t==='1')return;
+  var rangs=root.querySelectorAll(jour?'.phase6Hour':'.phase6HourRow');if(!rangs.length)return;var H=rangs[0].offsetHeight||(jour?60:46),nJ=jour?1:7,gauche=jour?55:48,ev=[];
+  rangs.forEach(function(row){row.querySelectorAll('.phase6Event[data-event-id]').forEach(function(b){var a=calendarActionMap[b.dataset.eventId];if(!a)return;var s=minutes(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut),e=minutes(a.endTime||a.end_time||a.heureFin||a.fin);if(s===null)return;var di=0;if(sem){var cell=b.closest('.phase6HourCell');di=Math.max(0,[].indexOf.call(row.children,cell)-1);}ev.push({b:b,s:s,e:(e!==null&&e>s)?e:s+30,d:di});});});
+  root.dataset.p7t='1';if(!ev.length)return;root.style.position='relative';
+  var couche=document.createElement('div');couche.className='p7Layer';couche.style.cssText='position:absolute;top:0;bottom:0;right:0;pointer-events:none;left:'+gauche+'px';root.appendChild(couche);
+  var parJour={};ev.forEach(function(x){(parJour[x.d]=parJour[x.d]||[]).push(x);});
+  var plus=[];Object.keys(parJour).forEach(function(k){var l=parJour[k].sort(function(p,q){return p.s-q.s||p.e-q.e;}),gr=[],fin=0,voies=[];
+    function clore(){if(!gr.length)return;if(sem&&voies.length>2){var cach=0;gr.forEach(function(x){x.n=2;if(x.l>=2){x.cache=1;cach++;}});plus.push({d:gr[0].d,s:Math.min.apply(null,gr.map(function(x){return x.s;})),k:cach});}else gr.forEach(function(x){x.n=voies.length||1;});}
+    l.forEach(function(x){if(x.s>=fin){clore();gr=[];voies=[];}var v=0;while(v<voies.length&&voies[v]>x.s)v++;voies[v]=x.e;x.l=v;gr.push(x);fin=Math.max(fin,x.e);});clore();});
+  ev.forEach(function(x){if(x.cache){x.b.style.display='none';couche.appendChild(x.b);return;}var haut=(Math.max(x.s,480)-480)/60*H,bas=(Math.min(x.e,1440)-480)/60*H;if(bas<=haut)return;var h=Math.max(bas-haut-1,18),cw=100/nJ,w=cw/x.n,b=x.b;b.classList.add('p7Block');if(h<34)b.classList.add('p7Short');b.style.cssText='position:absolute;top:'+haut+'px;height:'+h+'px;left:calc('+(x.d*cw+x.l*w)+'% + 1px);width:calc('+w+'% - 2px)';couche.appendChild(b);});
+  plus.forEach(function(c){var ch=document.createElement('button');ch.type='button';ch.className='p7More';ch.textContent='+'+c.k;ch.title='Voir toutes les actions de ce jour';ch.style.cssText='position:absolute;top:'+((Math.max(c.s,480)-480)/60*H)+'px;left:calc('+((c.d+1)*100/nJ)+'% - 22px);pointer-events:auto';ch.onclick=function(e){e.stopPropagation();var hs=document.querySelectorAll('#planningCalendar .phase6WeekDay');if(hs[c.d])hs[c.d].click();};couche.appendChild(ch);});
+}catch(e){}}
+var rafCal=false;
+function decorer(){rafCal=false;try{document.querySelectorAll('#planningCalendar .phase6Event:not([data-p7])').forEach(function(el){var a=calendarActionMap[el.dataset.eventId];if(!a)return;el.dataset.p7='1';var g=groupe(a);el.classList.add('p7-'+g);var tx=el.querySelector('.phase6EventText');if(tx)tx.insertAdjacentHTML('afterbegin','<b class="p7Type"><span class="p7Ico">'+(g==='terrain'?'🚗':'🖥️')+'</span><span class="p7Tx"> '+esc(joli(a.type))+'</span></b><span class="p7Sep"> · </span>');});}catch(e){}
+  placerHeures();envelopperCalendrier();legende();compterVisites();}
+function legende(){var el=document.getElementById('planningCalendar');if(!el)return;var lg=document.getElementById('p7Legend');
+  if(!lg){lg=document.createElement('div');lg.id='p7Legend';lg.innerHTML='<span class="p7L terr">🚗 Déplacements</span><span class="p7L bur">🖥️ Bureau</span><button type="button" id="p7VisBtn">🔔 Visites à planifier</button>';el.parentNode.insertBefore(lg,el);document.getElementById('p7VisBtn').onclick=ouvrirVisites;}}
+function listeVisites(){var t=(typeof allPlanningActions==='function'?allPlanningActions():[]).filter(rappelVisite);return t.sort(function(p,q){return String(actionMainDate(p)).localeCompare(String(actionMainDate(q)));});}
+var dernierCompte=0;
+function compterVisites(force){var b=document.getElementById('p7VisBtn');if(!b)return;if(!force&&Date.now()-dernierCompte<2000)return;dernierCompte=Date.now();try{b.textContent='🔔 Visites à planifier ('+listeVisites().length+')';}catch(e){}}
+function fermerVisites(){var m=document.getElementById('p7VisSheet');if(m&&!m.hidden)fermerFeuille(m);else if(m)m.remove();}
+function ouvrirVisites(){fermerVisites();var L=listeVisites(),m=document.createElement('div');m.id='p7VisSheet';
+  m.innerHTML='<div class="p7Box" role="dialog" aria-modal="true" aria-label="Visites à planifier"><div class="p7Head"><strong>Visites à planifier ('+L.length+')</strong><button type="button" data-x="1">Fermer</button></div><div class="p7Sub">Clients à revoir, du plus en retard au moins en retard. Ces rappels automatiques ne chargent plus le calendrier.</div><label class="p7Chk"><input type="checkbox" id="p7ShowV"'+(window.__p7showV?' checked':'')+'> Afficher aussi ces rappels dans le calendrier</label><div class="p7List">'
+  +L.slice(0,80).map(function(a,i){var d=actionDays(a);return'<div class="p7Row"><div><b>'+esc((a.client&&a.client[fields.name])||'-')+'</b><div class="p7Meta">'+(d===null?'Sans date':d<0?'En retard de '+(-d)+' j':d===0?'Aujourd’hui':'Dans '+d+' j')+' · échéance '+esc(dateFr(actionMainDate(a)))+(/rappel visite/.test(lc(a.objective))?' · offre sans réponse':' · visite périodique')+'</div></div><div class="p7Btns"><button type="button" data-plan="'+i+'">📅 Planifier</button><button type="button" data-hide="'+i+'" title="Ne plus rappeler" aria-label="Ne plus rappeler">✖</button></div></div>';}).join('')
+  +(L.length>80?'<div class="p7Meta">+ '+(L.length-80)+' autres (planifiez ou masquez les premiers pour voir la suite)</div>':'')+(L.length?'':'<div class="p7Meta">Aucune visite à planifier.</div>')+'</div></div>';
+  ouvrirFeuille(m);
+  m.onclick=async function(e){var t=e.target;if(t===m||t.closest('[data-x]')){fermerVisites();return;}
+    if(t.id==='p7ShowV'){window.__p7showV=t.checked;try{renderCalendar();}catch(x){}compterVisites(true);return;}
+    var pl=t.closest('[data-plan]'),hd=t.closest('[data-hide]');
+    if(pl){var a=L[+pl.dataset.plan];fermerVisites();if(a)openEventEditor(a);}
+    else if(hd){var a2=L[+hd.dataset.hide];if(!a2)return;if(!droit('edit'))return;if(!confirm('Ne plus rappeler cette visite automatique pour ce client ?'))return;var c=CLIENTS.find(function(x){return String(x[fields.id])===String(a2.client[fields.id]);});if(c){hd.disabled=true;await addSuppressedAction(c,a2.eventId);}ouvrirVisites();compterVisites(true);}};}
+function envelopperCalendrier(){var f=window.renderCalendar;if(typeof f==='function'&&!f.__p7){var w=function(){window.__p7cal=1;try{return f.apply(this,arguments);}finally{window.__p7cal=0;}};w.__p7=1;window.renderCalendar=w;}}
+envelopperCalendrier();
+/* Sur téléphone : un appui court sur une action du calendrier ouvre directement son détail. */
+try{var tp=null;document.addEventListener('touchstart',function(e){var el=e.target&&e.target.closest?e.target.closest('#planningCalendar .phase6Event[data-event-id]'):null;if(!el||!e.touches||e.touches.length!==1){tp=null;return;}var t0=e.touches[0];tp={id:el.dataset.eventId,x:t0.clientX,y:t0.clientY,t:Date.now()};var moi=tp;
+  el.addEventListener('touchend',function(ev){try{var c=ev.changedTouches&&ev.changedTouches[0];if(!c||tp!==moi)return;if(Math.abs(c.clientX-moi.x)<12&&Math.abs(c.clientY-moi.y)<12&&Date.now()-moi.t<700){var a=calendarActionMap[moi.id];if(a){if(ev.cancelable)ev.preventDefault();openTaskDetail(a);}}}catch(x){}},{once:true});},{capture:true,passive:true});}catch(e){}
+
+/* ---------- Démarrage ---------- */
+function init(){
+  preparer();
+  var cal=document.getElementById('planningCalendar');
+  if(cal){new MutationObserver(function(){if(!rafCal){rafCal=true;requestAnimationFrame(decorer);}}).observe(cal,{childList:true,subtree:true});decorer();}
+  /* Photo : appareil photo OU galerie (le téléphone propose les deux). */
+  ['eventPhotoInput','quickNotePhotoInput'].forEach(function(id){var inp=document.getElementById(id);if(inp){inp.removeAttribute('capture');inp.setAttribute('accept','image/*');}});
+  var lab=document.getElementById('eventPhotoInput');lab=lab&&lab.parentNode;if(lab&&lab.firstChild&&lab.firstChild.nodeType===3)lab.firstChild.nodeValue='Photo (appareil ou galerie) ';
+  /* Nouveaux types d'action : mailing, présentation. */
+  var s=document.getElementById('eventTypeInput');if(s)['mailing','presentation'].forEach(function(x){if(![].some.call(s.options,function(o){return o.value===x;}))s.add(new Option(x==='presentation'?'présentation':x,x));});
+  try{['mailing','presentation'].forEach(function(x){if(actionTypeOptions.indexOf(x)<0)actionTypeOptions.push(x);});}catch(e){}
+  signature=JSON.stringify(charger());
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+window.addEventListener('load',envelopperCalendrier);
+})();
+</script>
+<style id="mgt-droits-style"></style>
+<style id="mgt-droits-ui">
+#mgtDroitsSection{--drb:#ffffff;--drf:#1b2433;--drm:#566377;--drl:#d3dae4;--drs:#eef2f7}
+html[data-mgt-theme="dark"] #mgtDroitsSection{--drb:#171c24;--drf:#eef2f8;--drm:#a6b1c2;--drl:#303947;--drs:#232b37}
+#mgtDroitsSection{display:block!important;color:var(--drf)}
+#mgtDroitsSection .drCorps{padding:12px 14px;display:grid;gap:12px}
+#mgtDroitsSection .drMoi{font-size:13px;color:var(--drm)}
+#mgtDroitsSection .drMoi b{color:var(--drf)}
+#mgtDroitsSection .drOnglets{display:flex;flex-wrap:wrap;gap:6px}
+#mgtDroitsSection .drOnglets button{all:unset;box-sizing:border-box;min-height:36px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;background:var(--drs)!important;color:var(--drf)!important;border:1px solid var(--drl)!important}
+#mgtDroitsSection .drOnglets button.on{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+#mgtDroitsSection .drTableau{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--drl);border-radius:12px;max-width:100%}
+#mgtDroitsSection table{border-collapse:collapse;width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed;font-size:13px}
+#mgtDroitsSection th:first-child{width:34%}
+#mgtDroitsSection .drCourt{display:none}
+@media(max-width:560px){#mgtDroitsSection .drLong{display:none}#mgtDroitsSection .drCourt{display:inline}#mgtDroitsSection th,#mgtDroitsSection td{padding:7px 3px}#mgtDroitsSection th:first-child,#mgtDroitsSection td:first-child{min-width:0;font-size:12px;padding-left:8px}#mgtDroitsSection thead th{font-size:11px}}
+#mgtDroitsSection th,#mgtDroitsSection td{padding:8px 6px;border-bottom:1px solid var(--drl);text-align:center;color:var(--drf)!important;background:var(--drb)!important}
+#mgtDroitsSection th:first-child,#mgtDroitsSection td:first-child{text-align:left;position:sticky;left:0;z-index:1;font-weight:700;min-width:150px}
+#mgtDroitsSection thead th{font-size:12px;color:var(--drm)!important;font-weight:800}
+#mgtDroitsSection tr:last-child td{border-bottom:0}
+#mgtDroitsSection input[type="checkbox"]{width:20px;height:20px;accent-color:#c93200;cursor:pointer}
+#mgtDroitsSection input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
+#mgtDroitsSection .drActions{display:flex;flex-wrap:wrap;gap:8px}
+#mgtDroitsSection .drActions button{all:unset;box-sizing:border-box;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;background:var(--drs)!important;color:var(--drf)!important;border:1px solid var(--drl)!important}
+#mgtDroitsSection .drActions button.ok{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+#mgtDroitsSection .drActions button:disabled{opacity:.5;cursor:default}
+#mgtDroitsSection .drNote{font-size:12px;color:var(--drm);line-height:1.5}
+#mgtDroitsSection .drEtat{font-size:12px;font-weight:700;color:var(--drm)}
+.mgt-lecture-seule #mgtEnteteCompte::after{content:"Lecture seule";display:inline-flex;align-items:center;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#fff7ed;color:#9a3412;border:1px solid #fdba74;vertical-align:middle}
+html.mgt-lecture-seule[data-mgt-theme="dark"] #mgtEnteteCompte::after{background:#2a1d14;color:#fdba74;border-color:#7c3f17}
+</style>
+<script id="mgt-droits">
+/* ===== Droits par profil (comptes GTM Groupe) =====
+   Repris du mécanisme de la nouvelle version (sans Supabase) : chaque écran et chaque action
+   (consulter, créer, modifier, supprimer, exporter) dépend du profil du compte GTM connecté.
+   - Droits par défaut tirés du profil GTM (Technico-commercial et Administrateur système : tout ;
+     Secrétaire : facturation, offres, suivi ; Direction : consultation) ;
+   - l'administrateur des comptes peut ajuster ces droits dans Paramètres → Droits par profil
+     (enregistré dans Firebase, clé mgt_crm_droits, appliqué sur tous les appareils). */
+(function(){
+'use strict';
+var CLE='mgt_crm_droits';
+var MODS=[['dashboard','Accueil'],['clients','Clients'],['machines','Machines'],['calendar','Calendrier'],['communication','Tâches, visites, notes'],['commercial','Commercial'],['offres','Offres'],['projetos','Projets'],['billing','Facturation & lettrage'],['sav','SAV'],['stock','Listing'],['settings','Paramètres']];
+var ACTS=[['view','Consulter'],['create','Créer'],['edit','Modifier'],['delete','Supprimer'],['export','Exporter']];
+var COURT={view:'Voir',create:'Créer',edit:'Modif.',delete:'Suppr.',export:'Export'};
+var NOM_MOD={};MODS.forEach(function(m){NOM_MOD[m[0]]=m[1];});
+var VERBE={view:'consulter',create:'créer',edit:'modifier',delete:'supprimer',export:'exporter'};
+/* écran du CRM → module des droits */
+var ECRAN={dashboard:'dashboard','global-search':'dashboard',clients:'clients',machines:'machines',calendar:'calendar',planning:'calendar',annual:'calendar',visits:'communication',appointments:'communication',tasks:'communication',communication:'communication',commercial:'commercial',offres:'offres',projetos:'projetos',billing:'billing',sav:'sav',stock:'stock',settings:'settings'};
+var PROFILS_REGLABLES=[['secretaire_mgt','Secrétaire MGT'],['technico_mgt','Technico-commercial MGT'],['direction','Direction'],['sysadmin','Administrateur système']];
+function grille(fn){var o={};MODS.forEach(function(m){o[m[0]]={};ACTS.forEach(function(a){o[m[0]][a[0]]=!!fn(m[0],a[0]);});});return o;}
+var TOUT=function(){return grille(function(){return true;});};
+var LECTURE=function(){return grille(function(m,a){return a==='view'||a==='export';});};
+var SECRETAIRE=function(){var plein={offres:1,billing:1},suivi={clients:1,calendar:1,communication:1};
+  return grille(function(m,a){if(plein[m])return true;if(suivi[m])return a!=='delete';if(m==='dashboard'||m==='machines'||m==='commercial'||m==='projetos'||m==='sav')return a==='view';if(m==='stock'||m==='settings')return a==='view'||a==='export';return false;});};
+/* Direction : consultation (comme les règles Firebase) ; Administrateur système : accès complet (il assure la maintenance, les règles Firebase l'autorisent). */
+var DEFAUT={technico_mgt:TOUT,secretaire_mgt:SECRETAIRE,direction:LECTURE,sysadmin:TOUT};
+function hote(){try{var h=window.parent;return(h&&h!==window&&typeof h.getJSON==='function')?h:null;}catch(e){return null;}}
+function compte(){try{var h=window.parent;return(h&&h!==window&&typeof h.gtmCompteCourant==='function')?h.gtmCompteCourant():null;}catch(e){return null;}}
+function reglages(){var h=hote(),v=null;try{v=h&&h.getJSON(CLE,null);}catch(e){}return(v&&typeof v==='object'&&v.profils&&typeof v.profils==='object')?v:{profils:{}};}
+function fusion(base,sur){if(!sur||typeof sur!=='object')return base;MODS.forEach(function(m){var s=sur[m[0]];if(!s||typeof s!=='object')return;ACTS.forEach(function(a){if(typeof s[a[0]]==='boolean')base[m[0]][a[0]]=s[a[0]];});});return base;}
+function droitsParDefaut(p){return DEFAUT[p]?DEFAUT[p]():null;}
+/* Droits du compte connecté (null = pas de compte GTM : page ouverte seule, aucune restriction) */
+function calculer(c){
+  if(!c)return null;
+  var p=c.profil||'',d;
+  if(DEFAUT[p])d=fusion(DEFAUT[p](),reglages().profils[p]);
+  else if(p)d=LECTURE();
+  else d=(c.role==='viewer')?LECTURE():TOUT();
+  d.dashboard.view=true; /* l'accueil reste toujours accessible */
+  if(c.gereComptes){d.settings.view=true;d.settings.edit=true;} /* l'administrateur des comptes garde toujours l'accès aux réglages */
+  return d;}
+function profilNom(c){if(!c)return'';var l={direction:'Direction',sysadmin:'Administrateur système',secretaire_mgt:'Secrétaire MGT',technico_mgt:'Technico-commercial MGT'};return l[c.profil]||(c.profil?c.profil:(c.role==='viewer'?'Consultation':'Accès complet'));}
+var C=compte(),P=calculer(C);
+window.CRM_USER=C?{nom:C.nom||C.username||'',profil:C.profil||'',role:C.role||'',permissions:P}:null;
+function can(mod,act){if(!P)return true;var m=P[mod];if(!m)return true;return !!m[act||'view'];}
+window.CRM_CAN=can;
+var dernierAvis=0;
+function refuser(mod,act){var t=Date.now();if(t-dernierAvis<1200)return;dernierAvis=t;
+  var msg=act==='view'?'Accès non autorisé pour votre profil : « '+(NOM_MOD[mod]||mod)+' ».':'Droit insuffisant : vous ne pouvez pas '+(VERBE[act]||act)+' dans « '+(NOM_MOD[mod]||mod)+' ».';
+  try{toast(msg);}catch(e){}}
+var API=window.MGT_DROITS={can:can,refuser:refuser,modules:MODS,actions:ACTS};
+
+/* 1) Navigation : un écran non autorisé ramène à l'accueil */
+var ouvrirOrigine=window.openModule;
+if(typeof ouvrirOrigine==='function'){window.openModule=function(id){var m=ECRAN[id];if(m&&!can(m,'view')){refuser(m,'view');if(id!=='dashboard')return ouvrirOrigine.call(this,'dashboard');return;}return ouvrirOrigine.apply(this,arguments);};}
+
+/* 2) Fonctions d'action (appelées par les boutons, menus, raccourcis) */
+var GARDES={saveEdit:['clients','edit'],deleteClient:['clients','delete'],deleteClientSoft:['clients','delete'],permanentDelete:['clients','delete'],restoreClient:['clients','edit'],
+  exportExcel:['clients','export'],
+  saveEventFromModal:['calendar','edit'],saveEventWithPhoto:['calendar','edit'],deleteEventFromModal:['calendar','delete'],deleteCalendarAction:['calendar','delete'],
+  updateReminderTask:['communication','edit'],saveQuickNote:['communication','edit'],saveQuickNoteWithPhoto:['communication','edit'],deleteQuickNote:['communication','delete'],
+  importOfferPdf:['offres','create'],saveOffreEdit:['offres','edit'],
+  saveProjet:['projetos','edit'],deleteProjet:['projetos','delete'],exportProjetAudit:['projetos','export'],
+  exportBackup:['settings','export'],exportFullBackup:['settings','export'],restoreFromBackupFile:['settings','edit'],openRestoreBackupPicker:['settings','edit']};
+Object.keys(GARDES).forEach(function(nom){var f=window[nom];if(typeof f!=='function'||f.__mgtDroit)return;var g=GARDES[nom];
+  var w=function(){if(!can(g[0],g[1])){refuser(g[0],g[1]);return Promise.resolve(null);}return f.apply(this,arguments);};w.__mgtDroit=1;window[nom]=w;});
+
+/* 3) Boutons : masqués si l'action n'est pas permise, et bloqués au clic (filet de sécurité) */
+var BOUTONS={
+  '#addClientBtn':['clients','create'],'#clientListAddBtn':['clients','create'],'#mainImportBtn':['clients','create'],
+  '#editBtn':['clients','edit'],'button#saveEdit':['clients','edit'],'#addContactRow':['clients','edit'],'#addMachineRow':['clients','edit'],'#addOfferRow':['clients','edit'],'#addPlanningRow':['clients','edit'],'#addVisitRow':['clients','edit'],
+  '#deleteBtn':['clients','delete'],'#diagPermanentDeleteBtn':['clients','delete'],
+  '#exportBtn':['clients','export'],'#exportAllBtn':['clients','export'],'#mainExportBtn':['clients','export'],
+  '#eventSaveBtn':['calendar','edit'],'#calendarCtxEdit':['calendar','edit'],'#phase6AddAction':['calendar','create'],'#eventDeleteBtn':['calendar','delete'],'#calendarCtxDelete':['calendar','delete'],
+  '#taskDetailEditBtn':['communication','edit'],'#taskDetailDoneBtn':['communication','edit'],'#quickNoteSaveBtn':['communication','edit'],'#globalNoteSave':['communication','create'],'[data-task-report]':['communication','edit'],'[data-task-done]':['communication','edit'],
+  '#quickNoteNewBtn':['communication','create'],'#taskDetailDeleteBtn':['communication','delete'],'#quickNoteDeleteBtn':['communication','delete'],
+  '#tkAdd':['communication','create'],'[data-tk-report]':['communication','edit'],'[data-tk-del]':['communication','delete'],
+  '#offresAddBtn':['offres','create'],'#offreNewSaveBtn':['offres','create'],'[data-offer-pdf]':['offres','create'],'#offreEditSaveBtn':['offres','edit'],'[data-offre-edit]':['offres','edit'],'[data-mgt-offre-del]':['offres','delete'],'#mgtOffreCleanBtn':['offres','delete'],
+  '#projetSaveBtn':['projetos','edit'],'#projetDeleteBtn':['projetos','delete'],'#projetAuditExportBtn':['projetos','export'],
+  '#billingAddBtn':['billing','create'],'[data-mgt-inv-del]':['billing','delete'],'#mgtBillDelBtn':['billing','delete'],'#mgtBillCleanBtn':['billing','delete'],
+  '#backupExportBtn':['settings','export'],'#backupFullBtn':['settings','export'],'#backupFullBtn2':['settings','export'],'#backupImportBtn':['settings','edit'],'#mainRestoreBackupBtn':['settings','edit']};
+var SEL=Object.keys(BOUTONS);
+function appliquer(){var css='';API.caches=[];
+  if(P){var caches=[];
+    Object.keys(ECRAN).forEach(function(id){if(!can(ECRAN[id],'view'))caches.push('.sidebar [data-module="'+id+'"]','[data-home-module="'+id+'"]','[data-mgt-bn="'+id+'"]','[data-nav-ecran="'+id+'"]','[data-comm-module="'+id+'"]');});
+    SEL.forEach(function(s){var d=BOUTONS[s];if(!can(d[0],d[1]))caches.push(s);});
+    /* spécificité renforcée (:not(#…)) pour l'emporter sur les styles d'affichage existants */
+    if(caches.length)css=caches.map(function(x){return x+':not(#_dr1):not(#_dr2):not(#_dr3)';}).join(',')+'{display:none!important}';
+    /* style « display … !important » écrit directement sur l'élément : mis de côté tant que l'action est interdite */
+    if(caches.length)try{document.querySelectorAll(caches.join(',')).forEach(function(el){if(el.style.getPropertyPriority('display')==='important'){el.dataset.drDisp=el.style.getPropertyValue('display');el.style.removeProperty('display');}});}catch(e){}
+    API.caches=caches;}
+  try{document.querySelectorAll('[data-dr-disp]').forEach(function(el){var c=API.caches||[];if(!c.length||!el.matches(c.join(','))){el.style.setProperty('display',el.dataset.drDisp,'important');delete el.dataset.drDisp;}});}catch(e){}
+  var st=document.getElementById('mgt-droits-style');if(st&&st.textContent!==css)st.textContent=css;
+  marquerLectureSeule();}
+document.addEventListener('click',function(e){if(!P||!e.target||!e.target.closest)return;
+  for(var i=0;i<SEL.length;i++){var el=e.target.closest(SEL[i]);if(el){var d=BOUTONS[SEL[i]];if(!can(d[0],d[1])){e.preventDefault();e.stopImmediatePropagation();refuser(d[0],d[1]);}return;}}},true);
+/* Factures : créer / modifier selon les droits (avant tout autre traitement du formulaire) */
+window.addEventListener('submit',function(e){var f=e.target;if(!P||!f||f.id!=='billingForm')return;var act=f.dataset&&f.dataset.invoice?'edit':'create';
+  if(!can('billing',act)){e.preventDefault();e.stopImmediatePropagation();refuser('billing',act);}},true);
+/* Écran ouvert devenu interdit (droits modifiés par l'administrateur) : retour à l'accueil */
+function verifierEcran(){try{var cur=(typeof CURRENT_MODULE!=='undefined')?CURRENT_MODULE:null,m=cur&&ECRAN[cur];if(m&&!can(m,'view')&&typeof window.openModule==='function')window.openModule('dashboard');}catch(e){}}
+function marquerLectureSeule(){var ro=!!P&&!MODS.some(function(m){return can(m[0],'create')||can(m[0],'edit');});document.documentElement.classList.toggle('mgt-lecture-seule',ro);}
+function recalculer(){var c=compte(),p=calculer(c),avant=JSON.stringify(P);C=c;P=p;window.CRM_USER=c?{nom:c.nom||c.username||'',profil:c.profil||'',role:c.role||'',permissions:p}:null;
+  if(JSON.stringify(P)!==avant){appliquer();verifierEcran();dessinerSection();}}
+window.addEventListener('message',function(ev){if(ev&&ev.data&&ev.data.type==='gtm-mgt-data-updated')setTimeout(recalculer,0);});
+API.appliquer=appliquer;API.recalculer=recalculer;
+
+/* 4) Paramètres → Droits par profil */
+var vueProfil='secretaire_mgt',brouillon=null;
+function peutRegler(){return !!(C&&C.gereComptes);}
+function verrou(m,a){return(m==='dashboard'&&a==='view')||(C&&C.profil===vueProfil&&m==='settings'&&(a==='view'||a==='edit'));}
+function lignesTableau(d,modifiable){return MODS.map(function(m){return'<tr><td>'+esc(m[1])+'</td>'+ACTS.map(function(a){var on=d[m[0]][a[0]]||(modifiable&&verrou(m[0],a[0])),bloque=!modifiable||verrou(m[0],a[0]);return'<td><input type="checkbox" data-dr-m="'+m[0]+'" data-dr-a="'+a[0]+'"'+(on?' checked':'')+(bloque?' disabled':'')+' aria-label="'+esc(m[1]+' : '+a[1])+'"></td>';}).join('')+'</tr>';}).join('');}
+function tableau(d,modifiable){return'<div class="drTableau"><table><thead><tr><th>Écran</th>'+ACTS.map(function(a){return'<th title="'+a[1]+'"><span class="drLong">'+a[1]+'</span><span class="drCourt">'+COURT[a[0]]+'</span></th>';}).join('')+'</tr></thead><tbody>'+lignesTableau(d,modifiable)+'</tbody></table></div>';}
+function dessinerSection(){var hoteSec=document.getElementById('settingsModule');if(!hoteSec)return;var sec=document.getElementById('mgtDroitsSection');
+  if(!sec){sec=document.createElement('div');sec.id='mgtDroitsSection';sec.className='settingsSection';hoteSec.appendChild(sec);brancher(sec);}
+  var html='<div class="settingsSectionHead"><strong>Droits par profil</strong><span>Ce que chaque compte peut consulter et modifier dans le CRM</span></div><div class="drCorps">';
+  if(!C){html+='<div class="drNote">Les droits s’appliquent aux comptes GTM Groupe (page ouverte en dehors de GTM Groupe : aucun contrôle).</div></div>';sec.innerHTML=html;return;}
+  html+='<div class="drMoi">Compte connecté : <b>'+esc(C.nom||C.username||'')+'</b> · profil <b>'+esc(profilNom(C))+'</b></div>';
+  if(peutRegler()){
+    if(!brouillon)brouillon=fusion(droitsParDefaut(vueProfil),reglages().profils[vueProfil]);
+    html+='<div class="drOnglets" role="tablist">'+PROFILS_REGLABLES.map(function(p){return'<button type="button" role="tab" data-dr-profil="'+p[0]+'" class="'+(p[0]===vueProfil?'on':'')+'" aria-selected="'+(p[0]===vueProfil)+'">'+esc(p[1])+'</button>';}).join('')+'</div>'
+      +tableau(brouillon,true)
+      +'<div class="drActions"><button type="button" class="ok" id="drSave">Enregistrer les droits</button><button type="button" id="drDefaut">Rétablir les droits par défaut</button></div>'
+      +'<div class="drEtat" id="drEtat"></div>'
+      +'<div class="drNote">Comptes sans profil : accès complet, sauf les comptes en consultation. Vos propres accès aux Paramètres restent toujours actifs.</div>';
+  }else{
+    html+=tableau(P,false)+'<div class="drNote">Seul l’administrateur des comptes peut modifier ces droits.</div>';}
+  sec.innerHTML=html+'</div>';}
+function brancher(sec){
+  sec.addEventListener('click',async function(e){var t=e.target;
+    var ong=t.closest('[data-dr-profil]');if(ong){vueProfil=ong.dataset.drProfil;brouillon=null;dessinerSection();return;}
+    if(t.closest('#drDefaut')){brouillon=droitsParDefaut(vueProfil);dessinerSection();var et=document.getElementById('drEtat');if(et)et.textContent='Droits par défaut affichés : cliquez sur « Enregistrer les droits » pour les appliquer.';return;}
+    if(t.closest('#drSave')){var b=t.closest('#drSave');b.disabled=true;var ok=await enregistrerDroits(vueProfil,brouillon);b.disabled=false;var e2=document.getElementById('drEtat');if(e2)e2.textContent=ok?'Droits enregistrés : ils s’appliquent sur tous les appareils.':'Enregistrement impossible : réessayez.';}});
+  sec.addEventListener('change',function(e){var t=e.target;if(!t.matches('input[data-dr-m]')||!brouillon)return;brouillon[t.dataset.drM][t.dataset.drA]=t.checked;
+    /* cohérence : sans « Consulter », aucune autre action ; une action cochée active « Consulter » */
+    var m=brouillon[t.dataset.drM];if(t.dataset.drA==='view'&&!t.checked)ACTS.forEach(function(a){m[a[0]]=false;});else if(t.checked)m.view=true;
+    var et=document.getElementById('drEtat');if(et)et.textContent='Modifications non enregistrées.';
+    sec.querySelectorAll('input[data-dr-m="'+t.dataset.drM+'"]').forEach(function(x){x.checked=!!m[x.dataset.drA];});});}
+async function enregistrerDroits(profil,d){if(!peutRegler())return false;var h=hote();if(!h||typeof h.setJSON!=='function')return false;
+  try{if(typeof attendreSyncPrete==='function'&&!(await attendreSyncPrete(h,'crm_droits',20000)))return false;}catch(e){}
+  var r=reglages(),n={version:1,profils:Object.assign({},r.profils),maj:new Date().toISOString(),par:(C&&(C.nom||C.username))||''};n.profils[profil]=JSON.parse(JSON.stringify(d));
+  n.profils[profil].dashboard.view=true;if(C&&C.profil===profil){n.profils[profil].settings.view=true;n.profils[profil].settings.edit=true;}
+  var ok;try{ok=h.setJSON(CLE,n);}catch(e){ok=false;}if(ok===false)return false;recalculer();return true;}
+API.enregistrer=enregistrerDroits;
+
+function init(){appliquer();dessinerSection();verifierEcran();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
 </script>
