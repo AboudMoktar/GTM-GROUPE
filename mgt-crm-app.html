@@ -5587,7 +5587,7 @@ function build(){
  var dateStr='';
  try{ dateStr=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); dateStr=dateStr.charAt(0).toUpperCase()+dateStr.slice(1); }catch(e){}
  var kpisHtml='',chartHtml='';
- try{ kpisHtml=buildKpis(k); }catch(e){}
+ /* Les 4 indicateurs du haut de l'accueil sont retirés (demande : accueil plus simple). */
  try{ chartHtml=buildChart(k)+buildRepartition(k); }catch(e){}
  home.innerHTML='<div class="mgtHomeInner">'+
    '<div class="mgtHomeTop"><div><h1 class="mgtHomeTitle">Tableau de bord</h1><p class="mgtHomeSub">'+dateStr+(dateStr?' &mdash; ':'')+'<strong>'+fmtInt(k.total)+'</strong> clients suivis</p></div><div class="mgtHomeBadge">Accueil</div></div>'+
@@ -8977,6 +8977,7 @@ html[data-mgt-theme="light"] #p7Legend{color:#1b2433}
 #calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventTime{font-size:8px;font-weight:800;white-space:nowrap}
 #calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventText{font-size:8px;line-height:1.1;overflow-wrap:anywhere}
 #calendarModule .phase6WeekHours .phase6Event.p7Block .p7Type{font-size:8px}
+@media(min-width:761px){#calendarModule .phase6WeekHours .phase6Event.p7Block,#calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventText,#calendarModule .phase6WeekHours .phase6Event.p7Block .p7Type{font-size:11px;line-height:1.25}#calendarModule .phase6WeekHours .phase6Event.p7Block .phase6EventTime{font-size:10.5px}#calendarModule .phase6WeekHours .phase6Event.p7Block{padding:3px 6px}}
 #calendarModule .p7More{all:unset;box-sizing:border-box;min-width:20px;height:16px;padding:0 4px;border-radius:8px;background:#c93200;color:#fff;font-size:10px;font-weight:800;text-align:center;line-height:16px;z-index:4;cursor:pointer}
 @media(max-width:760px){
 #calendarModule .phase6Event .phase6EventTime{display:none!important}
@@ -8985,6 +8986,7 @@ html[data-mgt-theme="light"] #p7Legend{color:#1b2433}
 #calendarModule .phase6Event .p7Type{font-size:10px}
 #calendarModule .phase6WeekHours .phase6Event.p7Block,#calendarModule .phase6WeekHours .phase6Event{font-size:8px;padding:2px 3px}
 #calendarModule .phase6WeekHours .phase6Event .p7Tx,#calendarModule .phase6WeekHours .phase6Event .p7Sep{display:none}
+#calendarModule .phase6MonthDay .phase6Event .p7Tx,#calendarModule .phase6MonthDay .phase6Event .p7Sep{display:none} /* mois sur téléphone : l'icône dit le type, la place va au nom du client */
 #calendarModule .phase6HourRow{height:56px;min-height:56px}
 #calendarModule .phase6WeekHours .phase6Event.p7Block:not(.p7Short){flex-direction:column;align-items:center;justify-content:flex-start;gap:2px}
 #calendarModule .phase6WeekHours .phase6Event.p7Block:not(.p7Short) .phase6EventText{writing-mode:vertical-rl;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:calc(100% - 16px);font-size:9px;line-height:1.2}
@@ -9224,16 +9226,26 @@ function minutes(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return
 /* Vues jour / semaine : chaque action placée à son heure, sur la durée prévue ; actions simultanées côte à côte. */
 function placerHeures(){try{var el=document.getElementById('planningCalendar');if(!el)return;var jour=el.querySelector('.phase6DayTimeline'),sem=el.querySelector('.phase6WeekHours'),root=jour||sem;if(!root||root.dataset.p7t==='1')return;
   var rangs=root.querySelectorAll(jour?'.phase6Hour':'.phase6HourRow');if(!rangs.length)return;var H=rangs[0].offsetHeight||(jour?60:46),nJ=jour?1:7,gauche=jour?55:48,ev=[];
-  rangs.forEach(function(row){row.querySelectorAll('.phase6Event[data-event-id]').forEach(function(b){var a=calendarActionMap[b.dataset.eventId];if(!a)return;var s=minutes(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut),e=minutes(a.endTime||a.end_time||a.heureFin||a.fin);if(s===null)return;var di=0;if(sem){var cell=b.closest('.phase6HourCell');di=Math.max(0,[].indexOf.call(row.children,cell)-1);}ev.push({b:b,s:s,e:(e!==null&&e>s)?e:s+30,d:di});});});
+  rangs.forEach(function(row){row.querySelectorAll('.phase6Event[data-event-id]').forEach(function(b){var a=calendarActionMap[b.dataset.eventId];if(!a)return;var s=minutes(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut),e=minutes(a.endTime||a.end_time||a.heureFin||a.fin);if(s===null)return;var di=0;if(sem){var cell=b.closest('.phase6HourCell');di=Math.max(0,[].filter.call(row.children,function(x){return x.classList.contains('phase6HourCell');}).indexOf(cell));}ev.push({b:b,s:s,e:(e!==null&&e>s)?e:s+30,d:di});});});
+  if(!root.getBoundingClientRect().width||!rangs[0].offsetHeight){if(!placerAttente&&placerEssais<30){placerAttente=true;placerEssais++;requestAnimationFrame(function(){placerAttente=false;placerHeures();});}return;}placerEssais=0; /* pas encore affiché : on mesure à l'image suivante */
   root.dataset.p7t='1';if(!ev.length)return;root.style.position='relative';
-  var couche=document.createElement('div');couche.className='p7Layer';couche.style.cssText='position:absolute;top:0;bottom:0;right:0;pointer-events:none;left:'+gauche+'px';root.appendChild(couche);
+  var rr=root.getBoundingClientRect(),cols=[];
+  if(sem){[].forEach.call(rangs[0].children,function(x){if(x.classList.contains('phase6HourCell')){var q=x.getBoundingClientRect();cols.push({g:q.left-rr.left,l:q.width});}});}
+  else{var c0=rangs[0].lastElementChild,q0=c0&&c0!==rangs[0].firstElementChild?c0.getBoundingClientRect():null;cols.push(q0?{g:q0.left-rr.left,l:q0.width}:{g:gauche,l:rr.width-gauche});}
+  if(sem&&cols.length<7){var lc=(rr.width-gauche)/7;cols=[];for(var ci=0;ci<7;ci++)cols.push({g:gauche+ci*lc,l:lc});}
+  var couche=document.createElement('div');couche.className='p7Layer';couche.style.cssText='position:absolute;top:0;bottom:0;left:0;right:0;pointer-events:none';root.appendChild(couche);
   var parJour={};ev.forEach(function(x){(parJour[x.d]=parJour[x.d]||[]).push(x);});
   var plus=[];Object.keys(parJour).forEach(function(k){var l=parJour[k].sort(function(p,q){return p.s-q.s||p.e-q.e;}),gr=[],fin=0,voies=[];
     function clore(){if(!gr.length)return;if(sem&&voies.length>2){var cach=0;gr.forEach(function(x){x.n=2;if(x.l>=2){x.cache=1;cach++;}});plus.push({d:gr[0].d,s:Math.min.apply(null,gr.map(function(x){return x.s;})),k:cach});}else gr.forEach(function(x){x.n=voies.length||1;});}
     l.forEach(function(x){if(x.s>=fin){clore();gr=[];voies=[];}var v=0;while(v<voies.length&&voies[v]>x.s)v++;voies[v]=x.e;x.l=v;gr.push(x);fin=Math.max(fin,x.e);});clore();});
-  ev.forEach(function(x){if(x.cache){x.b.style.display='none';couche.appendChild(x.b);return;}var haut=(Math.max(x.s,480)-480)/60*H,bas=(Math.min(x.e,1440)-480)/60*H;if(bas<=haut)return;var h=Math.max(bas-haut-1,18),cw=100/nJ,w=cw/x.n,b=x.b;b.classList.add('p7Block');if(h<34)b.classList.add('p7Short');b.style.cssText='position:absolute;top:'+haut+'px;height:'+h+'px;left:calc('+(x.d*cw+x.l*w)+'% + 1px);width:calc('+w+'% - 2px)';couche.appendChild(b);});
-  plus.forEach(function(c){var ch=document.createElement('button');ch.type='button';ch.className='p7More';ch.textContent='+'+c.k;ch.title='Voir toutes les actions de ce jour';ch.style.cssText='position:absolute;top:'+((Math.max(c.s,480)-480)/60*H)+'px;left:calc('+((c.d+1)*100/nJ)+'% - 22px);pointer-events:auto';ch.onclick=function(e){e.stopPropagation();var hs=document.querySelectorAll('#planningCalendar .phase6WeekDay');if(hs[c.d])hs[c.d].click();};couche.appendChild(ch);});
+  ev.forEach(function(x){if(x.cache){x.b.style.display='none';couche.appendChild(x.b);return;}var haut=(Math.max(x.s,480)-480)/60*H,bas=(Math.min(x.e,1440)-480)/60*H;if(bas<=haut)return;var h=Math.max(bas-haut-1,18),col=cols[Math.min(x.d,cols.length-1)],w=col.l/x.n,b=x.b;b.classList.add('p7Block');if(h<34)b.classList.add('p7Short');b.style.cssText='position:absolute;top:'+haut+'px;height:'+h+'px;left:'+(col.g+x.l*w+1)+'px;width:'+Math.max(w-2,8)+'px';couche.appendChild(b);});
+  plus.forEach(function(c){var ch=document.createElement('button');ch.type='button';ch.className='p7More';ch.textContent='+'+c.k;ch.title='Voir toutes les actions de ce jour';var cc=cols[Math.min(c.d,cols.length-1)];ch.style.cssText='position:absolute;top:'+((Math.max(c.s,480)-480)/60*H)+'px;left:'+(cc.g+cc.l-22)+'px;pointer-events:auto';ch.onclick=function(e){e.stopPropagation();var hs=document.querySelectorAll('#planningCalendar .phase6WeekDay');if(hs[c.d])hs[c.d].click();};couche.appendChild(ch);});
 }catch(e){}}
+var placerAttente=false,placerEssais=0;
+/* À l'ouverture du calendrier : placement des actions une fois l'écran affiché */
+(function(){var o=window.openModule;if(typeof o!=='function')return;window.openModule=function(id){var r=o.apply(this,arguments);if(id==='calendar'){placerEssais=0;requestAnimationFrame(function(){placerHeures();});}return r;};for(var k in o){try{window.openModule[k]=o[k];}catch(e){}}})();
+/* Écran tourné / fenêtre redimensionnée : on replace les actions sur les colonnes réelles */
+var tRedim=0;window.addEventListener('resize',function(){clearTimeout(tRedim);tRedim=setTimeout(function(){var el=document.getElementById('planningCalendar');if(el&&el.querySelector('[data-p7t="1"] .p7Layer')&&el.getClientRects().length){try{renderCalendar();}catch(e){}}},250);});
 var rafCal=false;
 function decorer(){rafCal=false;try{document.querySelectorAll('#planningCalendar .phase6Event:not([data-p7])').forEach(function(el){var a=calendarActionMap[el.dataset.eventId];if(!a)return;el.dataset.p7='1';var g=groupe(a);el.classList.add('p7-'+g);var tx=el.querySelector('.phase6EventText');if(tx)tx.insertAdjacentHTML('afterbegin','<b class="p7Type"><span class="p7Ico">'+(g==='terrain'?'🚗':'🖥️')+'</span><span class="p7Tx"> '+esc(joli(a.type))+'</span></b><span class="p7Sep"> · </span>');});}catch(e){}
   placerHeures();envelopperCalendrier();legende();compterVisites();}
