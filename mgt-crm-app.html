@@ -2273,7 +2273,7 @@ async function importOfferPdf(key){const parts=String(key||'').split('|'); const
 })();
 function setupOffersModule(){const open=document.getElementById('offersModuleBtn'), close=document.getElementById('closeOffersModuleBtn2'), panel=document.getElementById('offerDashboardModal'), add=document.getElementById('offresAddBtn'); if(add) add.onclick=()=>{const sel=document.getElementById('newOfferClient'); if(sel) sel.innerHTML='<option value="">Selectionner un client</option>'+CLIENTS.slice().sort((a,b)=>String(a[fields.name]||'').localeCompare(String(b[fields.name]||''),'fr')).map(c=>'<option value="'+esc(c[fields.id])+'">'+esc(c[fields.name]||'-')+'</option>').join(''); const dateField=document.getElementById('newOfferDate'); if(dateField) dateField.value=dateToInput(new Date()); document.getElementById('offreNewModal').hidden=false;}; if(open) open.onclick=()=>openModule('offres'); if(close) close.onclick=()=>{if(panel) panel.hidden=true;}; ['offerSearchFilter','offerClientFilter','offerTypeFilter','offerStatusFilter','offerSort'].forEach(id=>{const el=document.getElementById(id); if(el) el.onchange=renderOffersModule;});}
 quoteAutoActions=function(c){const out=[]; validOffers(c).forEach(o=>{const sent=parseDateValue(quoteSentDate(o)); const status=offerBusinessStatus(o); const base=sent||new Date(); if(status==='Confirme'){out.push({client:c,date:dateToInput(addDays(base,2)),relanceDate:'',type:'suivi fournisseur',priority:'Moyenne',status:'En attente',objective:'Devis gagne - creer tache de suivi',commercial:syncUser(),source:'auto-devis',offer:o}); return;} if(status==='Negociation'){out.push({client:c,date:dateToInput(addDays(new Date(),2)),relanceDate:'',type:'offre',priority:'Moyenne',status:'En attente',objective:'Devis en negociation - planifier relance',commercial:syncUser(),source:'auto-devis',offer:o}); return;} const age=daysSinceDate(quoteSentDate(o)); if(age!==null&&age>15&&!quoteIsWon(o)&&!quoteIsLost(o)){out.push({client:c,date:dateToInput(new Date()),relanceDate:'',type:'visite',priority:'Haute',status:'En attente',objective:'Devis sans reponse > 15 jours - rappel visite',commercial:syncUser(),source:'auto-devis',offer:o}); return;} const stage=quoteRelanceStage(o); if(stage&&sent){out.push({client:c,date:dateToInput(addDays(sent,stage.days)),relanceDate:'',type:'offre',priority:stage.priority,status:'En attente',objective:stage.label+' - '+(o.type||'devis'),commercial:syncUser(),source:'auto-devis',offer:o});}}); return out;};
-offersView=function(c){const list=validOffers(c); if(!list.length) return block('Offres','-'); return '<div class="field" id="offresSection"><label>Offres</label><div class="historyList">'+list.map(o=>{const pdf=o.pdfData?'<div class="contactMeta"><a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData)+'">PDF : '+esc(o.pdfName||'devis.pdf')+'</a></div>':''; return '<div class="offerCard"><div><strong>'+esc(o.type||'Offre')+'</strong> '+relanceBadge(o)+'</div><div class="contactMeta">Montant : '+esc(o.amount||'-')+' | Date envoi : '+esc(dateFr(quoteSentDate(o)))+'</div><div class="contactMeta">Statut : '+esc(offerBusinessStatus(o))+' | Niveau : '+esc(o.acceptance||'-')+'</div><div class="contactMeta">Avancement : '+esc(o.progress||'-')+'</div><div>'+esc(o.note||'')+'</div>'+pdf+'</div>';}).join('')+'</div></div>';};
+offersView=function(c){const list=validOffers(c); if(!list.length) return block('Offres','-'); return '<div class="field" id="offresSection"><label>Offres</label><div class="historyList">'+list.map(o=>{const pdf=(o.pdfData||o.pdfId)?'<div class="contactMeta"><a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'">PDF : '+esc(o.pdfName||'devis.pdf')+'</a></div>':''; return '<div class="offerCard"><div><strong>'+esc(o.type||'Offre')+'</strong> '+relanceBadge(o)+'</div><div class="contactMeta">Montant : '+esc(o.amount||'-')+' | Date envoi : '+esc(dateFr(quoteSentDate(o)))+'</div><div class="contactMeta">Statut : '+esc(offerBusinessStatus(o))+' | Niveau : '+esc(o.acceptance||'-')+'</div><div class="contactMeta">Avancement : '+esc(o.progress||'-')+'</div><div>'+esc(o.note||'')+'</div>'+pdf+'</div>';}).join('')+'</div></div>';};
 buildAlerts=function(){return [];};
 renderAlerts=function(){};
 render=function(){renderPagedClients(); renderPilotage(); renderOffersModule();};
@@ -2827,7 +2827,7 @@ function renderOffresModule(){
     const v=offerValidation(o);
     const bs=offerBusinessStatus(o);
     const cls=bs==='Confirme'?'ok':bs==='Negociation'?'nego':bs==='Relance'?'relance':'';
-    const pdf=o.pdfData?'<a class="pdfLink" aria-label="Ouvrir le PDF" title="Ouvrir le PDF" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData)+'"><span class="pdfDesktopIcon" aria-hidden="true">PDF</span><span class="pdfMobileText">Voir PDF</span></a>':'-';
+    const pdf=(o.pdfData||o.pdfId)?'<a class="pdfLink" aria-label="Ouvrir le PDF" title="Ouvrir le PDF" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'"><span class="pdfDesktopIcon" aria-hidden="true">PDF</span><span class="pdfMobileText">Voir PDF</span></a>':'-';
     return '<tr>'
       +'<td data-label="Reference"><span class="offresMobileLabel">Reference</span>'+esc(offerReference(c,o,x.index))+'</td>'
       +'<td data-label="Client"><span class="offresMobileLabel">Client</span><button class="dashClientBtn" data-client-id="'+esc(c[fields.id])+'">'+esc(c[fields.name]||'-')+'</button></td>'
@@ -2874,7 +2874,7 @@ function openOffreEdit(clientId,index){
   const modal=document.getElementById('offreEditModal'), body=document.getElementById('offreEditBody');
   if(!modal||!body) return;
   const t=document.getElementById('offreEditTitle'); if(t) t.textContent='Offre '+offerReference(c,o,index)+' - '+(c[fields.name]||'Client');
-  body.innerHTML='<div>'+offerRowHtml(o)+'</div><div style="margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:8px"><label for="offreEditPdf">Document PDF</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+(o.pdfData?'<a class="pdfLink" href="'+esc(o.pdfData)+'" download="'+esc(o.pdfName||'devis.pdf')+'">PDF actuel : '+esc(o.pdfName||'devis.pdf')+'</a>':'<span class="muted">Aucun PDF enregistré</span>')+'<input id="offreEditPdf" type="file" accept="application/pdf" style="max-width:100%"></div><div class="muted" style="margin-top:6px">Choisissez un PDF uniquement si vous souhaitez remplacer le document actuel. Laissez vide pour le conserver.</div></div><div class="muted" style="margin-top:8px">La modification met a jour la meme offre dans Offres en cours, la fiche Client, Projets et le Calendrier commercial.</div>';
+  body.innerHTML='<div>'+offerRowHtml(o)+'</div><div style="margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:8px"><label for="offreEditPdf">Document PDF</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+((o.pdfData||o.pdfId)?'<a class="pdfLink" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'" download="'+esc(o.pdfName||'devis.pdf')+'">PDF actuel : '+esc(o.pdfName||'devis.pdf')+'</a>':'<span class="muted">Aucun PDF enregistré</span>')+'<input id="offreEditPdf" type="file" accept="application/pdf" style="max-width:100%"></div><div class="muted" style="margin-top:6px">Choisissez un PDF uniquement si vous souhaitez remplacer le document actuel. Laissez vide pour le conserver.</div></div><div class="muted" style="margin-top:8px">La modification met a jour la meme offre dans Offres en cours, la fiche Client, Projets et le Calendrier commercial.</div>';
   modal.hidden=false;
 }
 async function saveOffreEdit(){
@@ -3023,7 +3023,7 @@ function openProjectChaudronnerie(c){
   const offres=validOffers(c).filter(isEligibleOffer);
   if(!offres.length){body.innerHTML='<div class="empty">Aucune offre de plus de 20 000 EUR HTVA pour ce client.</div>'; modal.hidden=false; return;}
   body.innerHTML='<div class="sectionBox"><table class="infoTable"><thead><tr><th>Type</th><th>Montant HTVA</th><th>Date envoi</th><th>Statut</th><th>Note</th><th>PDF</th></tr></thead><tbody>'
-    +offres.map(o=>'<tr><td>'+esc(offerTypeLabel(o))+'</td><td>'+esc(money(quoteAmount(o)))+'</td><td>'+esc(dateFr(quoteSentDate(o)))+'</td><td><span class="offerStatus">'+esc(offerBusinessStatus(o))+'</span></td><td>'+esc(o.note||'')+'</td><td>'+(o.pdfData?'<a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData)+'">Voir PDF</a>':'-')+'</td></tr>').join('')
+    +offres.map(o=>'<tr><td>'+esc(offerTypeLabel(o))+'</td><td>'+esc(money(quoteAmount(o)))+'</td><td>'+esc(dateFr(quoteSentDate(o)))+'</td><td><span class="offerStatus">'+esc(offerBusinessStatus(o))+'</span></td><td>'+esc(o.note||'')+'</td><td>'+((o.pdfData||o.pdfId)?'<a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'">Voir PDF</a>':'-')+'</td></tr>').join('')
     +'</tbody></table></div>';
   modal.hidden=false;
 }
@@ -7362,7 +7362,7 @@ html[data-mgt-theme="light"] #annualCalendarModal button.danger:hover {
       var v=offerValidation(o);
       var bs=offerBusinessStatus(o);
       var cls=bs==='Confirme'?'ok':bs==='Negociation'?'nego':bs==='Relance'?'relance':'';
-      var pdf=o.pdfData?'<a class="pdfLink" aria-label="Ouvrir le PDF" title="Ouvrir le PDF" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData)+'"><span class="pdfDesktopIcon" aria-hidden="true">PDF</span><span class="pdfMobileText">Voir PDF</span></a>':'-';
+      var pdf=(o.pdfData||o.pdfId)?'<a class="pdfLink" aria-label="Ouvrir le PDF" title="Ouvrir le PDF" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'"><span class="pdfDesktopIcon" aria-hidden="true">PDF</span><span class="pdfMobileText">Voir PDF</span></a>':'-';
       var av=offerAvancement(c,o,x.index);
       var pj=offerProjetInfo(c,o,x.index);
       var pbtn=pj?'<button class="secondary offresProjetBtn" data-offre-projet="'+esc(pj.id)+'" title="Ouvrir le projet associe (fiche + audit)">Projet'+(pj.manual?'':' (auto)')+'</button>':'';
@@ -7538,7 +7538,7 @@ html[data-mgt-theme="light"] .offresCardActions button[data-projet-open]{backgro
     var actions=''
       +(p.known?'<button data-projet-open="'+id+'" data-projet-id="'+esc(p.projet.id)+'">Ouvrir / Modifier le projet</button>':'')
       +'<button class="secondary" data-offre-edit="'+id+'|'+x.index+'">Modifier l\u2019offre</button>'
-      +(o.pdfData?'<a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData)+'">PDF</a>':'');
+      +((o.pdfData||o.pdfId)?'<a class="pdfLink" download="'+esc(o.pdfName||'devis.pdf')+'" href="'+esc(o.pdfData||('#mgtpdf:'+encodeURIComponent(o.pdfId)))+'">PDF</a>':'');
     return '<article class="offresCard'+(p.known?'':' offresProgressUnavailable')+'">'
       +'<div class="offresCardHead">'
       +  '<div><div class="offresCardTitle">'+title+'</div><div class="offresCardSub">'+sub+'</div></div>'
@@ -9454,5 +9454,158 @@ API.enregistrer=enregistrerDroits;
 
 function init(){appliquer();dessinerSection();verifierEcran();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<style id="mgt-sauvegarde-style">
+/* Lisibilité : boutons orange de la fiche client (texte blanc sur orange plus foncé) */
+#editBtn,#quickVisitBtn{background-image:linear-gradient(135deg,#c2410c,#d9480f)!important;color:#fff!important}
+#mgtCmpSection{--cb:#ffffff;--cf:#1b2433;--cm:#566377;--cl:#d3dae4;--cs:#eef2f7}
+html[data-mgt-theme="dark"] #mgtCmpSection{--cb:#171c24;--cf:#eef2f8;--cm:#a6b1c2;--cl:#303947;--cs:#232b37}
+#mgtCmpSection{display:block!important;color:var(--cf)}
+#mgtCmpSection .cmpCorps{padding:12px 14px;display:grid;gap:12px}
+#mgtCmpSection .cmpNote{font-size:12.5px;line-height:1.5;color:var(--cm)}
+#mgtCmpSection button.cmpBtn{all:unset;box-sizing:border-box;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;background:var(--cs)!important;color:var(--cf)!important;border:1px solid var(--cl)!important}
+#mgtCmpSection button.cmpBtn.ok{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+#mgtCmpSection button.cmpBtn:disabled{opacity:.5;cursor:default}
+#mgtCmpSection .cmpActions{display:flex;flex-wrap:wrap;gap:8px}
+#mgtCmpSection .cmpResume{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+#mgtCmpSection .cmpTuile{border:1px solid var(--cl);border-radius:12px;padding:10px;background:var(--cs)}
+#mgtCmpSection .cmpTuile b{display:block;font-size:22px;color:var(--cf)}
+#mgtCmpSection .cmpTuile span{font-size:12px;color:var(--cm);font-weight:700}
+#mgtCmpSection .cmpGroupe{border:1px solid var(--cl);border-radius:12px;overflow:hidden}
+#mgtCmpSection .cmpGroupe>summary{cursor:pointer;padding:10px 12px;font-weight:800;font-size:14px;background:var(--cs);list-style:none;display:flex;justify-content:space-between;gap:8px;align-items:center}
+#mgtCmpSection .cmpGroupe>summary::-webkit-details-marker{display:none}
+#mgtCmpSection .cmpTout{font-size:12px;font-weight:700;color:var(--cm);display:flex;gap:6px;align-items:center}
+#mgtCmpSection .cmpListe{max-height:360px;overflow:auto}
+#mgtCmpSection .cmpLigne{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-top:1px solid var(--cl);font-size:13px}
+#mgtCmpSection .cmpLigne input{width:20px;height:20px;flex:none;accent-color:#c93200;margin-top:1px}
+#mgtCmpSection .cmpLigne b{color:var(--cf);overflow-wrap:anywhere}
+#mgtCmpSection .cmpMeta{font-size:12px;color:var(--cm);margin-top:2px;overflow-wrap:anywhere}
+#mgtCmpSection .cmpEtat{font-size:13px;font-weight:700;color:var(--cf)}
+#mgtCmpSection .cmpOpt{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700}
+#mgtCmpSection .cmpOpt input{width:20px;height:20px;accent-color:#c93200}
+</style>
+<script id="mgt-sauvegarde">
+/* ===== PDF des offres rangés à part + comparaison / import d'une sauvegarde =====
+   1) Les PDF d'offres ne sont plus écrits dans la fiche client (qui est enregistrée d'un seul bloc
+      dans Firebase et ne doit pas dépasser 10 Mo) : ils sont rangés dans « fichiers » (même
+      emplacement que le reste de GTM Groupe) ; la fiche ne garde que l'identifiant et le nom.
+      Le lien « PDF » les télécharge à la demande.
+   2) Paramètres → Comparer une sauvegarde : fiche par fiche (nouveaux clients, fiches modifiées,
+      identiques), import de la sélection après téléchargement d'une copie des données actuelles,
+      et récupération des PDF d'offres absents de GTM. */
+(function(){
+'use strict';
+function hote(){try{var h=window.parent;return(h&&h!==window)?h:null;}catch(e){return null;}}
+function peutFichiers(){var h=hote();return !!(h&&typeof h.fichierSauver==='function'&&typeof h.fichierCharger==='function');}
+function hacher(s){var h1=0x811c9dc5,h2=0,n=s.length,pas=1;for(var i=0;i<n;i+=pas){var c=s.charCodeAt(i);h1=Math.imul(h1^c,16777619)>>>0;h2=(h2*31+c)>>>0;}return h1.toString(36)+h2.toString(36)+n.toString(36);}
+function propre(v){return String(v==null?'':v).replace(/[.#$\[\]\/\s]/g,'_').slice(0,40);}
+async function stockerPdf(cid,data){if(!peutFichiers())return null;var fid='crm_'+propre(cid)+'_'+hacher(data);
+  try{var p=hote().fichierSauver(fid,data);var ok=await Promise.race([Promise.resolve(p).then(function(){return true;},function(){return false;}),new Promise(function(r){setTimeout(function(){r(false);},15000);})]);return ok?fid:null;}catch(e){return null;}}
+function estPdfInline(o){return o&&typeof o==='object'&&typeof o.pdfData==='string'&&o.pdfData.length>2000&&o.pdfData.indexOf('data:')===0;}
+/* Avant chaque enregistrement des fiches : PDF intégrés → fichiers à part (si le serveur ne confirme pas, le PDF reste dans la fiche, rien n'est perdu). */
+async function extrairePdfs(arr){if(!Array.isArray(arr)||!peutFichiers())return;
+  for(var i=0;i<arr.length;i++){var c=arr[i];if(!c||!Array.isArray(c.Offres))continue;
+    for(var j=0;j<c.Offres.length;j++){var o=c.Offres[j];if(!estPdfInline(o))continue;var fid=await stockerPdf(c.ID,o.pdfData);if(fid){o.pdfId=fid;o.pdfName=o.pdfName||'offre.pdf';o.pdfData='';o.pdfOmis=false;}}}}
+['writeArr','writeArrConfirme'].forEach(function(nom){var f=window[nom];if(typeof f!=='function'||f.__mgtPdf)return;var w=async function(store,arr){if(store==='crm_clients'){try{await extrairePdfs(arr);}catch(e){console.warn('[PDF]',e);}}return f.apply(this,arguments);};w.__mgtPdf=1;window[nom]=w;});
+/* Lien « PDF » d'une offre rangée à part : téléchargement à la demande */
+function dataVersBlob(d){var m=/^data:([^;,]*)(;base64)?,(.*)$/.exec(d);if(!m)return null;var bin=m[2]?atob(m[3]):decodeURIComponent(m[3]);var u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:m[1]||'application/pdf'});}
+document.addEventListener('click',async function(e){var a=e.target&&e.target.closest?e.target.closest('a[href^="#mgtpdf:"]'):null;if(!a)return;e.preventDefault();e.stopPropagation();
+  var fid=decodeURIComponent(a.getAttribute('href').slice(8));if(!peutFichiers()){toast('PDF disponible uniquement dans GTM Groupe.');return;}
+  try{toast('Ouverture du PDF…');var d=await hote().fichierCharger(fid);if(!d){toast('PDF introuvable (connexion internet nécessaire).');return;}
+    var b=dataVersBlob(d);if(!b){toast('PDF illisible.');return;}var u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=a.getAttribute('download')||'offre.pdf';document.body.appendChild(l);l.click();setTimeout(function(){URL.revokeObjectURL(u);l.remove();},4000);
+  }catch(x){toast('Ouverture du PDF impossible, réessayez.');}},true);
+
+/* ---------- Comparaison d'une sauvegarde ---------- */
+var IGNORER_ELEM={pdfData:1,pdfOmis:1,pdfId:1,pdfName:1,photoData:1,photoOmise:1};
+function normal(v,niveau){if(Array.isArray(v))return v.map(function(x){return normal(x,niveau+1);});
+  if(v&&typeof v==='object'){var o={};Object.keys(v).sort().forEach(function(k){if(k.charAt(0)==='_')return;if(niveau>0&&IGNORER_ELEM[k])return;var x=v[k];if(x===''||x==null)return;var nx=normal(x,niveau+1);if(Array.isArray(nx)?!nx.length:(nx&&typeof nx==='object'&&!Object.keys(nx).length))return;o[k]=nx;});return o;}
+  return v==null?'':String(v);}
+function texte(v){return JSON.stringify(normal(v,0));}
+function cleOffre(o){return [o.offerId||o.ref||'',o.sentDate||o.date||'',o.amount||o.montant||'',o.type||''].join('|');}
+function dateMaj(c){return String((c&&(c._updated_at||c.updated_at||c.updatedAt))||'');}
+function nomDe(c){return(c&&c[fields.name])||('Client '+(c&&c.ID));}
+function comparer(data){var liste=Array.isArray(data)?data:(data&&Array.isArray(data.clients)?data.clients:null);if(!liste)throw new Error('Sauvegarde non reconnue : aucune liste de clients.');
+  var pdfs=[];
+  liste.forEach(function(c){if(!c||!Array.isArray(c.Offres))return;c.Offres.forEach(function(o,i){if(estPdfInline(o)){pdfs.push({cid:String(c.ID),i:i,cle:cleOffre(o),data:o.pdfData,nom:o.pdfName||'offre.pdf'});o.pdfData='';o.__pdf=pdfs.length-1;}});});
+  return dbAll('crm_clients').then(function(cur){var parId={};cur.forEach(function(c){parId[String(c.ID)]=c;});
+    var r={nouveaux:[],modifies:[],identiques:0,seulGtm:0,pdfs:pdfs,pdfManquants:[],source:liste};var vus={};
+    liste.forEach(function(b){if(!b||b.ID==null)return;var id=String(b.ID);vus[id]=1;var g=parId[id];
+      if(!g){r.nouveaux.push({id:id,b:b});return;}
+      if(texte(b)===texte(g)){r.identiques++;return;}
+      var champs=[];var kb=normal(b,0),kg=normal(g,0);Object.keys(Object.assign({},kb,kg)).forEach(function(k){if(JSON.stringify(kb[k])!==JSON.stringify(kg[k]))champs.push(k);});
+      if(!champs.length){r.identiques++;return;}
+      var db=dateMaj(b),dg=dateMaj(g);
+      r.modifies.push({id:id,b:b,g:g,champs:champs,db:db,dg:dg,corbeille:!!g._deleted_at,recent:!!db&&(!dg||db>dg)});});
+    cur.forEach(function(c){if(!vus[String(c.ID)]&&!c._deleted_at)r.seulGtm++;});
+    /* PDF présents dans la sauvegarde mais absents de la fiche GTM correspondante */
+    pdfs.forEach(function(p){var g=parId[p.cid];if(!g||!Array.isArray(g.Offres))return;var o=trouverOffre(g.Offres,p);if(o&&!o.pdfId&&!estPdfInline(o))r.pdfManquants.push(p);});
+    return r;});}
+function trouverOffre(offres,p){var o=offres.filter(function(x){return x&&cleOffre(x)===p.cle;});if(o.length===1)return o[0];var x=offres[p.i];if(x&&cleOffre(x)===p.cle)return x;return o[0]||null;}
+function egalElem(a,b){if(a&&b&&a.id!=null&&b.id!=null)return String(a.id)===String(b.id);return texte(a)===texte(b);}
+/* Fiche modifiée : informations de la sauvegarde + tout ce qui n'existe que dans GTM (actions, offres, factures… ajoutées depuis) */
+function fusionner(g,b){var r=Object.assign({},g,b);Object.keys(r).forEach(function(k){if(Array.isArray(b[k])&&Array.isArray(g[k])){var l=b[k].slice();g[k].forEach(function(x){if(!b[k].some(function(y){return egalElem(x,y);}))l.push(x);});r[k]=l;}});
+  ['_version','_updated_at','_updated_by','_created_at'].forEach(function(k){if(g[k]!==undefined)r[k]=g[k];});return r;}
+window.mgtComparerSauvegarde=comparer;window.mgtFusionnerFiches=fusionner;
+
+/* ---------- Écran ---------- */
+var rapport=null,occupe=false;
+function etat(t){var e=document.getElementById('cmpEtat');if(e)e.textContent=t;}
+function dfr(s){if(!s)return'date inconnue';var d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function section(){var hs=document.getElementById('settingsModule');if(!hs)return null;var s=document.getElementById('mgtCmpSection');
+  if(!s){s=document.createElement('div');s.id='mgtCmpSection';s.className='settingsSection';var dr=document.getElementById('mgtDroitsSection');if(dr)hs.insertBefore(s,dr);else hs.appendChild(s);brancher(s);}return s;}
+function dessiner(){var s=section();if(!s)return;
+  var h='<div class="settingsSectionHead"><strong>Comparer une sauvegarde</strong><span>Voir les différences fiche par fiche, importer la sélection et récupérer les PDF des offres</span></div><div class="cmpCorps">';
+  if(!rapport){h+='<div class="cmpNote">Choisissez une sauvegarde complète du CRM (.json, par exemple celle exportée de l’ancienne version). Rien n’est modifié tant que vous n’avez pas cliqué sur « Importer la sélection ».</div>'
+    +'<div class="cmpActions"><button type="button" class="cmpBtn ok" id="cmpChoisir">Choisir une sauvegarde</button></div><div class="cmpEtat" id="cmpEtat"></div>';}
+  else{var r=rapport,nSel=r.nouveaux.filter(function(x){return x.sel;}).length+r.modifies.filter(function(x){return x.sel;}).length;
+    h+='<div class="cmpResume"><div class="cmpTuile"><b>'+r.nouveaux.length+'</b><span>nouveaux clients</span></div><div class="cmpTuile"><b>'+r.modifies.length+'</b><span>fiches différentes</span></div><div class="cmpTuile"><b>'+r.identiques+'</b><span>identiques</span></div><div class="cmpTuile"><b>'+r.seulGtm+'</b><span>seulement dans GTM</span></div><div class="cmpTuile"><b>'+r.pdfManquants.length+'</b><span>PDF à récupérer</span></div></div>';
+    h+=groupe('nouveaux','Nouveaux clients (absents de GTM)',r.nouveaux.map(function(x,i){return ligne('nouveaux',i,x.sel,nomDe(x.b),(x.b.Offres||[]).length+' offre(s) · '+(x.b.Planning||[]).length+' action(s)');}));
+    h+=groupe('modifies','Fiches différentes',r.modifies.map(function(x,i){return ligne('modifies',i,x.sel,nomDe(x.b)+(x.corbeille?' (dans la corbeille GTM)':''),'Différences : '+x.champs.slice(0,5).join(', ')+(x.champs.length>5?' … (+'+(x.champs.length-5)+')':'')+'<br>Sauvegarde : '+esc(dfr(x.db))+' · GTM : '+esc(dfr(x.dg))+(x.recent?' · <b>sauvegarde plus récente</b>':''));}));
+    h+='<div class="cmpNote">Fiches différentes : les informations de la sauvegarde sont reprises, et tout ce qui a été ajouté seulement dans GTM (actions, offres, factures…) est conservé. Une copie de vos données actuelles est téléchargée avant tout enregistrement.</div>';
+    if(r.pdfs.length)h+='<label class="cmpOpt"><input type="checkbox" id="cmpPdf"'+(r.optPdf!==false?' checked':'')+'> Récupérer les PDF des offres ('+r.pdfManquants.length+' manquant(s) dans GTM'+(r.nouveaux.length||r.modifies.length?', plus ceux des fiches importées':'')+')</label>';
+    h+='<div class="cmpActions"><button type="button" class="cmpBtn ok" id="cmpImporter"'+((nSel||(r.optPdf!==false&&r.pdfManquants.length))?'':' disabled')+'>Importer la sélection ('+nSel+' fiche(s))</button><button type="button" class="cmpBtn" id="cmpAnnuler">Fermer la comparaison</button></div><div class="cmpEtat" id="cmpEtat"></div>';}
+  s.innerHTML=h+'</div>';}
+function groupe(k,titre,lignes){if(!lignes.length)return'';return'<details class="cmpGroupe" open><summary><span>'+esc(titre)+' ('+lignes.length+')</span><label class="cmpTout" onclick="event.stopPropagation()"><input type="checkbox" data-cmp-tout="'+k+'"> tout</label></summary><div class="cmpListe">'+lignes.join('')+'</div></details>';}
+function ligne(k,i,sel,nom,meta){return'<label class="cmpLigne"><input type="checkbox" data-cmp="'+k+'" data-i="'+i+'"'+(sel?' checked':'')+'><div><b>'+esc(nom)+'</b><div class="cmpMeta">'+meta+'</div></div></label>';}
+function droitImport(){try{if(typeof window.CRM_CAN==='function'&&(!window.CRM_CAN('settings','edit')||!window.CRM_CAN('clients','edit'))){toast('Droit insuffisant : import réservé aux comptes autorisés.');return false;}}catch(e){}return true;}
+function choisir(){if(!droitImport())return;var i=document.createElement('input');i.type='file';i.accept='.json,application/json';
+  i.onchange=function(){var f=i.files&&i.files[0];if(!f)return;etat('Lecture du fichier ('+Math.round(f.size/1048576)+' Mo)…');var rd=new FileReader();rd.onerror=function(){etat('Lecture impossible.');};
+    rd.onload=async function(){var data;try{data=JSON.parse(rd.result);}catch(e){etat('Fichier illisible (JSON invalide).');return;}
+      etat('Comparaison fiche par fiche…');try{rapport=await comparer(data);}catch(e){etat(e.message||'Sauvegarde non reconnue.');return;}
+      rapport.nouveaux.forEach(function(x){x.sel=true;});rapport.modifies.forEach(function(x){x.sel=x.recent&&!x.corbeille;});dessiner();};
+    rd.readAsText(f);};i.click();}
+async function attacherPdfs(rec,parIdx,compte){if(!Array.isArray(rec.Offres))return;for(var j=0;j<rec.Offres.length;j++){var o=rec.Offres[j];if(!o||o.__pdf==null){continue;}var p=rapport.pdfs[o.__pdf];delete o.__pdf;if(!p||o.pdfId)continue;compte.n++;etat('Envoi des PDF : '+compte.n+'…');var fid=await stockerPdf(rec.ID,p.data);if(fid){o.pdfId=fid;o.pdfName=p.nom;o.pdfOmis=false;compte.ok++;}else compte.err++;}}
+function nettoyer(rec){if(Array.isArray(rec.Offres))rec.Offres.forEach(function(o){if(o&&o.__pdf!=null)delete o.__pdf;});return rec;}
+async function importer(){if(occupe||!rapport||!droitImport())return;var r=rapport,avecPdf=r.pdfs.length&&(document.getElementById('cmpPdf')||{}).checked;
+  var nouv=r.nouveaux.filter(function(x){return x.sel;}),mod=r.modifies.filter(function(x){return x.sel;});
+  if(!nouv.length&&!mod.length&&!(avecPdf&&r.pdfManquants.length))return;
+  if(!confirm('Importer '+nouv.length+' nouveau(x) client(s), mettre à jour '+mod.length+' fiche(s)'+(avecPdf?' et récupérer les PDF':'')+' ?\n\nUne copie de vos données actuelles sera d’abord téléchargée.'))return;
+  occupe=true;var b=document.getElementById('cmpImporter');if(b)b.disabled=true;
+  try{
+    etat('Copie de sécurité des données actuelles…');
+    try{var tous=await dbAll('crm_clients');downloadBlob(JSON.stringify({app:'MGT SARL - Base Clients Tunisie',version:4,exportedAt:new Date().toISOString(),note:'Copie avant import de sauvegarde',clients:tous}),'copie_avant_import_MGT_'+fileDate()+'.json','application/json');}catch(e){if(!confirm('La copie de sécurité n’a pas pu être téléchargée. Continuer quand même ?')){etat('Import annulé.');return;}}
+    var maintenant=new Date().toISOString(),qui=syncUser(),recs=[],compte={n:0,ok:0,err:0};
+    for(var a=0;a<nouv.length;a++){var rec=JSON.parse(JSON.stringify(nouv[a].b));if(avecPdf)await attacherPdfs(rec,null,compte);nettoyer(rec);rec._updated_at=maintenant;rec._updated_by=qui;rec._version=rec._version||1;recs.push(rec);}
+    var actuels={};(await dbAll('crm_clients')).forEach(function(c){actuels[String(c.ID)]=c;});
+    for(var m=0;m<mod.length;m++){var g=actuels[mod[m].id]||mod[m].g,fu=fusionner(g,JSON.parse(JSON.stringify(mod[m].b)));if(avecPdf)await attacherPdfs(fu,null,compte);nettoyer(fu);delete fu._deleted_at;delete fu._deleted_by;fu._updated_at=maintenant;fu._updated_by=qui;fu._version=(g._version||1)+1;recs.push(fu);}
+    /* PDF manquants des fiches non importées */
+    if(avecPdf){var touches={};recs.forEach(function(x){touches[String(x.ID)]=1;});var parClient={};
+      r.pdfManquants.forEach(function(p){if(touches[p.cid])return;(parClient[p.cid]=parClient[p.cid]||[]).push(p);});
+      for(var cid in parClient){var gc=actuels[cid];if(!gc)continue;var copie=JSON.parse(JSON.stringify(gc)),chg=false;
+        for(var q=0;q<parClient[cid].length;q++){var p=parClient[cid][q],o=trouverOffre(copie.Offres||[],p);if(!o||o.pdfId)continue;compte.n++;etat('Envoi des PDF : '+compte.n+'…');var fid=await stockerPdf(cid,p.data);if(fid){o.pdfId=fid;o.pdfName=p.nom;o.pdfOmis=false;compte.ok++;chg=true;}else compte.err++;}
+        if(chg){copie._updated_at=maintenant;copie._updated_by=qui;copie._version=(gc._version||1)+1;recs.push(copie);}}}
+    if(recs.length){etat('Enregistrement de '+recs.length+' fiche(s)…');await dbPutMany('crm_clients',recs);await rebuildClientCache();try{refreshFilters();updateStats();render();}catch(e){}}
+    var msg='Import terminé : '+nouv.length+' client(s) ajouté(s), '+mod.length+' fiche(s) mise(s) à jour'+(avecPdf?', '+compte.ok+' PDF récupéré(s)'+(compte.err?' ('+compte.err+' en échec : relancez la comparaison pour réessayer)':''):'')+'.';
+    rapport=null;dessiner();etat(msg);toast(msg);
+  }catch(e){console.error(e);etat('Import interrompu : '+((e&&e.message)||'erreur')+'. Vos données actuelles n’ont pas été remplacées.');}
+  finally{occupe=false;var b2=document.getElementById('cmpImporter');if(b2)b2.disabled=false;}}
+function brancher(s){s.addEventListener('click',function(e){var t=e.target;if(t.closest('#cmpChoisir'))choisir();else if(t.closest('#cmpImporter'))importer();else if(t.closest('#cmpAnnuler')){rapport=null;dessiner();}});
+  s.addEventListener('change',function(e){var t=e.target;if(!rapport)return;
+    if(t.dataset.cmp){rapport[t.dataset.cmp][+t.dataset.i].sel=t.checked;majBouton();}
+    else if(t.dataset.cmpTout){var k=t.dataset.cmpTout;rapport[k].forEach(function(x){x.sel=t.checked;});s.querySelectorAll('input[data-cmp="'+k+'"]').forEach(function(x){x.checked=t.checked;});majBouton();}
+    else if(t.id==='cmpPdf'){rapport.optPdf=t.checked;majBouton();}});}
+function majBouton(){var b=document.getElementById('cmpImporter');if(!b||!rapport)return;var n=rapport.nouveaux.filter(function(x){return x.sel;}).length+rapport.modifies.filter(function(x){return x.sel;}).length;b.textContent='Importer la sélection ('+n+' fiche(s))';b.disabled=!(n||(rapport.optPdf!==false&&rapport.pdfManquants.length));}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',dessiner);else dessiner();
 })();
 </script>
