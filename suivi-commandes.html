@@ -3579,9 +3579,21 @@ function imprimerDoc(html, format, marge, titre){
   window.addEventListener("afterprint", fin); document.title = titre;
   setTimeout(function(){ window.print(); }, 150);
 }
+/* orientation d'impression de la liste de colisage et de la liste total (retenue sur l'appareil) */
+var ORI_DEF = {col:"landscape", tot:"portrait"};
+function ori(k){ try { var o = JSON.parse(localStorage.getItem("pk_orient") || "{}"); if (o[k] === "portrait" || o[k] === "landscape") return o[k]; } catch (e) {} return ORI_DEF[k]; }
+function setOri(k, v){ try { var o = JSON.parse(localStorage.getItem("pk_orient") || "{}"); o[k] = v; localStorage.setItem("pk_orient", JSON.stringify(o)); } catch (e) {} }
+function oriBloc(){
+  var b = el("div", {class:"seg", style:"flex-wrap:wrap;margin:8px 0 0"});
+  [["col", "Liste de colisage"], ["tot", "Liste total"]].forEach(function(x){
+    b.appendChild(el("span", {class:"mut", style:"align-self:center;font-weight:600", text:x[1] + " :"}));
+    [["portrait", "Portrait"], ["landscape", "Paysage"]].forEach(function(o){ b.appendChild(el("button", {class:ori(x[0]) === o[0] ? "on" : "", text:o[1], onclick:function(){ setOri(x[0], o[0]); render(true); }})); });
+  });
+  return b;
+}
 function imprimerEmballage(lot, client, type){
   var r = colisRegle(client);
-  if (type === "total"){ imprimerDoc(docTotalHtml(lot, client), "A4 portrait", "10mm", "Liste_total_" + client + "_" + lot + "_" + today()); return; }
+  if (type === "total"){ imprimerDoc(docTotalHtml(lot, client), "A4 " + ori("tot"), "10mm", "Liste_total_" + client + "_" + lot + "_" + today()); return; }
   if (!r && !cartonsManuels(lot, client).length){ toast("Aucun carton saisi pour " + client + " (étape Emballage)."); return; }
   var colis = cartonsLot(lot, client);
   if (type === "cartons"){
@@ -3591,7 +3603,7 @@ function imprimerEmballage(lot, client, type){
     imprimerDoc(docCartonsHtml(client, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", "Cartons_" + client + "_" + lot + "_" + today());
   } else {
     if (!colis.length){ toast("Aucun carton pour l'instant."); return; }
-    imprimerDoc(docColisageHtml(lot, client, colis), "A4 landscape", "10mm", "Colisage_" + client + "_" + lot + "_" + today());
+    imprimerDoc(docColisageHtml(lot, client, colis), "A4 " + ori("col"), "10mm", "Colisage_" + client + "_" + lot + "_" + today());
   }
 }
 function cartonsCards(lot, lines){
@@ -3632,6 +3644,7 @@ function cartonsCards(lot, lines){
     }
     actions.appendChild(el("button", {class:"btn small sec", text:"Σ Liste total", onclick:function(){ imprimerEmballage(lot, cli, "total"); }}));
     card.appendChild(actions);
+    card.appendChild(oriBloc());
     card.appendChild(el("p", {class:"mut", style:"margin:8px 0 0;font-size:12px", text:"Documents dynamiques : ils se mettent à jour à chaque carton."}));
     out.push(card);
   });
@@ -3879,7 +3892,7 @@ function totalHtmlColis(lot, client, colis){
 function colisageGrid(lot, client, colis){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var nc = 4 + tailles.length, last = nc - 1, e = PK_EXPEDITEUR, d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}, de = dernierExp(lot, client);
-  var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:true}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
+  var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:ori("col") === "landscape"}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
   var gauche = ["Expéditeur : " + e.nom].concat(e.lignes).concat([e.pays]).concat(de ? ["Date d'export : le " + dmyL(de)] : []);
   var droite = ["Destinataire :", d.nom].concat(d.lignes).concat(d.tel ? ["TÉLÉPHONE : " + d.tel] : []);
   for (var i = 0; i < Math.max(gauche.length, droite.length); i++){
@@ -3910,7 +3923,7 @@ function colisageGrid(lot, client, colis){
   return g;
 }
 function totalGrid(lot, client, colis){
-  var d = totalDonnees(lot, client, colis), g = {cols:[46, 16], rows:[], merges:[]}, r = 0;
+  var d = totalDonnees(lot, client, colis), g = {cols:[46, 16], rows:[], merges:[], landscape:ori("tot") === "landscape"}, r = 0;
   gset(g, r, 0, "Commande " + lot + " " + ((PK_DESTINATAIRES[client] || {}).nom || client), {b:1, sz:12, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
   gset(g, r, 0, "MODELE", {sz:11, al:"c", bd:"t"}); gset(g, r, 1, "QUANTITE", {sz:11, al:"c", bd:"t"}); r++;
   d.grp.forEach(function(gr){
@@ -3923,7 +3936,7 @@ function totalGrid(lot, client, colis){
 function toutImprimer(lot, client){
   var colis = cartonsDocs(lot, client); if (!colis.length){ toast("Aucun carton pour l'instant."); return; }
   var pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L";
-  var css = "<style>@page fiches{size:A4 " + (pp === "4L" ? "landscape" : "portrait") + ";margin:8mm}@page colis{size:A4 landscape;margin:10mm}@page total{size:A4 portrait;margin:10mm}" +
+  var css = "<style>@page fiches{size:A4 " + (pp === "4L" ? "landscape" : "portrait") + ";margin:8mm}@page colis{size:A4 " + ori("col") + ";margin:10mm}@page total{size:A4 " + ori("tot") + ";margin:10mm}" +
     "#pk-doc-zone .sec-fiches{page:fiches}#pk-doc-zone .sec-colis{page:colis;break-before:page;page-break-before:always}#pk-doc-zone .sec-total{page:total;break-before:page;page-break-before:always}</style>";
   imprimerDoc(css + '<div class="sec-fiches">' + docCartonsHtml(client, colis, pp, lot) + '</div><div class="sec-colis">' + docColisageHtml(lot, client, colis) + '</div><div class="sec-total">' + totalHtmlColis(lot, client, colis) + '</div>',
     "A4 portrait", "8mm", "Export_" + client + "_" + lot + "_" + today());
@@ -3942,7 +3955,8 @@ function toutDocsBloc(lot, client){
     el("div", {class:"mut", style:"font-weight:700;margin-bottom:6px", text:"Tous les documents " + client + " en un clic : fiches cartons + liste de colisage + liste total"}),
     el("div", {class:"actions", style:"margin:0"},
       el("button", {class:"btn", text:"🖨 Tout imprimer", onclick:function(){ toutImprimer(lot, client); }}),
-      el("button", {class:"btn sec", text:"📗 Tout en Excel (3 feuilles)", onclick:function(){ toutExcel(lot, client); }})));
+      el("button", {class:"btn sec", text:"📗 Tout en Excel (3 feuilles)", onclick:function(){ toutExcel(lot, client); }})),
+    oriBloc());
 }
 /* Emballage : valider d'un coup tous les cartons prévus restants */
 function cartonsPrevusRestants(lot, cl){ var faits = {}; cartonsManuels(lot, cl).forEach(function(c){ faits[c.n] = 1; }); return planCartons(lot, cl).filter(function(c){ return !faits[c.n]; }); }
