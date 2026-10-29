@@ -1979,7 +1979,7 @@ function cmdDocColisageHtml(cmdId, cmd, colis){
   const ouverts = colis.some(c => c.ouvert);
   return `
     <div class="col-entete">
-      <div>Expéditeur : <b>${esc(exp.nom)}</b>${exp.lignes.map(l=>`<br>${esc(l)}`).join('')} <b>${esc(exp.pays)}</b><br>${derniere ? `Date d'export : le ${cmdRapportDateFR(derniere.date)}` : `Situation de l'emballage au ${cmdDateHeureFR(Date.now())}`}</div>
+      <div>Expéditeur : <b>${esc(exp.nom)}</b>${exp.lignes.map(l=>`<br>${esc(l)}`).join('')} <b>${esc(exp.pays)}</b>${derniere ? `<br>Date d'export : le ${cmdRapportDateFR(derniere.date)}` : ''}</div>
       <div>${cmdDestinataireHtml(cmd.destination)}</div>
     </div>
     <div class="col-info">Commande ${esc(cmd.numero)}${derniere && derniere.bl?` · BL ${esc(derniere.bl)}`:''}${derniere && derniere.transporteur?` · ${esc(derniere.transporteur)}`:''}</div>
@@ -2007,7 +2007,7 @@ function cmdDocTotalHtml(cmdId, cmd){
     }).join('');
   }).join('');
   return `
-    <div class="tot-info">Commande ${esc(cmd.numero)} · emballage au ${cmdDateHeureFR(Date.now())} · ${esc((CMD_DESTINATAIRES[cmd.destination]||{}).nom||cmd.destination)}</div>
+    <div class="tot-info">Commande ${esc(cmd.numero)} ${esc((CMD_DESTINATAIRES[cmd.destination]||{}).nom||cmd.destination)}</div>
     <table class="tot-tab">
       <thead><tr><th>MODELE</th><th>QUANTITE</th></tr></thead>
       <tbody>${corps}</tbody>
@@ -2057,7 +2057,7 @@ const CMD_DOC_CSS = `
   #cmd-doc-zone .col-pied { margin-top:4mm; font-size:9pt; width:90mm; }
   #cmd-doc-zone .col-pied td { padding:1mm 2mm; } #cmd-doc-zone .col-pied td:first-child { width:55%; }
   /* Liste total */
-  #cmd-doc-zone .tot-info { font-size:9pt; color:#333; margin-bottom:3mm; }
+  #cmd-doc-zone .tot-info { font-size:12pt; font-weight:bold; color:#000; margin-bottom:3mm; }
   #cmd-doc-zone .tot-tab { width:150mm; font-size:10pt; }
   #cmd-doc-zone .tot-tab th { font-weight:normal !important; padding:1.5mm; }
   #cmd-doc-zone .tot-tab td { padding:1mm 1.5mm; }
