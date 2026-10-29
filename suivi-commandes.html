@@ -1919,15 +1919,15 @@ function ficheStockImporter(sheets, nomFichierSrc){
    Famille(s) produit, Visible client, Fournisseur, Seuil et Stock physique compté sont mis à jour si la colonne
    est reconnue ; une référence absente de la nomenclature est seulement signalée, jamais créée ou devinée.
    Désignation / Famille (matière) / Unité restent en lecture seule : ce fichier ne renomme jamais un article. */
-var STOCK_COMPLET_COLS = ["Référence", "Désignation", "Famille matière", "Unité", "Propriétaire", "Famille(s) produit", "Visible client", "Fournisseur", "Seuil", "Stock physique compté"];
+var STOCK_COMPLET_COLS = ["Référence", "Désignation", "Famille matière", "Unité", "Propriétaire", "Famille(s) produit", "Visible client", "Fournisseur", "Seuil", "Stock physique compté", "Conditionnement"];
 function exportStockComplet(){
   var phys = physiques();
   var rows = [STOCK_COMPLET_COLS.slice()];
   Object.keys(S.mat).sort(function(a, b){ return artNom(a) < artNom(b) ? -1 : 1; }).forEach(function(ref){
     var m = S.mat[ref], sp = S.sp[ref] || {};
-    rows.push([ref, m[0], m[1], m[2], sp.prop || "", pfamArr(ref).join(", "), sp.clientVisible ? "OUI" : "NON", sp.fourn || "", sp.seuil || "", phys[ref] || 0]);
+    rows.push([ref, m[0], m[1], m[2], sp.prop || "", pfamArr(ref).join(", "), sp.clientVisible ? "OUI" : "NON", sp.fourn || "", sp.seuil || "", phys[ref] || 0, sp.cond || ""]);
   });
-  var g = grilleSimple(rows, [22, 34, 14, 7, 12, 26, 10, 16, 8, 16]); g.landscape = true;
+  var g = grilleSimple(rows, [22, 34, 14, 7, 12, 26, 10, 16, 8, 16, 16]); g.landscape = true;
   saveFile("Stock_complet_" + today().replace(/-/g, "") + ".xlsx", xlsxBuild([{name:"Stock complet", grid:g, first:true}]));
 }
 function stockCompletEntete(rows){
@@ -1946,10 +1946,25 @@ function stockCompletImporter(sheets, nomFichierSrc){
   var ent = stockCompletEntete(feuille.rows);
   if (!ent) throw new Error("Colonne « Référence » introuvable dans le fichier.");
   var idx = ent.idx, motif = "Mise à jour stock complet" + (nomFichierSrc ? " (" + nomFichierSrc + ")" : "");
-  var majFiche = 0, majQte = 0, inchanges = 0, nonReconnus = [], erreurs = [];
+  var majFiche = 0, majQte = 0, inchanges = 0, crees = 0, nonReconnus = [], erreurs = [];
+  /* conditionnement : colonne « Conditionnement », ou à défaut une colonne sans titre placée juste après les colonnes connues
+     (ex. « 5000 m / cone ») : le premier nombre est retenu (quantité par rouleau / cône / carton) */
+  var iCond = idx["Conditionnement"];
+  if (iCond === undefined){
+    var maxI = -1; Object.keys(idx).forEach(function(k){ if (idx[k] > maxI) maxI = idx[k]; });
+    var entete = feuille.rows[ent.hi] || [], cand = maxI + 1;
+    if (!cleanTxt(entete[cand]) && feuille.rows.slice(ent.hi + 1).some(function(r){ return /\d/.test(String(r[cand] == null ? "" : r[cand])); })) iCond = cand;
+  }
   feuille.rows.slice(ent.hi + 1).forEach(function(row){
     var ref = cleanTxt(row[idx["Référence"]]); if (!ref) return;
-    if (!S.mat[ref]){ if (nonReconnus.indexOf(ref) < 0) nonReconnus.push(ref); return; }
+    if (!S.mat[ref]){
+      /* article absent de l'application : créé à partir du fichier (Désignation, Famille matière, Unité obligatoires) */
+      var des = idx["Désignation"] !== undefined ? cleanTxt(row[idx["Désignation"]]) : "", famT = idx["Famille matière"] !== undefined ? cleanTxt(row[idx["Famille matière"]]) : "";
+      var fam = FAMILLES.filter(function(x){ return x.toUpperCase() === famT.toUpperCase(); })[0], un = idx["Unité"] !== undefined ? cleanTxt(row[idx["Unité"]]) : "";
+      var refN = /^[A-Za-z0-9_-]+$/.test(ref) ? ref : slugRef(ref);
+      if (des && fam && un && refN && !S.mat[refN]){ S.mat[refN] = [des, fam, un]; ref = refN; crees++; }
+      else { if (nonReconnus.indexOf(ref) < 0) nonReconnus.push(ref); if (des && !fam) erreurs.push(ref + " : famille matière « " + famT + " » non reconnue (" + FAMILLES.join(", ") + ")"); return; }
+    }
     var sp0 = S.sp[ref] || {}, sp = Object.assign({}, sp0);
     if (idx["Propriétaire"] !== undefined){
       var pv = cleanTxt(row[idx["Propriétaire"]]);
@@ -1971,6 +1986,7 @@ function stockCompletImporter(sheets, nomFichierSrc){
     if (idx["Visible client"] !== undefined) sp.clientVisible = ["OUI", "VRAI", "YES", "1", "X"].indexOf(cleanTxt(row[idx["Visible client"]]).toUpperCase()) >= 0;
     if (idx["Fournisseur"] !== undefined) sp.fourn = cleanTxt(row[idx["Fournisseur"]]);
     if (idx["Seuil"] !== undefined) sp.seuil = numStk(row[idx["Seuil"]]) || 0;
+    if (iCond !== undefined){ var cm = /(\d+(?:[.,]\d+)?)/.exec(String(row[iCond] == null ? "" : row[iCond]).replace(/\s(?=\d{3}\b)/g, "")); if (cm) sp.cond = numStk(cm[1]) || 0; else if (idx["Conditionnement"] !== undefined) sp.cond = 0; }
     Object.keys(sp).forEach(function(k){ if (!sp[k] || (Array.isArray(sp[k]) && !sp[k].length)) delete sp[k]; });
     if (JSON.stringify(sp) !== JSON.stringify(sp0)){ stkEcrire("sp", ref, Object.keys(sp).length ? sp : null); S.sp[ref] = sp; majFiche++; }
     if (idx["Stock physique compté"] !== undefined){
@@ -1982,11 +1998,11 @@ function stockCompletImporter(sheets, nomFichierSrc){
     }
   });
   persist();
-  return {majFiche:majFiche, majQte:majQte, inchanges:inchanges, nonReconnus:nonReconnus, erreurs:erreurs};
+  return {majFiche:majFiche, majQte:majQte, inchanges:inchanges, crees:crees, nonReconnus:nonReconnus, erreurs:erreurs};
 }
 function stockCompletCard(){
   var c = el("div", {class:"card"}, el("h2", {text:"Stock complet (export / mise à jour)"}),
-    el("p", {class:"mut", style:"margin:0 0 8px", text:"Exportez tous les articles, modifiez Propriétaire, Famille(s) produit, Visible client, Fournisseur, Seuil et Stock physique compté dans Excel, puis rechargez le fichier : les colonnes reconnues sont mises à jour (correspondance par Référence). Désignation, Famille (matière) et Unité ne sont pas modifiées par cet import."}));
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Exportez tous les articles, modifiez Propriétaire, Famille(s) produit, Visible client, Fournisseur, Seuil et Stock physique compté dans Excel, puis rechargez le fichier : les colonnes reconnues sont mises à jour (correspondance par Référence). Une référence absente de l'application est créée (Désignation, Famille matière et Unité obligatoires). Désignation, Famille et Unité d'un article existant ne sont pas modifiées. Colonne Conditionnement (ex. 5000 m par cône) : utilisée pour commander en cônes."}));
   c.appendChild(el("div", {class:"actions"}, el("button", {class:"btn small sec", text:"📗 Exporter tout le stock", onclick:function(){ exportStockComplet(); }})));
   var f = el("input", {type:"file", accept:".xlsx", id:"fStockComplet", style:"margin-top:8px"});
   c.appendChild(f);
@@ -1996,12 +2012,14 @@ function stockCompletCard(){
     readWorkbook(f.files[0]).then(function(sh){
       var res;
       try { res = stockCompletImporter(sh, nomF); } catch (e){ toast(e.message); return; }
-      ui.stCompletRes = res; toast(res.majFiche + " fiche(s) · " + res.majQte + " quantité(s) mise(s) à jour"); render();
+      ui.stCompletRes = res;
+      toast((res.crees || res.majFiche || res.majQte) ? (res.crees ? res.crees + " article(s) créé(s) · " : "") + res.majFiche + " fiche(s) · " + res.majQte + " quantité(s) mise(s) à jour" : (res.nonReconnus.length ? res.nonReconnus.length + " référence(s) non reconnue(s) : voir le détail" : "Aucun changement : le fichier correspond déjà au stock de l'application"));
+      render();
     }).catch(function(e){ toast(e.message); });
   }})));
   if (ui.stCompletRes){
     var r = ui.stCompletRes;
-    c.appendChild(el("p", {class:"mut", style:"margin:8px 0 0", text:r.majFiche + " fiche(s) mise(s) à jour · " + r.majQte + " quantité(s) ajustée(s) · " + r.inchanges + " déjà à jour" + (r.nonReconnus.length ? " · " + r.nonReconnus.length + " référence(s) inconnue(s)" : "") + (r.erreurs.length ? " · " + r.erreurs.length + " erreur(s)" : "")}));
+    c.appendChild(el("p", {class:"mut", style:"margin:8px 0 0", text:(r.crees ? r.crees + " article(s) créé(s) · " : "") + r.majFiche + " fiche(s) mise(s) à jour · " + r.majQte + " quantité(s) ajustée(s) · " + r.inchanges + " déjà à jour" + (r.nonReconnus.length ? " · " + r.nonReconnus.length + " référence(s) inconnue(s)" : "") + (r.erreurs.length ? " · " + r.erreurs.length + " erreur(s)" : "")}));
     if (r.nonReconnus.length) c.appendChild(el("div", {class:"enl-d neg", style:"margin-top:4px", text:"Références inconnues : " + r.nonReconnus.join(", ")}));
     if (r.erreurs.length) r.erreurs.forEach(function(m){ c.appendChild(el("div", {class:"enl-d neg"}, m)); });
   }
@@ -2021,6 +2039,11 @@ function changerStatutCf(id, st){
   c.st = st; c[st === "annulee" ? "annule" : "solde"] = today(); c.u2 = utilisateur(); stkEcrire("cf", id, c);
 }
 /* propositions d'achat : manque des commandes + seuil minimum − réceptions attendues, groupées par fournisseur */
+/* Fils achetés au cône : le stock reste en mètres, mais les achats (propositions, commandes fournisseurs,
+   réceptions) se saisissent et s'affichent en cônes (1 cône = conditionnement de l'article, ex. 5000 m). */
+function cone(ref){ var c = +((S.sp[ref] || {}).cond) || 0; return ref.indexOf("FIL-") === 0 && c > 0 ? c : 0; }
+function nbCones(ref, q){ var c = cone(ref); return c ? r2(q / c) : q; }
+function qAchat(ref, q){ var c = cone(ref); if (!c || !q) return fmt(q, artDec(ref, q)); var n = r2(q / c); return fmt(n, n % 1 ? 2 : 0) + " cône" + (n > 1 ? "s" : ""); }
 function propositionsAchat(E){
   var o = {};
   E.arts.forEach(function(a){
@@ -2332,9 +2355,10 @@ function stkEntrees(v, E){
   else { refs = ui.stRref ? [ui.stRref] : []; }
   var tb = el("tbody");
   refs.forEach(function(ref){
-    var inp = el("input", {type:"number", inputmode:"decimal", step:"0.01", min:"0", class:"ed", value:ui.stRq[ref] || "", placeholder:"0"});
+    var cn = cone(ref), inp = el("input", {type:"number", inputmode:"decimal", step:"0.01", min:"0", class:"ed", value:ui.stRq[ref] || "", placeholder:"0"});
     inp.addEventListener("input", function(){ ui.stRq[ref] = inp.value; }); ins[ref] = inp;
-    tb.appendChild(el("tr", null, ligneArt(ref, ui.stCf ? "reliquat " + fq(ref, cfReliquats(S.cf[ui.stCf])[ref]) : artUnite(ref)), el("td", null, inp)));
+    tb.appendChild(el("tr", null, ligneArt(ref, (ui.stCf ? "reliquat " + (cn ? qAchat(ref, cfReliquats(S.cf[ui.stCf])[ref]) + " (" + fq(ref, cfReliquats(S.cf[ui.stCf])[ref]) + ")" : fq(ref, cfReliquats(S.cf[ui.stCf])[ref])) : artUnite(ref)) + (cn ? " · reçu en cônes de " + fmt(cn, 0) + " " + artUnite(ref) : "")),
+      el("td", null, inp, cn ? el("div", {class:"mut", style:"font-size:12px;text-align:right;font-weight:700", text:"cônes"}) : null)));
   });
   if (!ui.stCf){
     var sa = sel([["", "Choisir l'article…"]].concat(Object.keys(S.mat).sort(function(a, b){ return artNom(a) < artNom(b) ? -1 : 1; }).map(function(r){ return [r, artNom(r) + " (" + artUnite(r) + ")"]; })), ui.stRref || "");
@@ -2347,12 +2371,12 @@ function stkEntrees(v, E){
     var dt = el("input", {type:"date", value:today()}), nd = el("input", {type:"text", placeholder:"N° bon de livraison"});
     c1.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Date"}, dt), el("label", {text:"Bon de livraison"}, nd)));
     var bv = el("button", {class:"btn", text:"✔ Valider la réception", onclick:function(){
-      var qs = {}; Object.keys(ins).forEach(function(r){ qs[r] = numStk(ins[r].value); });
+      var qs = {}; Object.keys(ins).forEach(function(r){ qs[r] = r2(numStk(ins[r].value) * (cone(r) || 1)); });   /* cônes → mètres */
       var jeton = ui.stTok, cf = ui.stCf; bv.disabled = true;
       var ok = commit(function(){ enregistrerReception(cf, dt.value, nd.value, qs, jeton); ui.stRq = {}; nouveauJeton(); }, "Réception enregistrée");
       if (!ok) bv.disabled = false;
     }});
-    c1.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, ui.stCf ? el("button", {class:"btn sec", text:"Tout le reliquat", onclick:function(){ var rl = cfReliquats(S.cf[ui.stCf]); refs.forEach(function(r){ ui.stRq[r] = String(rl[r]); ins[r].value = ui.stRq[r]; }); }}) : null, bv));
+    c1.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, ui.stCf ? el("button", {class:"btn sec", text:"Tout le reliquat", onclick:function(){ var rl = cfReliquats(S.cf[ui.stCf]); refs.forEach(function(r){ ui.stRq[r] = String(nbCones(r, rl[r])); ins[r].value = ui.stRq[r]; }); }}) : null, bv));
   }
   v.appendChild(c1);
   /* ajustements */
@@ -2374,13 +2398,13 @@ function stkEntrees(v, E){
 }
 function stkAchats(v, E){
   var props = propositionsAchat(E), fs = Object.keys(props).sort();
-  var c1 = el("div", {class:"card"}, el("h2", {text:"Propositions d'achat"}), el("p", {class:"mut", style:"margin:0 0 8px", text:"Calcul : réservé + seuil minimum − stock physique − déjà commandé, arrondi au conditionnement. Une proposition ne devient une commande fournisseur qu'après validation."}));
+  var c1 = el("div", {class:"card"}, el("h2", {text:"Propositions d'achat"}), el("p", {class:"mut", style:"margin:0 0 8px", text:"Calcul : réservé + seuil minimum − stock physique − déjà commandé, arrondi au conditionnement. Les fils se commandent et se réceptionnent en cônes (le stock reste compté en mètres). Une proposition ne devient une commande fournisseur qu'après validation."}));
   if (!fs.length) c1.appendChild(el("p", {class:"mut", text:"Rien à acheter : les besoins sont couverts."}));
   fs.forEach(function(f){
     var box = el("div", {class:"stk-prop"}, el("h3", {text:f})), ins = {}, tb = el("tbody");
     props[f].forEach(function(p){
-      var a = art(p.ref), sp = S.sp[p.ref] || {}, i = el("input", {type:"number", inputmode:"decimal", step:"0.01", min:"0", class:"ed", value:String(p.q)}); ins[p.ref] = i;
-      tb.appendChild(el("tr", null, ligneArt(p.ref, a.u + (sp.cond ? " · soit " + fmt(p.q / sp.cond, 0) + " × " + fmt(sp.cond, 0) + " " + a.u + (p.ref.indexOf("FIL-") === 0 ? " (cônes)" : "") : "") + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i)));
+      var a = art(p.ref), sp = S.sp[p.ref] || {}, cn = cone(p.ref), i = el("input", {type:"number", inputmode:"decimal", step:cn ? "1" : "0.01", min:"0", class:"ed", value:String(cn ? nbCones(p.ref, p.q) : p.q)}); ins[p.ref] = i;
+      tb.appendChild(el("tr", null, ligneArt(p.ref, (cn ? "en cônes de " + fmt(cn, 0) + " " + a.u + " · soit " + fmt(p.q, 0) + " " + a.u : a.u + (sp.cond ? " · soit " + fmt(p.q / sp.cond, 0) + " × " + fmt(sp.cond, 0) + " " + a.u : "")) + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i, cn ? el("div", {class:"mut", style:"font-size:12px;text-align:right;font-weight:700", text:"cônes"}) : null)));
     });
     var t = el("table", {class:"stk enl"}); t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"À commander"})))); t.appendChild(tb);
     box.appendChild(el("div", {class:"tw"}, t));
@@ -2389,7 +2413,7 @@ function stkAchats(v, E){
     var dp = el("input", {type:"date", value:dl ? isoPlus(today(), dl) : ""});
     box.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Fournisseur"}, fi), el("label", {text:"Réception prévue"}, dp)));
     box.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn", text:"✔ Valider : créer la commande fournisseur", onclick:function(){
-      var lignes = Object.keys(ins).map(function(r){ return {ref:r, q:numStk(ins[r].value)}; });
+      var lignes = Object.keys(ins).map(function(r){ return {ref:r, q:r2(numStk(ins[r].value) * (cone(r) || 1))}; });   /* cônes → mètres */
       commit(function(){ creerCommandeFournisseur(fi.value, dp.value, lignes, ""); }, "Commande fournisseur créée");
     }})));
     c1.appendChild(box);
@@ -2404,7 +2428,7 @@ function stkAchats(v, E){
       el("div", {class:"enl-d", text:"Commandée le " + dmy(cf.d) + (cf.prev ? " · réception prévue " + dmy(cf.prev) : "") + (cf.u ? " · par " + cf.u : "")}));
     var t = el("table", {class:"stk"}), tb = el("tbody");
     t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Commandé"}), el("th", {text:"Reçu"}), el("th", {text:"Reliquat"}))));
-    (cf.lignes || []).forEach(function(l){ tb.appendChild(el("tr", null, ligneArt(l.ref, artUnite(l.ref)), el("td", {text:fmt(l.q, artDec(l.ref, l.q))}), el("td", {text:fmt(rec[l.ref] || 0, artDec(l.ref, rec[l.ref] || 0))}), el("td", {class:"b", text:cf.st === "commandee" && rel[l.ref] ? fmt(rel[l.ref], artDec(l.ref, rel[l.ref])) : ""}))); });
+    (cf.lignes || []).forEach(function(l){ var cn = cone(l.ref); tb.appendChild(el("tr", null, ligneArt(l.ref, cn ? "cônes de " + fmt(cn, 0) + " " + artUnite(l.ref) + " · soit " + fmt(l.q, 0) + " " + artUnite(l.ref) : artUnite(l.ref)), el("td", {text:qAchat(l.ref, l.q)}), el("td", {text:qAchat(l.ref, rec[l.ref] || 0)}), el("td", {class:"b", text:cf.st === "commandee" && rel[l.ref] ? qAchat(l.ref, rel[l.ref]) : ""}))); });
     t.appendChild(tb); box.appendChild(el("div", {class:"tw"}, t));
     if (cf.st === "commandee") box.appendChild(el("div", {class:"actions", style:"margin-top:6px"},
       el("button", {class:"btn small", text:"Réceptionner", onclick:function(){ ui.stSec = "ent"; ui.stCf = cf.id; ui.stRq = {}; render(); }}),
