@@ -3408,6 +3408,11 @@ function commencerPar(lot, client, lib){
   (L.ordre = L.ordre || {})[client] = [lib].concat(m.filter(function(x){ return x !== lib; }));
   if (L.plans && L.plans[client]){ delete L.plans[client]; figerPlans(lot); }   /* fiches pas encore utilisées : on renumérote */
 }
+/* met un modèle en premier dans les cartons prévus (avant le premier carton emballé) et prépare le carton N°1 de ce modèle */
+function commencerAvant(lot, client, lib){
+  var deja = !!(((S.lots[lot] || {}).plans || {})[client]);
+  return commit(function(){ commencerPar(lot, client, lib); ui.ct = null; }, "Les cartons commencent par " + nomDoc(lib) + (deja ? " — numéros des fiches changés : réimprimez-les si elles étaient déjà imprimées" : ""));
+}
 function planBrut(lot, client, R){
   var out = [];
   lignesOrdonnees(lot, client).forEach(function(l){ var q = l.qty; while (q > 0){ var x = Math.min(R.n, q); out.push([l.id, x]); q -= x; } });
@@ -3717,6 +3722,16 @@ function sxEmballage(v, lot, rows){
   if (cl === "ALLOGA") head.appendChild(el("div", {class:"mut", style:"margin-top:4px", text:"Lot " + lot + " · péremption " + (peremption(lot) || "?")}));
   if (!edit && E.nPrevu && n === E.nPrevu) head.appendChild(el("div", {class:"msg", style:"margin-top:8px", text:"Carton prévu : sa fiche est déjà prête. Remplissez-le comme indiqué puis validez."}));
   if (edit) head.appendChild(el("button", {class:"sx-chip", style:"margin-top:8px", text:"Annuler la modification", onclick:function(){ ui.ctEdit = null; ui.ct = null; render(true); }}));
+  /* ordre des modèles dans les cartons : au choix tant qu'aucun carton n'est emballé (ex. commencer par PHARMA-FEMME) */
+  var modsCl = planCl.length ? modelesDuClient(lot, cl) : [], aucunCarton = !cartonsManuels(lot, cl).length;
+  if (!edit && modsCl.length > 1){
+    if (aucunCarton){
+      var so = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Commencer par :"}));
+      modsCl.forEach(function(lib, i){ so.appendChild(el("button", {class:i === 0 ? "on" : "", text:nomDoc(lib), onclick:function(){ if (i === 0) return; commencerAvant(lot, cl, lib); }})); });
+      v.appendChild(so);
+      v.appendChild(el("p", {class:"mut", style:"margin:-4px 0 10px;font-size:12px", text:"Les cartons N°1, 2, 3… suivent cet ordre. Il se règle aussi tout seul : le premier modèle emballé passe en premier."}));
+    } else v.appendChild(el("p", {class:"mut", style:"margin:0 0 10px;font-size:12px", text:"Ordre des cartons : " + modsCl.map(nomDoc).join(" puis ") + " (fixé au premier carton emballé)."}));
+  }
   var tv = (!edit && planCl.length) ? toutValiderCard(lot, cl) : null;
   if (tv) v.appendChild(tv);
   v.appendChild(head);
@@ -3725,6 +3740,7 @@ function sxEmballage(v, lot, rows){
   arts.forEach(function(a){ var m = fmm[a.lib], on = E.sel.indexOf(a.key) >= 0;
     ch.appendChild(el("button", {class:"sx-chip" + (on ? " on" : ""), style:on && m ? "background:#" + m[5] + ";color:#" + m[6] + ";border-color:#" + m[5] : "", text:(on ? "✓ " : "") + nomDoc(a.lib) + (a.sur ? " (surplus " + a.src + ")" : ""), onclick:function(){
       var i = E.sel.indexOf(a.key);
+      if (!edit && t1 && i < 0 && !a.sur && aucunCarton && modsCl.length > 1 && modsCl[0] !== a.lib){ commencerAvant(lot, cl, a.lib); return; }
       E.manuel = true; E.nPrevu = null;
       if (t1){ E.sel = i >= 0 ? [] : [a.key]; E.q = {}; }
       else if (i >= 0){ E.sel.splice(i, 1); a.lines.forEach(function(l){ delete E.q[l.id]; }); }
@@ -3948,6 +3964,7 @@ function toutValiderCard(lot, cl){
 }
 /* valide d'un coup les cartons prévus restants (tous, ou ceux d'un modèle) */
 function ouvrirToutValider(lot, cl, lib){
+  if (lib && !cartonsManuels(lot, cl).length){ var mo = modelesDuClient(lot, cl); if (mo.length > 1 && mo[0] !== lib && !commencerAvant(lot, cl, lib)) return; }
   var rest = cartonsPrevusRestants(lot, cl).filter(function(c){ return !lib || c.items[0].lib === lib; }); if (!rest.length) return;
   var q = 0, parT = {}, ordre = [];
   rest.forEach(function(c){ q += c.q; var k = nomDoc(c.items[0].lib) + " " + c.items[0].size; if (!parT[k]){ parT[k] = 0; ordre.push(k); } parT[k]++; });
