@@ -2043,7 +2043,57 @@ function changerStatutCf(id, st){
    réceptions) se saisissent et s'affichent en cônes (1 cône = conditionnement de l'article, ex. 5000 m). */
 function cone(ref){ var c = +((S.sp[ref] || {}).cond) || 0; return ref.indexOf("FIL-") === 0 && c > 0 ? c : 0; }
 function nbCones(ref, q){ var c = cone(ref); return c ? r2(q / c) : q; }
-function qAchat(ref, q){ var c = cone(ref); if (!c || !q) return fmt(q, artDec(ref, q)); var n = r2(q / c); return fmt(n, n % 1 ? 2 : 0) + " cône" + (n > 1 ? "s" : ""); }
+function uBase(ref){ var u = artUnite(ref); return cone(ref) && /c[oô]ne/i.test(u) ? "m" : u; }   /* fils : quantités en mètres, même si l'article indique « Cône » */
+function txtCones(ref, q){ var n = nbCones(ref, q); return fmt(n, n % 1 ? 2 : 0) + " cône" + (n > 1 ? "s" : ""); }
+/* fils : les deux unités, « 23 cônes · 115 000 m » */
+function qAchat(ref, q){ var c = cone(ref); if (!c) return fmt(q, artDec(ref, q)); if (!q) return "0"; return txtCones(ref, q) + " · " + fmt(q, 0) + " " + uBase(ref); }
+/* ---------- Bon de commande fournisseur (document imprimable / PDF et Excel) ----------
+   En-tête TEK-TREND ; bloc fournisseur : coordonnées de FOURN_INFO (à compléter plus tard), sinon lignes à remplir. */
+var FOURN_INFO = {};   /* ex. {"COATS": {lignes:["Adresse…", "Ville"], tel:"", email:"", contact:""}} */
+function dComplet(d){ var x = String(d || "").split("-"); return x.length === 3 ? x[2] + "/" + x[1] + "/" + x[0] : String(d || ""); }
+function fournInfo(nom){ var k = String(nom || "").toUpperCase(), f = null; Object.keys(FOURN_INFO).forEach(function(x){ if (x.toUpperCase() === k) f = FOURN_INFO[x]; }); return f; }
+function bcLignes(cf){
+  return (cf.lignes || []).map(function(l){ var cn = cone(l.ref), m = S.mat[l.ref] || [l.ref];
+    return {ref:l.ref, des:m[0] || l.ref, q:cn ? fmt(nbCones(l.ref, l.q), nbCones(l.ref, l.q) % 1 ? 2 : 0) : fmt(l.q, artDec(l.ref, l.q)), u:cn ? "cône(s) de " + fmt(cn, 0) + " " + uBase(l.ref) : artUnite(l.ref), tot:cn ? fmt(l.q, 0) + " " + uBase(l.ref) : fmt(l.q, artDec(l.ref, l.q)) + " " + artUnite(l.ref)}; });
+}
+function bcHtml(cf){
+  var e = PK_EXPEDITEUR, fi = fournInfo(cf.fourn), L = bcLignes(cf);
+  var fLignes = fi ? (fi.lignes || []).concat(fi.contact ? ["Contact : " + fi.contact] : []).concat(fi.tel ? ["Tél. : " + fi.tel] : []).concat(fi.email ? ["Email : " + fi.email] : [])
+    : ["Adresse : ……………………………………", "Contact : ……………………………………", "Tél. : ……………………", "Email : ……………………………"];
+  return '<div class="bc">' +
+    '<div class="bc-haut"><div class="bc-exp"><img src="./logo-tek.png" alt="TEK-TREND" class="bc-logo"><div><b>' + hx(e.nom) + '</b>' + e.lignes.map(function(x){ return "<br>" + hx(x); }).join("") + '<br>' + hx(e.pays) + '</div></div>' +
+      '<div class="bc-titre"><div class="bc-t">BON DE COMMANDE</div><table class="bc-info"><tr><td>N°</td><td><b>' + hx(cf.num) + '</b></td></tr><tr><td>Date</td><td>' + hx(dComplet(cf.d)) + '</td></tr>' +
+      (cf.prev ? '<tr><td>Livraison souhaitée</td><td>' + hx(dComplet(cf.prev)) + '</td></tr>' : '') + (cf.u ? '<tr><td>Établi par</td><td>' + hx(cf.u) + '</td></tr>' : '') + '</table></div></div>' +
+    '<div class="bc-four"><div class="bc-lab">Fournisseur</div><b>' + hx(cf.fourn) + '</b>' + fLignes.map(function(x){ return "<br>" + hx(x); }).join("") + '</div>' +
+    '<table class="bc-tab"><thead><tr><th>N°</th><th>Référence</th><th>Désignation</th><th>Quantité</th><th>Unité</th><th>Total</th></tr></thead><tbody>' +
+      L.map(function(x, i){ return '<tr><td>' + (i + 1) + '</td><td class="g">' + hx(x.ref) + '</td><td class="g">' + hx(x.des) + '</td><td><b>' + hx(x.q) + '</b></td><td>' + hx(x.u) + '</td><td>' + hx(x.tot) + '</td></tr>'; }).join("") + '</tbody></table>' +
+    (cf.note ? '<p class="bc-note">Remarque : ' + hx(cf.note) + '</p>' : '') +
+    '<p class="bc-note">Merci de confirmer la réception de cette commande, le prix et la date de livraison. Merci de rappeler le N° ' + hx(cf.num) + ' sur le bon de livraison et la facture.</p>' +
+    '<div class="bc-sign"><div>Pour ' + hx(e.nom) + '<br><br>Signature et cachet</div><div>Bon pour accord du fournisseur<br><br>Signature et cachet</div></div></div>';
+}
+var BC_CSS = "#pk-doc-zone .bc{font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#000}" +
+  "#pk-doc-zone .bc-haut{display:flex;justify-content:space-between;gap:8mm;align-items:flex-start}" +
+  "#pk-doc-zone .bc-exp{display:flex;gap:4mm;align-items:flex-start;line-height:1.35}#pk-doc-zone .bc-logo{width:30mm;height:auto}" +
+  "#pk-doc-zone .bc-t{font-size:17pt;font-weight:bold;text-align:right;margin-bottom:2mm}#pk-doc-zone .bc-info td{border:none!important;padding:0.6mm 0 0.6mm 4mm;text-align:right}" +
+  "#pk-doc-zone .bc-four{margin:7mm 0 6mm auto;width:85mm;border:1px solid #000;padding:3mm 4mm;line-height:1.45}#pk-doc-zone .bc-lab{font-size:8.5pt;color:#444;text-transform:uppercase;margin-bottom:1mm}" +
+  "#pk-doc-zone .bc-tab{width:100%}#pk-doc-zone .bc-tab th{background:#eee!important;padding:1.8mm 1.5mm}#pk-doc-zone .bc-tab td{padding:1.8mm 1.5mm;text-align:center}#pk-doc-zone .bc-tab td.g{text-align:left}" +
+  "#pk-doc-zone .bc-note{font-size:9pt;margin:5mm 0 0}#pk-doc-zone .bc-sign{display:flex;justify-content:space-between;gap:10mm;margin-top:12mm}#pk-doc-zone .bc-sign div{flex:1;border-top:1px solid #000;padding-top:2mm;min-height:22mm;font-size:9pt}";
+function imprimerBonCommande(cf){ imprimerDoc("<style>" + BC_CSS + "</style>" + bcHtml(cf), "A4 portrait", "12mm", "Bon_de_commande_" + cf.num + "_" + cf.fourn); }
+function excelBonCommande(cf){
+  var e = PK_EXPEDITEUR, fi = fournInfo(cf.fourn), L = bcLignes(cf), g = {cols:[6, 22, 40, 11, 22, 16], rows:[], merges:[]}, r = 0;
+  gset(g, r, 0, e.nom, {b:1, sz:14, al:"l"}); gmerge(g, r, 0, r, 2); gset(g, r, 3, "BON DE COMMANDE", {b:1, sz:14, al:"r"}); gmerge(g, r, 3, r, 5); r++;
+  var gauche = e.lignes.concat([e.pays]), droite = ["N° " + cf.num, "Date : " + dComplet(cf.d)].concat(cf.prev ? ["Livraison souhaitée : " + dComplet(cf.prev)] : []).concat(cf.u ? ["Établi par : " + cf.u] : []);
+  for (var i = 0; i < Math.max(gauche.length, droite.length); i++){ gset(g, r, 0, gauche[i] || "", {sz:10, al:"l"}); gmerge(g, r, 0, r, 2); gset(g, r, 3, droite[i] || "", {sz:10, al:"r", b:i === 0 ? 1 : 0}); gmerge(g, r, 3, r, 5); r++; }
+  r++; gset(g, r, 3, "FOURNISSEUR", {sz:9, al:"l"}); gmerge(g, r, 3, r, 5); r++;
+  gset(g, r, 3, cf.fourn, {b:1, sz:11, al:"l"}); gmerge(g, r, 3, r, 5); r++;
+  (fi ? (fi.lignes || []).concat(fi.contact ? ["Contact : " + fi.contact] : []).concat(fi.tel ? ["Tél. : " + fi.tel] : []).concat(fi.email ? ["Email : " + fi.email] : []) : ["Adresse :", "Contact :", "Tél. :", "Email :"]).forEach(function(x){ gset(g, r, 3, x, {sz:10, al:"l"}); gmerge(g, r, 3, r, 5); r++; });
+  r++;
+  var H = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"}; ["N°", "Référence", "Désignation", "Quantité", "Unité", "Total"].forEach(function(h, k){ gset(g, r, k, h, H); }); r++;
+  L.forEach(function(x, k){ [String(k + 1), x.ref, x.des, x.q, x.u, x.tot].forEach(function(v, c){ gset(g, r, c, v, {sz:10, al:c === 1 || c === 2 ? "l" : "c", bd:"t", b:c === 3 ? 1 : 0, wrap:1}); }); r++; });
+  r++; gset(g, r, 0, "Merci de confirmer la réception de cette commande, le prix et la date de livraison, et de rappeler le N° " + cf.num + " sur le bon de livraison et la facture.", {sz:9, al:"l", wrap:1}); gmerge(g, r, 0, r, 5); g.rows[r].h = 30; r += 3;
+  gset(g, r, 0, "Pour " + e.nom + " — signature et cachet", {sz:9, al:"l"}); gmerge(g, r, 0, r, 2); gset(g, r, 3, "Bon pour accord du fournisseur — signature et cachet", {sz:9, al:"l"}); gmerge(g, r, 3, r, 5);
+  saveFile(nomFichier("Bon_de_commande_" + cf.num + "_" + cf.fourn) + ".xlsx", xlsxBuild([{name:"Bon de commande", grid:g, first:1}]));
+}
 function propositionsAchat(E){
   var o = {};
   E.arts.forEach(function(a){
@@ -2357,7 +2407,7 @@ function stkEntrees(v, E){
   refs.forEach(function(ref){
     var cn = cone(ref), inp = el("input", {type:"number", inputmode:"decimal", step:"0.01", min:"0", class:"ed", value:ui.stRq[ref] || "", placeholder:"0"});
     inp.addEventListener("input", function(){ ui.stRq[ref] = inp.value; }); ins[ref] = inp;
-    tb.appendChild(el("tr", null, ligneArt(ref, (ui.stCf ? "reliquat " + (cn ? qAchat(ref, cfReliquats(S.cf[ui.stCf])[ref]) + " (" + fq(ref, cfReliquats(S.cf[ui.stCf])[ref]) + ")" : fq(ref, cfReliquats(S.cf[ui.stCf])[ref])) : artUnite(ref)) + (cn ? " · reçu en cônes de " + fmt(cn, 0) + " " + artUnite(ref) : "")),
+    tb.appendChild(el("tr", null, ligneArt(ref, (ui.stCf ? "reliquat " + (cn ? qAchat(ref, cfReliquats(S.cf[ui.stCf])[ref]) : fq(ref, cfReliquats(S.cf[ui.stCf])[ref])) : artUnite(ref)) + (cn ? " · reçu en cônes de " + fmt(cn, 0) + " " + uBase(ref) : "")),
       el("td", null, inp, cn ? el("div", {class:"mut", style:"font-size:12px;text-align:right;font-weight:700", text:"cônes"}) : null)));
   });
   if (!ui.stCf){
@@ -2404,7 +2454,7 @@ function stkAchats(v, E){
     var box = el("div", {class:"stk-prop"}, el("h3", {text:f})), ins = {}, tb = el("tbody");
     props[f].forEach(function(p){
       var a = art(p.ref), sp = S.sp[p.ref] || {}, cn = cone(p.ref), i = el("input", {type:"number", inputmode:"decimal", step:cn ? "1" : "0.01", min:"0", class:"ed", value:String(cn ? nbCones(p.ref, p.q) : p.q)}); ins[p.ref] = i;
-      tb.appendChild(el("tr", null, ligneArt(p.ref, (cn ? "en cônes de " + fmt(cn, 0) + " " + a.u + " · soit " + fmt(p.q, 0) + " " + a.u : a.u + (sp.cond ? " · soit " + fmt(p.q / sp.cond, 0) + " × " + fmt(sp.cond, 0) + " " + a.u : "")) + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i, cn ? el("div", {class:"mut", style:"font-size:12px;text-align:right;font-weight:700", text:"cônes"}) : null)));
+      tb.appendChild(el("tr", null, ligneArt(p.ref, (cn ? "en cônes de " + fmt(cn, 0) + " " + uBase(p.ref) + " · soit " + fmt(p.q, 0) + " " + uBase(p.ref) : a.u + (sp.cond ? " · soit " + fmt(p.q / sp.cond, 0) + " × " + fmt(sp.cond, 0) + " " + a.u : "")) + (p.manque ? " · manque " + fmt(p.manque, artDec(p.ref, p.manque)) : "") + (sp.delai ? " · délai " + sp.delai + " j" : "")), el("td", null, i, cn ? el("div", {class:"mut", style:"font-size:12px;text-align:right;font-weight:700", text:"cônes"}) : null)));
     });
     var t = el("table", {class:"stk enl"}); t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"À commander"})))); t.appendChild(tb);
     box.appendChild(el("div", {class:"tw"}, t));
@@ -2414,7 +2464,9 @@ function stkAchats(v, E){
     box.appendChild(el("div", {class:"row", style:"margin-top:8px"}, el("label", {text:"Fournisseur"}, fi), el("label", {text:"Réception prévue"}, dp)));
     box.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("button", {class:"btn", text:"✔ Valider : créer la commande fournisseur", onclick:function(){
       var lignes = Object.keys(ins).map(function(r){ return {ref:r, q:r2(numStk(ins[r].value) * (cone(r) || 1))}; });   /* cônes → mètres */
-      commit(function(){ creerCommandeFournisseur(fi.value, dp.value, lignes, ""); }, "Commande fournisseur créée");
+      var nId = null;
+      var okC = commit(function(){ nId = creerCommandeFournisseur(fi.value, dp.value, lignes, ""); }, "Commande fournisseur créée");
+      if (okC && nId && S.cf[nId] && confirm("Commande " + S.cf[nId].num + " créée.\nAfficher le bon de commande (imprimer ou enregistrer en PDF) ?")) imprimerBonCommande(S.cf[nId]);
     }})));
     c1.appendChild(box);
   });
@@ -2428,8 +2480,11 @@ function stkAchats(v, E){
       el("div", {class:"enl-d", text:"Commandée le " + dmy(cf.d) + (cf.prev ? " · réception prévue " + dmy(cf.prev) : "") + (cf.u ? " · par " + cf.u : "")}));
     var t = el("table", {class:"stk"}), tb = el("tbody");
     t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Commandé"}), el("th", {text:"Reçu"}), el("th", {text:"Reliquat"}))));
-    (cf.lignes || []).forEach(function(l){ var cn = cone(l.ref); tb.appendChild(el("tr", null, ligneArt(l.ref, cn ? "cônes de " + fmt(cn, 0) + " " + artUnite(l.ref) + " · soit " + fmt(l.q, 0) + " " + artUnite(l.ref) : artUnite(l.ref)), el("td", {text:qAchat(l.ref, l.q)}), el("td", {text:qAchat(l.ref, rec[l.ref] || 0)}), el("td", {class:"b", text:cf.st === "commandee" && rel[l.ref] ? qAchat(l.ref, rel[l.ref]) : ""}))); });
+    (cf.lignes || []).forEach(function(l){ var cn = cone(l.ref); tb.appendChild(el("tr", null, ligneArt(l.ref, cn ? "cônes de " + fmt(cn, 0) + " " + uBase(l.ref) : artUnite(l.ref)), el("td", {text:qAchat(l.ref, l.q)}), el("td", {text:qAchat(l.ref, rec[l.ref] || 0)}), el("td", {class:"b", text:cf.st === "commandee" && rel[l.ref] ? qAchat(l.ref, rel[l.ref]) : ""}))); });
     t.appendChild(tb); box.appendChild(el("div", {class:"tw"}, t));
+    box.appendChild(el("div", {class:"actions", style:"margin-top:6px"},
+      el("button", {class:"btn small sec", text:"📄 Bon de commande (imprimer / PDF)", onclick:function(){ imprimerBonCommande(cf); }}),
+      el("button", {class:"btn small sec", text:"📗 Bon de commande (Excel)", onclick:function(){ excelBonCommande(cf); }})));
     if (cf.st === "commandee") box.appendChild(el("div", {class:"actions", style:"margin-top:6px"},
       el("button", {class:"btn small", text:"Réceptionner", onclick:function(){ ui.stSec = "ent"; ui.stCf = cf.id; ui.stRq = {}; render(); }}),
       Object.keys(rec).length ? confirmBtn("Solder (reliquat abandonné)", "sec", function(){ commit(function(){ changerStatutCf(cf.id, "soldee"); }, "Commande soldée"); })
