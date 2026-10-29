@@ -1907,6 +1907,9 @@ window.cmdAnnulerEmballage = (cmdId, ts) => {
 let cmdEtqParPage = 4, cmdEtqInclureOuverts = false;
 window.cmdSetEtqParPage = (n) => { cmdEtqParPage = parseInt(n)||4; };
 window.cmdSetEtqOuverts = (v) => { cmdEtqInclureOuverts = !!v; };
+// Orientation d'impression de la liste de colisage et de la liste total (retenue sur l'appareil).
+function cmdOri(k){ try { const o = JSON.parse(localStorage.getItem('cmd_orient') || '{}'); if(o[k] === 'portrait' || o[k] === 'landscape') return o[k]; } catch(e) {} return k === 'col' ? 'landscape' : 'portrait'; }
+window.cmdSetOri = (k, v) => { try { const o = JSON.parse(localStorage.getItem('cmd_orient') || '{}'); o[k] = v; localStorage.setItem('cmd_orient', JSON.stringify(o)); } catch(e) {} };
 function cmdCarteEmballageHtml(id, cmd, canEdit, cloturee){
   const regle = CMD_COLISAGE[cmd.destination];
   const journal = getCmdEmbJournal(id).slice().sort((a,b) => b.ts - a.ts);
@@ -1928,6 +1931,10 @@ function cmdCarteEmballageHtml(id, cmd, canEdit, cloturee){
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
         ${regle ? btn('cartons', `📦 Cartons (${cmdEtqInclureOuverts ? colis.length : fermes.length})`) + btn('colisage', '📋 Colisage') : ''}
         ${btn('total', '🧾 Liste total')}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--ink-soft);">
+        ${regle ? `<span>Colisage : <select onchange="cmdSetOri('col', this.value)" style="padding:4px 6px;font-size:11px;width:auto;"><option value="portrait" ${cmdOri('col')==='portrait'?'selected':''}>Portrait</option><option value="landscape" ${cmdOri('col')==='landscape'?'selected':''}>Paysage</option></select></span>` : ''}
+        <span>Liste total : <select onchange="cmdSetOri('tot', this.value)" style="padding:4px 6px;font-size:11px;width:auto;"><option value="portrait" ${cmdOri('tot')==='portrait'?'selected':''}>Portrait</option><option value="landscape" ${cmdOri('tot')==='landscape'?'selected':''}>Paysage</option></select></span>
       </div>
       ${regle ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--ink-soft);">
         <span>Étiquettes par page : <select onchange="cmdSetEtqParPage(this.value)" style="padding:4px 6px;font-size:11px;width:auto;">${[1,2,4].map(n => `<option value="${n}" ${cmdEtqParPage===n?'selected':''}>${n}</option>`).join('')}</select></span>
@@ -2079,9 +2086,9 @@ window.cmdImprimerDocEmb = (cmdId, type) => {
   } else if(type === 'colisage'){
     const colis = cmdCartonsEmballage(cmdId);
     if(!colis.length){ showToast('Aucun carton pour l\'instant'); return; }
-    html = cmdDocColisageHtml(cmdId, cmd, colis); format = 'A4 landscape'; nom = 'Colisage';
+    html = cmdDocColisageHtml(cmdId, cmd, colis); format = 'A4 ' + cmdOri('col'); nom = 'Colisage';
   } else {
-    html = cmdDocTotalHtml(cmdId, cmd); format = 'A4 portrait'; nom = 'Liste_total';
+    html = cmdDocTotalHtml(cmdId, cmd); format = 'A4 ' + cmdOri('tot'); nom = 'Liste_total';
   }
   let zone = document.getElementById('cmd-doc-zone');
   if(zone) zone.remove();
