@@ -3272,8 +3272,8 @@ function docColisageHtml(lot, client, colis){
         tailles.map(function(t){ return "<td>" + (par[lib][t] || "") + "</td>"; }).join("") + '<td><b>' + s + '</b></td></tr>';
     }).join("");
   }).join("");
-  return '<div class="col-entete"><div>Expéditeur : <b>' + hx(e.nom) + '</b>' + e.lignes.map(function(l){ return "<br>" + hx(l); }).join("") + ' <b>' + hx(e.pays) + '</b><br>' +
-      (de ? "Date d'export : le " + dmyL(de) : "Situation de l'emballage au " + maintenantFR()) + '</div><div>' + destHtml(client) + '</div></div>' +
+  return '<div class="col-entete"><div>Expéditeur : <b>' + hx(e.nom) + '</b>' + e.lignes.map(function(l){ return "<br>" + hx(l); }).join("") + ' <b>' + hx(e.pays) + '</b>' +
+      (de ? "<br>Date d'export : le " + dmyL(de) : "") + '</div><div>' + destHtml(client) + '</div></div>' +
     '<div class="col-info">Commande ' + hx(lot) + ' · ' + hx(client) + '</div>' +
     '<table class="col-tab"><thead><tr><th>N° colis</th><th>Commande</th><th>Référence</th>' + tailles.map(function(t){ return "<th>" + t + "</th>"; }).join("") + '<th>Total</th></tr></thead><tbody>' + corps +
     '</tbody><tfoot><tr><td colspan="3" class="gauche">Total t-shirt pour export</td>' + tailles.map(function(t){ return "<td>" + totT[t] + "</td>"; }).join("") + '<td>' + total + '</td></tr></tfoot></table>' +
@@ -3509,7 +3509,7 @@ function docTotalHtml(lot, client){
       return '<tr><td>' + hx(nom) + ' ' + s + '</td><td>' + q + '</td></tr>';
     }).join("");
   }).join("");
-  return '<div class="tot-info">Commande ' + hx(lot) + ' · emballage au ' + maintenantFR() + ' · ' + hx((PK_DESTINATAIRES[client] || {}).nom || client) + '</div>' +
+  return '<div class="tot-info">Commande ' + hx(lot) + ' ' + hx((PK_DESTINATAIRES[client] || {}).nom || client) + '</div>' +
     '<table class="tot-tab"><thead><tr><th>MODELE</th><th>QUANTITE</th></tr></thead><tbody>' + corps + '</tbody><tfoot><tr><td>TOTAL</td><td>' + total + '</td></tr></tfoot></table>';
 }
 var PK_DOC_CSS = [
@@ -3553,7 +3553,7 @@ var PK_DOC_CSS = [
   "#pk-doc-zone .gauche{text-align:left!important}",
   "#pk-doc-zone .col-pied{margin-top:4mm;font-size:9pt;width:90mm}",
   "#pk-doc-zone .col-pied td{padding:1mm 2mm}#pk-doc-zone .col-pied td:first-child{width:55%}",
-  "#pk-doc-zone .tot-info{font-size:9pt;color:#333;margin-bottom:3mm}",
+  "#pk-doc-zone .tot-info{font-size:12pt;font-weight:bold;color:#000;margin-bottom:3mm}",
   "#pk-doc-zone .tot-tab{width:150mm;font-size:10pt}",
   "#pk-doc-zone .tot-tab th{font-weight:normal!important;padding:1.5mm}",
   "#pk-doc-zone .tot-tab td{padding:1mm 1.5mm}",
@@ -3856,7 +3856,7 @@ function totalDonnees(lot, client, colis){
 }
 function totalHtmlColis(lot, client, colis){
   var d = totalDonnees(lot, client, colis);
-  return '<div class="tot-info">Commande ' + hx(lot) + ' · emballage au ' + maintenantFR() + ' · ' + hx((PK_DESTINATAIRES[client] || {}).nom || client) + '</div>' +
+  return '<div class="tot-info">Commande ' + hx(lot) + ' ' + hx((PK_DESTINATAIRES[client] || {}).nom || client) + '</div>' +
     '<table class="tot-tab"><thead><tr><th>MODELE</th><th>QUANTITE</th></tr></thead><tbody>' + d.grp.map(function(g){ return '<tr class="tot-grp"><td>' + hx(g.nom) + '</td><td></td></tr>' + g.rows.map(function(r){ return '<tr><td>' + hx(r[0]) + '</td><td>' + r[1] + '</td></tr>'; }).join(""); }).join("") +
     '</tbody><tfoot><tr><td>TOTAL</td><td>' + d.total + '</td></tr></tfoot></table>';
 }
@@ -3864,7 +3864,7 @@ function colisageGrid(lot, client, colis){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var nc = 4 + tailles.length, last = nc - 1, e = PK_EXPEDITEUR, d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}, de = dernierExp(lot, client);
   var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:true}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
-  var gauche = ["Expéditeur : " + e.nom].concat(e.lignes).concat([e.pays, de ? "Date d'export : le " + dmyL(de) : "Situation de l'emballage au " + maintenantFR()]);
+  var gauche = ["Expéditeur : " + e.nom].concat(e.lignes).concat([e.pays]).concat(de ? ["Date d'export : le " + dmyL(de)] : []);
   var droite = ["Destinataire :", d.nom].concat(d.lignes).concat(d.tel ? ["TÉLÉPHONE : " + d.tel] : []);
   for (var i = 0; i < Math.max(gauche.length, droite.length); i++){
     gset(g, r, 0, gauche[i] || "", {sz:10, al:"l", b:i === 0 ? 1 : 0}); gmerge(g, r, 0, r, mid - 1);
@@ -3895,7 +3895,7 @@ function colisageGrid(lot, client, colis){
 }
 function totalGrid(lot, client, colis){
   var d = totalDonnees(lot, client, colis), g = {cols:[46, 16], rows:[], merges:[]}, r = 0;
-  gset(g, r, 0, "Commande " + lot + " · emballage au " + maintenantFR() + " · " + ((PK_DESTINATAIRES[client] || {}).nom || client), {sz:9, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
+  gset(g, r, 0, "Commande " + lot + " " + ((PK_DESTINATAIRES[client] || {}).nom || client), {b:1, sz:12, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
   gset(g, r, 0, "MODELE", {sz:11, al:"c", bd:"t"}); gset(g, r, 1, "QUANTITE", {sz:11, al:"c", bd:"t"}); r++;
   d.grp.forEach(function(gr){
     gset(g, r, 0, gr.nom, {b:1, sz:13, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); g.rows[r].h = 20; r++;
