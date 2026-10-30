@@ -260,7 +260,8 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
   /* classes de l'application en dessous de 12 px */
   .kpi .label,.kpi-mini-lbl,.kpi-mini-sub,.summary-item .si-lbl,.summary-item .si-val,.sync-badge,.sync-badge .sync-n,.hour-rend,
   .pace-marker .pm-label,.pace-legend,.nc-lbl,.nc-val,.gauge-lbl,.hero-track-legend,.hero-obj-badge,.hero-obj-badge .hob-sub,.hero-stat-lbl,
-  .rank-nums .rn-pct,.kpi-ic-sub,.user-chip .role,.sync-time{font-size:12px !important;}
+  .rank-nums .rn-pct,.kpi-ic-sub,.user-chip .role,.sync-time,.kp-l,.kp-s,main th{font-size:12px !important;}
+  main svg text{font-size:11px;}
   .kpi .label{text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink-soft);}
   .kpi .value{font-size:var(--fs-2xl);font-weight:700;}
   .kpi-mini-val{font-size:16px;}
@@ -376,3 +377,5 @@ html[data-theme="dark"] .kpi-ic-badge.blue,html[data-theme="dark"] .kpi-ic-badge
 /* Titres de sections successives dans une page : un cran sous le titre de page */
 main > * + h2{font-size:var(--fs-lg) !important;font-weight:600 !important;margin:24px 0 10px !important;color:var(--ink);}
 .card h3[style*="font-size:13px"]{font-size:var(--fs-md) !important;font-weight:600 !important;}
+/* Fiche chaîne : 15 colonnes horaires — en-têtes compacts pour tout voir sans défilement */
+@media (min-width:1024px){ .fc-scroll .fc-t th{letter-spacing:0 !important;padding-left:3px !important;padding-right:3px !important;text-transform:none !important;} .fc-scroll .fc-t td{padding:5px 3px;} .fc-scroll .fc-t input{min-width:46px !important;} .fc-scroll .fc-t .fc-poste{width:118px !important;max-width:118px;} .fc-scroll .fc-t .fc-nom{min-width:126px;} }
