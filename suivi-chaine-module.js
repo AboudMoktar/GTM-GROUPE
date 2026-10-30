@@ -166,12 +166,12 @@ window.scPickToggle = function(i, id, btn){ const c = scDraft; if(!c) return; co
 const scNavItems = window.navItems;
 window.navItems = function(){
   if(activeModule === 'chaine') return [
-    {tab:'chaine-tableau', label:'Tableau', icon:ICONS.dashboard, show:true},
+    {tab:'chaine-tableau', label:'Accueil', icon:ICONS.dashboard, show:true},
     {tab:'fiche-chaine', label:'Fiche', icon:ICONS.team, show:canSaisie(currentUser.role) || currentUser.role === 'viewer', onclick:"fcDate=null;nav('fiche-chaine')"},
     {tab:'chaine-historique', label:'Historique', icon:ICONS.historique, show:true},
-    {tab:'chaine-stats', label:'Stats', icon:ICONS.stats, show:true},
+    {tab:'chaine-stats', label:'Statistiques', court:'Stats', icon:ICONS.stats, show:true},
     {tab:'chaine-rapports', label:'Rapports', icon:ICONS.invoice || ICONS.stats, show:true},
-    {tab:'chaine-params', label:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
+    {tab:'chaine-params', label:'Paramètres', court:'Params', icon:ICONS.params, show:currentUser.role === 'admin'}
   ].filter(i => i.show);
   return scNavItems().filter(i => i.tab !== 'fiche-chaine');
 };
