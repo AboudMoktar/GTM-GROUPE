@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Suivi des commandes</title>
 <!-- GTM-GROUPE : reprise de l'application « Suivi PERCKO », affichée dans un cadre par suivi-module.js.
      Les données passent par window.parent.grpSuiviStore (getJSON/setJSON du groupe, dossier Firebase liaison/).
@@ -355,11 +355,71 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
 </style><style>
-:root[data-soc="gadh"]{--bg:#FAF7F2;--pri:#8B1F4B;--acc:#058A9E;--head:#6B1538;--sub:#F6EFE3;--tot:#F3DDE6;--line:#E8DCC8;--shadow:0 12px 30px -16px rgba(94,16,50,.3);--radius:20px;}
-:root[data-soc="gadh"] .btn,:root[data-soc="gadh"] button{border-radius:14px;}
-:root[data-soc="gadh"] header{background:radial-gradient(240px 110px at 90% 0%,rgba(207,168,36,.35),transparent 70%),linear-gradient(135deg,#9A2455,#5E1032);border-radius:0 0 24px 24px;}
-:root[data-soc="gadh"] button.btn:not(.sec):not(.bad){background:linear-gradient(135deg,#B03466,#7A1740);border-color:transparent;box-shadow:inset 0 -3px 0 rgba(207,168,36,.9);}
-:root[data-theme="dark"][data-soc="gadh"],:root[data-soc="gadh"][data-dark]{--bg:#17101A;--card:#241826;--pri:#E57BA6;--acc:#38B6C8;--head:#4A1030;--sub:#2E1F31;--tot:#3A1426;--line:#3D2B40;}
+/* ===== Charte GTM Groupe (alignée sur charte.css de l'application) ===== */
+:root{
+  --bg:#F4F6F9; --card:#FFFFFF; --ink:#0F172A; --mut:#475569; --line:#E2E8F0;
+  --pri:#1E3A5F; --pri-ink:#FFFFFF; --acc:#2563EB; --ok:#15803D; --bad:#B91C1C; --bad-bg:#FEF2F2;
+  --head:#F1F5F9; --head-ink:#334155; --sub:#F1F5F9; --tot:#E2E8F0; --nav:#0F1B2D;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",Arial,sans-serif; --cond:var(--font);
+  --shadow:0 1px 2px rgba(15,23,42,.05); --radius:12px;
+}
+:root[data-soc="tek"]{--pri:#006070;--acc:#0E7490;}
+:root[data-soc="gadh"]{--pri:#A3285D;--acc:#0E7490;}
+:root[data-soc="mgt"]{--pri:#C2410C;--acc:#C2410C;}
+:root[data-theme="dark"]{--bg:#0B1220;--card:#131C2E;--ink:#E2E8F0;--mut:#94A3B8;--line:#24324A;--head:#18233A;--head-ink:#CBD5E1;--sub:#18233A;--tot:#1F2C45;--pri-ink:#0B1220;--bad-bg:#3A1C22;--ok:#4ADE80;--bad:#F87171;}
+:root[data-theme="dark"][data-soc="tek"]{--pri:#2DB4C4;--acc:#38BDD0;}
+:root[data-theme="dark"][data-soc="gadh"]{--pri:#E57BA6;--acc:#38B6C8;}
+body{font-family:var(--font);font-size:14px;letter-spacing:0;-webkit-font-smoothing:antialiased}
+.mut{font-size:13px;color:var(--mut);opacity:1}
+/* en-tête : bandeau clair, sobre */
+header,:root[data-soc] header{background:var(--card)!important;color:var(--ink);border-bottom:1px solid var(--line);box-shadow:none;border-radius:0!important;padding:12px 16px}
+header h1{font-size:16px;font-weight:700;color:var(--ink)}
+header .sub{font-size:12px;opacity:1;color:var(--mut);letter-spacing:0}
+header .tt.tt-logo{border:1px solid var(--line);padding:3px 6px}
+header .tt.tt-logo img{height:34px}
+header label{font-size:12px;text-transform:none;letter-spacing:0;opacity:1;color:var(--mut);font-weight:600}
+header select{border:1px solid #CBD5E1;background:var(--card);color:var(--ink);border-radius:8px;min-height:40px;font-weight:600}
+header .fixed{background:var(--sub);color:var(--ink);border:1px solid var(--line);border-radius:8px;letter-spacing:.02em;min-height:40px;display:flex;align-items:center}
+/* cartes, boutons, champs */
+.card{border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--line);padding:16px 20px}
+.card h2{font-size:16px;font-weight:600}
+.btn,button.btn,:root[data-soc] button.btn:not(.sec):not(.bad){border-radius:8px!important;min-height:40px;font-weight:600;font-size:14px;box-shadow:none!important}
+:root[data-soc] button.btn:not(.sec):not(.bad){background:var(--pri)!important;border-color:var(--pri)!important;color:var(--pri-ink)!important}
+button.btn.sec{background:var(--card);color:var(--ink);border-color:#CBD5E1}
+button.btn.sec:hover{background:var(--sub)}
+button.btn.small{min-height:34px;font-size:13px}
+:root[data-soc] button{border-radius:8px}
+input,select,textarea{border-radius:8px;border-color:#CBD5E1}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.seg button{border-radius:8px!important;min-height:36px;font-size:13px;font-weight:600}
+.seg button.on{box-shadow:none}
+.stat div{border-radius:var(--radius);border-left:3px solid var(--pri);box-shadow:var(--shadow)}
+.stat b{color:var(--ink);font-weight:700}
+.stat span{font-size:12px;color:var(--mut)}
+.stk-tuile{border-radius:var(--radius)}
+.stk-tuile span{font-size:12px}
+/* tableaux : en-têtes clairs (hors grilles « Excel » de saisie) */
+th{background:var(--head);color:var(--head-ink);font-size:12px;font-weight:600;letter-spacing:.02em;border-bottom:1px solid var(--line)}
+.fabcard .fabt th{color:var(--head-ink);letter-spacing:.03em}
+.fam-bloc table.stk th{color:#fff}
+table{font-size:14px}
+.pill{font-size:12px}
+nav button,nav.n8 button{font-size:12px}
+.bar .bp{font-size:12px}
+table.sheet td.mdl{font-size:12px}
+@media (max-width:640px){.card{padding:14px}header{padding:10px 12px}}
+/* ordinateur : onglets en haut, contenu centré et lisible */
+@media (min-width:1024px){
+  header{padding:14px 32px}
+  #tabs{order:1;justify-content:flex-start;gap:4px;padding:0 32px;border-top:0;border-bottom:1px solid var(--line);box-shadow:none;background:var(--card)}
+  #view{order:2;padding:24px 32px 40px}
+  #view>*{max-width:1400px;margin-left:auto;margin-right:auto}
+  nav button,nav.n8 button{flex:0 0 auto;flex-direction:row;gap:8px;padding:12px 14px;font-size:14px;letter-spacing:0;color:var(--mut)}
+  nav button b svg{width:18px;height:18px}
+  nav button.on{color:var(--pri)}
+  nav button.on::before{top:auto;bottom:0;left:8px;right:8px;height:2px;border-radius:2px 2px 0 0}
+  .sx-bar{margin:12px 0 0;border-radius:var(--radius)}
+}
 </style>
 <script>
 (function(){var r=document.documentElement;function sync(){try{var P=window.parent.document.documentElement;var w=P.getAttribute('data-soc')||'';if((r.getAttribute('data-soc')||'')!==w){w?r.setAttribute('data-soc',w):r.removeAttribute('data-soc');}var t=P.getAttribute('data-theme');if(t&&r.getAttribute('data-theme')!==t)r.setAttribute('data-theme',t);}catch(e){}}sync();setInterval(sync,500);})();
