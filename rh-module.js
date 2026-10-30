@@ -480,7 +480,7 @@ function renderRHDashboard(container){
     </div>
 
     <div class="card" style="border:1.5px solid ${nbAnomalies>0?'var(--bad)':'var(--border)'};">
-      <h3 style="margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:6px;">⚠️ À traiter ${nbAnomalies>0?`<span class="badge red" style="font-size:9.5px;">${nbAnomalies}</span>`:''}</h3>
+      <h3 style="margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:6px;">À traiter ${nbAnomalies>0?`<span class="badge red" style="font-size:9.5px;">${nbAnomalies}</span>`:''}</h3>
       ${nbAnomalies===0 ? `<p style="font-size:12px;color:var(--good);font-weight:700;margin:0;">✓ Aucune anomalie à traiter</p>` : `
         ${anomOubli.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend bad" style="font-size:10.5px;">Oubli de pointage</span></div>`).join('')}
         ${anomSortiePasse.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend bad" style="font-size:10.5px;">Oubli de sortie (non clôturée)</span></div>`).join('')}
@@ -490,7 +490,7 @@ function renderRHDashboard(container){
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 8px;font-size:13px;">📅 Absences</h3>
+      <h3 style="margin:0 0 8px;font-size:13px;">Absences</h3>
       <div class="kpi-mini-grid" style="grid-template-columns:repeat(4,1fr);">
         <div class="kpi-mini tint-red" style="cursor:pointer;padding:8px 2px;" onclick="rhShowMaladies()"><div class="kpi-mini-val" style="font-size:15px;">${maladies.length}</div><div class="kpi-mini-lbl">Maladie</div></div>
         <div class="kpi-mini tint-gold" style="cursor:pointer;padding:8px 2px;" onclick="rhShowConges()"><div class="kpi-mini-val" style="font-size:15px;">${conges.length}</div><div class="kpi-mini-lbl">Congés</div></div>
@@ -501,17 +501,17 @@ function renderRHDashboard(container){
     </div>
 
     <div class="card" id="rh-sorties-zone">
-      <h3 style="margin:0 0 8px;font-size:13px;">🚪 Sorties en cours</h3>
+      <h3 style="margin:0 0 8px;font-size:13px;">Sorties en cours</h3>
       ${sortiesEnCours.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);margin:0;">Personne en sortie actuellement</p>` : sortiesEnCours.map(s => `
         <div class="session-row" style="cursor:pointer;padding:7px 0;" onclick="rhFicheEmpId='${s.x.id}'; nav('rh-pointage')">
           <div><b style="font-size:12.5px;">${esc(s.x.e.nom)}</b><div style="font-size:10.5px;color:var(--ink-soft);">Sorti(e) ${s.au.sortie}${s.au.prevue?' · Retour prévu '+s.au.prevue:''}</div></div>
-          <span class="hour-rend ${s.depasse?'bad':'warn'}" style="font-size:10.5px;">${s.depasse?'⚠️ Retour dépassé':'En sortie'}</span>
+          <span class="hour-rend ${s.depasse?'bad':'warn'}" style="font-size:10.5px;">${s.depasse?'Retour dépassé':'En sortie'}</span>
         </div>
       `).join('')}
     </div>
 
     <div class="card">
-      <div class="flex-header" style="margin-bottom:8px;"><h3 style="margin:0;font-size:13px;">👥 Situation du personnel</h3></div>
+      <div class="flex-header" style="margin-bottom:8px;"><h3 style="margin:0;font-size:13px;">Situation du personnel</h3></div>
       <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:8px;">
         ${[['tous','Tous'],['presents','Présents'],['retards','Retards'],['absents','Absents'],['maladie','Maladie'],['conges','Congés'],['sorties','Sorties']].map(([k,l]) =>
           `<button class="btn ${rhDashFilter===k?'btn-primary':'btn-ghost'}" style="padding:6px 10px;font-size:11px;white-space:nowrap;flex-shrink:0;" onclick="rhDashFilter='${k}'; nav('rh-dashboard')">${l}</button>`
@@ -521,7 +521,7 @@ function renderRHDashboard(container){
     </div>
 
     <div class="card">
-      <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;font-size:13px;">⏱️ Temps de travail — <span style="text-transform:capitalize;">${monthLabel(monthKey)}</span></h3>
+      <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;font-size:13px;">Temps de travail — <span style="text-transform:capitalize;">${monthLabel(monthKey)}</span></h3>
         <input type="month" value="${monthKey}" style="max-width:140px;" onchange="rhMonthKey=this.value; nav('rh-dashboard')">
       </div>
       <div class="kpi-grid">
@@ -539,7 +539,7 @@ function renderRHDashboard(container){
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 6px;font-size:13px;">📊 Statistiques</h3>
+      <h3 style="margin:0 0 6px;font-size:13px;">Statistiques</h3>
       <p style="font-size:11.5px;color:var(--ink-soft);margin:0;line-height:1.7;">
         Taux de présence : <b>${tauxPresence}%</b><br>
         Absences (justif. / non justif.) : <b>${justifiees.length}</b> / <b>${nonJustifiees.length}</b><br>
@@ -871,7 +871,7 @@ function renderRHPointage(container, canEdit){
         <button class="btn btn-primary" style="flex:1;padding:9px 6px;font-size:12px;" onclick="markAllPresent()">Tout marquer Présent</button>
         <button class="btn btn-ghost" style="flex:1;padding:9px 6px;font-size:12px;" onclick="resetDay()">Réinitialiser</button>
       </div>
-      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px 6px;font-size:12px;" onclick="ptgOuvrir('tek')">⏱ Importer la pointeuse (fichier Excel)</button>` : ''}
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px 6px;font-size:12px;" onclick="ptgOuvrir('tek')">Importer la pointeuse (fichier Excel)</button>` : ''}
       <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:700;color:${complete?'var(--good)':'var(--warn)'};">
         ${!journeeCommencee ? 'La journée n\'a pas encore commencé (début '+minToHHMM(getRefStartMin(date))+')' : (complete ? '✓ Journée complète' : '⚠ '+nonRenseigne.length+' salarié(s) non renseigné(s)')}
         <span style="color:var(--ink-faint);font-weight:600;">· ${nbRenseignes}/${emps.length} renseignés</span>
@@ -1445,29 +1445,29 @@ function renderRHParametres(container){
 function renderRHInstructions(container){
   container.innerHTML = `
     <div class="card">
-      <h3 style="margin-top:0;">👋 Bienvenue dans le module RH</h3>
+      <h3 style="margin-top:0;">Bienvenue dans le module RH</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Ce module suit la présence, les retards, les autorisations et les absences de tout le personnel, indépendamment du suivi de production (Rendement).</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">📋 Employés</h3>
+      <h3 style="margin-top:0;">Employés</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Ajoutez chaque salarié une fois (nom, poste, département, matricule). Un employé n'est jamais supprimé définitivement : on le passe en <b>Inactif</b> pour garder tout son historique sans qu'il apparaisse dans le pointage du jour.</p>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Vous pouvez importer une liste entière d'un coup (matricule + nom, une ligne par personne) depuis le bouton dédié.</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">⏱️ Pointage</h3>
+      <h3 style="margin-top:0;">Pointage</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Chaque jour, marquez <b>Présent</b> ou <b>Absent</b>. Pour un présent, l'heure d'arrivée suffit — le retard se calcule tout seul (tolérance de 5 min par tranche de 30 min). Une sortie autorisée se saisit en heure de sortie / heure de retour, la durée se calcule aussi automatiquement.</p>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Pour une absence qui dure plusieurs jours (maladie, congé...), <b>une seule saisie suffit</b> : indiquez la date de début et de fin, le système considère la personne absente tous les jours concernés sans rien repointer.</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">📊 Dashboard &amp; Synthèse</h3>
+      <h3 style="margin-top:0;">Dashboard &amp; Synthèse</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Le Dashboard donne la situation du jour (avec navigation vers n'importe quelle date) et les anomalies à traiter. La Synthèse permet de choisir n'importe quelle période (jour, semaine, mois, dates libres) et de voir soit tous les employés, soit le détail d'une seule personne.</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">💰 Heures &amp; base mensuelle</h3>
+      <h3 style="margin-top:0;">Heures &amp; base mensuelle</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">La <b>base mensuelle</b> (référence officielle du mois, ex. 208h) se saisit une fois par mois par le Responsable — elle n'est jamais calculée automatiquement. Les <b>heures travaillées</b>, elles, se calculent automatiquement (présence réelle − retards − autorisations). L'écart entre les deux donne les <b>heures supplémentaires</b> (si positif) ou le déficit (si négatif).</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">🔒 Accès</h3>
+      <h3 style="margin-top:0;">Accès</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Le <b>Responsable</b> peut tout modifier. La <b>Direction</b> peut tout consulter mais rien changer. Le module RH n'est pas accessible au Chef de chaîne.</p>
     </div>
   `;
