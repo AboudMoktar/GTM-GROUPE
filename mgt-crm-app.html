@@ -981,7 +981,7 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <button class="iconBtn secondary" id="openSearchBtn" title="Recherche avancee"> Recherche</button>
 <button class="iconBtn secondary" id="openClientListBtn" title="Liste des clients"> Clients</button>
 <button class="iconBtn secondary" id="openQuickNoteBtn" title="Note rapide"> Note</button>
-<button class="iconBtn secondary" id="openTaskReminderBtn" title="Taches non terminees"> Taches</button>
+<button class="iconBtn secondary" id="openTaskReminderBtn" title="Tâches non terminées"> Tâches</button>
 </section>
 <section class="settingsModule" hidden id="settingsModule">
   <div class="settingsHead">
@@ -1083,7 +1083,7 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <div class="clientSub">Consultez, filtrez et ouvrez la fiche de chaque client.</div>
 </div>
 <div class="clientListActions">
-<button id="clientListAddBtn" title="Creer un nouveau client">+ Nouveau client</button>
+<button id="clientListAddBtn" title="Créer un nouveau client">+ Nouveau client</button>
 </div>
 </div>
 <div class="clientListFilters">
@@ -1105,12 +1105,12 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
 <div class="pilotageEyebrow">Module Machines</div>
 <h2>Machines</h2>
 </div>
-<div class="machineModuleSub"><span class="muted">Gestion des machines installees</span></div>
+<div class="machineModuleSub"><span class="muted">Gestion des machines installées</span></div>
 </div>
 <div class="machinePlaceholder">
 <div class="machinePlaceholderIcon">⚙️</div>
 <div class="machinePlaceholderTitle">Module Machines</div>
-<div class="machinePlaceholderText">Preparation du module en cours.</div>
+<div class="machinePlaceholderText">Préparation du module en cours.</div>
 </div>
 </section>
 <section class="projetModule" hidden="" id="projetModule">
@@ -2008,7 +2008,7 @@ function filtered(){const nq=norm(state.q); return CLIENTS.filter(c=>{const hay=
 function setShownCount(n){const a=document.getElementById('shownCount');const b=document.getElementById('headerShownCount');if(a)a.textContent=n;if(b)b.textContent=n;}
 function render(){const rows=filtered(); setShownCount(rows.length); document.getElementById('resultNote').textContent=rows.length+' client(s) trouve(s)'; const tb=document.getElementById('tbody'); tb.innerHTML=''; rows.slice(0,500).forEach((c,i)=>{const tr=document.createElement('tr'); const key=mainContact(c); const group=groupName(c); if(state.selected&&state.selected[fields.id]===c[fields.id]) tr.className='active'; if(c._updated_at) tr.classList.add('changed'); tr.innerHTML='<td><div class="name">'+esc(c[fields.name])+'</div><div class="muted">'+esc(c[fields.activity])+'</div></td><td>'+esc(shortLocation(c))+'</td><td>'+(group?'<button class="groupBtn" data-group="'+esc(group)+'">'+esc(group)+'</button>':'-')+'</td><td><div class="name">'+esc(key.name||'-')+'</div>'+(key.key?'<span class="keyBadge">Personne cle</span>':'')+'<div class="muted">'+esc(key.position||'')+'</div></td><td><div>'+esc(key.mobile||c[fields.phone]||'-')+'</div><div class="muted">'+esc(key.email||c[fields.email]||'')+'</div></td><td>'+typeBadge(c)+'</td><td>'+offerBadge(c)+'</td><td><span class="pill '+clsImp(c[fields.importance])+'">'+esc(c[fields.importance])+'</span></td><td><span class="score '+scoreClass(c[fields.score])+'">'+esc(c[fields.score])+'</span></td>'; const groupBtn=tr.querySelector?tr.querySelector('[data-group]'):null; if(groupBtn) groupBtn.onclick=e=>{e.stopPropagation(); state.groupFilter=group; document.getElementById('groupFilter').value=group; render();};     tr.onclick=()=>{state.selected=c; state.edit=false; ; renderDetail(c); [...tb.children].forEach(x=>x.classList.remove('active')); tr.classList.add('active');}; tb.appendChild(tr); if(i===0 && !state.selected){state.selected=c; renderDetail(c); tr.classList.add('active');}}); if(!rows.length){document.getElementById('detail').innerHTML='<div class="empty">Aucun resultat</div>'; state.selected=null;} if(state.selected){const fresh=CLIENTS.find(c=>c[fields.id]===state.selected[fields.id]); if(fresh) state.selected=fresh; renderDetail(state.selected);}}
 function contactsView(c){const list=validContacts(c); if(!list.length) return block('Contacts personnels','-'); return '<div class="field"><label>Contacts personnels</label><div class="contactList">'+list.map(x=>'<div class="contactCard"><strong>'+esc(x.name||'Contact sans nom')+'</strong>'+(x.key?'<span class="keyBadge">Personne cle</span>':'')+'<div class="contactMeta">'+esc(x.position||'Poste non renseigne')+'</div><div class="contactMeta">Email : '+esc(x.email||'-')+'</div><div class="contactMeta">Portable : '+esc(x.mobile||'-')+'</div></div>').join('')+'</div></div>';}
-function machinesView(c){const list=validMachines(c); if(!list.length) return block('Machines installees','-'); return '<div class="field"><label>Machines installees</label><div class="sectionBox"><table class="infoTable"><thead><tr><th>Nom commercial</th><th>Model</th><th>Matricule</th><th>Annee installation</th></tr></thead><tbody>'+list.map(m=>'<tr><td>'+esc(m.commercial||'-')+'</td><td>'+esc(m.model||'-')+'</td><td>'+esc(m.serial||'-')+'</td><td>'+esc(m.year||'-')+'</td></tr>').join('')+'</tbody></table></div></div>';}
+function machinesView(c){const list=validMachines(c); if(!list.length) return block('Machines installées','-'); return '<div class="field"><label>Machines installées</label><div class="sectionBox"><table class="infoTable"><thead><tr><th>Nom commercial</th><th>Model</th><th>Matricule</th><th>Annee installation</th></tr></thead><tbody>'+list.map(m=>'<tr><td>'+esc(m.commercial||'-')+'</td><td>'+esc(m.model||'-')+'</td><td>'+esc(m.serial||'-')+'</td><td>'+esc(m.year||'-')+'</td></tr>').join('')+'</tbody></table></div></div>';}
 function visitsView(c){const list=validVisits(c); if(!list.length) return block('Historique visites','-'); return '<div class="field"><label>Historique visites</label><div class="historyList">'+list.slice().reverse().map(v=>'<div class="visitCard"><div class="visitDate">'+esc(v.date||'Date non renseignee')+'</div><div>'+esc(v.note||'-')+'</div></div>').join('')+'</div></div>';}
 function offersView(c){const list=validOffers(c); if(!list.length) return block('Offres','-'); return '<div class="field" id="offresSection"><label>Offres</label><div class="historyList">'+list.map(o=>'<div class="offerCard"><div><strong>'+esc(o.type||'Offre')+'</strong> '+relanceBadge(o)+'</div><div class="contactMeta">Niveau acceptation : '+esc(o.acceptance||'-')+'</div><div class="contactMeta">Avancement : '+esc(o.progress||'-')+'</div><div class="contactMeta">Etat : '+esc(o.status||'-')+'</div><div class="contactMeta">Alerte relance : '+esc(o.reminder||'-')+'</div><div>'+esc(o.note||'')+'</div></div>').join('')+'</div></div>';}
 function renderDetail(c){const mod=c._updated_at?'<span class="pill B">Modifie</span>':''; const last=latestVisit(c); document.getElementById('detail').innerHTML='<div class="detailHead"><h2>'+esc(c[fields.name])+'</h2><span class="pill '+clsImp(c[fields.importance])+'">'+esc(c[fields.importance])+'</span> <span class="pill">Score '+esc(c[fields.score])+'</span> '+typeBadge(c)+' '+offerBadge(c)+' '+mod+'<div class="detailActions"><button id="editBtn">Modifier</button><button class="secondary" id="copyBtn">Copier contact</button><button class="danger" id="deleteBtn">Supprimer</button></div></div><div class="detailBody">'+block('Priorite action',c[fields.priority])+contactsView(c)+block('Activite',c[fields.activity])+'<div class="split">'+block('Ville / Gouvernorat',shortLocation(c))+block('Groupe client',groupBadge(c))+'</div><div class="split">'+block('Effectif',c[fields.staff])+block('Type client',typeBadge(c))+'</div><div class="split">'+block('Zone',c[fields.zone])+block('Livraison',c[fields.delivery])+'</div>'+machinesView(c)+'<div class="split">'+block('Derniere visite/contact',last.date||'-')+block('Note derniere visite',last.note||'-')+'</div>'+visitsView(c)+offersView(c)+block('Derniere MAJ',c[fields.date])+block('Modifie par',c._updated_by||c._created_by||'-')+'</div>'+(state.edit?editForm(c):''); document.getElementById('editBtn').onclick=()=>{state.edit=!state.edit; renderDetail(c);}; document.getElementById('copyBtn').onclick=()=>copyContact(c); document.getElementById('deleteBtn').onclick=()=>deleteClient(c); const save=document.getElementById('saveEdit'); if(save) save.onclick=()=>saveEdit(c); const cancel=document.getElementById('cancelEdit'); if(cancel) cancel.onclick=()=>{state.edit=false; ; renderDetail(c);}; bindContactEditorButtons();}
@@ -2016,7 +2016,7 @@ function block(label,val){const s=String(val||''); const trusted=/^<span class="
 function contactRowHtml(x){x=x||{}; return '<div class="contactEditRow"><input data-contact-field="name" placeholder="Nom contact" value="'+esc(x.name||'')+'"><input data-contact-field="position" placeholder="Poste occupe" value="'+esc(x.position||'')+'"><input data-contact-field="email" placeholder="Email" value="'+esc(x.email||'')+'"><input data-contact-field="mobile" placeholder="Portable" value="'+esc(x.mobile||'')+'"><label class="contactKey"><input type="checkbox" data-contact-field="key" '+(x.key?'checked':'')+'> Cle</label><button class="miniDanger" data-remove-contact="1">X</button></div>';}
 function contactsEditor(c){const rows=contactList(c); return '<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Contacts personnels independants</span><button class="secondary" id="addContactRow">Ajouter contact</button></div><div id="contactsRows">'+rows.map(contactRowHtml).join('')+'</div><div class="contactHelp">Pour chaque personne : nom, poste occupe, email, portable. Cochez Cle pour les decideurs ou contacts prioritaires.</div></div>';}
 function machineRowHtml(x){x=x||{}; return '<div class="machineEditRow"><input data-machine-field="commercial" placeholder="Nom commercial" value="'+esc(x.commercial||'')+'"><input data-machine-field="model" placeholder="Model" value="'+esc(x.model||'')+'"><input data-machine-field="serial" placeholder="Matricule" value="'+esc(x.serial||'')+'"><input data-machine-field="year" placeholder="Annee" value="'+esc(x.year||'')+'"><button class="miniDanger" data-remove-machine="1">X</button></div>';}
-function machinesEditor(c){const rows=machineList(c).length?machineList(c):[{commercial:'',model:'',serial:'',year:''}]; return '<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Machines installees</span><button class="secondary" id="addMachineRow">Ajouter machine</button></div><div id="machinesRows">'+rows.map(machineRowHtml).join('')+'</div><div class="contactHelp">Saisissez : nom commercial, model, matricule et annee d installation.</div></div>';}
+function machinesEditor(c){const rows=machineList(c).length?machineList(c):[{commercial:'',model:'',serial:'',year:''}]; return '<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Machines installées</span><button class="secondary" id="addMachineRow">Ajouter machine</button></div><div id="machinesRows">'+rows.map(machineRowHtml).join('')+'</div><div class="contactHelp">Saisissez : nom commercial, model, matricule et annee d installation.</div></div>';}
 function visitRowHtml(x){x=x||{}; return '<div class="visitEditRow"><input data-visit-field="date" placeholder="Date" value="'+esc(x.date||'')+'"><textarea data-visit-field="note" placeholder="Note de visite">'+esc(x.note||'')+'</textarea><button class="miniDanger" data-remove-visit="1">X</button></div>';}
 function visitsEditor(c){const rows=visitList(c); return '<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Historique des visites</span><button class="secondary" id="addVisitRow">Ajouter visite</button></div><div id="visitsRows">'+rows.map(visitRowHtml).join('')+'</div><div class="contactHelp">Ajoutez chaque visite ou contact avec sa date et sa note.</div></div>';}
 function optionHtml(v,current){return '<option value="'+esc(v)+'" '+(v===current?'selected':'')+'>'+esc(v)+'</option>';}
@@ -2024,7 +2024,7 @@ function optionsHtml(values,current){return values.map(v=>optionHtml(v,current||
 function offerRowHtml(x){x=x||{}; return '<div class="offerEditRow"><input data-offer-field="offerId" placeholder="Ref auto" title="Reference de l offre (generee automatiquement)" value="'+esc(x.offerId||'')+'" class="offerIdCell"><select data-offer-field="marque">'+optionsHtml(offerMarqueOptions,x.marque||'')+'</select><select data-offer-field="devise">'+optionsHtml(offerDeviseOptions,x.devise||'EUR')+'</select><input data-offer-field="machine" placeholder="Machine / designation" value="'+esc(x.machine||'')+'"><input data-offer-field="commercial" placeholder="Commercial" value="'+esc(x.commercial||'')+'"><select data-offer-field="type">'+optionsHtml(offerTypeOptions,x.type)+'</select><select data-offer-field="acceptance">'+optionsHtml(offerAcceptanceOptions,x.acceptance)+'</select><input type="date" data-offer-field="sentDate" value="'+esc(dateToInput(x.sentDate))+'" title="Date envoi devis"><input type="date" data-offer-field="echeance" value="'+esc(dateToInput(x.echeance||x.validite))+'" title="Echeance / validite de l offre"><input data-offer-field="amount" placeholder="Montant" value="'+esc(x.amount||'')+'"><input data-offer-field="probability" placeholder="Prob. %" value="'+esc(x.probability||'')+'"><input data-offer-field="progress" placeholder="Avancement" value="'+esc(x.progress||'')+'"><select data-offer-field="status">'+optionsHtml(offerStatusOptions,x.status||'En attente')+'</select><select data-offer-field="validation">'+optionsHtml(offerValidationOptions,x.validation||'EN ATTENTE')+'</select><input data-offer-field="invoiceRef" placeholder="Ref. facture" value="'+esc(x.invoiceRef||x.factureRef||'')+'" title="Reference de facture obligatoire pour une validation definitive"><input type="date" data-offer-field="validationDate" value="'+esc(dateToInput(x.validationDate))+'" title="Date de validation client"><input data-offer-field="reminder" placeholder="Relance jj/mm/aaaa" value="'+esc(x.reminder||'')+'"><input data-offer-field="result" placeholder="gagne/perdu/en attente" value="'+esc(x.result||'')+'"><textarea data-offer-field="note" placeholder="Note offre">'+esc(x.note||'')+'</textarea><textarea data-offer-field="validationNote" placeholder="Note validation client">'+esc(x.validationNote||'')+'</textarea><button class="miniDanger" data-remove-offer="1">X</button></div>';}
 function offersEditor(c){const rows=offerList(c); return '<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Offres en cours / pipeline</span><button class="secondary" id="addOfferRow">Ajouter offre</button></div><div id="offersRows">'+rows.map(offerRowHtml).join('')+'</div><div class="contactHelp">Ajoutez date envoi devis, montant et probabilite : les relances J+3, J+10 et J+20 seront generees automatiquement.</div></div>';}
 function editField(k,c,labels){const value=c[k]||''; const wide=[fields.activity,fields.priority,fields.lastVisitNote].includes(k)?' wide':''; const label=esc(labels[k]||k); if(k===fields.clientType) return '<div><label>'+label+'</label><select data-field="'+esc(k)+'">'+typeOptions.map(v=>optionHtml(v,value||'Non classe')).join('')+'</select></div>'; if(k===fields.lastVisitNote||k===fields.activity||k===fields.priority) return '<div class="'+wide+'"><label>'+label+'</label><textarea data-field="'+esc(k)+'">'+esc(value)+'</textarea></div>'; return '<div class="'+wide+'"><label>'+label+'</label><input data-field="'+esc(k)+'" value="'+esc(value)+'"></div>';}
-function editForm(c){const labels={Societe:'Societe',Activite:'Activite','Gouvernorat / Zone':'Gouvernorat / Zone','Ville / Delegation':'Ville / Delegation','Type client':'Type client','Groupe client':'Groupe client',Effectif:'Effectif',Zone:'Zone',Livraison:'Livraison','Stop meme zone':'Stop meme zone','Stop hors zone':'Stop hors zone','Derniere visite/contact':'Date derniere visite/contact','Note derniere visite':'Note derniere visite',Importance:'Importance','Priorite action':'Priorite action','Score importance':'Score importance','Derniere MAJ':'Derniere MAJ'}; let html='<div class="editForm"><div class="editGrid">'; editable.forEach(k=>{html+=editField(k,c,labels);}); html+=contactsEditor(c)+machinesEditor(c)+visitsEditor(c)+offersEditor(c)+'</div><div class="saveRow"><button class="secondary" id="cancelEdit">Annuler</button><button id="saveEdit">Sauvegarder</button></div></div>'; return html;}
+function editForm(c){const labels={Societe:'Société',Activite:'Activité','Gouvernorat / Zone':'Gouvernorat / Zone','Ville / Delegation':'Ville / Délégation','Type client':'Type client','Groupe client':'Groupe client',Effectif:'Effectif',Zone:'Zone',Livraison:'Livraison','Stop meme zone':'Stop même zone','Stop hors zone':'Stop hors zone','Derniere visite/contact':'Date dernière visite/contact','Note derniere visite':'Note dernière visite',Importance:'Importance','Priorite action':'Priorité action','Score importance':'Score importance','Derniere MAJ':'Dernière MAJ'}; let html='<div class="editForm"><div class="editGrid">'; editable.forEach(k=>{html+=editField(k,c,labels);}); html+=contactsEditor(c)+machinesEditor(c)+visitsEditor(c)+offersEditor(c)+'</div><div class="saveRow"><button class="secondary" id="cancelEdit">Annuler</button><button id="saveEdit">Sauvegarder</button></div></div>'; return html;}
 function bindContactEditorButtons(){document.querySelectorAll('[data-remove-contact]').forEach(btn=>btn.onclick=()=>btn.closest('.contactEditRow').remove()); const addContact=document.getElementById('addContactRow'); if(addContact) addContact.onclick=()=>{document.getElementById('contactsRows').insertAdjacentHTML('beforeend',contactRowHtml({})); bindContactEditorButtons();}; document.querySelectorAll('[data-remove-machine]').forEach(btn=>btn.onclick=()=>btn.closest('.machineEditRow').remove()); const addMachine=document.getElementById('addMachineRow'); if(addMachine) addMachine.onclick=()=>{document.getElementById('machinesRows').insertAdjacentHTML('beforeend',machineRowHtml({})); bindContactEditorButtons();}; document.querySelectorAll('[data-remove-visit]').forEach(btn=>btn.onclick=()=>btn.closest('.visitEditRow').remove()); const addVisit=document.getElementById('addVisitRow'); if(addVisit) addVisit.onclick=()=>{document.getElementById('visitsRows').insertAdjacentHTML('beforeend',visitRowHtml({date:'',note:''})); bindContactEditorButtons();}; document.querySelectorAll('[data-remove-offer]').forEach(btn=>btn.onclick=()=>btn.closest('.offerEditRow').remove()); const addOffer=document.getElementById('addOfferRow'); if(addOffer) addOffer.onclick=()=>{document.getElementById('offersRows').insertAdjacentHTML('beforeend',offerRowHtml({status:'Actif'})); bindContactEditorButtons();};}
 function collectContacts(){return [...document.querySelectorAll('.contactEditRow')].map(row=>{const obj={name:'',position:'',email:'',mobile:'',key:false}; row.querySelectorAll('[data-contact-field]').forEach(el=>{const f=el.dataset.contactField; obj[f]=el.type==='checkbox'?el.checked:el.value.trim();}); return obj;}).filter(x=>x.name||x.position||x.email||x.mobile);}
 function collectMachines(){return [...document.querySelectorAll('.machineEditRow')].map(row=>{const obj={commercial:'',model:'',serial:'',year:''}; row.querySelectorAll('[data-machine-field]').forEach(el=>{obj[el.dataset.machineField]=el.value.trim();}); return obj;}).filter(x=>x.commercial||x.model||x.serial||x.year);}
@@ -2192,7 +2192,7 @@ function nextActionEditor(c){const a=nextActionField(c); return '<div class="nex
 function visitFrequencyEditor(c){const v=String(c.VisitFrequency||'auto'); return '<div class="visitFrequencyBox"><div class="contactsEditorTitle"><span>Frequence automatique visites</span></div><select data-visit-frequency><option value="auto" '+(v==='auto'?'selected':'')+'>Auto selon importance A=30j, B=60j, C=90j</option><option value="30" '+(v==='30'?'selected':'')+'>Tous les 30 jours</option><option value="60" '+(v==='60'?'selected':'')+'>Tous les 60 jours</option><option value="90" '+(v==='90'?'selected':'')+'>Tous les 90 jours</option><option value="0" '+(v==='0'?'selected':'')+'>Pas de visite periodique</option></select></div>';}
 function collectNextAction(){const obj={type:'',date:'',priority:'Moyenne',responsible:'',status:'En attente',comment:''}; document.querySelectorAll('[data-next-action-field]').forEach(el=>{obj[el.dataset.nextActionField]=el.value.trim();}); return obj;}
 function collectVisitFrequency(){const el=document.querySelector('[data-visit-frequency]'); return el?el.value:'';}
-function proposeNextActionIfDone(a){if(!a||!actionIsDone(a)) return a; const type=a.type||'visite'; const days=norm(type).includes('visite')?60:7; if(confirm('Action terminee. Creer prochaine action dans '+days+' jours ?')) return {type:type,date:dateToInput(addDays(new Date(),days)),priority:a.priority||'Moyenne',responsible:a.responsible||syncUser(),status:'En attente',comment:'Suite automatique apres action terminee'}; return a;}
+function proposeNextActionIfDone(a){if(!a||!actionIsDone(a)) return a; const type=a.type||'visite'; const days=norm(type).includes('visite')?60:7; if(confirm('Action terminée. Créer la prochaine action dans '+days+' jours ?')) return {type:type,date:dateToInput(addDays(new Date(),days)),priority:a.priority||'Moyenne',responsible:a.responsible||syncUser(),status:'En attente',comment:'Suite automatique apres action terminee'}; return a;}
 function genEventId(){return 'E'+Date.now()+'_'+Math.random().toString(36).slice(2,8);}
 function planningRowHtml(x){x=x||{}; if(!x.id) x.id=genEventId(); return '<div class="planningEditRow" data-event-id="'+esc(x.id)+'"><input type="hidden" data-planning-field="id" value="'+esc(x.id)+'"><input type="date" data-planning-field="date" value="'+esc(dateToInput(actionMainDate(x)))+'"><input type="date" data-planning-field="relanceDate" value="'+esc(dateToInput(actionRelanceDate(x)))+'"><select data-planning-field="type">'+optionsHtml(actionTypeOptions,x.type||'visite')+'</select><select data-planning-field="priority">'+optionsHtml(actionPriorityOptions,x.priority||'C - normal')+'</select><select data-planning-field="status">'+optionsHtml(actionStatusOptions,x.status||'planifie')+'</select><textarea data-planning-field="objective" placeholder="Objectif de la visite">'+esc(x.objective||'')+'</textarea><input data-planning-field="commercial" placeholder="Commercial" value="'+esc(x.commercial||syncUser())+'"><button class="miniDanger" data-remove-planning="1">X</button></div>';}
 function planningEditor(c){const rows=validPlanning(c).length?validPlanning(c):[{type:'visite',priority:'Moyenne',status:'En attente',commercial:syncUser()}]; return nextActionEditor(c)+visitFrequencyEditor(c)+'<div class="contactsEditor wide"><div class="contactsEditorTitle"><span>Planning commercial manuel</span><button class="secondary" id="addPlanningRow">Ajouter action</button></div><div id="planningRows">'+rows.map(planningRowHtml).join('')+'</div><div class="contactHelp">Vous pouvez ajouter des actions manuelles. Les relances devis et visites periodiques sont aussi generees automatiquement.</div></div>';}
@@ -2266,7 +2266,7 @@ async function importOfferPdf(key){const parts=String(key||'').split('|'); const
   const close=()=>{m.hidden=true;}; document.getElementById('offreNewCloseBtn').onclick=close; document.getElementById('offreNewCancelBtn').onclick=close;
   document.getElementById('offreNewSaveBtn').onclick=async()=>{
     const clientId=document.getElementById('newOfferClient').value, c=CLIENTS.find(x=>String(x[fields.id])===String(clientId)); const ref=document.getElementById('newOfferRef').value.trim(); const amount=document.getElementById('newOfferAmount').value.trim(); const sentDate=document.getElementById('newOfferDate').value; const invoiceRef=document.getElementById('newOfferInvoiceRef').value.trim(); const validation=document.getElementById('newOfferValidation').value;
-    if(!c){toast('Selectionnez un client.');return;} if(!ref){toast('La reference de l offre est obligatoire.');return;} if(!amount){toast('La valeur de l offre est obligatoire.');return;} if(!sentDate){toast('Veuillez renseigner la date de l offre.');return;} if(validation==='VALIDE'&&!invoiceRef){toast('Validation definitive impossible : ajoutez d abord la reference de facture.');return;}
+    if(!c){toast('Sélectionnez un client.');return;} if(!ref){toast('La référence de l\'offre est obligatoire.');return;} if(!amount){toast('La valeur de l\'offre est obligatoire.');return;} if(!sentDate){toast('Veuillez renseigner la date de l offre.');return;} if(validation==='VALIDE'&&!invoiceRef){toast('Validation definitive impossible : ajoutez d abord la reference de facture.');return;}
     const file=document.getElementById('newOfferPdf').files[0]; let pdfData='',pdfName=''; if(file){if(file.type!=='application/pdf'){toast('Le document doit etre un PDF.');return;} if(file.size>8*1024*1024){toast('Le PDF est trop volumineux (maximum 8 Mo).');return;} pdfData=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);}); pdfName=file.name;}
     const o={offerId:ref,amount,devise:document.getElementById('newOfferDevise').value,validation,invoiceRef,pdfData,pdfName,note:document.getElementById('newOfferNote').value.trim(),status:validation==='REFUSE'?'Non actif':'Actif',type:'Offre',sentDate:sentDate,createdAt:new Date().toISOString(),createdBy:syncUser()}; const offers=offerList(c).slice(); offers.push(o); const result=await dm.updateClient(String(c[fields.id]),{Offres:offers}); if(!result){toast('Erreur : offre non sauvegardee.');return;} ; await rebuildClientCache(); m.hidden=true; renderOffresModule(); render(); toast('Nouvelle offre ajoutee.');
   };
@@ -2966,7 +2966,7 @@ function renderProjetDetail(r){
   /* --- liens vers Machines / Client / Chaudronnerie dans la fiche --- */
   html+='<div class="projetPanel"><div class="projetPanelTitle">Elements lies au projet</div>'
     +projetLinkBar(c,p)
-    +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Machines installees chez le client, fiche client et offre de chaudronnerie liee.</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Machines installées chez le client, fiche client et offre de chaudronnerie liée.</div>'
     +'</div>';
 
   /* --- audit obligatoire : AVANT / APRES --- */
@@ -3455,8 +3455,8 @@ initApp().then(async()=>{await mgtPagePrete(); mgtLancerSetup(); try{await impor
 <div class="placeholderIcon" id="placeholderGlyph">◧</div>
 <div class="placeholderBody">
 <div class="placeholderTitle" id="placeholderTitle">Module</div>
-<span class="placeholderBadge">Module en preparation</span>
-<p>Cette fonctionnalite sera developpee dans une prochaine etape.</p>
+<span class="placeholderBadge">Module en préparation</span>
+<p>Cette fonctionnalité sera développée dans une prochaine étape.</p>
 </div>
 </div>
 </div>
@@ -4533,7 +4533,7 @@ tr.active td{background:#fce2d1}
  function apply(theme){
   const selected=theme==='light'?'light':'dark';
   root.setAttribute('data-mgt-theme',selected);
-  btn.textContent=selected==='dark'?'☀️':'🌙'; btn.title=selected==='dark'?'Activer le mode clair':'Activer le mode sombre';
+  btn.innerHTML=selected==='dark'?'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>':'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'; btn.title=selected==='dark'?'Activer le mode clair':'Activer le mode sombre';
   btn.setAttribute('aria-label',selected==='dark'?'Activer le thème clair':'Activer le thème sombre');
   try{localStorage.setItem(key,selected)}catch(e){}
  }
@@ -5454,7 +5454,7 @@ body.mgt-v44-home #pilotDashboard,body.mgt-v44-home #caClientsSection,body.mgt-v
 #mgtHomeDashboard .mgtChartHead span{font-size:11px;font-weight:700;color:var(--muted)}
 #mgtHomeDashboard .mgtBars{display:flex;align-items:flex-end;gap:8px;height:108px}
 #mgtHomeDashboard .mgtBarCol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px}
-#mgtHomeDashboard .mgtBarTrack{width:100%;max-width:30px;height:100%;display:flex;align-items:flex-end;border-radius:6px;overflow:hidden;background:color-mix(in srgb,var(--accent) 8%,transparent)}
+#mgtHomeDashboard .mgtBarTrack{width:100%;max-width:30px;height:100%;display:flex;align-items:flex-end;border-radius:6px;overflow:hidden;background:rgba(239,63,8,.08);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 #mgtHomeDashboard .mgtBarFill{width:100%;min-height:3px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--accent),var(--accentDark));transition:height .25s ease}
 #mgtHomeDashboard .mgtBarCol span{font-size:10px;font-weight:800;color:var(--muted);white-space:nowrap}
 #mgtHomeDashboard .mgtRepartList{display:flex;flex-direction:column;gap:10px}
@@ -5542,9 +5542,9 @@ function computeHomeStats(){
 function buildKpis(k){
  return ''+
   '<div class="mgtKpiCard" style="--kpi-color:#ef3f08;--kpi-soft:rgba(239,63,8,.12);--kpi-line:rgba(239,63,8,.3)"><span class="mgtKpiIcon">'+ICON_CLIENTS+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.total)+'</strong><span>Clients suivis</span></div></div>'+
-  '<div class="mgtKpiCard" style="--kpi-color:#d79a1f;--kpi-soft:rgba(215,154,31,.14);--kpi-line:rgba(215,154,31,.32)"><span class="mgtKpiIcon">'+ICON_STAR+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.prioA)+'</strong><span>Priorite A</span></div></div>'+
+  '<div class="mgtKpiCard" style="--kpi-color:#d79a1f;--kpi-soft:rgba(215,154,31,.14);--kpi-line:rgba(215,154,31,.32)"><span class="mgtKpiIcon">'+ICON_STAR+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.prioA)+'</strong><span>Priorité A</span></div></div>'+
   '<div class="mgtKpiCard" style="--kpi-color:#1f9d6b;--kpi-soft:rgba(31,157,107,.14);--kpi-line:rgba(31,157,107,.32)"><span class="mgtKpiIcon">'+ICON_DOC+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.offersActive)+'</strong><span>Offres actives</span></div></div>'+
-  '<div class="mgtKpiCard" style="--kpi-color:#c93104;--kpi-soft:rgba(201,49,4,.13);--kpi-line:rgba(201,49,4,.3)"><span class="mgtKpiIcon">'+ICON_ALERT+'</span><div class="mgtKpiBody"><strong>'+fmtDT(k.impaye)+'</strong><span>Factures impayees</span></div></div>';
+  '<div class="mgtKpiCard" style="--kpi-color:#c93104;--kpi-soft:rgba(201,49,4,.13);--kpi-line:rgba(201,49,4,.3)"><span class="mgtKpiIcon">'+ICON_ALERT+'</span><div class="mgtKpiBody"><strong>'+fmtDT(k.impaye)+'</strong><span>Factures impayées</span></div></div>';
 }
 function buildChart(k){
  var now=new Date(),months=[],values=[];
@@ -5562,15 +5562,15 @@ function buildChart(k){
  return '<div class="mgtChartCard"><div class="mgtChartHead"><strong>Chiffre d\'affaires facture</strong><span>6 derniers mois</span></div><div class="mgtBars">'+bars+'</div></div>';
 }
 function buildRepartition(k){
- var order=[['A','Priorite A','#ef3f08'],['B','Priorite B','#d79a1f'],['C','Priorite C','#1f9d6b']];
+ var order=[['A','Priorité A','#ef3f08'],['B','Priorité B','#d79a1f'],['C','Priorité C','#1f9d6b']];
  var rows=order.map(function(o){
   var n=k.importanceCount[o[0]]||0,pct=k.total?Math.round(n/k.total*100):0;
   return '<div class="mgtRepartRow"><span class="mgtRepartDot" style="--dot:'+o[2]+'"></span><span class="mgtRepartLabel">'+o[1]+'</span><span class="mgtRepartVal">'+n+' ('+pct+'%)</span><div class="mgtRepartTrack"><div class="mgtRepartFill" style="--dot:'+o[2]+';width:'+pct+'%"></div></div></div>';
  }).join('');
  var classed=order.reduce(function(s,o){return s+(k.importanceCount[o[0]]||0)},0);
  var autreN=Math.max(0,k.total-classed),autrePct=k.total?Math.round(autreN/k.total*100):0;
- rows+='<div class="mgtRepartRow"><span class="mgtRepartDot" style="--dot:#6b7785"></span><span class="mgtRepartLabel">Autre / non classe</span><span class="mgtRepartVal">'+autreN+' ('+autrePct+'%)</span><div class="mgtRepartTrack"><div class="mgtRepartFill" style="--dot:#6b7785;width:'+autrePct+'%"></div></div></div>';
- return '<div class="mgtChartCard"><div class="mgtChartHead"><strong>Repartition des clients</strong><span>par priorite</span></div><div class="mgtRepartList">'+rows+'</div></div>';
+ rows+='<div class="mgtRepartRow"><span class="mgtRepartDot" style="--dot:#6b7785"></span><span class="mgtRepartLabel">Autre / non classé</span><span class="mgtRepartVal">'+autreN+' ('+autrePct+'%)</span><div class="mgtRepartTrack"><div class="mgtRepartFill" style="--dot:#6b7785;width:'+autrePct+'%"></div></div></div>';
+ return '<div class="mgtChartCard"><div class="mgtChartHead"><strong>Répartition des clients</strong><span>par priorité</span></div><div class="mgtRepartList">'+rows+'</div></div>';
 }
 function build(){
  var home=document.getElementById('mgtHomeDashboard');
@@ -7955,9 +7955,9 @@ html[data-mgt-theme="light"] body .mgtNavSheet button.mgtNavTile.active:not(.sec
       var typeEl=document.getElementById('newOfferType');
       var marque=marqueEl?marqueEl.value:'';
       var type=typeEl?typeEl.value:'';
-      if(!c){toast('Selectionnez un client.');return;}
-      if(!ref){toast('La reference de l offre est obligatoire.');return;}
-      if(!amount){toast('La valeur de l offre est obligatoire.');return;}
+      if(!c){toast('Sélectionnez un client.');return;}
+      if(!ref){toast('La référence de l\'offre est obligatoire.');return;}
+      if(!amount){toast('La valeur de l\'offre est obligatoire.');return;}
       if(!sentDate){toast('Veuillez renseigner la date de l offre.');return;}
       if(!marque){toast('La marque est obligatoire : choisissez Morgan ou Macpi.');return;}
       if(!type){toast('Le type d\u2019offre est obligatoire.');return;}
@@ -8243,9 +8243,9 @@ html[data-mgt-theme="light"] #offresModule .offresHomeIc{background:#fdece4;colo
       var validation=document.getElementById('newOfferValidation').value;
       var marqueEl=document.getElementById('newOfferMarque'), typeEl=document.getElementById('newOfferType');
       var marque=marqueEl?marqueEl.value:'', type=typeEl?typeEl.value:'';
-      if(!c){toast('Selectionnez un client.');return;}
-      if(!ref){toast('La reference de l offre est obligatoire.');return;}
-      if(!amount){toast('La valeur de l offre est obligatoire.');return;}
+      if(!c){toast('Sélectionnez un client.');return;}
+      if(!ref){toast('La référence de l\'offre est obligatoire.');return;}
+      if(!amount){toast('La valeur de l\'offre est obligatoire.');return;}
       if(!sentDate){toast('Veuillez renseigner la date de l offre.');return;}
       if(!marque){toast('La marque est obligatoire : choisissez Morgan, Macpi, Lotus ou Autre.');return;}
       if(!type){toast('Le type d\u2019offre est obligatoire.');return;}
@@ -9620,3 +9620,14 @@ function majBouton(){var b=document.getElementById('cmpImporter');if(!b||!rappor
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',dessiner);else dessiner();
 })();
 </script>
+<style id="gtm-charte-crm">
+/* Charte GTM : plancher de lisibilité sur ordinateur (aucun texte sous 12 px) */
+@media (min-width:1024px){
+  .mgtChartHead>span,.mgtBarCol>span,span.mgtHomeCount,div.pilotageEyebrow,.mgt45Kpi>label,.mgt45Kpi>small,div.mgt45Meta,span.mgt45Badge,
+  .mgt45Metric>label,div.mgt45Next,.mgt45Next>b,.mgt45Actions>button,.mgt45Actions button.secondary,span.p7L,.phase6WeekDay>span,p.phase6Note,div.tkLegend,
+  .caPanelHead>span,.caMetric>label,.caMetric>small,div.caActivityLabel,div.caActivityValue,.caActivityValue>small,div.caFoot,.caChartSummary>span,
+  span.caChartLegend,div.caChartFoot,.placeholderBody p,.mgt45Activity span{font-size:12px!important;}
+  div.phase6TimeLabel{font-size:11px!important;}
+}
+#mgtThemeToggle svg{display:block}
+</style>
