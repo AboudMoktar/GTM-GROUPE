@@ -195,7 +195,7 @@ calCss.textContent = `
 .cal-autre{opacity:.45;}
 .cal-num{width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;font-size:14px;font-weight:600;margin:0 auto 2px;}
 .cal-auj{background:var(--rouge);color:#fff;}
-.cal-ev{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;line-height:1.35;border-radius:5px;padding:0 4px;margin:0 1px 2px;background:color-mix(in srgb,var(--c) 22%,transparent);border-left:3px solid var(--c);color:var(--ink);cursor:pointer;}
+.cal-ev{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;line-height:1.35;border-radius:5px;padding:0 4px;margin:0 1px 2px;background:var(--surface-3);background:color-mix(in srgb,var(--c) 22%,transparent);border-left:3px solid var(--c);color:var(--ink);cursor:pointer;}
 .cal-ev .cal-ev-t{display:block;overflow:hidden;text-overflow:ellipsis;}
 .cal-pt{font-size:9.5px;padding:0 3px;border-left-width:2px;}
 .cal-gros{font-size:12px;padding:2px 6px;}
@@ -215,8 +215,8 @@ calCss.textContent = `
 .cal-h{border-top:1px solid var(--border-soft);position:relative;box-sizing:border-box;}
 .cal-h span{position:absolute;top:-7px;right:4px;font-size:9.5px;color:var(--ink-soft);background:var(--surface);padding:0 2px;}
 .cal-col{position:relative;border-left:1px solid var(--border-soft);min-width:0;background-image:linear-gradient(var(--border-soft) 1px,transparent 1px);background-size:100% var(--hh);}
-.cal-col-auj{background-color:color-mix(in srgb,var(--rouge) 4%,transparent);}
-.cal-bloc{position:absolute;box-sizing:border-box;overflow:hidden;border-radius:6px;padding:2px 4px;font-size:10px;line-height:1.25;background:color-mix(in srgb,var(--c) 24%,var(--surface));border-left:3px solid var(--c);color:var(--ink);cursor:pointer;}
+.cal-col-auj{background-color:var(--surface-3);background-color:color-mix(in srgb,var(--rouge) 4%,transparent);}
+.cal-bloc{position:absolute;box-sizing:border-box;overflow:hidden;border-radius:6px;padding:2px 4px;font-size:10px;line-height:1.25;background:var(--surface-3);background:color-mix(in srgb,var(--c) 24%,var(--surface));border-left:3px solid var(--c);color:var(--ink);cursor:pointer;}
 .cal-bloc b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;}
 .cal-bloc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;color:var(--ink-soft);}
 .cal-now{position:absolute;left:0;right:0;height:2px;background:var(--rouge);z-index:2;pointer-events:none;}
