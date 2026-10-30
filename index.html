@@ -1513,7 +1513,7 @@ function buildGauge(pct, neutral, onDark, size){
   const colorVar = neutral ? (onDark ? 'rgba(255,255,255,.55)' : 'var(--ink-faint)') : palette[cls];
   const trackColor = onDark ? 'rgba(255,255,255,.16)' : null;
   const lblColor = onDark ? 'rgba(255,255,255,.6)' : null;
-  const pctStr = (pct.toFixed ? pct.toFixed(1) : pct) + '%';
+  const pctStr = neutral ? '—' : (pct.toFixed ? pct.toFixed(1) : pct) + '%';
   let pctFontSize;
   if(size >= 140) pctFontSize = '26px';
   else if(size >= 115) pctFontSize = pctStr.length >= 6 ? '18px' : '21px';
@@ -1706,7 +1706,7 @@ function renderDashboard(container){
     </div>
     <div class="hero-card">
       <div class="hero-main">
-        ${buildGauge(rendement, isEmpty, true, 84)}
+        ${buildGauge(rendement, isEmpty, true, 120)}
         <div class="hero-divider"></div>
         <div class="hero-info">
           <div class="hero-info-row"><div class="hero-info-icon">${ICONS.box}</div><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="hero-stat-lbl">Pièces produites</div></div></div>
@@ -1731,7 +1731,7 @@ function renderDashboard(container){
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#4A9EFF,#0F62D6);">${ICONS.box}</div>
         <div class="kpi-mini-val">${totals.totalGeneral} <span style="font-size:9px;color:var(--ink-faint);">PC</span></div>
         <div class="kpi-mini-lbl">Production totale</div>
-        ${!isEmpty ? `<div class="kpi-mini-sub" style="background:var(--good-bg);color:var(--good);">${ecart>=0?'+'+ecart:ecart}</div>` : ''}
+        ${!isEmpty ? `<div class="kpi-mini-sub" style="background:var(--${ecart>=0?'good':'bad'}-bg);color:var(--${ecart>=0?'good':'bad'});">${ecart>=0?'+'+ecart:ecart}</div>` : ''}
       </div>
       <div class="kpi-mini tint-green">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#34D18C,#0E8F52);">${ICONS.team}</div>
@@ -2115,7 +2115,7 @@ function renderHistorique(container){
       
       ${canSaisie(currentUser.role) ? `
         <div style="margin-top:20px; text-align:center;" class="no-print">
-          <button class="btn btn-warning" onclick="editPastDate('${histDate}')">✏️ Saisir / corriger les données de ce jour</button>
+          <button class="btn btn-warning" onclick="editPastDate('${histDate}')">Saisir / corriger les données de ce jour</button>
         </div>
       ` : ''}
     </div>
@@ -2216,7 +2216,7 @@ function renderStats(container){
 
     <div class="kpi-grid">
       <div class="kpi kpi-ic"><div class="kpi-ic-badge blue">${ICONS.box}</div><div><div class="kpi-ic-label">Production période</div><div class="kpi-ic-value">${totalAll} <span style="font-size:12px;color:var(--ink-faint);">PC</span></div></div></div>
-      <div class="kpi kpi-ic"><div class="kpi-ic-badge ${rendClass(avgRend)==='bad'?'red':(rendClass(avgRend)==='excellent'?'gold':'green')}">${ICONS.target}</div><div><div class="kpi-ic-label">Rendement moyen</div><div class="kpi-ic-value ${rendClass(avgRend)}">${avgRend.toFixed(1)}%</div></div></div>
+      <div class="kpi kpi-ic"><div class="kpi-ic-badge ${!totalAll?'':(rendClass(avgRend)==='bad'?'red':(rendClass(avgRend)==='excellent'?'gold':'green'))}">${ICONS.target}</div><div><div class="kpi-ic-label">Rendement moyen</div><div class="kpi-ic-value ${totalAll?rendClass(avgRend):''}">${totalAll?avgRend.toFixed(1)+'%':'—'}</div></div></div>
       ${activeDays.length >= 2 ? `
       <div class="kpi kpi-ic"><div class="kpi-ic-badge green">${ICONS.crown}</div><div><div class="kpi-ic-label">Meilleur jour</div><div class="kpi-ic-value" style="font-size:14px;">${bestDay.iso.split('-').reverse().join('/')}<br>${bestDay.total} PC (${Math.round(bestDay.rend)}%)</div></div></div>
       <div class="kpi kpi-ic"><div class="kpi-ic-badge red">${ICONS.pause}</div><div><div class="kpi-ic-label">Jour le plus faible</div><div class="kpi-ic-value" style="font-size:14px;">${worstDay.iso.split('-').reverse().join('/')}<br>${worstDay.total} PC (${Math.round(worstDay.rend)}%)</div></div></div>
@@ -2236,7 +2236,7 @@ function renderStats(container){
           <thead><tr><th>#</th><th>Opératrice</th><th class="num" style="text-align:right;">Total pièces</th><th class="num" style="text-align:right;">Part</th></tr></thead>
           <tbody>
             ${ranking.map((r,i)=>`<tr>
-              <td>${i+1}${i===0?' 🏆':''}</td>
+              <td>${i+1}</td>
               <td style="font-weight:700;">${r.name}</td>
               <td style="text-align:right;font-family:var(--mono);font-weight:700;">${r.total}</td>
               <td style="text-align:right;font-family:var(--mono);">${totalAll>0?Math.round(r.total/totalAll*100):0}%</td>
@@ -2335,7 +2335,7 @@ function renderParams(container){
     <div class="card" style="border:1.5px solid #DC2626;">
       <h3 style="margin:0 0 4px;color:#DC2626;">Phase de test — Réinitialiser</h3>
       <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface tout l'historique TEK-TREND (saisies, pointages, absences, commandes…). Les comptes utilisateurs ne sont jamais touchés.</p>
-      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('tek')">🗑 Réinitialiser TEK-TREND</button>
+      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('tek')">Réinitialiser TEK-TREND</button>
     </div>
   `;
 

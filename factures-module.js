@@ -522,15 +522,15 @@ function renderFactParams(main){
   const soc = factSoc(), P = factParams(soc), mgt = soc === 'mgt';
   const b = mgtSection(main, (mgt ? `<span style="cursor:pointer;" onclick="nav('fact-liste')">‹</span> ` : ICONS.params + ' ') + 'Réglages de facturation');
   const refs = !mgt && typeof suiviReferences === 'function' ? suiviReferences() : {};
+  b.classList.add('pg-etroit');
   b.innerHTML = `<div class="card">
     ${mgt ? `<p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">Les coordonnées de MGT et la TVA par défaut se règlent dans Params.</p>` : `
       <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">Coordonnées imprimées en tête des factures ${esc(SOCIETES[soc].nom)}.</p>
       ${mgtChamp('Raison sociale', 'fx-raison', P.raison)}
       ${mgtZone('Adresse', 'fx-adresse', P.adresse)}
-      ${mgtChamp('Matricule fiscal', 'fx-mf', P.mf)}
+      <div class="pg-grille2">${mgtChamp('Matricule fiscal', 'fx-mf', P.mf)}${mgtChamp('RIB', 'fx-rib', P.rib)}
       ${mgtChamp('Téléphone', 'fx-tel', P.tel)}${mgtChamp('E-mail', 'fx-email', P.email)}
-      ${mgtChamp('RIB', 'fx-rib', P.rib)}
-      ${mgtChamp('TVA par défaut (%)', 'fx-tva', P.tva, 'number')}`}
+      ${mgtChamp('TVA par défaut (%)', 'fx-tva', P.tva, 'number')}</div>`}
     <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Timbre fiscal (€)', 'fx-timbre', P.timbre, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Délai de paiement (jours)', 'fx-delai', P.delai, 'number', 'min="0"')}</div></div>
     ${mgt ? `<div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Taux horaire technicien (DT HT)', 'fx-taux', P.tauxHoraire, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Forfait déplacement (DT HT)', 'fx-depl', P.deplacement, 'number', 'step="0.001" min="0"')}</div></div>` : ''}
     ${mgtZone('Mentions par défaut (bas de facture)', 'fx-mention', P.mention)}

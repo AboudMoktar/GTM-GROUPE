@@ -133,6 +133,11 @@ html[data-soc="mgt"]{--accent-on-nav:#FB8A50;}
   .card h2{margin:0 0 14px;}
   main > h2,main .page-title,main > .flex-header h2{font-size:var(--fs-xl);font-weight:700;}
 }
+/* Titres de page : pas d'icône décorative (et jamais d'icône géante faute de taille) */
+main .flex-header h2{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink);letter-spacing:-.01em;}
+main .flex-header h2 > svg{display:none;}
+main .flex-header h2 > span[onclick]{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);font-size:20px;line-height:1;}
+main .flex-header{margin-bottom:16px;min-height:40px;}
 
 /* ---------- 6. Boutons ---------- */
 .btn{gap:8px;border-radius:var(--radius-sm);padding:9px 16px;min-height:40px;font-size:var(--fs-md);font-weight:600;line-height:1.2;transition:background .15s,border-color .15s,color .15s,box-shadow .15s;}
@@ -154,6 +159,11 @@ html[data-soc="mgt"]{--accent-on-nav:#FB8A50;}
 .field .req,.field label .req{color:var(--bad);margin-left:2px;}
 .input-cell input{border:1px solid var(--border-strong);border-radius:6px;font-family:var(--mono);}
 .input-cell input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
+/* Contrôles « nus » (sans classe ni style de bordure) : même aspect que les champs */
+main select:not([class]):not([style*="border"]),
+main input:is([type="date"],[type="month"],[type="time"]):not([class]):not([style*="border"]){min-height:40px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:var(--fs-md);font-family:var(--sans);max-width:100%;}
+main select:not([class]):not([style*="border"]):focus,
+main input:is([type="date"],[type="month"],[type="time"]):not([class]):not([style*="border"]):focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 .flex-header input[type="date"]{border:1px solid var(--border-strong);border-radius:var(--radius-sm);min-height:40px;font-family:var(--sans);font-weight:500;}
 
 /* ---------- 8. Tableaux ---------- */
@@ -345,3 +355,23 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
 .summary-strip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
 /* petites étiquettes dans la barre du bas du téléphone */
 .bottomnav span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ---------- 16. Pages de réglages (formulaires) ---------- */
+@media (min-width:1024px){
+  .pg-etroit{max-width:920px;}
+  .pg-grille2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;}
+}
+
+/* ---------- 17. Indicateurs à icône (kpi-ic) : pastilles plates ---------- */
+.kpi-ic-badge{width:40px !important;height:40px !important;border-radius:var(--radius-sm) !important;box-shadow:none !important;background:var(--accent-bg) !important;}
+.kpi-ic-badge svg{width:20px !important;height:20px !important;color:var(--accent) !important;stroke-width:2 !important;}
+.kpi-ic-badge.blue{background:#E0ECFA !important;} .kpi-ic-badge.blue svg{color:#1D4ED8 !important;}
+.kpi-ic-badge.green{background:#DCF3E4 !important;} .kpi-ic-badge.green svg{color:var(--good) !important;}
+.kpi-ic-badge.red{background:#FBE4E4 !important;} .kpi-ic-badge.red svg{color:var(--bad) !important;}
+.kpi-ic-badge.gold{background:#FBEFD5 !important;} .kpi-ic-badge.gold svg{color:var(--warn) !important;}
+.kpi-ic-label{font-size:var(--fs-xs) !important;font-weight:600 !important;}
+.kpi-ic-value{font-weight:700 !important;}
+html[data-theme="dark"] .kpi-ic-badge.blue,html[data-theme="dark"] .kpi-ic-badge.green,html[data-theme="dark"] .kpi-ic-badge.red,html[data-theme="dark"] .kpi-ic-badge.gold{background:var(--surface-2) !important;}
+/* Titres de sections successives dans une page : un cran sous le titre de page */
+main > * + h2{font-size:var(--fs-lg) !important;font-weight:600 !important;margin:24px 0 10px !important;color:var(--ink);}
+.card h3[style*="font-size:13px"]{font-size:var(--fs-md) !important;font-weight:600 !important;}
