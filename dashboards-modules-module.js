@@ -78,8 +78,8 @@ window.renderGadhDashboard = function(container){
     for(let i = 5; i >= 0; i--){ const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() - i); const iso = toISODateLocal(d), tt = gadhDayTotals(iso); chartDays.push({label:iso.split('-')[2] + '/' + iso.split('-')[1], reel:tt.totalReel, obj:tt.totalObj}); }
     const rendTxt = t.rendement != null ? t.rendement : null;
     container.innerHTML = `
-      <div class="dd-haut"><div><h2 style="font-size:20px;">${auj ? 'Aujourd\'hui' : 'Production du ' + date.split('-').reverse().join('/')}</h2>
-        <input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhAttDate=this.value; nav('gadh-dashboard')" style="margin-top:6px;padding:7px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--ink);font-size:13px;"></div></div>
+      <div class="dd-haut"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><h3 style="font-size:16px;font-weight:600;margin:0;">${auj ? 'Aujourd\'hui' : 'Production du ' + date.split('-').reverse().join('/')}</h3>
+        <input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhAttDate=this.value; nav('gadh-dashboard')" style="min-height:38px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font-size:14px;"></div></div>
       <div class="dd-jauges4">${ddJaugeP('Rendement du jour', rendTxt)}${ddJaugeP('Rythme à cette heure', rythme ? rythme.pct : null)}${ddJaugeP('Présence du personnel', presence)}${ddJaugeP('Objectif atteint', t.totalObj > 0 ? Math.min(100, t.totalReel / t.totalObj * 100) : null)}</div>
       <div class="dd-boites">
         ${ddBoite(t.totalReel, 'Pièces retournées', t.totalReel ? 'ok' : 'nul')}

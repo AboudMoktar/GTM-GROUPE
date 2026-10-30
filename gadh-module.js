@@ -220,7 +220,7 @@ function renderGadhParametres(container){
     <div class="card">
       <h3 style="margin:0 0 4px;">Cadence par référence</h3>
       <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Mêmes références que l'onglet CMD. Indiquez la cadence (pièces/heure) de chaque référence en production ; l'objectif et le rendement de l'onglet Production sont ensuite calculés automatiquement, sans aucune saisie.</p>
-      ${refsCmd.length===0 ? buildEmptyState("Aucune référence dans le catalogue Commandes") : refsCmd.map(([rk]) => `
+      ${refsCmd.length===0 ? buildEmptyState("Aucune référence dans le catalogue Commandes") : '<div class="pg-grille2 pg-lignes">' + refsCmd.map(([rk]) => `
         <div class="session-row">
           <div style="flex:1;min-width:0;font-weight:700;font-size:12.5px;">${esc(gadhRefName(rk))}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -228,7 +228,7 @@ function renderGadhParametres(container){
             <span style="font-size:11px;color:var(--ink-faint);">pièces/h</span>
           </div>
         </div>
-      `).join('')}
+      `).join('') + '</div>'}
     </div>
 
     <div class="card">
