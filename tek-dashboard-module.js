@@ -64,7 +64,8 @@ function tdEmployes(){
   });
   const total = emps.length;
   return {total, present, absent, conge, maladie, autorisee, injustifiee, autre, nonRenseigne, absents, retards,
-    presence: total > 0 ? present / total * 100 : null};
+    // Personne n'est encore pointé : pas de pourcentage (et pas de « Faible » en rouge) avant le pointage du jour.
+    presence: total > 0 && nonRenseigne < total ? present / total * 100 : null};
 }
 function tdCommandes(){
   const resume = (typeof suiviResume === 'function') ? suiviResume() : [];
@@ -124,13 +125,10 @@ function tdRender(main){
   try { D = tdDonnees(); } catch(e) { console.error('Tableau de bord TEK-TREND', e); main.innerHTML = '<div class="card"><div class="dd-vide">Tableau de bord indisponible pour le moment.</div></div>'; return; }
   const jour = new Date(getTodayISO() + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   main.innerHTML = `
-    <div class="td-hero">
-      <span class="td-hero-logo">${societeLogo('tek', 26, 'TEK-TREND', 120)}</span>
-      <div class="td-hero-txt"><h2>Tableau de bord</h2><span>${esc(jour)}</span></div>
-    </div>
+    <div class="pg-tete"><div><h2 class="pg-titre">Tableau de bord TEK-TREND</h2><div class="pg-sous">${esc(jour)}</div></div></div>
     <div class="td-wrap">
       <div class="dd-jauges4">
-        ${tdJauge('Rendement production', D.prod.rend, 'rendement')}
+        ${tdJauge('Rendement production', D.prod.pieces ? D.prod.rend : null, 'rendement')}
         ${tdJauge('Rendement chaîne', D.chaine.rend, 'chaine')}
         ${tdJauge('Présence du personnel', D.emp.presence, 'rh')}
         ${tdJauge('Avancement commandes', D.cmd.avancement, 'commandes')}

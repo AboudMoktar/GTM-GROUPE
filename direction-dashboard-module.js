@@ -15,7 +15,7 @@ function ddSecuriser(fn, defaut){ try { const v = fn(); return v === undefined |
 function ddDonnees(){
   const today = getTodayISO(), D = {};
   D.prodTek = ddSecuriser(() => computeTotals(getDay(today)).totalGeneral, 0);
-  D.rendTek = ddSecuriser(() => { const t = computeTotals(getDay(today)).totalGeneral, o = getObjForDay(getDay(today)); return o > 0 ? t / o * 100 : null; }, null);
+  D.rendTek = ddSecuriser(() => { const t = computeTotals(getDay(today)).totalGeneral, o = getObjForDay(getDay(today)); return o > 0 && t > 0 ? t / o * 100 : null; }, null); // aucune pièce saisie : pas de pourcentage
   D.retGadh = ddSecuriser(() => gadhDayTotals(today).totalReel, 0);
   D.rendGadh = ddSecuriser(() => { const r = gadhDayTotals(today).rendement; return typeof r === 'number' ? r : null; }, null);
   D.presents = ddSecuriser(() => {
@@ -41,7 +41,7 @@ function ddDonnees(){
   D.lotsEnCours = D.lots.filter(l => l.enCours).sort((a, b) => b.pct - a.pct);
   D.lotsFinis = D.lots.filter(l => !l.enCours);
   D.avancement = (() => { const q = D.lotsEnCours.reduce((t, l) => t + l.qte, 0), e = D.lotsEnCours.reduce((t, l) => t + l.exp, 0); return q > 0 ? e / q * 100 : null; })();
-  D.presence = D.presents.total > 0 ? D.presents.n / D.presents.total * 100 : null;
+  D.presence = D.presents.total > 0 && D.presents.n > 0 ? D.presents.n / D.presents.total * 100 : null; // personne pointé : pas de pourcentage
   D.alertes = ddSecuriser(() => notifCalculer(), []);
   D.activite = ddSecuriser(() => {
     const l = []; (getJSON('audit_jours', []) || []).slice(-3).forEach(j => Object.values(auditJour(j)).forEach(e => l.push(e)));
@@ -79,15 +79,19 @@ function ddDonut(parts){
 }
 const ddCouleurRend = (v) => v === null ? 'var(--ink-faint)' : v >= 85 ? 'var(--good)' : v >= 60 ? 'var(--warn)' : 'var(--crit)';
 
-const ddTon = (v) => v === null ? '#9aa4b2' : v >= 85 ? '#10b9a0' : v >= 60 ? '#f29a4b' : '#e5484d';
+// Couleurs de statut de la charte (vert / orange / rouge), gris quand il n'y a pas de données.
+const ddTon = (v) => v === null ? '#94A3B8' : v >= 85 ? '#15803D' : v >= 60 ? '#B45309' : '#B91C1C';
 function ddJaugeP(titre, valeur){
   const c = ddTon(valeur), v = valeur === null ? 0 : Math.max(0, Math.min(100, valeur)), R = 32, C = 2 * Math.PI * R, l = C * v / 100;
   const etat = valeur === null ? 'Pas de données' : valeur >= 85 ? 'Très bon' : valeur >= 60 ? 'À surveiller' : 'Faible';
-  return `<div class="dd-jp" style="--c:${c};"><div class="dd-jp-t">${titre}</div><div class="dd-jp-r">
+  const cl = valeur === null ? 'nul' : valeur >= 85 ? 'ok' : valeur >= 60 ? 'warn' : 'bad';
+  return `<div class="dd-jp dd-jp-${cl}" style="--c:${c};"><div class="dd-jp-t">${titre}</div><div class="dd-jp-r">
     <svg viewBox="0 0 80 80" class="dd-jp-svg"><circle cx="40" cy="40" r="${R}" fill="none" stroke="var(--surface-3)" stroke-width="9"/>${v > 0 ? `<circle cx="40" cy="40" r="${R}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${l} ${C - l}" transform="rotate(-90 40 40)"/>` : ''}</svg>
     <div class="dd-jp-v">${valeur === null ? '—' : Math.round(valeur)}${valeur === null ? '' : '<small>%</small>'}</div></div><span class="dd-jp-s">${etat}</span></div>`;
 }
 function ddBoite(valeur, libelle, ton, clic){
+  // Un zéro n'est ni une alerte ni un succès : affichage neutre (avant toute saisie du jour, tout était rouge ou vert).
+  if(parseFloat(String(valeur).replace(',', '.')) === 0) ton = 'nul';
   return `<div class="dd-bx dd-bx-${ton}" ${clic ? `onclick="${clic}" style="cursor:pointer;"` : ''}><div class="dd-bx-l">${libelle}</div><div class="dd-bx-v">${valeur}</div></div>`;
 }
 function ddBarreLot(l, fini){ return `<div class="dd-lot${fini ? ' fini' : ''}"><div style="width:${fini ? 100 : Math.max(l.pct, 3)}%"></div><span>${esc(String(l.lot))}</span><b>${fini ? l.qte : l.pct + ' %'}</b></div>`; }

@@ -37,7 +37,8 @@ function gdEmployes(){
   });
   const total = emps.length;
   return {total, present, absent, retard, sortie, autorisation, conge, maladie, nonRenseigne, absents, retards,
-    presence: total > 0 ? present / total * 100 : null};
+    // Personne n'est encore pointé : pas de pourcentage (et pas de « Faible » en rouge) avant le pointage du jour.
+    presence: total > 0 && nonRenseigne < total ? present / total * 100 : null};
 }
 function gdCommandes(){
   const lots = (typeof cmdCommandesEnCoursPourGadh === 'function') ? cmdCommandesEnCoursPourGadh() : [];
@@ -81,11 +82,10 @@ function gdRender(main){
   try { D = gdDonnees(); } catch(e) { console.error('Tableau de bord GADH', e); main.innerHTML = '<div class="card"><div class="dd-vide">Tableau de bord indisponible pour le moment.</div></div>'; return; }
   const jour = new Date(getTodayISO() + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   main.innerHTML = `
-    <div class="flex-header"><h2><span class="td-h2-ico">${ICONS.stats}</span> Tableau de bord GADH TUNISIA</h2></div>
+    <div class="pg-tete"><div><h2 class="pg-titre">Tableau de bord GADH TUNISIA</h2><div class="pg-sous">${esc(jour)}</div></div></div>
     <div class="td-wrap">
-      <div class="dd-date" style="margin-bottom:14px;text-transform:capitalize;">${esc(jour)}</div>
       <div class="dd-jauges4">
-        ${ddJaugeP('Rendement production', D.rend.rendement)}
+        ${ddJaugeP('Rendement production', D.rend.totalReel ? D.rend.rendement : null)}
         ${ddJaugeP('Présence du personnel', D.emp.presence)}
         ${ddJaugeP('Avancement retours', D.cmd.avancement)}
       </div>
