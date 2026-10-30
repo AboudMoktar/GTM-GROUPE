@@ -1396,7 +1396,7 @@ function renderShell(){
 
   document.getElementById('app').innerHTML = `
     <div class="sidebar no-print">
-      <div class="side-logo">${appBrandingHTML()}</div>
+      <div class="side-logo">${appBrandingHTML()}${activeSociete && SOCIETES[activeSociete] ? `<span class="side-soc">${esc(SOCIETES[activeSociete].nom)}</span>` : ''}</div>
       <nav>${items.map(i=>navBtn(i,'')).join('')}</nav>
       <div class="side-sep"></div>
       <nav>
@@ -1407,6 +1407,7 @@ function renderShell(){
     <div class="app-body">
       <div class="topbar no-print">
         ${appBrandingHTML()}
+        <div class="tb-titre" id="tb-titre"></div>
         <div class="user-chip">
           <div class="sync-wrap">
             <span id="sync-badge" class="sync-badge sync-off" role="button" tabindex="0" title="Resynchroniser" onclick="syncBadgeClic()" style="cursor:pointer;">Mode local</span>
@@ -3004,8 +3005,6 @@ window.onload = init;
 <script src="./mgt-lettrage-module.js"></script>
 <script src="./mgt-communication-module.js"></script>
 <script src="./mgt-theme-module.js"></script>
-<script src="./tek-theme-module.js"></script>
-<script src="./grp-hub-theme-module.js"></script>
 <script src="./profils-module.js"></script>
 <script src="./theme-nav-module.js"></script>
 <script src="./direction-dashboard-module.js"></script>
@@ -3020,6 +3019,8 @@ window.onload = init;
 <script src="./gadh-dashboard-module.js"></script>
 <script src="./hors-ligne-module.js"></script>
 <script src="./transfert-rendement-module.js"></script>
+<!-- Charte graphique commune : chargée en dernier pour s'appliquer à tous les modules -->
+<link rel="stylesheet" href="./charte.css">
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', function(){

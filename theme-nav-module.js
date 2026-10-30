@@ -6,7 +6,7 @@ function themeAppliquer(t){
   // clair/sombre enregistré s'applique de nouveau dans les autres modules).
   if(document.getElementById('main') && typeof gtmStyleApp === 'function' && gtmStyleApp()) t = 'light';
   document.documentElement.setAttribute('data-theme', t);
-  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', t === 'dark' ? '#0b1220' : '#0F3D66');
+  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', t === 'dark' ? '#0A111D' : '#0F1B2D');
   document.querySelectorAll('iframe').forEach(f => { try { f.contentDocument.documentElement.setAttribute('data-theme', t); } catch(e) {} });
   document.querySelectorAll('.theme-btn').forEach(b => { b.innerHTML = t === 'dark' ? '☀️' : '🌙'; b.title = t === 'dark' ? 'Mode clair' : 'Mode sombre'; });
 }
@@ -54,7 +54,15 @@ function navMajBarre(){
   barre.querySelector('.deep-titre').textContent = it ? it.label : '';
 }
 const navThemeOrigine = window.nav;
-window.nav = function(){ const r = navThemeOrigine.apply(this, arguments); try { navMajBarre(); } catch(e) {} return r; };
+// Titre de l'écran dans la barre du haut (ordinateur) : « Module · Onglet ».
+function navMajTitre(){
+  const z = document.getElementById('tb-titre'); if(!z) return;
+  const it = (typeof navItems === 'function' ? navItems() : []).find(i => i.tab === activeTab);
+  const soc = (typeof SOCIETES !== 'undefined' && typeof activeSociete !== 'undefined' && SOCIETES[activeSociete]) ? SOCIETES[activeSociete].nom : '';
+  const t = it ? String(it.label || '') : '';
+  z.innerHTML = (soc ? '<span class="tb-soc">' + esc(soc) + '</span><span class="tb-sep"></span>' : '') + '<span>' + esc(t) + '</span>';
+}
+window.nav = function(){ const r = navThemeOrigine.apply(this, arguments); try { navMajBarre(); navMajTitre(); } catch(e) {} return r; };
 const navThemeShell = window.renderShell;
 window.renderShell = function(){ const r = navThemeShell.apply(this, arguments); try { themeAppliquer(themeActuel()); } catch(e) {} return r; };
 
