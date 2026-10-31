@@ -11,9 +11,10 @@
         }
       },
       "sessions": {
-        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists()",
+        ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists() && (root.child('groupe1/users_v2/'+auth.uid).child('profil').val() === 'sysadmin' || (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true && !root.child('groupe1/users_v2/'+auth.uid).child('profil').exists()))",
         "$sid": {
-          ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && (!newData.exists() || newData.child('username').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val())"
+          ".read": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && !root.child('groupe1/users_v2/'+auth.uid).child('portail').exists()",
+          ".write": "auth != null && root.child('groupe1/users_v2/'+auth.uid).exists() && ((newData.exists() && newData.child('username').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val() && (!data.exists() || data.child('username').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val())) || (!newData.exists() && (data.child('username').val() === root.child('groupe1/users_v2/'+auth.uid).child('username').val() || (root.child('groupe1/users_v2/'+auth.uid).child('profil').val() === 'sysadmin' || (root.child('groupe1/users_v2/'+auth.uid).child('groupe').val() === true && !root.child('groupe1/users_v2/'+auth.uid).child('profil').exists())))))"
         }
       },
       "tek": {

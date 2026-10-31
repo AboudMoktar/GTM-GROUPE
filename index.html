@@ -459,6 +459,17 @@ const OP_KEYS = ['op1', 'op2', 'op3', 'op4'];
 // à ce domaine — il sert uniquement de format d'identifiant technique.
 const AUTH_EMAIL_DOMAIN = 'tek-trend.app';
 function emailForUsername(u){ return u.toLowerCase().trim() + '@' + AUTH_EMAIL_DOMAIN; }
+// Règle des mots de passe (création et changement) : 8 caractères minimum,
+// au moins une lettre et un chiffre, différent de l'identifiant.
+const MDP_MIN = 8;
+const MDP_REGLE = MDP_MIN + ' caractères minimum, avec au moins une lettre et un chiffre';
+function mdpErreur(pw, username){
+  pw = pw || '';
+  if(pw.length < MDP_MIN) return 'Mot de passe : ' + MDP_MIN + ' caractères minimum';
+  if(!/[A-Za-zÀ-ÿ]/.test(pw) || !/[0-9]/.test(pw)) return 'Mot de passe : au moins une lettre et un chiffre';
+  if(username && pw.toLowerCase() === String(username).toLowerCase().trim()) return "Le mot de passe ne doit pas être l'identifiant";
+  return '';
+}
 
 // --- Rôles (3) : admin (Responsable Magasin) / chef_chaine (Chef de chaîne) / viewer (Direction) ---
 // admin       : accès complet (saisie + historique + stats + paramètres + comptes)
@@ -471,7 +482,8 @@ function roleBadgeClass(role){ return role === 'admin' ? 'green' : (role === 'ch
 // Mode local (Firebase non configuré) : ancien système, comptes stockés uniquement
 // sur cet appareil (jamais synchronisés). Sert de repli hors-ligne / test.
 // groupe:true = direction du groupe (accès aux trois sociétés + vue direction), voir groupe-module.js.
-const DEFAULT_USERS = [{username:"responsable", password:"123", role:"admin", nom:"Resp. Magasin", groupe:true},{username:"direction", password:"123", role:"viewer", nom:"Direction", groupe:true}];
+// Aucun compte par défaut : l'ancien mode démo (mots de passe « 123 ») est retiré.
+const DEFAULT_USERS = [];
 function getLocalUsers(){
   try { const v = window.localStorage.getItem(CACHE_PREFIX+'local_users'); if(v) return JSON.parse(v); } catch(e) {}
   return DEFAULT_USERS;
@@ -581,11 +593,14 @@ function syncBadgeClic(){
   try{ fbListenRefs.forEach(r => { try{ r.off(); }catch(e){} }); }catch(e){}
   fbListenRefs = [];
   try{ fbRootRef.child('sessions').off(); }catch(e){}
+  try{ if(sessionsRef) sessionsRef.off(); }catch(e){} sessionsRef = null;
   attachFirebaseDataListeners();
 }
 window.addEventListener('online', () => { if(firebaseReady && fbAuth && fbAuth.currentUser && !fbListenRefs.length) attachFirebaseDataListeners(); });
 let fbAuth = null;
 function initFirebase(){
+  // Base reliée : on efface les anciens comptes locaux (mots de passe en clair) restés sur l'appareil.
+  if(firebaseConfigured()){ try { window.localStorage.removeItem(CACHE_PREFIX+'local_users'); } catch(e) {} }
   if(!firebaseConfigured()){
     console.warn('Firebase non configuré : mode local uniquement (pas de partage entre appareils).');
     setSyncBadge('off');
@@ -686,6 +701,7 @@ function detachFirebaseDataListeners(){
   fbListenRefs.forEach(function(ref){ ref.off(); });
   fbListenRefs = [];
   if(fbRootRef){ fbRootRef.child('sessions').off(); }
+  try{ if(sessionsRef) sessionsRef.off(); }catch(e){} sessionsRef = null;
   fbFirstLoad = true;
 }
 function syncToFirebase(key, value){
@@ -708,6 +724,7 @@ function syncToFirebase(key, value){
 // pour éviter tout écrasement concurrent quand plusieurs appareils
 // sont connectés en même temps.
 let sessionsCache = {};
+let sessionsRef = null; // liste complète (administrateur) ou seulement ma session
 function genId(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 function shortDevice(){
   const ua = navigator.userAgent || '';
@@ -732,6 +749,7 @@ function timeAgo(ts){
 const SESSION_STALE_MS = 30 * 60 * 1000;
 function cleanupStaleSessions(){
   if(!firebaseReady || !fbRootRef) return;
+  if(!(typeof canManageAccounts === 'function' && canManageAccounts())) return; // réservé à l'administrateur
   const now = Date.now();
   Object.entries(sessionsCache).forEach(([sid, s]) => {
     if(sid !== mySessionId && s && s.lastSeen && (now - s.lastSeen) > SESSION_STALE_MS){
@@ -743,8 +761,15 @@ function watchSessions(){
   try { const s = window.localStorage.getItem(CACHE_PREFIX+'sessions'); if(s) sessionsCache = JSON.parse(s); } catch(e) {}
   if(!firebaseReady || !fbRootRef) return;
   if(typeof isPortail === 'function' && isPortail()) return; // les clients externes ne lisent pas les sessions du personnel
-  fbRootRef.child('sessions').on('value', function(snap){
-    sessionsCache = snap.val() || {};
+  // Administrateur : toutes les sessions (écran Comptes, déconnexion à distance).
+  // Autres comptes : uniquement leur propre session (pour être déconnectés à distance).
+  const admin = typeof canManageAccounts === 'function' && canManageAccounts();
+  if(!admin && !mySessionId) return;
+  if(sessionsRef){ try { sessionsRef.off(); } catch(e) {} }
+  sessionsRef = admin ? fbRootRef.child('sessions') : fbRootRef.child('sessions').child(mySessionId);
+  sessionsRef.on('value', function(snap){
+    if(admin) sessionsCache = snap.val() || {};
+    else { sessionsCache = {}; if(snap.exists()) sessionsCache[mySessionId] = snap.val(); }
     try { window.localStorage.setItem(CACHE_PREFIX+'sessions', JSON.stringify(sessionsCache)); } catch(e) {}
     if(currentUser && mySessionId && !sessionsCache[mySessionId]){
       if(typeof hlSessionPerdueParAbsence === 'function' && hlSessionPerdueParAbsence()){ writeMySession(); return; }
@@ -1120,6 +1145,14 @@ function startSessionAndRender(){
   if(heartbeatTimer) clearInterval(heartbeatTimer);
   heartbeatTimer = setInterval(writeMySession, 30000);
   enterApp();
+  mdpFaibleRappel();
+}
+// Mot de passe trop faible (ancienne règle) : on ouvre « Mon compte » après la connexion.
+function mdpFaibleRappel(){
+  let faible = false;
+  try { faible = window.sessionStorage.getItem(CACHE_PREFIX+'mdp_faible') === '1'; } catch(e) {}
+  if(!faible || typeof profilsMonCompte !== 'function') return;
+  setTimeout(() => { if(currentUser) profilsMonCompte(true); }, 700);
 }
 function canAccessRH(){ return currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer'); }
 function canAccessGADH(){ return currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer'); }
@@ -1283,6 +1316,7 @@ function renderLogin(err){
       // Mode sécurisé : Firebase Authentication (aucun mot de passe stocké par l'application)
       try{
         await fbAuth.signInWithEmailAndPassword(emailForUsername(u), p);
+        try { if(mdpErreur(p, u)) window.sessionStorage.setItem(CACHE_PREFIX+'mdp_faible', '1'); else window.sessionStorage.removeItem(CACHE_PREFIX+'mdp_faible'); } catch(e) {}
         // La suite (chargement du profil, affichage) est gérée par onAuthStateChanged dans init().
       }catch(err){
         console.error('Erreur de connexion Firebase Auth :', err.code, err.message);
@@ -1296,14 +1330,14 @@ function renderLogin(err){
       }
     } else {
       // Mode local uniquement (Firebase non configuré) : ancien système, un seul appareil.
-      const user = getLocalUsers().find(x => x.username === u && x.password === p);
+      const user = getLocalUsers().find(x => x.username === u && x.password && x.password === p);
       if(user){
         currentUser = user;
         try { window.sessionStorage.setItem(CACHE_PREFIX+'user', JSON.stringify(user)); } catch(e) {}
         startSessionAndRender();
       } else {
         btn.disabled = false; btn.textContent = originalLabel;
-        renderLogin('Identifiants incorrects.');
+        renderLogin(getLocalUsers().length ? 'Identifiants incorrects.' : "Application non reliée à la base de données : connexion impossible.");
       }
     }
   };
@@ -2448,7 +2482,7 @@ function renderSessions(container){
       <h3 style="margin-top:0;">Mon mot de passe</h3>
       <p style="font-size:12px;color:var(--ink-soft);margin-top:0;">Connecté en tant que <b>${currentUser.nom}</b> (${currentUser.username}).</p>
       <div class="field"><label>Mot de passe actuel (pour confirmer)</label><input type="password" id="mypw-current" placeholder="Requis pour changer le mot de passe"></div>
-      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="mypw-new" placeholder="Au moins 6 caractères"></div>
+      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="mypw-new" placeholder="${MDP_REGLE}"></div>
       <button class="btn btn-primary" onclick="changeMyPassword()">Changer mon mot de passe</button>
     </div>` : `
     <div class="card">
@@ -2507,7 +2541,7 @@ function renderSessions(container){
         <div class="card" style="background:var(--surface-2); margin-bottom:14px;">
           <div class="field"><label>Nom affiché</label><input type="text" id="uf-nom"></div>
           <div class="field"><label>Identifiant (sans espace, ex : contremaitre)</label><input type="text" id="uf-username"></div>
-          <div class="field"><label>Mot de passe</label><input type="password" id="uf-password" placeholder="Au moins 6 caractères"></div>
+          <div class="field"><label>Mot de passe</label><input type="password" id="uf-password" placeholder="${MDP_REGLE}"></div>
           <div class="field"><label>Rôle</label>
             <select id="uf-role">
               <option value="viewer">Direction (consultation)</option>
@@ -2576,7 +2610,7 @@ function renderSessions(container){
     const password = document.getElementById('uf-password').value;
     const role = document.getElementById('uf-role').value;
     if(!nom || !username){ showToast('Nom et identifiant requis'); return; }
-    if(!password || password.length < 6){ showToast('Mot de passe : 6 caractères minimum'); return; }
+    { const e = mdpErreur(password, username); if(e){ showToast(e); return; } }
     const acces = readSocietesField(); if(!acces) return;
     try{
       let secApp;
@@ -2592,7 +2626,7 @@ function renderSessions(container){
       console.error(err);
       let msg = "Erreur lors de la création du compte.";
       if(err.code === 'auth/email-already-in-use') msg = 'Cet identifiant est déjà utilisé.';
-      else if(err.code === 'auth/weak-password') msg = 'Mot de passe trop faible (6 caractères minimum).';
+      else if(err.code === 'auth/weak-password') msg = 'Mot de passe trop faible (' + MDP_REGLE + ').';
       else if(err.code === 'auth/operation-not-allowed') msg = "Authentification par email/mot de passe non activée côté Firebase (voir instructions).";
       showToast(msg);
     }
@@ -2621,11 +2655,12 @@ function renderSessions(container){
     const currentPw = document.getElementById('mypw-current').value;
     const newPw = document.getElementById('mypw-new').value;
     if(!currentPw || !newPw){ showToast('Renseignez le mot de passe actuel et le nouveau'); return; }
-    if(newPw.length < 6){ showToast('Nouveau mot de passe : 6 caractères minimum'); return; }
+    { const e = mdpErreur(newPw, currentUser.username); if(e){ showToast(e); return; } }
     try{
       const cred = firebase.auth.EmailAuthProvider.credential(emailForUsername(currentUser.username), currentPw);
       await fbAuth.currentUser.reauthenticateWithCredential(cred);
       await fbAuth.currentUser.updatePassword(newPw);
+      try { window.sessionStorage.removeItem(CACHE_PREFIX+'mdp_faible'); } catch(e) {}
       showToast('Mot de passe modifié avec succès');
       nav('sessions');
     }catch(err){
