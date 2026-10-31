@@ -1190,8 +1190,9 @@ function renderModuleSelect(){
             ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
             ['chaine', ICONS.team, 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
             ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
-            ['gadh-tableau', ICONS.stats, 'Tableau de bord', 'Rendement, RH, commandes en un coup d\'œil'],
-            ['gadh', ICONS.gadh, 'GADH Tunisia', 'Production, personnel, pointage'],
+            ['gadh-tableau', ICONS.stats, 'Tableau de bord', 'Pièces, personnel, commandes en un coup d\'œil'],
+            ['gadh', ICONS.gadh, 'Gestion Production', 'Pièces assemblées et retournées, par commande'],
+            ['gadh-rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
             ['commandes', '<span style="font-size:24px;line-height:1;">📦</span>', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
             ['machines', ICONS.wrench, 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
             ['factures', ICONS.invoice, 'Facturation', 'Factures, avoirs, paiements, relances']
@@ -1379,10 +1380,17 @@ function navItems(){
       {tab:'gadh-dashboard', label:'Accueil', icon:ICONS.dashboard, show:true},
       {tab:'gadh-production', label:'Production', icon:ICONS.saisie, show:true},
       {tab:'commandes-home', label:'Commandes', icon:ICONS.prodchain, show:(typeof canAccessCommandes==='function' && canAccessCommandes())},
-      {tab:'gadh-rh', label:'RH', icon:ICONS.idBadge, show:true},
       {tab:'gadh-historique', label:'Historique', icon:ICONS.historique, show:true},
-      {tab:'gadh-stats', label:'Statistiques', court:'Stats', icon:ICONS.stats, show:true},
-      {tab:'gadh-parametres', label:'Paramètres', icon:ICONS.params, show:currentUser.role==='admin'}
+      {tab:'gadh-stats', label:'Statistiques', court:'Stats', icon:ICONS.stats, show:true}
+    ];
+    return items.filter(i=>i.show);
+  }
+  if(activeModule === 'gadh-rh'){
+    const items = [
+      {tab:'gadh-rh-pointage', label:'Pointage', icon:ICONS.saisie, show:true},
+      {tab:'gadh-rh-personnel', label:'Employés', icon:ICONS.idBadge, show:true},
+      {tab:'gadh-rh-stats', label:'Statistiques', court:'Stats', icon:ICONS.stats, show:true},
+      {tab:'gadh-rh-params', label:'Paramètres', icon:ICONS.params, show:currentUser.role==='admin'}
     ];
     return items.filter(i=>i.show);
   }
@@ -1403,7 +1411,7 @@ function navItems(){
 // apparence identique à l'application Gestion Rendement d'origine. MGT et GADH gardent leur habillage.
 function gtmStyleApp(){
   if(typeof activeModule === 'undefined' || !activeModule || activeModule === 'admin' || activeModule === 'mgt') return false;
-  if(activeModule === 'gadh' || activeModule === 'gadh-tableau') return false;
+  if(activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-tableau') return false;
   if((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh') return false;
   return true;
 }
@@ -1412,7 +1420,7 @@ function appBrandingHTML(){
   // Toutes les sociétés : vrai logo (image) sur pastille blanche.
   // Logo officiel de la société, sur une pastille blanche (lisible sur la barre bleu nuit comme sur la barre latérale).
   const soc = (activeModule === 'mgt') ? 'mgt'
-    : (activeModule === 'gadh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
+    : (activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
   return `<div class="logo-wrap" style="align-items:flex-start;"><span style="display:inline-flex;align-items:center;background:#fff;border-radius:9px;padding:3px 9px;">${societeLogo(soc, 34, societeMot(soc), 120)}</span></div>`;
 }
 function renderShell(){
@@ -1468,13 +1476,20 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
   // La page Rendement TEK-TREND ('dashboard') n'appartient qu'au module Rendement : depuis un autre
   // module (GADH, MGT, RH…), on revient à l'accueil de ce module à la place.
   if(tab === 'messages') tab = 'dashboard'; // onglet retiré : un ancien lien ramène au Tableau
+  // RH GADH : module séparé de la production. Les anciens liens « gadh-rh » ouvrent
+  // l'onglet correspondant (pointage ou employés) ; les paramètres deviennent les horaires.
+  if(tab === 'gadh-rh') tab = (typeof gadhRHView !== 'undefined' && gadhRHView === 'pointage') ? 'gadh-rh-pointage' : 'gadh-rh-personnel';
+  if(tab === 'gadh-rh-pointage' && typeof gadhRHView !== 'undefined'){ gadhRHView = 'pointage'; }
+  if(tab === 'gadh-rh-personnel' && typeof gadhRHView !== 'undefined'){ gadhRHView = 'personnel'; }
+  if(tab === 'gadh-parametres') tab = 'gadh-rh-params';
+  if(/^gadh-rh-/.test(tab) && activeModule !== 'gadh-rh' && typeof modulesDeSociete === 'function' && modulesDeSociete('gadh').indexOf('gadh-rh') >= 0){ activeModule = 'gadh-rh'; renderShell(); if(tab === 'gadh-rh-pointage') return; }
   if(tab === 'dashboard' && activeModule && activeModule !== 'rendement' && typeof navAccueilTab === 'function' && navAccueilTab() !== 'dashboard') tab = navAccueilTab();
   activeTab = tab;
   document.querySelectorAll('.bottomnav button, .sidebar nav button').forEach(b => b.classList.remove('active'));
@@ -1498,10 +1513,12 @@ function nav(tab){
   else if(tab === 'rh-instructions'){ renderRHInstructions(rhSectionContainer(main,'Instructions')); }
   else if(tab === 'gadh-dashboard'){ renderGadhDashboard(gadhSectionContainer(main,'Tableau de bord')); }
   else if(tab === 'gadh-production'){ renderGadhProduction(gadhSectionContainer(main,'Production')); }
-  else if(tab === 'gadh-rh'){ renderGadhRH(gadhSectionContainer(main,'RH')); }
+  else if(tab === 'gadh-rh-pointage'){ renderGadhRH(gadhSectionContainer(main,'Pointage')); }
+  else if(tab === 'gadh-rh-personnel'){ renderGadhRH(gadhSectionContainer(main,'Employés')); }
+  else if(tab === 'gadh-rh-stats'){ renderGadhStatsRH(gadhSectionContainer(main,'Statistiques RH')); }
+  else if(tab === 'gadh-rh-params'){ renderGadhParametres(gadhSectionContainer(main,'Paramètres RH')); }
   else if(tab === 'gadh-historique'){ renderGadhHistorique(gadhSectionContainer(main,'Historique')); }
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
-  else if(tab === 'gadh-parametres'){ renderGadhParametres(gadhSectionContainer(main,'Paramètres')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
   else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
   else if(tab.indexOf('mgt-') === 0){ renderMgt(tab, main); }

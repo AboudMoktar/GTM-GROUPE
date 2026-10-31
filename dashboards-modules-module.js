@@ -56,50 +56,38 @@ window.renderDashboardVueDirection = dmTekNouveau;
 // ---------- GADH ----------
 const dmGadhOrigine = window.renderGadhDashboard;
 window.renderGadhDashboard = function(container){
+  // Accueil de la Production GADH : uniquement les pièces retournées et les commandes
+  // (le personnel et le pointage sont dans le module RH GADH).
   try {
-    if(!gadhAttDate) gadhAttDate = getTodayISO();
-    const date = gadhAttDate, auj = date === getTodayISO();
-    const emps = activeGadhEmployees(), t = gadhDayTotals(date), y = gadhDayTotals(gadhYesterdayISO(date));
-    const res = emps.map(([id]) => resolveGadhDayStatus(id, date));
-    const present = res.filter(r => r.source === 'pointage' && r.statut === 'present').length;
-    const absent = res.filter(r => r.source === 'pointage' && r.statut === 'absent').length + res.filter(r => r.source === 'periode').length;
-    const retard = res.filter(r => r.source === 'pointage' && r.statut === 'retard').length;
-    const nonRens = res.filter(r => r.source === null).length;
-    const rythme = typeof gadhComputeRhythm === 'function' ? gadhComputeRhythm(date) : null;
-    const presence = emps.length ? (present + retard) / emps.length * 100 : null;
-    const refs = Object.entries(t.parRef).map(([rk, q]) => [gadhRefName(rk), q]).sort((a, b) => b[1] - a[1]);
+    if(!gadhProdDate) gadhProdDate = getTodayISO();
+    const date = gadhProdDate, auj = date === getTodayISO();
+    const parRef = cmdRetourGadhParRefDuJour(date);
+    const total = Object.values(parRef).reduce((a, q) => a + (q || 0), 0);
+    const veille = cmdRetourGadhDuJour(gadhYesterdayISO(date));
+    const refs = Object.entries(parRef).filter(r => r[1] > 0).map(([rk, q]) => [gadhRefName(rk), q]).sort((a, b) => b[1] - a[1]);
     const maxRef = Math.max(1, ...refs.map(r => r[1]));
     const cmds = cmdCommandesEnCoursPourGadh();
-    const alertes = [];
-    if(!isGadhWorkingDay(date)) alertes.push(['warn', 'Jour non travaillé', 'Selon le planning actuel']);
-    if(Object.keys(getGadhCadences()).length === 0) alertes.push(['warn', 'Aucune cadence configurée', 'Voir Paramètres']);
-    if(nonRens > 0) alertes.push(['warn', nonRens + ' salarié(s) non renseigné(s)', 'Pointage du jour']);
+    const qteCmd = cmds.reduce((a, c) => a + (c.total || 0), 0), retCmd = cmds.reduce((a, c) => a + (c.retourFait || 0), 0);
+    const enAttente = typeof suiviLotsChezGadh === 'function' ? suiviLotsChezGadh() : 0;
+    let semaine = 0;
     const chartDays = [];
-    for(let i = 5; i >= 0; i--){ const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() - i); const iso = toISODateLocal(d), tt = gadhDayTotals(iso); chartDays.push({label:iso.split('-')[2] + '/' + iso.split('-')[1], reel:tt.totalReel, obj:tt.totalObj}); }
-    const rendTxt = t.rendement != null ? t.rendement : null;
+    for(let i = 5; i >= 0; i--){ const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() - i); const iso = toISODateLocal(d), q = cmdRetourGadhDuJour(iso); semaine += q; chartDays.push({label:iso.split('-')[2] + '/' + iso.split('-')[1], reel:q, obj:0}); }
     container.innerHTML = `
-      <div class="dd-haut"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><h3 style="font-size:16px;font-weight:600;margin:0;">${auj ? 'Aujourd\'hui' : 'Production du ' + date.split('-').reverse().join('/')}</h3>
-        <input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhAttDate=this.value; nav('gadh-dashboard')" style="min-height:38px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font-size:14px;"></div></div>
-      <div class="dd-jauges4">${ddJaugeP('Rendement du jour', rendTxt)}${ddJaugeP('Rythme à cette heure', rythme ? rythme.pct : null)}${ddJaugeP('Présence du personnel', presence)}${ddJaugeP('Objectif atteint', t.totalObj > 0 ? Math.min(100, t.totalReel / t.totalObj * 100) : null)}</div>
+      <div class="dd-haut"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><h3 style="font-size:16px;font-weight:600;margin:0;">${auj ? 'Aujourd\'hui' : 'Pièces du ' + date.split('-').reverse().join('/')}</h3>
+        <input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhProdDate=this.value; nav('gadh-dashboard')" style="min-height:38px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;"></div></div>
       <div class="dd-boites">
-        ${ddBoite(t.totalReel, 'Pièces retournées', t.totalReel ? 'ok' : 'nul')}
-        ${ddBoite(t.totalObj, 'Objectif', 'nul')}
-        ${ddBoite(present, 'Présents', present ? 'ok' : 'nul', "nav('gadh-rh')")}
-        ${ddBoite(absent, 'Absents', absent ? 'bad' : 'nul', "nav('gadh-rh')")}
-        ${ddBoite(retard, 'Retards', retard ? 'bad' : 'nul', "nav('gadh-rh')")}
+        ${ddBoite(total.toLocaleString('fr-FR'), 'Pièces retournées', total ? 'ok' : 'nul')}
+        ${ddBoite(veille.toLocaleString('fr-FR'), 'La veille', 'nul')}
+        ${ddBoite(semaine.toLocaleString('fr-FR'), '6 derniers jours', 'nul')}
         ${ddBoite(cmds.length, 'Commandes en cours', cmds.length ? 'ok' : 'nul')}
+        ${ddBoite(retCmd.toLocaleString('fr-FR') + ' / ' + qteCmd.toLocaleString('fr-FR'), 'Pièces des commandes en cours', 'nul')}
+        ${ddBoite(enAttente, 'Lots en attente de retour', enAttente ? 'bad' : 'nul')}
       </div>
-      <div class="dd-g dd-g3">
-        ${dmPlat('À surveiller', '', alertes.map(a => `<div class="dd-li"><i style="background:var(--warn)"></i><div><b>${esc(a[1])}</b><span>${esc(a[2])}</span></div></div>`).join(''), 'Aucune anomalie détectée')}
-        ${dmPlat('Production par modèle', t.totalReel + ' PC', refs.map(([n, q]) => dmBarre(n, q, q / maxRef * 100, 'gris')).join(''), 'Aucune saisie ce jour-là')}
+      <div class="dd-g dd-g2">
+        ${dmPlat('Pièces par modèle', total + ' PC', refs.map(([n, q]) => dmBarre(n, q, q / maxRef * 100, 'gris')).join(''), 'Aucune pièce retournée ce jour-là')}
         ${dmPlat('Commandes en cours', cmds.length, cmds.map(c => dmBarre(c.numero, c.retourFait + ' / ' + c.total, c.pct, c.pct >= 100 ? 'teal' : 'gris')).join(''), 'Aucune commande en cours')}
       </div>
-      <div class="dd-card" style="margin-bottom:14px;"><div class="dd-ct"><h3>Évolution de la production (6 derniers jours)</h3><span>${t.totalReel} vs ${y.totalReel} la veille</span></div>${gadhWeekChart(chartDays)}</div>
-      <div class="dd-boites" style="grid-template-columns:repeat(2,1fr);">
-        ${ddBoite('Production', 'Voir la production du jour', 'nul', "nav('gadh-production')")}${ddBoite('Historique', 'Productions passées', 'nul', "nav('gadh-historique')")}
-        ${ddBoite('Stats', 'Statistiques', 'nul', "nav('gadh-stats')")}${ddBoite('Paramètres', 'Configuration', 'nul', "nav('gadh-parametres')")}
-      </div>`;
-    container.querySelectorAll('.dd-boites:last-child .dd-bx-v').forEach(e => { e.style.fontSize = '20px'; });
+      <div class="dd-card" style="margin-bottom:14px;"><div class="dd-ct"><h3>Pièces retournées (6 derniers jours)</h3><span>${total} vs ${veille} la veille</span></div>${gadhWeekChart(chartDays)}</div>`;
     if(typeof prodCarteResume === 'function') prodCarteResume(container, 'gadh');
   } catch(e) { console.error('Tableau de bord GADH', e); return dmGadhOrigine(container); }
 };

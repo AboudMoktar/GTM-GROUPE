@@ -27,7 +27,7 @@ const PROFILS = {
   sysadmin:        {label:'Administrateur système', role:'viewer', groupe:true, societes:{tek:true, gadh:true, mgt:true}, admin:true, aide:'Voit tout sans modifier · crée les comptes · maintenance'},
   responsable:     {label:'Responsable Magasin', role:'admin', groupe:false, societes:{tek:true, gadh:true}, aide:'Accès total TEK-TREND et GADH'},
   secretaire_tek:  {label:'Secrétaire TEK-TREND', role:'admin', groupe:false, societes:{tek:true}, acces:{tek:{rh:'*', factures:'*'}}, aide:'RH et facturation TEK-TREND'},
-  secretaire_gadh: {label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-rh'], factures:'*'}}, aide:'RH et facturation GADH'},
+  secretaire_gadh: {label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{'gadh-rh':'*', factures:'*'}}, aide:'RH et facturation GADH'},
   resp_gadh:       {label:'Responsable GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-dashboard', 'gadh-production', 'gadh-prodchain', 'commandes-home', 'gadh-historique', 'gadh-stats']}}, aide:'Rendement et commandes à l\'assemblage'},
   agent_chaine:    {label:'Agent chaîne TEK-TREND', role:'chef_chaine', groupe:false, societes:{tek:true}, acces:{tek:{rendement:['dashboard', 'saisie']}}, aide:'Saisie des rendements par heure'}  ,
   secretaire_mgt:  {label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true}, acces:{mgt:{mgt:['mgt-devis', 'mgt-devis-edit', 'mgt-lettrage', 'mgt-ca', 'fact-liste', 'fact-clients', 'fact-edit', 'fact-params']}}, aide:'Facturation et devis MGT'},

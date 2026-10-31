@@ -205,37 +205,23 @@ function gadhBadgeFor(r){
 }
 
 // ============================================================
-// PARAMÈTRES (Références/Cadences + Horaires/Plannings)
+// PARAMÈTRES RH (Horaires/Plannings + réinitialisation)
+// La production GADH ne compte que les pièces : la cadence par référence n'est plus
+// affichée (les valeurs déjà saisies restent enregistrées, sans effet).
 // ============================================================
 function renderGadhParametres(container){
   if(!canEditGadh()){
     container.innerHTML = buildEmptyState("Accès réservé au Responsable", "Cette page n'est pas accessible avec votre rôle.");
     return;
   }
-  const refsCmd = cmdRefsCatalogue(); // même catalogue que l'onglet CMD — plus de liste de références séparée pour GADH
-  const cadences = getGadhCadences();
   const plannings = Object.entries(getGadhPlannings()).sort((a,b)=>b[1].dateDebut.localeCompare(a[1].dateDebut));
 
   container.innerHTML = `
     <div class="card">
-      <h3 style="margin:0 0 4px;">Cadence par référence</h3>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Mêmes références que l'onglet CMD. Indiquez la cadence (pièces/heure) de chaque référence en production ; l'objectif et le rendement de l'onglet Production sont ensuite calculés automatiquement, sans aucune saisie.</p>
-      ${refsCmd.length===0 ? buildEmptyState("Aucune référence dans le catalogue Commandes") : '<div class="pg-grille2 pg-lignes">' + refsCmd.map(([rk]) => `
-        <div class="session-row">
-          <div style="flex:1;min-width:0;font-weight:700;font-size:12.5px;">${esc(gadhRefName(rk))}</div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            <input type="number" min="0" step="1" value="${cadences[rk]||''}" placeholder="0" style="width:72px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" onchange="setGadhCadence('${rk}', this.value)">
-            <span style="font-size:11px;color:var(--ink-faint);">pièces/h</span>
-          </div>
-        </div>
-      `).join('') + '</div>'}
-    </div>
-
-    <div class="card">
       <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;">Horaires de travail (plannings)</h3>
         <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="showAddGadhPlanningForm()">+ Nouveau planning</button>
       </div>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px;">Un planning s'applique à une période précise. Modifier les horaires ne change jamais les jours déjà passés.</p>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px;">Horaires utilisés pour le pointage (retards, import de la pointeuse). Un planning s'applique à une période précise. Modifier les horaires ne change jamais les jours déjà passés.</p>
       <div id="gadh-planning-form-zone"></div>
       ${plannings.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);">Aucun planning personnalisé — horaires par défaut appliqués (Lun-Ven 08h-17h, pause 12h-12h30 ; Samedi 08h-12h ; Dimanche non travaillé).</p>` : plannings.map(([id,p]) => `
         <div class="session-row" style="flex-direction:column;align-items:stretch;gap:4px;">
@@ -251,7 +237,7 @@ function renderGadhParametres(container){
     <div class="card" style="border:1.5px solid #DC2626;">
       <h3 style="margin:0 0 4px;color:#DC2626;">Phase de test — Réinitialiser</h3>
       <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface tout l'historique GADH (saisies, pointages, absences, commandes…). Les comptes utilisateurs ne sont jamais touchés.</p>
-      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('gadh')">🗑 Réinitialiser GADH</button>
+      <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('gadh')">Réinitialiser GADH</button>
     </div>
   `;
 
@@ -336,13 +322,7 @@ let gadhFicheEmpId = null;
 
 function renderGadhRH(container){
   if(!gadhAttDate) gadhAttDate = getTodayISO();
-  container.innerHTML = `
-    <div class="card" style="padding:8px;display:flex;gap:6px;">
-      <button class="btn ${gadhRHView==='personnel'?'btn-primary':'btn-ghost'}" style="flex:1;padding:8px 4px;font-size:12.5px;" onclick="gadhRHView='personnel'; nav('gadh-rh')">Personnel</button>
-      <button class="btn ${gadhRHView==='pointage'?'btn-primary':'btn-ghost'}" style="flex:1;padding:8px 4px;font-size:12.5px;" onclick="gadhRHView='pointage'; nav('gadh-rh')">Pointage</button>
-    </div>
-    <div id="gadh-rh-sub"></div>
-  `;
+  container.innerHTML = `<div id="gadh-rh-sub"></div>`;
   const sub = document.getElementById('gadh-rh-sub');
   if(gadhFicheEmpId && gadhRHView==='personnel'){ renderGadhFiche(sub); return; }
   if(gadhRHView==='personnel') renderGadhPersonnel(sub);
@@ -613,17 +593,34 @@ window.deleteGadhAbsence = (id) => {
 // PRODUCTION (entièrement automatique, par référence)
 // ============================================================
 let gadhProdDate = null;
+// Production GADH : uniquement les pièces. Les quantités viennent des pièces
+// assemblées et retournées à TEK-TREND (suivi des commandes), sans objectif,
+// cadence ni rendement.
+function gadhRefsTriees(parRef){
+  return Object.entries(parRef).filter(([, q]) => q > 0).sort((a, b) => b[1] - a[1] || gadhRefName(a[0]).localeCompare(gadhRefName(b[0])));
+}
+function gadhListeRefsHTML(parRef, vide){
+  const refs = gadhRefsTriees(parRef);
+  if(!refs.length) return buildEmptyState(vide || 'Aucune pièce retournée ce jour-là');
+  return refs.map(([rk, q]) => `<div class="session-row"><b style="font-size:13px;">${esc(gadhRefName(rk))}</b><b style="font-size:14px;font-variant-numeric:tabular-nums;">${q.toLocaleString('fr-FR')} pcs</b></div>`).join('');
+}
+function gadhCommandesHTML(){
+  const cmds = cmdCommandesEnCoursPourGadh();
+  if(!cmds.length) return buildEmptyState('Aucune commande en cours');
+  return cmds.map(c => `<div class="session-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;"><b style="font-size:13px;">${esc(String(c.numero))}</b><span style="font-size:13px;font-variant-numeric:tabular-nums;"><b>${(c.retourFait || 0).toLocaleString('fr-FR')}</b> / ${(c.total || 0).toLocaleString('fr-FR')} pcs</span></div>
+      <div style="height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;"><div style="height:100%;width:${Math.max(0, Math.min(100, c.pct || 0))}%;background:var(--accent);"></div></div>
+    </div>`).join('');
+}
 function renderGadhProduction(container){
   if(!gadhProdDate) gadhProdDate = getTodayISO();
   const date = gadhProdDate;
-  const totals = gadhDayTotals(date);
+  const parRef = cmdRetourGadhParRefDuJour(date);
+  const total = Object.values(parRef).reduce((a, q) => a + (q || 0), 0);
+  const nbRefs = gadhRefsTriees(parRef).length;
+  const veille = cmdRetourGadhDuJour(gadhYesterdayISO(date));
+  const nbCmd = cmdCommandesEnCoursPourGadh().length;
   const dateNav = (delta) => { const d=new Date(date+'T00:00:00'); d.setDate(d.getDate()+delta); return toISODateLocal(d); };
-  // Références à afficher : celles produites ce jour-là + celles ayant une
-  // cadence configurée (même sans production, pour rester visibles).
-  const clesConfigurees = Object.keys(getGadhCadences()).filter(rk => gadhCadencePourRef(rk)>0);
-  const cles = Array.from(new Set([...Object.keys(totals.parRef), ...clesConfigurees]))
-    .sort((a,b) => gadhRefName(a).localeCompare(gadhRefName(b)));
-
   container.innerHTML = `
     <div class="card" style="padding:10px 12px;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -632,30 +629,16 @@ function renderGadhProduction(container){
         <button class="btn btn-ghost" style="padding:9px 11px;" onclick="gadhProdDate='${dateNav(1)}'; nav('gadh-production')" ${date>=getTodayISO()?'disabled':''}>›</button>
       </div>
     </div>
-    ${totals.slots.length===0 ? `<div class="card">${buildEmptyState("Jour non travaillé", "Aucun horaire n'est programmé ce jour-là.")}</div>` : `
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${totals.totalReel}</div><div class="kpi-mini-lbl">Production</div></div>
-      <div class="kpi-mini"><div class="kpi-mini-val">${totals.totalObj}</div><div class="kpi-mini-lbl">Objectif</div></div>
-      <div class="kpi-mini ${totals.rendement!=null && totals.rendement>=100?'tint-green':''}"><div class="kpi-mini-val">${totals.rendement!=null?Math.round(totals.rendement)+'%':'—'}</div><div class="kpi-mini-lbl">Rendement</div></div>
+      <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div><div class="kpi-mini-sub">la veille : ${veille.toLocaleString('fr-FR')}</div></div>
+      <div class="kpi-mini"><div class="kpi-mini-val">${nbRefs}</div><div class="kpi-mini-lbl">Références</div></div>
+      <div class="kpi-mini"><div class="kpi-mini-val">${nbCmd}</div><div class="kpi-mini-lbl">Commandes en cours</div></div>
     </div>
-    <p style="font-size:10.5px;color:var(--ink-faint);margin:6px 2px 8px;">Entièrement automatique, aucune saisie : les quantités viennent des pièces réellement retournées à Tek-Trend (module Commandes → Retour GADH), avec les mêmes références que l'onglet CMD. La cadence par heure de chaque référence se configure dans Paramètres.</p>
-    <div class="card" style="padding:4px 12px;">
-      ${cles.length===0 ? buildEmptyState("Aucune production ce jour-là") : cles.map(rk => {
-        const qte = totals.parRef[rk] || 0;
-        const cad = gadhCadencePourRef(rk);
-        const obj = gadhObjectifRef(rk, totals.heures);
-        const rend = obj>0 ? (qte/obj*100) : null;
-        return `
-        <div class="session-row" style="flex-direction:column;align-items:stretch;gap:2px;padding:9px 0;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <b style="font-size:13px;">${esc(gadhRefName(rk))}</b>
-            ${rend!=null ? `<span class="hour-rend ${rend>=100?'good':(rend>=80?'warn':'bad')}" style="font-size:11px;">${Math.round(rend)}%</span>` : ''}
-          </div>
-          <div style="font-size:11px;color:var(--ink-soft);">${qte} / ${obj||'—'} pièces${cad?` · cadence ${cad}/h`:' · cadence non configurée (Paramètres)'}</div>
-        </div>`;
-      }).join('')}
+    <div class="pg-grille2">
+      <div class="card"><h3 style="margin-top:0;">Pièces par référence</h3>${gadhListeRefsHTML(parRef)}</div>
+      <div class="card"><h3 style="margin-top:0;">Commandes en cours</h3>${gadhCommandesHTML()}</div>
     </div>
-    `}
+    <p style="font-size:12px;color:var(--ink-faint);margin:6px 2px 8px;">Aucune saisie ici : les quantités viennent des pièces assemblées et retournées à TEK-TREND, saisies dans le suivi des commandes.</p>
   `;
 }
 
@@ -699,14 +682,14 @@ function gadhDonutMulti(segments, centerVal, centerLabel, size){
 }
 // Graphique barres (réel) + ligne (objectif) des derniers N jours, en SVG simple.
 function gadhWeekChart(days){
-  const W=300, H=140, pad=24;
+  const W=640, H=190, pad=28;
   const maxV = Math.max(1, ...days.map(d=>Math.max(d.reel,d.obj)));
   const bw = (W-pad*2)/days.length;
   const bars = days.map((d,i) => {
     const x = pad + i*bw + bw*0.2;
     const bh = (d.reel/maxV)*(H-pad*1.5);
     const y = H-pad-bh;
-    return `<rect x="${x}" y="${y}" width="${bw*0.6}" height="${bh}" rx="3" fill="#A8325F"/>`;
+    return `<rect x="${x}" y="${y}" width="${bw*0.6}" height="${bh}" rx="3" fill="#A8325F"/>${d.reel ? `<text x="${x + bw*0.3}" y="${y - 6}" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="middle">${d.reel}</text>` : ''}`;
   }).join('');
   const pts = days.map((d,i) => {
     const x = pad + i*bw + bw/2;
@@ -720,10 +703,11 @@ function gadhWeekChart(days){
   }).join('');
   const labels = days.map((d,i) => {
     const x = pad + i*bw + bw/2;
-    return `<text x="${x}" y="${H-4}" font-size="9" fill="var(--ink-faint)" text-anchor="middle">${d.label}</text>`;
+    return `<text x="${x}" y="${H-6}" font-size="12" fill="var(--ink-soft)" text-anchor="middle">${d.label}</text>`;
   }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
-    ${bars}<polyline points="${pts}" fill="none" stroke="#10B981" stroke-width="2"/>${dots}${labels}
+  const avecObj = days.some(d => d.obj > 0);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:260px;display:block;">
+    ${bars}${avecObj ? `<polyline points="${pts}" fill="none" stroke="#10B981" stroke-width="2"/>${dots}` : ''}${labels}
   </svg>`;
 }
 // Rythme à l'heure actuelle : compare le total réel du jour (cumul déjà
@@ -927,41 +911,15 @@ let gadhHistDate = null;
 function renderGadhHistorique(container){
   if(!gadhHistDate) gadhHistDate = getTodayISO();
   const date = gadhHistDate;
-  const totals = gadhDayTotals(date);
-  const emps = activeGadhEmployees();
-  const resolved = emps.map(([id,e]) => ({id, e, r: resolveGadhDayStatus(id, date)}));
-
+  const parRef = cmdRetourGadhParRefDuJour(date);
+  const total = Object.values(parRef).reduce((a, q) => a + (q || 0), 0);
   container.innerHTML = `
     <div class="card" style="padding:10px 12px;">
       <div class="field" style="margin:0;"><label>Date</label><input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhHistDate=this.value; nav('gadh-historique')"></div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;font-size:13px;">Production — ${date.split('-').reverse().join('/')}</h3>
-      ${totals.slots.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);">Jour non travaillé.</p>` : `
-      <div class="kpi-grid" style="margin-bottom:10px;">
-        <div class="kpi"><div class="label">Réel / Objectif</div><div class="value" style="font-size:15px;">${totals.totalReel} / ${totals.totalObj}</div></div>
-        <div class="kpi"><div class="label">Rendement</div><div class="value">${totals.rendement!=null?Math.round(totals.rendement)+'%':'—'}</div></div>
-      </div>
-      ${(() => {
-        const cles = Object.keys(totals.parRef);
-        if(cles.length===0) return buildEmptyState("Aucune production ce jour-là");
-        return cles.sort((a,b)=>gadhRefName(a).localeCompare(gadhRefName(b))).map(rk => {
-          const q = totals.parRef[rk];
-          const obj = gadhObjectifRef(rk, totals.heures);
-          const rend = obj>0 ? (q/obj*100) : null;
-          return `<div class="session-row"><div><b style="font-size:12.5px;">${esc(gadhRefName(rk))}</b></div><div style="text-align:right;"><div style="font-weight:700;">${q} / ${obj||'—'}</div>${rend!=null?`<div style="font-size:11px;color:var(--ink-soft);">${Math.round(rend)}%</div>`:''}</div></div>`;
-        }).join('');
-      })()}
-      `}
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;font-size:13px;">RH — ${date.split('-').reverse().join('/')}</h3>
-      ${resolved.length===0 ? buildEmptyState("Aucun employé actif") : resolved.map(x => `
-        <div class="session-row" style="cursor:pointer;" onclick="gadhFicheEmpId='${x.id}'; gadhRHView='personnel'; nav('gadh-rh')">
-          <div><b style="font-size:12.5px;">${esc(x.e.nom)} ${esc(x.e.prenom||'')}</b></div>
-          ${gadhBadgeFor(x.r)}
-        </div>
-      `).join('')}
+      <div class="flex-header" style="margin-bottom:8px;"><h3 style="margin:0;">Pièces retournées — ${date.split('-').reverse().join('/')}</h3><b style="font-size:15px;">${total.toLocaleString('fr-FR')} pcs</b></div>
+      ${gadhListeRefsHTML(parRef)}
     </div>
   `;
 }
@@ -980,16 +938,52 @@ function gadhStatsRange(){
   if(gadhStatsPeriod==='mois'){ const mk = today.slice(0,7); const [y,m]=mk.split('-').map(Number); const last=new Date(y,m,0).getDate(); return {start: mk+'-01', end: mk+'-'+String(last).padStart(2,'0')}; }
   return {start: gadhStatsStart||today, end: gadhStatsEnd||today};
 }
-function renderGadhStats(container){
+function gadhStatsFiltreHTML(onglet){
   const {start, end} = gadhStatsRange();
-  let curr = new Date(start+'T00:00:00'); const endD = new Date(end+'T00:00:00');
-  let totReel=0, totObj=0, g=0;
+  return `<div class="card" style="padding:10px 12px;">
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        ${[['jour','Jour'],['semaine','7 jours'],['mois','Ce mois'],['perso','Personnalisé']].map(([k,l]) =>
+          `<button class="btn ${gadhStatsPeriod===k?'btn-primary':'btn-ghost'}" style="flex:1;padding:7px 4px;font-size:12px;" onclick="gadhStatsPeriod='${k}'; nav('${onglet}')">${l}</button>`
+        ).join('')}
+      </div>
+      ${gadhStatsPeriod==='jour' ? `<input type="date" value="${gadhStatsDate||getTodayISO()}" max="${getTodayISO()}" onchange="gadhStatsDate=this.value; nav('${onglet}')">` : ''}
+      ${gadhStatsPeriod==='perso' ? `<div style="display:flex;gap:8px;">
+        <div class="field" style="flex:1;margin:0;"><label>Du</label><input type="date" value="${gadhStatsStart||getTodayISO()}" onchange="gadhStatsStart=this.value; nav('${onglet}')"></div>
+        <div class="field" style="flex:1;margin:0;"><label>Au</label><input type="date" value="${gadhStatsEnd||getTodayISO()}" onchange="gadhStatsEnd=this.value; nav('${onglet}')"></div>
+      </div>` : ''}
+      <p style="font-size:12px;color:var(--ink-faint);margin:8px 0 0;">Période : ${start.split('-').reverse().join('/')} → ${end.split('-').reverse().join('/')}</p>
+    </div>`;
+}
+function gadhJoursPeriode(){
+  const {start, end} = gadhStatsRange();
+  const out = []; const d = new Date(start+'T00:00:00'), fin = new Date(end+'T00:00:00');
+  while(d <= fin && out.length < 370){ out.push(toISODateLocal(d)); d.setDate(d.getDate()+1); }
+  return out;
+}
+function renderGadhStats(container){
+  const parRef = {}; let total = 0, joursProd = 0, meilleur = null;
+  gadhJoursPeriode().forEach(iso => {
+    const r = cmdRetourGadhParRefDuJour(iso);
+    const t = Object.values(r).reduce((a, q) => a + (q || 0), 0);
+    if(t > 0){ joursProd++; if(!meilleur || t > meilleur.t) meilleur = {iso, t}; }
+    total += t;
+    Object.entries(r).forEach(([rk, q]) => { parRef[rk] = (parRef[rk] || 0) + (q || 0); });
+  });
+  container.innerHTML = `
+    ${gadhStatsFiltreHTML('gadh-stats')}
+    <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div></div>
+      <div class="kpi-mini"><div class="kpi-mini-val">${joursProd ? Math.round(total / joursProd).toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Moyenne par jour</div><div class="kpi-mini-sub">${joursProd} jour(s) avec retours</div></div>
+      <div class="kpi-mini"><div class="kpi-mini-val">${meilleur ? meilleur.t.toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Meilleur jour</div><div class="kpi-mini-sub">${meilleur ? meilleur.iso.split('-').reverse().join('/') : ''}</div></div>
+    </div>
+    <div class="card"><h3 style="margin-top:0;">Pièces par référence</h3>${gadhListeRefsHTML(parRef, 'Aucune pièce retournée sur la période')}</div>
+  `;
+}
+// Statistiques du module RH GADH (présences, absences, congés…).
+function renderGadhStatsRH(container){
   let present=0, absent=0, retard=0, conge=0, maladie=0, autorisation=0;
   const emps = activeGadhEmployees();
-  while(curr<=endD && g<370){
-    const iso = toISODateLocal(curr);
-    const t = gadhDayTotals(iso);
-    totReel += t.totalReel; totObj += t.totalObj;
+  gadhJoursPeriode().forEach(iso => {
     emps.forEach(([id]) => {
       const r = resolveGadhDayStatus(id, iso);
       if(r.source==='periode'){ if(r.type==='conge') conge++; else maladie++; }
@@ -1000,33 +994,11 @@ function renderGadhStats(container){
         else if(r.statut==='autorisation') autorisation++;
       }
     });
-    curr.setDate(curr.getDate()+1); g++;
-  }
-  const rendement = totObj>0 ? (totReel/totObj*100) : null;
-
+  });
   container.innerHTML = `
-    <div class="card" style="padding:10px 12px;">
-      <div style="display:flex;gap:6px;margin-bottom:8px;">
-        ${[['jour','Jour'],['semaine','7 jours'],['mois','Ce mois'],['perso','Personnalisé']].map(([k,l]) =>
-          `<button class="btn ${gadhStatsPeriod===k?'btn-primary':'btn-ghost'}" style="flex:1;padding:7px 4px;font-size:11px;" onclick="gadhStatsPeriod='${k}'; nav('gadh-stats')">${l}</button>`
-        ).join('')}
-      </div>
-      ${gadhStatsPeriod==='jour' ? `<input type="date" value="${gadhStatsDate||getTodayISO()}" max="${getTodayISO()}" onchange="gadhStatsDate=this.value; nav('gadh-stats')">` : ''}
-      ${gadhStatsPeriod==='perso' ? `<div style="display:flex;gap:8px;">
-        <div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">Du</label><input type="date" value="${gadhStatsStart||getTodayISO()}" onchange="gadhStatsStart=this.value; nav('gadh-stats')"></div>
-        <div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">Au</label><input type="date" value="${gadhStatsEnd||getTodayISO()}" onchange="gadhStatsEnd=this.value; nav('gadh-stats')"></div>
-      </div>` : ''}
-      <p style="font-size:10.5px;color:var(--ink-faint);margin:8px 0 0;">Période : ${start.split('-').reverse().join('/')} → ${end.split('-').reverse().join('/')}</p>
-    </div>
+    ${gadhStatsFiltreHTML('gadh-rh-stats')}
     <div class="card">
-      <h3 style="margin-top:0;font-size:13px;">Production</h3>
-      <div class="kpi-grid">
-        <div class="kpi"><div class="label">Réel / Objectif</div><div class="value" style="font-size:15px;">${totReel} / ${totObj}</div></div>
-        <div class="kpi"><div class="label">Rendement</div><div class="value">${rendement!=null?Math.round(rendement)+'%':'—'}</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;font-size:13px;">RH</h3>
+      <h3 style="margin-top:0;">Personnel (${emps.length} actif${emps.length > 1 ? 's' : ''})</h3>
       <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="kpi-mini tint-green"><div class="kpi-mini-val">${present}</div><div class="kpi-mini-lbl">Présences</div></div>
         <div class="kpi-mini tint-red"><div class="kpi-mini-val">${absent}</div><div class="kpi-mini-lbl">Absences</div></div>
