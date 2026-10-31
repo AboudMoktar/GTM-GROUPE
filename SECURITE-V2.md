@@ -1,6 +1,6 @@
 # Sécurité V2 — rôles, règles Firebase et procédure de mise en production
 
-État au 31/10/2026 : **prêt à valider, rien n'est publié ni déployé.** Tout le travail est sur la branche `securite-v2`. La branche `main` (le site en ligne) et les règles Firebase en production ne changent pas.
+État au 31/10/2026, 17 h 35 : **règles V2 publiées en production et application déployée**, en offre gratuite (sans fonctions serveur). Sauvegarde complète de la base et des anciennes règles faite juste avant (17 h 28). Vérification en production avec 10 comptes temporaires (supprimés ensuite) : **53 / 53 contrôles conformes**. Comptes : `mokhtar` (Administrateur / Développeur) et `responsable` (Responsable TEK-TREND).
 
 ## 1. Ce qui change
 
