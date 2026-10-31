@@ -29,7 +29,7 @@ Copiez les valeurs affichées dans `public/firebase-config.js` (apiKey, authDoma
 ## Étape 4 — Premier compte (direction du groupe)
 Dans Authentication > Utilisateurs > **Ajouter un utilisateur** :
 - E-mail : `direction@tek-trend.app` (l'identifiant de connexion est la partie avant `@`, ici `direction`)
-- Mot de passe : au choix (6 caractères minimum)
+- Mot de passe : 8 caractères minimum, avec au moins une lettre et un chiffre
 
 Au tout premier accès, ce compte est automatiquement créé comme **Direction du groupe (administrateur)**.
 Ensuite, tous les autres comptes (personnel, comptes clients des portails) se créent **dans l'application** : Sessions > Ajouter.

@@ -140,15 +140,15 @@ window.profilsAfficherMdp = (id, btn) => {
 };
 
 // --- Mon mot de passe (tous les comptes) ---
-window.profilsMonCompte = () => {
-  mgtModal('Mon compte', `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">${esc(currentUser.nom)} (${esc(currentUser.username)}) · ${esc(profilLabel())}</p>
+window.profilsMonCompte = (faible) => {
+  mgtModal('Mon compte', `${faible ? `<div style="background:var(--bad-bg,#FEF2F2);color:var(--bad,#B91C1C);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;"><b>Votre mot de passe est trop faible.</b> Choisissez-en un nouveau : ${MDP_REGLE}.</div>` : ''}<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">${esc(currentUser.nom)} (${esc(currentUser.username)}) · ${esc(profilLabel())}</p>
     ${firebaseConfigured() ? profilsChampMdp('Mot de passe actuel', 'mypw-current') : ''}
-    ${profilsChampMdp('Nouveau mot de passe (6 caractères minimum)', 'mypw-new')}
+    ${profilsChampMdp('Nouveau mot de passe (' + MDP_REGLE + ')', 'mypw-new')}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsChangerMdp()">Changer mon mot de passe</button>`);
 };
 window.profilsChangerMdp = async () => {
   const nouveau = document.getElementById('mypw-new').value;
-  if(!nouveau || nouveau.length < 6){ showToast('Nouveau mot de passe : 6 caractères minimum'); return; }
+  { const e = mdpErreur(nouveau, currentUser.username); if(e){ showToast(e); return; } }
   if(!firebaseConfigured()){
     const l = getLocalUsers().slice(), i = l.findIndex(x => x.username === currentUser.username);
     if(i < 0){ showToast('Compte introuvable'); return; }
@@ -160,6 +160,7 @@ window.profilsChangerMdp = async () => {
     const cred = firebase.auth.EmailAuthProvider.credential(emailForUsername(currentUser.username), actuel);
     await fbAuth.currentUser.reauthenticateWithCredential(cred);
     await fbAuth.currentUser.updatePassword(nouveau);
+    try { window.sessionStorage.removeItem(CACHE_PREFIX+'mdp_faible'); } catch(e) {}
     mgtFermer(); showToast('Mot de passe modifié');
   } catch(err) {
     console.error(err);
@@ -214,7 +215,7 @@ window.profilsFormCompte = (uid) => {
   const moi = uid && uid === currentUser.uid;
   mgtModal(uid ? 'Modifier le compte' : 'Nouveau compte', `
     ${mgtChamp('Nom affiché', 'uf-nom', u.nom)}
-    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (sans espace, ex : secretaire)', 'uf-username', '')}${profilsChampMdp('Mot de passe (6 caractères minimum)', 'uf-password')}`}
+    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (sans espace, ex : secretaire)', 'uf-username', '')}${profilsChampMdp('Mot de passe (' + MDP_REGLE + ')', 'uf-password')}`}
     ${moi ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Vous ne pouvez pas changer votre propre profil.</div>` : profilsChampsAccesHTML(u)}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsSauverCompte('${uid || ''}')">${uid ? 'Enregistrer' : 'Créer le compte'}</button>`);
   profilsMajForm();
@@ -242,7 +243,7 @@ window.profilsSauverCompte = async (uid) => {
     } else {
       const username = mgtVal('uf-username').toLowerCase(), mdp = document.getElementById('uf-password').value;
       if(!username){ showToast('Identifiant requis'); return; }
-      if(!mdp || mdp.length < 6){ showToast('Mot de passe : 6 caractères minimum'); return; }
+      { const e = mdpErreur(mdp, username); if(e){ showToast(e); return; } }
       let sec; try { sec = firebase.app('Secondary'); } catch(e) { sec = firebase.initializeApp(firebaseConfig, 'Secondary'); }
       const cred = await sec.auth().createUserWithEmailAndPassword(emailForUsername(username), mdp);
       await sec.auth().signOut();
