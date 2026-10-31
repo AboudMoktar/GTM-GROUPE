@@ -22,7 +22,7 @@
 
 const SOCIETES = {
   tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', marque:['#006070', '#006070'], teinte:'#EEF6F7', modules:['rendement','rh','commandes','factures']},
-  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#9C335B', logo:'./logo-gadh.png', marque:['#C2346E', '#C5BA3C', '#138C94'], teinte:'#F8E4EC', modules:['gadh','machines','factures']},
+  gadh: {nom:'GADH TUNISIA', sous:'Sous-traitance assemblage',   couleur:'#9C335B', logo:'./logo-gadh.png', marque:['#C2346E', '#C5BA3C', '#138C94'], teinte:'#F8E4EC', modules:['gadh','gadh-rh','machines','factures']},
   mgt:  {nom:'MGT',          sous:'Vente et SAV machines',        couleur:'#2E6B3A', logo:'./logo-mgt.png', marque:['#CB4E1D', '#CB4E1D'], teinte:'#FBEEE8', modules:['mgt']}
 };
 const SOCIETE_KEYS = ['tek', 'gadh', 'mgt'];
@@ -52,6 +52,7 @@ function modulesDeSociete(soc){
     if(m === 'rendement') return true;
     if(m === 'rh') return canAccessRH();
     if(m === 'gadh') return canAccessGADH();
+    if(m === 'gadh-rh') return canAccessGADH();
     if(m === 'commandes') return (typeof canAccessCommandes === 'function' && canAccessCommandes());
     if(m === 'mgt') return true;
     if(m === 'machines') return true;
@@ -193,7 +194,6 @@ function directionIndicateurs(soc){
   if(soc === 'gadh'){
     return [
       {label:'Pièces retournées du jour', valeur: val(() => gadhDayTotals(today).totalReel)},
-      {label:'Rendement du jour', valeur: val(() => pct(gadhDayTotals(today).rendement))},
       {label:'Présents', valeur: val(() => { const emp = activeGadhEmployees(); const n = emp.filter(([id]) => { const r = resolveGadhDayStatus(id, today); return r.source === 'pointage' && (r.statut === 'present' || r.statut === 'retard'); }).length; return n + ' / ' + emp.length; })},
       {label:'Commandes chez GADH', valeur: val(() => suiviLotsChezGadh())},
       {label:'Machines à l\'arrêt', valeur: val(() => arrIndicateur('gadh'))},

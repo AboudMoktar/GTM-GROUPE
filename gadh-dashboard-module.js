@@ -85,12 +85,11 @@ function gdRender(main){
     <div class="pg-tete"><div><h2 class="pg-titre">Tableau de bord GADH TUNISIA</h2><div class="pg-sous">${esc(jour)}</div></div></div>
     <div class="td-wrap">
       <div class="dd-jauges4">
-        ${ddJaugeP('Rendement production', D.rend.totalReel ? D.rend.rendement : null)}
         ${ddJaugeP('Présence du personnel', D.emp.presence)}
         ${ddJaugeP('Avancement retours', D.cmd.avancement)}
       </div>
       <div class="dd-boites">
-        ${ddBoite(D.rend.totalReel, 'Pièces produites', 'ok')}
+        ${ddBoite(D.rend.totalReel, 'Pièces retournées', 'ok')}
         ${ddBoite(D.emp.present + '/' + D.emp.total, 'Présents', 'ok')}
         ${ddBoite(D.emp.absent + D.emp.conge + D.emp.maladie, 'Absents (toutes causes)', 'bad')}
         ${ddBoite(D.emp.retard, 'Retards', D.emp.retard ? 'bad' : 'nul')}

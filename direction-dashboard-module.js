@@ -119,7 +119,7 @@ window.renderDirection = function(){
     + (peutAudit ? nav('audit', 'Journal d\'audit', 'auditOuvrir()') : '') + (peutAdmin ? nav('cog', 'Administration', 'ouvrirAdmin()') : '');
   const kpis = [
     ddKpi('Production TEK-TREND', D.prodTek.toLocaleString('fr-FR'), 'Rendement ' + (D.rendTek === null ? '—' : Math.round(D.rendTek) + ' %'), 'prod', DD_COULEURS.tek),
-    ddKpi('Pièces retournées GADH', D.retGadh.toLocaleString('fr-FR'), 'Rendement ' + (D.rendGadh === null ? '—' : Math.round(D.rendGadh) + ' %'), 'gadh', DD_COULEURS.gadh),
+    ddKpi('Pièces retournées GADH', D.retGadh.toLocaleString('fr-FR'), 'Aujourd\'hui', 'gadh', DD_COULEURS.gadh),
     ddKpi('Présents aujourd\'hui', D.presents.n + ' <small>/ ' + D.presents.total + '</small>', 'TEK-TREND + GADH', 'users', '#2563eb'),
     ddKpi('Commandes en cours', D.cmdTek, D.cmdGadh + ' chez GADH', 'box', '#7c3aed'),
     ddKpi('À encaisser', ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'Aucun retard', 'euro', '#16a34a'),

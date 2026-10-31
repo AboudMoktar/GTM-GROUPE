@@ -6,7 +6,7 @@
   document.head.appendChild(st);
   const quelle = () => { if(typeof activeModule === 'undefined' || !document.getElementById('main')) return '';
     if(activeModule === 'mgt') return 'mgt';
-    if(activeModule === 'gadh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; // Modules TEK-TREND : aucun habillage, apparence de l'application Gestion Rendement d'origine.
+    if(activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && typeof activeSociete !== 'undefined' && activeSociete === 'gadh')) return 'gadh'; // Modules TEK-TREND : aucun habillage, apparence de l'application Gestion Rendement d'origine.
     if(typeof activeSociete !== 'undefined' && activeSociete === 'tek') return 'tek';
     return ''; };
   const meta0 = (document.querySelector('meta[name="theme-color"]')||{}).content;
