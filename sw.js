@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v186';
+const CACHE_NAME = 'groupe-v187';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -18,6 +18,7 @@ const APP_SHELL = [
   './logo-tek.png',
   './logo-gadh.png',
   './firebase-config.js',
+  './roles-config.js',
   './rh-module.js',
   './gadh-module.js',
   './prod-module.js',
@@ -32,7 +33,6 @@ const APP_SHELL = [
   './machines-module.js',
   './notif-module.js',
   './audit-module.js',
-  './portail-module.js',
   './mgt-crm-module.js',
   './mgt-crm-ecrans.js',
   './mgt-fichiers-module.js',
@@ -57,6 +57,7 @@ const APP_SHELL = [
   './gadh-dashboard-module.js',
   './hors-ligne-module.js',
   './transfert-rendement-module.js',
+  './roles-interface.js',
   './charte.css'
 ];
 // Bibliothèques Firebase (autre site) : indispensables pour démarrer hors ligne.
