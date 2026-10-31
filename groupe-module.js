@@ -77,24 +77,41 @@ function firebaseCheminDe(key){
   const d = firebaseDossierDe(key);
   return d ? d + '/' + key : key;
 }
-// Dossiers de données que le compte connecté peut lire.
+// Portail client supprimé (aucun compte externe) : conservé comme fonction vide
+// pour les modules qui la consultent encore.
+function isPortail(){ return false; }
+// Sources de données que le compte connecté peut lire.
+//  - 'tek'                : tout le dossier ;
+//  - 'tek|cle|employees'  : une seule clé ;
+//  - 'tek|pref|prod_2'    : toutes les clés commençant par ce préfixe.
+// Les rôles viennent de roles-config.js (même source que les règles Firebase).
+// Un ancien compte sans profil garde le fonctionnement d'avant (dossiers entiers).
 function firebaseDossiersLisibles(){
-  if(isPortail()){
-    const p = currentUser.portail;
-    if(p.type === 'mgt') return ['portail/mgt/' + p.clientId];
-    const l = portailClientsListe(p);
-    return l.length ? l.map(c => 'portail/percko/' + c) : ['portail/percko/tous'];
+  const R = window.GTM_ROLES, p = currentUser && currentUser.profil;
+  if(R && p && R.ROLES[p]){
+    const out = [];
+    ['tek', 'gadh', 'liaison', 'mgt'].forEach(d => {
+      const s = R.sourcesLecture(p, d);
+      if(s === 'tout') out.push(d);
+      else if(s){ s.cles.forEach(c => out.push(d + '|cle|' + c)); s.prefixes.forEach(x => out.push(d + '|pref|' + x)); }
+    });
+    return out;
   }
   const soc = userSocietes();
   const out = soc.slice();
   if(soc.indexOf('tek') >= 0 || soc.indexOf('gadh') >= 0) out.push('liaison');
   return out;
 }
+// Une source couvre-t-elle cette clé ?
+function firebaseSourceCouvre(source, cle){
+  const [, type, val] = String(source).split('|');
+  if(!type) return true;
+  return type === 'cle' ? cle === val : String(cle).indexOf(val) === 0;
+}
 
 // --- Navigation : société → module ---
 // Appelée après la connexion (voir enterApp dans index.html).
 function enterSociete(){
-  if(isPortail()){ renderPortail(); return; }
   const soc = userSocietes();
   if(soc.length === 0){ renderAucuneSociete(); return; }
   if(activeSociete && soc.indexOf(activeSociete) < 0) activeSociete = null;
