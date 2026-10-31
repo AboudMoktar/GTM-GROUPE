@@ -1237,6 +1237,11 @@ async function loadProfileAndEnter(fbUser){
   try{
     const snap = await ((typeof hlAvecDelai === 'function') ? hlAvecDelai(fbRootRef.child('users_v2/'+fbUser.uid).once('value'), 20000) : fbRootRef.child('users_v2/'+fbUser.uid).once('value'));
     let profile = snap.val();
+    if(profile && profile.desactive === true){
+      await fbAuth.signOut();
+      renderLogin("Ce compte est désactivé. Contactez l'administrateur.");
+      return;
+    }
     if(!profile){
       // Amorçage : si AUCUN profil n'existe encore nulle part (tout premier compte
       // créé dans Firebase Console), on le déclare automatiquement Responsable.

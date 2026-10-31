@@ -480,7 +480,7 @@ function hlRafraichirProfil(fbUser, ancien){
   fbRootRef.child('users_v2/' + fbUser.uid).once('value').then(function(snap){
     if(!currentUser || currentUser.uid !== fbUser.uid) return;
     const p = snap.val();
-    if(!p){ hlOublierCompte(fbUser.uid); forceLocalLogout(); renderLogin("Ce compte n'a plus accès à l'application. Contactez le responsable."); return; }
+    if(!p || p.desactive === true){ hlOublierCompte(fbUser.uid); forceLocalLogout(); renderLogin(p ? "Ce compte est désactivé. Contactez l'administrateur." : "Ce compte n'a plus accès à l'application. Contactez le responsable."); return; }
     if(hlEmpreinte(p) === hlEmpreinte(ancien)) return;
     hlMemoriserProfil(fbUser.uid, p);
     currentUser = profilVersUtilisateur(fbUser, p);
