@@ -203,6 +203,8 @@ window.enterApp = function(){
 // ============================================================
 function peutVoirAudit(){
   if(!currentUser) return false;
+  const R = window.GTM_ROLES;
+  if(currentUser.profil && R && R.ROLES[currentUser.profil]) return !!R.ROLES[currentUser.profil].auditLecture;
   return isGroupe() || (!firebaseConfigured() && currentUser.role === 'admin');
 }
 let auditFiltre = {soc:'', user:'', jours:7, q:''};

@@ -1,0 +1,17 @@
+{
+  "name": "gtm-groupe-tests-securite",
+  "private": true,
+  "description": "Tests des règles Firebase V2 sur l'émulateur officiel (aucun accès à la vraie base).",
+  "scripts": {
+    "regles": "node ../outils/generer-regles.js",
+    "simulateur": "node lancer-simulateur.js",
+    "emulateur": "firebase emulators:exec --only database --project demo-gtm-groupe \"node emulateur.js\"",
+    "fonctions": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database,functions --project demo-gtm-groupe \"node fonctions.js\"",
+    "e2e": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-roles.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.14.1",
+    "firebase-tools": "^13.29.1"
+  }
+}

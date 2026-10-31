@@ -1,0 +1,118 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "groupe1": {
+      "tek": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_tek' && query.orderByKey === true && ((query.startAt === 'attendance_' && query.endAt === 'attendance_') || (query.startAt === 'rh_base_' && query.endAt === 'rh_base_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'agent_chaine' && query.orderByKey === true && ((query.startAt === 'prod_2' && query.endAt === 'prod_2') || (query.startAt === 'fc_2' && query.endAt === 'fc_2') || (query.startAt === 'attendance_' && query.endAt === 'attendance_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'direction')",
+        "$cle": {
+          ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_tek' && ($cle === 'schedule' || $cle === 'employees' || $cle === 'absence_periods' || $cle === 'rh_departements' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'fact_params' || $cle === 'fact_compteurs' || $cle.beginsWith('attendance_') || $cle.beginsWith('rh_base_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'agent_chaine' && ($cle === 'schedule' || $cle === 'obj_horaire_op' || $cle === 'ops' || $cle === 'ops_history' || $cle === 'fc_modeles' || $cle === 'fc_params' || $cle === 'employees' || $cle === 'absence_periods' || $cle.beginsWith('prod_2') || $cle.beginsWith('fc_2') || $cle.beginsWith('attendance_')))",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_tek' && (($cle === 'employees' || $cle === 'absence_periods' || $cle.beginsWith('attendance_')) && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !($cle === 'employees' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'gadh_employees' || $cle === 'gadh_factures' || $cle === 'gadh_fact_clients' || $cle === 'cmd_commandes' || $cle === 'suivi_index'))) || ($cle === 'rh_departements' || $cle.beginsWith('rh_base_')) && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !($cle === 'employees' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'gadh_employees' || $cle === 'gadh_factures' || $cle === 'gadh_fact_clients' || $cle === 'cmd_commandes' || $cle === 'suivi_index'))) || ($cle === 'factures' || $cle === 'fact_clients' || $cle === 'fact_params' || $cle === 'fact_compteurs') && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !($cle === 'employees' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'gadh_employees' || $cle === 'gadh_factures' || $cle === 'gadh_fact_clients' || $cle === 'cmd_commandes' || $cle === 'suivi_index')))) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'agent_chaine' && ($cle.beginsWith('prod_2') && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists())) || $cle.beginsWith('fc_2') && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()))))",
+          ".validate": "newData.hasChildren() || newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length < 9500000)"
+        }
+      },
+      "gadh": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_gadh' && query.orderByKey === true && ((query.startAt === 'gadh_attendance_' && query.endAt === 'gadh_attendance_') || (query.startAt === 'gadh_fact' && query.endAt === 'gadh_fact')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'direction')",
+        "$cle": {
+          ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_gadh' && ($cle === 'gadh_employees' || $cle === 'gadh_absences' || $cle === 'gadh_plannings' || $cle.beginsWith('gadh_attendance_') || $cle.beginsWith('gadh_fact'))",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_gadh' && (($cle === 'gadh_employees' || $cle === 'gadh_absences' || $cle === 'gadh_plannings' || $cle.beginsWith('gadh_attendance_')) && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !($cle === 'employees' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'gadh_employees' || $cle === 'gadh_factures' || $cle === 'gadh_fact_clients' || $cle === 'cmd_commandes' || $cle === 'suivi_index'))) || $cle.beginsWith('gadh_fact') && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !($cle === 'employees' || $cle === 'factures' || $cle === 'fact_clients' || $cle === 'gadh_employees' || $cle === 'gadh_factures' || $cle === 'gadh_fact_clients' || $cle === 'cmd_commandes' || $cle === 'suivi_index')))))",
+          ".validate": "newData.hasChildren() || newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length < 9500000)"
+        }
+      },
+      "liaison": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_tek' && query.orderByKey === true && ((query.startAt === 'cmd_saisies_' && query.endAt === 'cmd_saisies_') || (query.startAt === 'cmd_historique_' && query.endAt === 'cmd_historique_') || (query.startAt === 'cmd_expeditions_' && query.endAt === 'cmd_expeditions_') || (query.startAt === 'cmd_embjournal_' && query.endAt === 'cmd_embjournal_') || (query.startAt === 'suivi_d_' && query.endAt === 'suivi_d_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'resp_gadh' && query.orderByKey === true && ((query.startAt === 'cmd_saisies_' && query.endAt === 'cmd_saisies_') || (query.startAt === 'cmd_historique_' && query.endAt === 'cmd_historique_') || (query.startAt === 'cmd_expeditions_' && query.endAt === 'cmd_expeditions_') || (query.startAt === 'cmd_embjournal_' && query.endAt === 'cmd_embjournal_') || (query.startAt === 'suivi_d_' && query.endAt === 'suivi_d_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_gadh' && query.orderByKey === true && ((query.startAt === 'cmd_saisies_' && query.endAt === 'cmd_saisies_') || (query.startAt === 'cmd_historique_' && query.endAt === 'cmd_historique_') || (query.startAt === 'cmd_expeditions_' && query.endAt === 'cmd_expeditions_') || (query.startAt === 'cmd_embjournal_' && query.endAt === 'cmd_embjournal_') || (query.startAt === 'suivi_d_' && query.endAt === 'suivi_d_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'direction')",
+        "$cle": {
+          ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_tek' && ($cle === 'cmd_commandes' || $cle === 'suivi_index' || $cle === 'prod_references' || $cle.beginsWith('cmd_saisies_') || $cle.beginsWith('cmd_historique_') || $cle.beginsWith('cmd_expeditions_') || $cle.beginsWith('cmd_embjournal_') || $cle.beginsWith('suivi_d_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'resp_gadh' && ($cle === 'cmd_commandes' || $cle === 'suivi_index' || $cle === 'prod_references' || $cle.beginsWith('cmd_saisies_') || $cle.beginsWith('cmd_historique_') || $cle.beginsWith('cmd_expeditions_') || $cle.beginsWith('cmd_embjournal_') || $cle.beginsWith('suivi_d_')) || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'secretaire_gadh' && ($cle === 'cmd_commandes' || $cle === 'suivi_index' || $cle === 'prod_references' || $cle.beginsWith('cmd_saisies_') || $cle.beginsWith('cmd_historique_') || $cle.beginsWith('cmd_expeditions_') || $cle.beginsWith('cmd_embjournal_') || $cle.beginsWith('suivi_d_')))",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'responsable' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'resp_gadh' && (($cle === 'cmd_commandes' || $cle.beginsWith('cmd_saisies_') || $cle.beginsWith('cmd_historique_') || $cle.beginsWith('cmd_expeditions_') || $cle.beginsWith('cmd_embjournal_')) && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists())) || ($cle === 'suivi_index' || $cle.beginsWith('suivi_d_')) && ((!data.exists() && newData.exists()) || (data.exists() && newData.exists()))))",
+          ".validate": "newData.hasChildren() || newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length < 9500000)"
+        }
+      },
+      "mgt": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'technico_mgt' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'direction')",
+        "$cle": {
+          ".read": false,
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'technico_mgt')",
+          ".validate": "newData.hasChildren() || newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length < 9500000)"
+        }
+      },
+      "fichiers": {
+        "$fid": {
+          ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'technico_mgt' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'direction')",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'technico_mgt')",
+          ".validate": "newData.isString() && newData.val().beginsWith('data:') && newData.val().length < 9000000"
+        }
+      },
+      "users_v2": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin'",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin' && ($uid !== auth.uid || (newData.exists() && newData.child('profil').val() === data.child('profil').val() && newData.child('desactive').val() !== true))",
+          ".validate": "newData.hasChildren(['nom', 'username', 'role', 'profil']) && ((newData.child('profil').val() === 'sysadmin' && newData.child('role').val() === 'admin' && newData.child('groupe').val() === true && newData.child('societes/tek').val() === true && newData.child('societes/gadh').val() === true && newData.child('societes/mgt').val() === true) || (newData.child('profil').val() === 'responsable' && newData.child('role').val() === 'admin' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() === true && newData.child('societes/gadh').val() === true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'secretaire_tek' && newData.child('role').val() === 'admin' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() === true && newData.child('societes/gadh').val() !== true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'agent_chaine' && newData.child('role').val() === 'chef_chaine' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() === true && newData.child('societes/gadh').val() !== true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'resp_gadh' && newData.child('role').val() === 'admin' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() !== true && newData.child('societes/gadh').val() === true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'secretaire_gadh' && newData.child('role').val() === 'admin' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() !== true && newData.child('societes/gadh').val() === true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'technico_mgt' && newData.child('role').val() === 'admin' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() !== true && newData.child('societes/gadh').val() !== true && newData.child('societes/mgt').val() === true) || (newData.child('profil').val() === 'secretaire_mgt' && newData.child('role').val() === 'viewer' && newData.child('groupe').val() !== true && newData.child('societes/tek').val() !== true && newData.child('societes/gadh').val() !== true && newData.child('societes/mgt').val() !== true) || (newData.child('profil').val() === 'direction' && newData.child('role').val() === 'viewer' && newData.child('groupe').val() === true && newData.child('societes/tek').val() === true && newData.child('societes/gadh').val() === true && newData.child('societes/mgt').val() === true)) && (!data.exists() || newData.child('username').val() === data.child('username').val())",
+          "nom": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "username": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9._-]{2,40}$/)"
+          },
+          "desactive": {
+            ".validate": "newData.isBoolean()"
+          },
+          "maj": {
+            ".validate": "newData.isNumber()"
+          },
+          "societes": {
+            "$s": {
+              ".validate": "$s.matches(/^(tek|gadh|mgt)$/) && newData.isBoolean()"
+            }
+          },
+          "groupe": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$autre": {
+            ".validate": "$autre.matches(/^(role|profil)$/)"
+          }
+        }
+      },
+      "sessions": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin'",
+        "$sid": {
+          ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true",
+          ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && ((newData.exists() && newData.child('username').val() === root.child('groupe1/users_v2/' + auth.uid).child('username').val() && (!data.exists() || data.child('username').val() === root.child('groupe1/users_v2/' + auth.uid).child('username').val())) || (!newData.exists() && (data.child('username').val() === root.child('groupe1/users_v2/' + auth.uid).child('username').val() || root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin')))",
+          ".validate": "newData.hasChildren(['username', 'lastSeen'])",
+          "username": {
+            ".validate": "newData.isString()"
+          },
+          "nom": {
+            ".validate": "newData.isString()"
+          },
+          "role": {
+            ".validate": "newData.isString()"
+          },
+          "device": {
+            ".validate": "newData.isString()"
+          },
+          "loginAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "lastSeen": {
+            ".validate": "newData.isNumber()"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      },
+      "audit": {
+        ".read": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && root.child('groupe1/users_v2/' + auth.uid).child('profil').val() === 'sysadmin'",
+        "j": {
+          "$jour": {
+            "$id": {
+              ".write": "auth != null && root.child('groupe1/users_v2/' + auth.uid).exists() && root.child('groupe1/users_v2/' + auth.uid).child('desactive').val() !== true && (!newData.exists() || newData.child('un').val() === root.child('groupe1/users_v2/' + auth.uid).child('username').val()) && (!data.exists() || (data.child('un').val() === root.child('groupe1/users_v2/' + auth.uid).child('username').val() && data.child('t').val() > now - 600000))",
+              ".validate": "$jour.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChildren(['t', 'un', 'cle']) && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000"
+            }
+          }
+        }
+      }
+    }
+  }
+}
