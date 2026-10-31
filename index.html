@@ -638,10 +638,18 @@ function attachFirebaseDataListeners(){
     setSyncBadge('error');
   };
   const dossiers = firebaseDossiersLisibles();
-  fbListenRefs = dossiers.map(d => fbRootRef.child(d));
+  // Dossier entier, ou seulement les clés autorisées au rôle (clé exacte ou préfixe) :
+  // les règles Firebase refusent toute lecture plus large.
+  fbListenRefs = dossiers.map(d => {
+    const [dos, type, val] = d.split('|');
+    if(!type) return fbRootRef.child(dos);
+    if(type === 'cle') return fbRootRef.child(dos + '/' + val);
+    return fbRootRef.child(dos).orderByKey().startAt(val).endAt(val + '\uf8ff');
+  });
   fbListenRefs.forEach(function(ref, i){
     ref.on('value', function(snap){
-      const brut = snap.val() || {};
+      const [, typeSrc, valSrc] = dossiers[i].split('|');
+      const brut = typeSrc === 'cle' ? (snap.exists() ? {[valSrc]: snap.val()} : {}) : (snap.val() || {});
       // Remet les données dans leur forme d'origine (voir hlPourFirebase / hlDepuisFirebase
       // dans hors-ligne-module.js : noms de clés convertis, données du CRM MGT en un bloc).
       const data = (typeof hlDossierDepuisFirebase === 'function') ? hlDossierDepuisFirebase(brut) : brut;
@@ -650,8 +658,8 @@ function attachFirebaseDataListeners(){
       onFirebaseData();
     }, onError);
   });
-  if(isGroupe()){
-    // Liste des comptes, pour l'écran "Comptes & Sessions".
+  if(canManageAccounts()){
+    // Liste des comptes, pour l'écran "Comptes & Sessions" (administrateur seulement).
     const usersRef = fbRootRef.child('users_v2');
     fbListenRefs.push(usersRef);
     usersRef.on('value', function(snap){
@@ -1137,6 +1145,7 @@ function showToast(msg){
 
 // --- INIT & ROUTING ---
 let activeModule = null; // 'rendement' | 'rh' | null (null = pas encore choisi)
+var portailOuvert = false; // portail client supprimé : toujours faux
 function startSessionAndRender(){
   try { let sid = window.localStorage.getItem(CACHE_PREFIX+'sid'); if(sid) mySessionId = sid; } catch(e) {}
   if(!mySessionId){ mySessionId = genId(); try { window.localStorage.setItem(CACHE_PREFIX+'sid', mySessionId); } catch(e) {} }
@@ -1228,6 +1237,11 @@ async function loadProfileAndEnter(fbUser){
   try{
     const snap = await ((typeof hlAvecDelai === 'function') ? hlAvecDelai(fbRootRef.child('users_v2/'+fbUser.uid).once('value'), 20000) : fbRootRef.child('users_v2/'+fbUser.uid).once('value'));
     let profile = snap.val();
+    if(profile && profile.desactive === true){
+      await fbAuth.signOut();
+      renderLogin("Ce compte est désactivé. Contactez l'administrateur.");
+      return;
+    }
     if(!profile){
       // Amorçage : si AUCUN profil n'existe encore nulle part (tout premier compte
       // créé dans Firebase Console), on le déclare automatiquement Responsable.
@@ -3033,6 +3047,7 @@ window.exportCSV = () => {
 // Start
 window.onload = init;
 </script>
+<script src="./roles-config.js"></script>
 <script src="./rh-module.js"></script>
 <script src="./gadh-module.js"></script>
 <script src="./prod-module.js"></script>
@@ -3047,7 +3062,6 @@ window.onload = init;
 <script src="./machines-module.js"></script>
 <script src="./notif-module.js"></script>
 <script src="./audit-module.js"></script>
-<script src="./portail-module.js"></script>
 <script src="./mgt-crm-module.js"></script>
 <script src="./mgt-crm-ecrans.js"></script>
 <script src="./mgt-fichiers-module.js"></script>
@@ -3072,6 +3086,7 @@ window.onload = init;
 <script src="./gadh-dashboard-module.js"></script>
 <script src="./hors-ligne-module.js"></script>
 <script src="./transfert-rendement-module.js"></script>
+<script src="./roles-interface.js"></script>
 <!-- Charte graphique commune : chargée en dernier pour s'appliquer à tous les modules -->
 <link rel="stylesheet" href="./charte.css">
 <script>
