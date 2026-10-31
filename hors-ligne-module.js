@@ -330,8 +330,7 @@ window.hlEcrireConfirme = hlEcrireConfirme;
 function hlEcritureAutorisee(key){
   if(!firebaseConfigured() || !currentUser) return true;
   if(typeof isPortail === 'function' && isPortail()) return true;
-  const d = (typeof firebaseDossierDe === 'function') ? firebaseDossierDe(key) : null;
-  if(!d || hlDossiersCharges.has(d)) return true;
+  if(hlCleChargee(key)) return true;
   if(Date.now() - hlDernierToastBlocage > 8000){
     hlDernierToastBlocage = Date.now();
     showToast("Données pas encore chargées sur cet appareil : connexion internet nécessaire pour enregistrer.");
@@ -345,8 +344,7 @@ function hlEcritureAutorisee(key){
 window.gtmDonneesPretes = function(key){
   if(!firebaseConfigured() || !currentUser) return true;
   if(typeof isPortail === 'function' && isPortail()) return true;
-  const d = (typeof firebaseDossierDe === 'function') ? firebaseDossierDe(key) : null;
-  return !d || hlDossiersCharges.has(d);
+  return hlCleChargee(key);
 };
 
 // --- Réception des données d'un dossier (serveur ou copie locale) ---
@@ -370,13 +368,24 @@ function hlRecevoirDossier(dossier, data, depuisServeur){
     memoryCache[CACHE_PREFIX + k] = data[k];
   });
   hlDossiersCharges.add(dossier);
+  // Source partielle (« tek|cle|employees ») : le dossier n'est pas marqué entièrement chargé.
   if(depuisServeur){
     hlTraiterDemarrage(dossier);
     hlSauverCopie(dossier, data);
   }
 }
 function hlCheminDansDossier(chemin, dossier){
-  return chemin === dossier || chemin.indexOf(dossier + '/') === 0;
+  const [base, type, val] = String(dossier).split('|');
+  if(!(chemin === base || chemin.indexOf(base + '/') === 0)) return false;
+  if(!type) return true;
+  const cle = hlCleDepuisFirebase(chemin.slice(base.length + 1).split('/')[0]);
+  return type === 'cle' ? cle === val : cle.indexOf(val) === 0;
+}
+// La clé est-elle déjà chargée (dossier entier ou source qui la couvre) ?
+function hlCleChargee(key){
+  const d = (typeof firebaseDossierDe === 'function') ? firebaseDossierDe(key) : null;
+  if(!d || hlDossiersCharges.has(d)) return true;
+  return Array.from(hlDossiersCharges).some(s => String(s).indexOf(d + '|') === 0 && (typeof firebaseSourceCouvre !== 'function' || firebaseSourceCouvre(s, key)));
 }
 // Écritures restées en attente à l'ouverture : renvoi, ou conflit si la donnée
 // a été modifiée ailleurs entre-temps.

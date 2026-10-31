@@ -2,38 +2,26 @@
 // PROFILS — qui voit quoi, et administration hors des modules
 // ============================================================
 // Chargé en dernier. Chaque compte reçoit un « profil » (champ profil de
-// users_v2/{uid}). Le profil fixe le rôle technique (role), les sociétés et les
-// modules / onglets visibles. Les anciens comptes sans profil gardent leur
-// comportement d'avant (aucun blocage).
-//
-//  direction        Direction            voit tout, ne modifie rien
-//  sysadmin         Administrateur système voit tout sans modifier ; crée les comptes ; maintenance
-//  responsable      Responsable Magasin  accès total TEK-TREND + GADH
-//  secretaire_tek   Secrétaire TEK-TREND RH + facturation
-//  secretaire_gadh  Secrétaire GADH      RH + facturation
-//  resp_gadh        Responsable GADH     rendement + commandes à l'assemblage
-//  agent_chaine     Agent chaîne         saisie des rendements par heure
-//  secretaire_mgt   Secrétaire MGT       facturation et devis
-//  technico_mgt     Technico-commercial MGT  tout dans MGT
+// users_v2/{uid}). Les rôles, leurs modules et leurs droits sur les données
+// viennent de roles-config.js : c'est la source unique, d'où sont aussi tirées
+// les règles Firebase (outils/generer-regles.js). Ne pas définir de rôle ici.
 //
 // acces[société][module] = '*' (tout) ou liste d'onglets. Société absente de
 // acces = tous les modules de la société.
-// Limite : les règles Firebase protègent par société (dossier tek/ gadh/ mgt/),
-// pas par module ; la séparation RH / production / facturation est faite par
-// l'application.
+// Les anciens comptes sans profil gardent leur comportement d'avant tant que
+// les règles V2 ne sont pas publiées (après publication, ils n'ont plus accès).
 
-const PROFILS = {
-  direction:       {label:'Direction', role:'viewer', groupe:true, societes:{tek:true, gadh:true, mgt:true}, aide:'Voit tout, ne modifie rien'},
-  sysadmin:        {label:'Administrateur système', role:'viewer', groupe:true, societes:{tek:true, gadh:true, mgt:true}, admin:true, aide:'Voit tout sans modifier · crée les comptes · maintenance'},
-  responsable:     {label:'Responsable Magasin', role:'admin', groupe:false, societes:{tek:true, gadh:true}, aide:'Accès total TEK-TREND et GADH'},
-  secretaire_tek:  {label:'Secrétaire TEK-TREND', role:'admin', groupe:false, societes:{tek:true}, acces:{tek:{rh:'*', factures:'*'}}, aide:'RH et facturation TEK-TREND'},
-  secretaire_gadh: {label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{'gadh-rh':'*', factures:'*'}}, aide:'RH et facturation GADH'},
-  resp_gadh:       {label:'Responsable GADH', role:'admin', groupe:false, societes:{gadh:true}, acces:{gadh:{gadh:['gadh-dashboard', 'gadh-production', 'gadh-prodchain', 'commandes-home', 'gadh-historique', 'gadh-stats']}}, aide:'Rendement et commandes à l\'assemblage'},
-  agent_chaine:    {label:'Agent chaîne TEK-TREND', role:'chef_chaine', groupe:false, societes:{tek:true}, acces:{tek:{rendement:['dashboard', 'saisie']}}, aide:'Saisie des rendements par heure'}  ,
-  secretaire_mgt:  {label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true}, acces:{mgt:{mgt:['mgt-devis', 'mgt-devis-edit', 'mgt-lettrage', 'mgt-ca', 'fact-liste', 'fact-clients', 'fact-edit', 'fact-params']}}, aide:'Facturation et devis MGT'},
-  technico_mgt:    {label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true}, aide:'Tout dans MGT (clients, offres, planning, devis, SAV, factures)'}
-};
-const PROFILS_ORDRE = ['direction', 'sysadmin', 'responsable', 'secretaire_tek', 'secretaire_gadh', 'resp_gadh', 'agent_chaine', 'secretaire_mgt', 'technico_mgt'];
+const PROFILS = (function(){
+  const R = window.GTM_ROLES, out = {};
+  R.ORDRE.forEach(k => {
+    const d = R.ROLES[k], acces = {};
+    Object.keys(d.interface || {}).forEach(soc => { if(d.interface[soc] !== '*') acces[soc] = d.interface[soc]; });
+    out[k] = {label:d.label, role:d.role, groupe:!!d.groupe, societes:Object.assign({}, d.societes), admin:!!d.admin, aide:d.aide,
+      acces:Object.keys(acces).length ? acces : undefined};
+  });
+  return out;
+})();
+const PROFILS_ORDRE = window.GTM_ROLES.ORDRE.slice();
 
 function profilDe(u){ u = u || currentUser; return (u && u.profil && PROFILS[u.profil]) || null; }
 function profilLabel(u){
@@ -169,67 +157,124 @@ window.profilsChangerMdp = async () => {
 };
 
 // --- Comptes et sessions (administration) ---
+// Les actions sur les comptes Firebase Authentication (création, désactivation,
+// nouveau mot de passe, suppression) passent par des fonctions serveur
+// (dossier functions/, SDK Admin) : aucune clé privée dans le navigateur.
+// Tant que ces fonctions ne sont pas déployées (offre Blaze), la création et la
+// suppression gardent l'ancien mécanisme, et la désactivation coupe l'accès aux
+// données via le champ « desactive » (bloqué par les règles V2).
+let profilsFnPromesse = null;
+function profilsFonctions(){
+  if(!profilsFnPromesse) profilsFnPromesse = new Promise((ok, ko) => {
+    if(firebase.functions) return ok(firebase.app().functions('europe-west1'));
+    const sc = document.createElement('script'); sc.src = 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js';
+    sc.onload = () => ok(firebase.app().functions('europe-west1'));
+    sc.onerror = () => { profilsFnPromesse = null; ko(new Error('indisponible')); };
+    document.head.appendChild(sc);
+  });
+  return profilsFnPromesse;
+}
+// Appelle une fonction serveur ; renvoie {ok, data} ou {absente:true} si elles ne sont pas déployées.
+async function profilsAppel(nom, donnees){
+  try {
+    const fn = await profilsFonctions();
+    const r = await fn.httpsCallable(nom)(donnees);
+    return {ok:true, data:r.data};
+  } catch(err) {
+    const code = String((err && err.code) || '');
+    if(/not-found|unavailable/.test(code) || (err && err.message === 'indisponible')) return {absente:true};
+    throw err;
+  }
+}
+function profilsMessageErreur(err){
+  const c = String((err && err.code) || ''), m = (err && err.message) || '';
+  if(/already-exists|email-already-in-use/.test(c + m)) return 'Cet identifiant est déjà utilisé';
+  if(/permission-denied|PERMISSION_DENIED/.test(c + m)) return 'Action refusée : droits insuffisants';
+  if(/invalid-argument/.test(c)) return m || 'Donnée invalide';
+  return 'Erreur : ' + (m || 'action impossible');
+}
+function profilsDroitsTexte(profil){
+  const R = window.GTM_ROLES, ACT = {l:'lire', c:'créer', m:'modifier', s:'supprimer'};
+  if(!profil || !R.ROLES[profil]) return '<p style="font-size:12.5px;color:var(--ink-soft);">Ancien compte sans profil : aucun droit après la mise en place des nouvelles règles.</p>';
+  const lignes = Object.keys(R.RESSOURCES).map(id => [id, R.actions(profil, id)]).filter(x => x[1]);
+  if(!lignes.length) return '<p style="font-size:12.5px;color:var(--ink-soft);">Aucun droit sur les données.</p>';
+  return `<table style="width:100%;font-size:12.5px;border-collapse:collapse;">${lignes.map(([id, a]) => {
+    const r = R.RESSOURCES[id];
+    return `<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 4px;"><b>${esc(R.SOCIETES[r.societe] || 'TEK-TREND ↔ GADH')}</b> · ${esc(r.module)}<div style="color:var(--ink-soft);">${esc(r.libelle)}</div></td>
+      <td style="padding:6px 4px;text-align:right;white-space:nowrap;">${a.split('').map(x => ACT[x]).join(', ')}</td></tr>`;
+  }).join('')}</table>`;
+}
+window.profilsVoirDroits = (uid) => {
+  const u = getUserProfiles()[uid] || {};
+  const p = PROFILS[u.profil];
+  mgtModal('Droits de ' + (u.nom || u.username || ''), `<p style="font-size:13px;margin-top:0;">${esc(p ? p.label : 'Ancien compte')}${p ? ' — ' + esc(p.aide) : ''}</p>${profilsDroitsTexte(u.profil)}`);
+};
 const profilsSessionsOrigine = window.renderSessions;
 window.renderSessions = function(container){
   if(!firebaseConfigured()) return profilsSessionsOrigine(container);
   const profils = getUserProfiles();
   const sessions = Object.entries(sessionsCache).sort((a, b) => (b[1].lastSeen || 0) - (a[1].lastSeen || 0));
   const gere = canManageAccounts();
-  const libelleAcces = (u) => (typeof isPortail === 'function' && isPortail(u)) ? portailLabel(u) : accesLabel(u);
+  const ancienAdmin = gere && !currentUser.profil;
   container.innerHTML = `
     <div class="flex-header"><h2>Comptes et sessions</h2></div>
+    ${ancienAdmin ? `<div class="card" style="border:1.5px solid var(--warn);">
+      <h3 style="margin-top:0;">Activer votre profil Administrateur / Développeur</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;">Votre compte n'a pas encore de profil. À faire une fois, avant la publication des nouvelles règles : sinon vous perdriez l'accès.</p>
+      <button class="btn btn-primary" onclick="profilsActiverAdmin()">Activer mon profil Administrateur</button></div>` : ''}
+    ${gere ? `<div class="card">
+      <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;">Comptes utilisateurs</h3><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="profilsFormCompte()">+ Ajouter</button></div>
+      ${Object.entries(profils).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '')).map(([uid, u]) => {
+        const moi = uid === currentUser.uid, off = u.desactive === true;
+        return `<div class="session-row" style="flex-wrap:wrap;gap:8px;">
+        <div style="min-width:0;flex:1 1 260px;"><div style="font-weight:700;">${esc(u.nom)} <span class="badge ${u.profil ? 'green' : 'orange'}" style="font-size:11px;">${esc(u.profil && PROFILS[u.profil] ? PROFILS[u.profil].label : 'Ancien compte : à classer')}</span>${off ? ' <span class="badge red" style="font-size:11px;">Désactivé</span>' : ''}${moi ? ' <span style="font-size:11px;color:var(--ink-soft);">(vous)</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--ink-soft);">Identifiant : ${esc(u.username)} · ${esc(accesLabel(u))}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsVoirDroits('${uid}')">Droits</button>
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsFormCompte('${uid}')">Modifier</button>
+          ${moi ? '' : `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsNouveauMdp('${uid}')">Mot de passe</button>
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsActiver('${uid}', ${off ? 'true' : 'false'})">${off ? 'Réactiver' : 'Désactiver'}</button>
+          <button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="profilsConfirmerSuppression('${uid}')">Suppr.</button>`}
+        </div></div>`;
+      }).join('')}
+    </div>` : `<div class="card"><p style="margin:0;font-size:13px;color:var(--ink-soft);">La gestion des comptes est réservée à l'administrateur.</p></div>`}
     <div class="card"><h3 style="margin-top:0;">Sessions actives</h3>
       ${sessions.length ? sessions.map(([sid, s]) => {
         const active = (Date.now() - (s.lastSeen || 0)) < 5 * 60000;
         return `<div class="session-row"><div><div style="font-weight:700;">${esc(s.nom || s.username)} ${sid === mySessionId ? '<span style="font-size:11px;color:var(--ink-soft);">(cet appareil)</span>' : ''}</div>
-          <div style="font-size:11.5px;color:var(--ink-soft);">${esc(s.device || 'Appareil')} · ${active ? '🟢 active' : '⚪ inactive'} · vue ${timeAgo(s.lastSeen)}</div></div>
+          <div style="font-size:12px;color:var(--ink-soft);">${esc(s.device || 'Appareil')} · ${active ? 'active' : 'inactive'} · vue ${timeAgo(s.lastSeen)}</div></div>
           ${gere && sid !== mySessionId ? `<button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="forceEndSession('${sid}')">Déconnecter</button>` : ''}</div>`;
       }).join('') : '<p style="font-size:13px;color:var(--ink-soft);">Aucune session enregistrée.</p>'}
-    </div>
-    ${gere ? `<div class="card">
-      <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;">Comptes utilisateurs</h3><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="profilsFormCompte()">+ Ajouter</button></div>
-      ${Object.entries(profils).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '')).map(([uid, u]) => `<div class="session-row">
-        <div><div style="font-weight:700;">${esc(u.nom)} <span class="badge ${u.profil ? 'green' : 'orange'}" style="font-size:10px;">${esc(u.profil && PROFILS[u.profil] ? PROFILS[u.profil].label : (typeof isPortail === 'function' && isPortail(u)) ? 'Client externe' : 'Ancien compte : à classer')}</span></div>
-        <div style="font-size:11.5px;color:var(--ink-soft);">Identifiant : ${esc(u.username)} · ${esc(libelleAcces(u))}</div></div>
-        <div style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsFormCompte('${uid}')">Modifier</button>
-        ${uid !== currentUser.uid ? `<button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="profilsConfirmerSuppression('${uid}')">Suppr.</button>` : ''}</div></div>`).join('')}
-      <p style="font-size:11px;color:var(--ink-faint);margin-top:12px;">« Suppr. » retire la personne de l'application. Pour changer le mot de passe d'un autre compte ou nettoyer l'identifiant : Console Firebase → Authentication → Users.</p>
-    </div>` : `<div class="card"><p style="margin:0;font-size:13px;color:var(--ink-soft);">La gestion des comptes est réservée à l'administrateur système.</p></div>`}`;
+    </div>`;
 };
 function profilsChampsAccesHTML(u){
-  const courant = u.profil || (typeof isPortail === 'function' && isPortail(u) ? 'portail' : '');
-  return `<div class="field"><label>Profil</label><select id="uf-profil" class="mgt-in" onchange="profilsMajForm()">
+  const courant = u.profil || '';
+  return `<div class="field"><label>Rôle</label><select id="uf-profil" class="mgt-in" onchange="profilsMajForm()">
       ${courant ? '' : '<option value="">— Choisir —</option>'}
-      ${PROFILS_ORDRE.map(k => `<option value="${k}" ${k === courant ? 'selected' : ''}>${PROFILS[k].label}</option>`).join('')}
-      <option value="portail" ${courant === 'portail' ? 'selected' : ''}>Client externe (portail)</option></select>
-    <div id="uf-profil-aide" style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;"></div></div>
-    <div id="uf-portail-zone" style="display:none;">${typeof portailFieldHTML === 'function' ? portailFieldHTML(u) : ''}</div>`;
+      ${PROFILS_ORDRE.map(k => `<option value="${k}" ${k === courant ? 'selected' : ''}>${PROFILS[k].label}</option>`).join('')}</select>
+    <div id="uf-profil-aide" style="font-size:12px;color:var(--ink-soft);margin-top:4px;"></div></div>
+    <div id="uf-profil-droits" style="max-height:240px;overflow:auto;margin-bottom:12px;"></div>`;
 }
 window.profilsMajForm = () => {
-  const v = mgtVal('uf-profil'), z = document.getElementById('uf-portail-zone'), a = document.getElementById('uf-profil-aide');
-  if(z) z.style.display = v === 'portail' ? 'block' : 'none';
-  if(a) a.textContent = v === 'portail' ? 'Accès limité au suivi de ses propres commandes ou machines.' : (PROFILS[v] ? PROFILS[v].aide : '');
+  const v = mgtVal('uf-profil'), a = document.getElementById('uf-profil-aide'), d = document.getElementById('uf-profil-droits');
+  if(a) a.textContent = PROFILS[v] ? PROFILS[v].aide + ' · Sociétés : ' + (Object.keys(PROFILS[v].societes).map(s => window.GTM_ROLES.SOCIETES[s]).join(', ') || 'aucune') : '';
+  if(d) d.innerHTML = v ? profilsDroitsTexte(v) : '';
 };
 window.profilsFormCompte = (uid) => {
   const u = uid ? getUserProfiles()[uid] : {};
   const moi = uid && uid === currentUser.uid;
   mgtModal(uid ? 'Modifier le compte' : 'Nouveau compte', `
     ${mgtChamp('Nom affiché', 'uf-nom', u.nom)}
-    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (sans espace, ex : secretaire)', 'uf-username', '')}${profilsChampMdp('Mot de passe (' + MDP_REGLE + ')', 'uf-password')}`}
-    ${moi ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Vous ne pouvez pas changer votre propre profil.</div>` : profilsChampsAccesHTML(u)}
+    ${uid ? `<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">Identifiant : <b>${esc(u.username)}</b></div>` : `${mgtChamp('Identifiant (minuscules, sans espace, ex : secretaire)', 'uf-username', '')}${profilsChampMdp('Mot de passe (' + MDP_REGLE + ')', 'uf-password')}`}
+    ${moi ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Vous ne pouvez pas changer votre propre rôle.</div>` : profilsChampsAccesHTML(u)}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsSauverCompte('${uid || ''}')">${uid ? 'Enregistrer' : 'Créer le compte'}</button>`);
-  profilsMajForm();
+  if(!moi) profilsMajForm();
 };
 function profilsChampsDepuisForm(){
   const v = mgtVal('uf-profil');
-  if(!v){ showToast('Choisissez un profil'); return null; }
-  if(v === 'portail'){
-    const p = typeof portailLireForm === 'function' ? portailLireForm() : null;
-    if(!p || !p.portail){ if(p) showToast('Choisissez le type de compte client'); return null; }
-    return {profil:null, role:'viewer', societes:{}, groupe:false, portail:p.portail};
-  }
+  if(!v || !PROFILS[v]){ showToast('Choisissez un rôle'); return null; }
   const d = PROFILS[v];
-  return {profil:v, role:d.role, societes:Object.assign({}, d.societes), groupe:d.groupe, portail:null};
+  return {profil:v, role:d.role, societes:Object.assign({}, d.societes), groupe:d.groupe};
 }
 window.profilsSauverCompte = async (uid) => {
   const nom = mgtVal('uf-nom'); if(!nom){ showToast('Nom requis'); return; }
@@ -238,32 +283,83 @@ window.profilsSauverCompte = async (uid) => {
   if(champs === null) return;
   try {
     if(uid){
-      await fbRootRef.child('users_v2/' + uid).update(Object.assign({nom}, champs));
+      // Le profil est réécrit en entier : sociétés et rôle technique toujours conformes au rôle choisi.
+      const u = getUserProfiles()[uid] || {};
+      const rec = {nom, username:u.username, role:u.role, profil:u.profil, groupe:!!u.groupe, societes:u.societes || {}};
+      if(u.desactive) rec.desactive = true;
+      Object.assign(rec, champs, {maj:Date.now()});
+      await fbRootRef.child('users_v2/' + uid).set(rec);
       if(moi) currentUser.nom = nom;
     } else {
-      const username = mgtVal('uf-username').toLowerCase(), mdp = document.getElementById('uf-password').value;
-      if(!username){ showToast('Identifiant requis'); return; }
+      const username = mgtVal('uf-username').toLowerCase().trim(), mdp = document.getElementById('uf-password').value;
+      if(!/^[a-z0-9._-]{2,40}$/.test(username)){ showToast('Identifiant : lettres minuscules, chiffres, . _ - (2 à 40)'); return; }
       { const e = mdpErreur(mdp, username); if(e){ showToast(e); return; } }
-      let sec; try { sec = firebase.app('Secondary'); } catch(e) { sec = firebase.initializeApp(firebaseConfig, 'Secondary'); }
-      const cred = await sec.auth().createUserWithEmailAndPassword(emailForUsername(username), mdp);
-      await sec.auth().signOut();
-      await fbRootRef.child('users_v2/' + cred.user.uid).set(Object.assign({nom, username}, champs));
+      const r = await profilsAppel('comptesCreer', {username, motDePasse:mdp, nom, profil:champs.profil});
+      if(r.absente){
+        // Fonctions serveur non déployées : création par l'ancien mécanisme (instance secondaire, sans privilège).
+        let sec; try { sec = firebase.app('Secondary'); } catch(e) { sec = firebase.initializeApp(firebaseConfig, 'Secondary'); }
+        const cred = await sec.auth().createUserWithEmailAndPassword(emailForUsername(username), mdp);
+        await sec.auth().signOut();
+        await fbRootRef.child('users_v2/' + cred.user.uid).set(Object.assign({nom, username, maj:Date.now()}, champs));
+      }
     }
     mgtFermer(); showToast(uid ? 'Compte mis à jour' : 'Compte créé'); nav('sessions');
   } catch(err) {
     console.error(err);
-    showToast(err.code === 'auth/email-already-in-use' ? 'Cet identifiant est déjà utilisé' : err.code === 'auth/weak-password' ? 'Mot de passe trop faible' : 'Erreur : vérifiez vos droits d\'accès');
+    showToast(profilsMessageErreur(err));
   }
+};
+// Migration : l'ancien compte « direction du groupe » prend le profil Administrateur / Développeur.
+window.profilsActiverAdmin = async () => {
+  const d = PROFILS.sysadmin;
+  try {
+    await fbRootRef.child('users_v2/' + currentUser.uid).set({nom:currentUser.nom, username:currentUser.username, role:d.role, profil:'sysadmin', groupe:true, societes:Object.assign({}, d.societes), maj:Date.now()});
+    currentUser.profil = 'sysadmin'; currentUser.role = d.role; currentUser.groupe = true; currentUser.societes = Object.assign({}, d.societes);
+    if(typeof hlMemoriserProfil === 'function') hlMemoriserProfil(currentUser.uid, {nom:currentUser.nom, username:currentUser.username, role:d.role, profil:'sysadmin', groupe:true, societes:d.societes});
+    try { window.sessionStorage.setItem(CACHE_PREFIX + 'user', JSON.stringify(currentUser)); } catch(e) {}
+    showToast('Profil Administrateur activé'); nav('sessions');
+  } catch(err) { console.error(err); showToast(profilsMessageErreur(err)); }
+};
+window.profilsActiver = async (uid, reactiver) => {
+  const u = getUserProfiles()[uid]; if(!u) return;
+  if(!reactiver && !confirm('Désactiver le compte de ' + u.nom + ' ? Il ne pourra plus se connecter ni lire les données.')) return;
+  try {
+    const r = await profilsAppel('comptesActiver', {uid, actif:!!reactiver});
+    if(r.absente){
+      const rec = Object.assign({}, u); delete rec.desactive; if(!reactiver) rec.desactive = true; rec.maj = Date.now();
+      await fbRootRef.child('users_v2/' + uid).set(rec);
+      if(!reactiver) Object.entries(sessionsCache).forEach(([sid, s]) => { if(s.username === u.username) fbRootRef.child('sessions/' + sid).remove().catch(() => {}); });
+    }
+    showToast(reactiver ? 'Compte réactivé' : 'Compte désactivé'); nav('sessions');
+  } catch(err) { console.error(err); showToast(profilsMessageErreur(err)); }
+};
+window.profilsNouveauMdp = (uid) => {
+  const u = getUserProfiles()[uid]; if(!u) return;
+  mgtModal('Nouveau mot de passe', `<p style="font-size:13px;margin-top:0;">Compte <b>${esc(u.nom)}</b> (${esc(u.username)}). Communiquez-lui le nouveau mot de passe ; il pourra le changer depuis « Mon compte ».</p>
+    ${profilsChampMdp('Nouveau mot de passe (' + MDP_REGLE + ')', 'np-mdp')}
+    <button class="btn btn-primary" style="width:100%;" onclick="profilsNouveauMdpOk('${uid}')">Enregistrer</button>`);
+};
+window.profilsNouveauMdpOk = async (uid) => {
+  const u = getUserProfiles()[uid] || {}, mdp = document.getElementById('np-mdp').value;
+  { const e = mdpErreur(mdp, u.username); if(e){ showToast(e); return; } }
+  try {
+    const r = await profilsAppel('comptesMotDePasse', {uid, motDePasse:mdp});
+    if(r.absente){ showToast('Disponible après le déploiement des fonctions serveur (offre Blaze). En attendant : console Firebase → Authentication.'); return; }
+    mgtFermer(); showToast('Mot de passe modifié');
+  } catch(err) { console.error(err); showToast(profilsMessageErreur(err)); }
 };
 window.profilsConfirmerSuppression = (uid) => {
   const u = getUserProfiles()[uid]; if(!u) return;
-  mgtModal('Confirmation', `<p style="font-size:14px;margin-top:0;">Retirer <b>${esc(u.nom)}</b> de l'application ? Cette personne ne pourra plus se connecter.</p>
-    <button class="btn btn-primary" style="width:100%;background:var(--bad);" onclick="profilsSupprimer('${uid}')">Oui, retirer</button>
+  mgtModal('Confirmation', `<p style="font-size:14px;margin-top:0;">Supprimer le compte de <b>${esc(u.nom)}</b> ? Cette personne ne pourra plus se connecter. Ses saisies, l'historique et le journal d'audit sont conservés.</p>
+    <button class="btn btn-primary" style="width:100%;background:var(--bad);" onclick="profilsSupprimer('${uid}')">Oui, supprimer</button>
     <button class="btn btn-ghost" style="width:100%;margin-top:8px;" onclick="mgtFermer()">Annuler</button>`);
 };
 window.profilsSupprimer = async (uid) => {
-  try { await fbRootRef.child('users_v2/' + uid).remove(); mgtFermer(); showToast('Compte retiré'); nav('sessions'); }
-  catch(err) { console.error(err); showToast('Erreur : vérifiez vos droits d\'accès'); }
+  try {
+    const r = await profilsAppel('comptesSupprimer', {uid});
+    if(r.absente) await fbRootRef.child('users_v2/' + uid).remove();
+    mgtFermer(); showToast(r.absente ? 'Compte retiré de l\'application (identifiant à supprimer aussi dans la console Firebase)' : 'Compte supprimé'); nav('sessions');
+  } catch(err) { console.error(err); showToast(profilsMessageErreur(err)); }
 };
 
 // --- Maintenance et dépannage ---
