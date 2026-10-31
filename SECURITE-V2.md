@@ -81,9 +81,14 @@ Relancer les tests (dans `tests/`, après `npm install`) : `npm run simulateur`,
 6. **Publier les règles** : onglet Règles, remplacer tout par `database.rules.v2.json`, Publier.
 7. **Contrôler** : se connecter avec chaque compte et ouvrir ses modules.
 
-### Fonctions serveur
+### Offre gratuite (choix du 31/10/2026)
 
-Elles demandent l'offre Blaze. Sans elles, l'écran Comptes reste utilisable : la création passe par l'ancien mécanisme, et la désactivation coupe l'accès aux données par les règles. En revanche, le nouveau mot de passe se fait alors depuis la console Firebase. Déploiement : `firebase deploy --only functions` depuis un ordinateur, ou par une action GitHub avec un compte de service stocké en secret GitHub (jamais dans le navigateur).
+Les fonctions serveur (`functions/`) sont prêtes et testées, mais pas déployées : elles demandent l'offre Blaze. En offre gratuite, l'écran Comptes :
+- crée les comptes par l'ancien mécanisme (sans privilège) ;
+- désactive un compte par le champ `desactive` : lecture et écriture bloquées par les règles, connexion refusée par l'application ;
+- pour redonner un accès (mot de passe oublié) : supprimer le compte, supprimer l'identifiant dans la console Firebase, puis le recréer avec le même identifiant.
+
+Pour activer les fonctions plus tard : offre Blaze, `firebase deploy --only functions`, puis `PROFILS_FONCTIONS_SERVEUR = true` dans `profils-module.js`.
 
 ## 6. Retour arrière
 

@@ -163,6 +163,9 @@ window.profilsChangerMdp = async () => {
 // Tant que ces fonctions ne sont pas déployées (offre Blaze), la création et la
 // suppression gardent l'ancien mécanisme, et la désactivation coupe l'accès aux
 // données via le champ « desactive » (bloqué par les règles V2).
+// Offre gratuite (Spark) : fonctions serveur non déployées. Passer à true après
+// leur déploiement (offre Blaze) : rien d'autre à changer.
+const PROFILS_FONCTIONS_SERVEUR = false;
 let profilsFnPromesse = null;
 function profilsFonctions(){
   if(!profilsFnPromesse) profilsFnPromesse = new Promise((ok, ko) => {
@@ -176,6 +179,7 @@ function profilsFonctions(){
 }
 // Appelle une fonction serveur ; renvoie {ok, data} ou {absente:true} si elles ne sont pas déployées.
 async function profilsAppel(nom, donnees){
+  if(!PROFILS_FONCTIONS_SERVEUR) return {absente:true};
   try {
     const fn = await profilsFonctions();
     const r = await fn.httpsCallable(nom)(donnees);
@@ -335,6 +339,17 @@ window.profilsActiver = async (uid, reactiver) => {
 };
 window.profilsNouveauMdp = (uid) => {
   const u = getUserProfiles()[uid]; if(!u) return;
+  if(!PROFILS_FONCTIONS_SERVEUR){
+    // Offre gratuite : un mot de passe ne peut être fixé que par le serveur. On recrée l'accès.
+    mgtModal('Redonner un accès', `<p style="font-size:13px;margin-top:0;">Compte <b>${esc(u.nom)}</b> (${esc(u.username)}). En offre gratuite, l'application ne peut pas changer le mot de passe d'un autre compte. Pour lui redonner un accès :</p>
+      <ol style="font-size:13px;padding-left:18px;line-height:1.6;margin:0 0 12px;">
+        <li>Ici : <b>Suppr.</b> sur ce compte (ses saisies et l'historique restent).</li>
+        <li>Console Firebase → Authentication → ligne <b>${esc(u.username)}@tek-trend.app</b> → ⋮ → Supprimer le compte.</li>
+        <li>Ici : <b>+ Ajouter</b> avec le même identifiant, le même rôle et un nouveau mot de passe.</li>
+      </ol>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0;">La personne peut aussi changer elle-même son mot de passe (menu de son nom → Changer mon mot de passe) si elle connaît l'actuel.</p>`);
+    return;
+  }
   mgtModal('Nouveau mot de passe', `<p style="font-size:13px;margin-top:0;">Compte <b>${esc(u.nom)}</b> (${esc(u.username)}). Communiquez-lui le nouveau mot de passe ; il pourra le changer depuis « Mon compte ».</p>
     ${profilsChampMdp('Nouveau mot de passe (' + MDP_REGLE + ')', 'np-mdp')}
     <button class="btn btn-primary" style="width:100%;" onclick="profilsNouveauMdpOk('${uid}')">Enregistrer</button>`);
