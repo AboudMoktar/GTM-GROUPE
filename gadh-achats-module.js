@@ -195,7 +195,7 @@ function renderAchBon(c){
 // --- Bon d'achat : création / modification ---
 window.achNouveauBon = () => {
   if(!achPeutModifier()) return;
-  achBonEdite = {nouveau:true, b:{date:getTodayISO(), statut:'brouillon', fournisseurId:'', lignes:[{articleId:'', designation:'', qte:1, pu:0, tva:19, unite:''}], frais:0, timbre:1, echeance:'', refFournisseur:'', note:''}};
+  achBonEdite = {nouveau:true, b:{date:getTodayISO(), statut:'brouillon', fournisseurId:'', lignes:[{articleId:'', designation:'', qte:1, pu:0, tva:0, unite:''}], frais:0, timbre:1, echeance:'', refFournisseur:'', note:''}};
   achBonOuvert = null; nav('ach-bons');
 };
 window.achModifierBon = (id) => { const b = achGet('bons')[id]; if(!b) return; achBonEdite = {id, b:JSON.parse(JSON.stringify(b))}; achBonEdite.b.lignes = achListe(achBonEdite.b.lignes); nav('ach-bons'); };
@@ -259,8 +259,8 @@ function achLireForm(){
   return b;
 }
 window.achRecalc = () => { const t = achTotaux(achLireForm()); const z = document.getElementById('ab-totaux'); if(z) z.innerHTML = `Total HT <b>${achDT(t.ht)}</b> · TVA <b>${achDT(t.tva)}</b><br>Total TTC <b style="font-size:16px;">${achDT(t.ttc)}</b>`; };
-window.achAjouterLigne = () => { achLireForm(); achBonEdite.b.lignes.push({articleId:'', designation:'', qte:1, pu:0, tva:19, unite:''}); nav('ach-bons'); };
-window.achRetirerLigne = (i) => { achLireForm(); achBonEdite.b.lignes.splice(i, 1); if(!achBonEdite.b.lignes.length) achBonEdite.b.lignes.push({articleId:'', designation:'', qte:1, pu:0, tva:19, unite:''}); nav('ach-bons'); };
+window.achAjouterLigne = () => { achLireForm(); achBonEdite.b.lignes.push({articleId:'', designation:'', qte:1, pu:0, tva:0, unite:''}); nav('ach-bons'); };
+window.achRetirerLigne = (i) => { achLireForm(); achBonEdite.b.lignes.splice(i, 1); if(!achBonEdite.b.lignes.length) achBonEdite.b.lignes.push({articleId:'', designation:'', qte:1, pu:0, tva:0, unite:''}); nav('ach-bons'); };
 window.achChoixArticle = (i, id) => {
   achLireForm(); const a = achGet('art')[id], l = achBonEdite.b.lignes[i];
   if(a){ l.articleId = id; l.designation = a.nom; l.unite = a.unite || ''; if(achNombre(a.prix) > 0) l.pu = achNombre(a.prix); if(a.tva !== undefined) l.tva = achNombre(a.tva); if(!achBonEdite.b.fournisseurId && a.fournisseurId) achBonEdite.b.fournisseurId = a.fournisseurId; }
@@ -434,7 +434,7 @@ function renderAchArticles(c){
 window.achFormArticle = (id, depuisBon) => {
   if(!achPeutModifier()) return;
   if(depuisBon && achBonEdite) achLireForm();
-  const a = id ? (achGet('art')[id] || {}) : {categorie:'matiere', unite:'pièce', tva:19};
+  const a = id ? (achGet('art')[id] || {}) : {categorie:'matiere', unite:'pièce', tva:0};
   const fours = [['', '— Aucun —']].concat(Object.entries(achGet('four')).filter(([, f]) => f && f.actif !== false).sort((x, y) => (x[1].nom || '').localeCompare(y[1].nom || '')).map(([k, f]) => [k, f.nom]));
   const presta = a.categorie === 'produit', tarifs = achTarifs(), tarif = presta ? (a.unite || 'pièce') : 'pièce';
   const optTarifs = (val) => tarifs.concat(val && tarifs.indexOf(val) < 0 ? [val] : []).map(t => `<option value="${esc(t)}" ${t === val ? 'selected' : ''}>${esc(achTarifLib(t))}</option>`).join('');
@@ -455,7 +455,7 @@ window.achFormArticle = (id, depuisBon) => {
       <div id="aa-opts">${achListe(a.options).map(o => achLigneOption(o, tarifs)).join('')}</div>
       <button class="btn btn-ghost" style="width:100%;margin-bottom:12px;" onclick="achAjouterOption()">+ Ajouter un supplément</button>
     </div>
-    ${mgtSelect('TVA habituelle', 'aa-tva', ACH_TVA.map(x => [String(x), x + ' %']), String(a.tva === undefined ? 19 : a.tva))}
+    ${mgtSelect('TVA habituelle', 'aa-tva', ACH_TVA.map(x => [String(x), x + ' %']), String(a.tva === undefined ? 0 : a.tva))}
     <div id="aa-bloc-four" style="${presta ? 'display:none;' : ''}">${mgtSelect('Fournisseur habituel', 'aa-four', fours, a.fournisseurId || '')}</div>
     ${id ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-bottom:12px;"><input type="checkbox" id="aa-actif" ${a.actif === false ? '' : 'checked'} style="width:18px;height:18px;"> Article actif</label>` : ''}
     <button class="btn btn-primary" style="width:100%;" onclick="achSauverArticle('${id || ''}', ${depuisBon ? 'true' : 'false'})">${id ? 'Enregistrer' : 'Créer l\'article'}</button>`);

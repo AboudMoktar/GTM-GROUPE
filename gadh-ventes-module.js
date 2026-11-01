@@ -193,8 +193,8 @@ function renderVenDoc(c, type){
 // --- Édition (devis, commande, livraison directe) ---
 window.venNouveau = (type) => {
   if(!venPeutModifier()) return;
-  const P = typeof factParams === 'function' ? factParams('gadh') : {tva:19};
-  venEdition = {type, d:{date:getTodayISO(), clientId:'', lignes:[{articleId:'', designation:'', qte:1, pu:0, remise:0, unite:''}], tva:achNombre(P.tva === undefined ? 19 : P.tva), note:'', validite:type === 'devis' ? mgtAddDays(getTodayISO(), 30) : '', livraisonPrevue:'', refClient:''}};
+  const P = typeof factParams === 'function' ? factParams('gadh') : {tva:0};
+  venEdition = {type, d:{date:getTodayISO(), clientId:'', lignes:[{articleId:'', designation:'', qte:1, pu:0, remise:0, unite:''}], tva:achNombre(P.tva === undefined ? 0 : P.tva), note:'', validite:type === 'devis' ? mgtAddDays(getTodayISO(), 30) : '', livraisonPrevue:'', refClient:''}};
   venOuvert[type] = null; nav(VEN_TYPES[type].onglet);
 };
 window.venModifier = (type, id) => { const d = venGet(type)[id]; if(!d) return; venEdition = {type, id, d:JSON.parse(JSON.stringify(d))}; venEdition.d.lignes = achListe(venEdition.d.lignes); nav(VEN_TYPES[type].onglet); };

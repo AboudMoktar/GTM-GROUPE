@@ -134,7 +134,7 @@ window.renderFactEdit = function(main){
   const soc = factSoc(), f = factToutes(soc)[factId];
   window.__devEUR = !!(f && f.devise === 'EUR');
   try { percEditOrigine(main); } finally { window.__devEUR = false; }
-  if(soc === 'tek') main.querySelectorAll('div').forEach(d => { if(!d.children.length && /dinar/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
+  if(soc === 'tek') main.querySelectorAll('div').forEach(d => { if(!d.children.length && /(dinar|euro)/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
   if(!f || !f.percko) return;
   window.__devEUR = true;
   const ed = canEditFact(soc) && f.statut === 'brouillon', dis = ed ? '' : 'disabled', p = f.percko, R = percReglages();
@@ -281,7 +281,7 @@ window.factImprimer = function(id, relance){
   const ent = `<div class="soc">${typeof logoDocHTML === 'function' ? logoDocHTML('tek', 14, 'margin:0 0 1.5mm;') : ''}<b>${esc(S.raison)}</b><b>${esc(S.adresse.split('\n')[0] || '')}</b><b>MF :${esc(S.mf)}</b><b>${esc(S.email)}</b><b>${esc(S.adresse.split('\n').slice(1).join(' '))}</b><span>Tél &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;${esc(S.tel)}</span></div>
     <div class="b3"><div><span>${f.type === 'avoir' ? 'Avoir N°' : 'Facture N°'}</span><b>${esc(f.numero || 'BROUILLON')}</b></div><div><span>Date</span><b>${mgtDate(f.date)}</b></div><div><span>Client</span><b>${esc(p.codeClient || '')}</b></div></div>
     <div class="adr"><i></i><i></i><i></i><i></i><b>${nl(livraison)}</b></div>`;
-  const e2 = (x) => percN(x, d), unite = eur ? 'Euros' : 'Dinars';
+  const e2 = (x) => percN(x, d), unite = 'Euros';
   const pied = `<div class="p1"><table class="code"><tr><th>Code</th><th>Base HT</th><th>Taux TVA</th><th>Montant TVA</th></tr><tr><td>0</td><td class="n">${e2(t.ht)}</td><td></td><td></td></tr></table>
     <div class="tot"><div><span>Total HT</span><em>${e2(t.ht)}</em></div><div><span><b>Net HT</b></span><em><b>${e2(t.ht)}</b></em></div><div><span>Total TVA</span><em>${t.tva ? e2(t.tva) : ''}</em></div><div><span>Total TTC</span><em>${e2(t.ttc)}</em></div><div class="np"><span><b>NET A PAYER</b></span><em><b>${e2(t.ttc)}</b></em></div></div></div>
     <div class="pay">Facture payable le ${mgtDate(f.echeance || f.date)} pour la somme de ${e2(t.ttc)} ${unite}.</div>

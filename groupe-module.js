@@ -333,8 +333,10 @@ function readSocietesField(){
 // horaires…) sont gardés sauf si l'on répond « oui » à la 2e question.
 const REINIT_PARAMS = ['schedule','employees','ops','ops_history','obj_horaire_op','fc_modeles','fc_params','rh_departements','prod_references','gadh_employees','gadh_cadences','gadh_plannings'];
 const REINIT_GARDER = ['users_v2','sessions','prod_v4_migre'];
+// Réinitialisation réservée à l'administrateur / développeur (compte mokhtar) : invisible pour tous les autres.
+function estAdminSysteme(){ return !!currentUser && currentUser.profil === 'sysadmin'; }
 window.reinitialiserSociete = async function(soc){
-  if(!currentUser || currentUser.role !== 'admin'){ showToast('Réservé à l\'administrateur'); return; }
+  if(!estAdminSysteme()){ showToast('Réservé à l\'administrateur'); return; }
   const nom = soc === 'gadh' ? 'GADH' : 'TEK-TREND';
   if(!confirm('Effacer tout l\'historique de ' + nom + ' ?\nCette action est définitive.')) return;
   const tout = confirm('Supprimer AUSSI les paramètres de ' + nom + ' (employés, modèles, cadences, horaires) ?\n\nOK = tout supprimer\nAnnuler = garder les paramètres');
