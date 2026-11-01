@@ -55,7 +55,8 @@ const PERC_COMPO = [
   ['GILET-NOIR', 'COMPOSITION GILET NOIR :\n80% POLYAMIDE + 20% ELASTANE'],
   ['LYNE-PRO', 'GILLET PRO :78% POLYAMIDE+\n22% ELASTANE']
 ];
-const PERC_SOCIETE = {raison:'S.A.R.L. TEK-TREND sarl', adresse:'RUE SAKIET SIDI YOUSSEF\n5012 SAHLINE', mf:'', tel:'', email:''};
+// Coordonnées de la société : Facturation TEK-TREND › Réglages (base Firebase), plus dans le code (dépôt public).
+const PERC_SOCIETE = {raison:'TEK-TREND', adresse:'', mf:'', tel:'', email:''};
 
 // --- Données (rangées dans les réglages de facturation de TEK-TREND : aucune nouvelle règle Firebase) ---
 function percReglages(){

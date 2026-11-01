@@ -3328,7 +3328,7 @@ initApp().then(async()=>{await mgtPagePrete(); mgtLancerSetup(); try{await impor
  const clientName=c=>String(c[fields.name]||'Sans nom');
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  const factures=()=>CLIENTS.flatMap(c=>(Array.isArray(c.Factures)?c.Factures:[]).map(f=>({...f,clientId:String(c[fields.id]),clientName:clientName(c)})));
- const HISTORIQUE_2026=[];
+ const HISTORIQUE_2026=[]; /* historique 2026 déjà importé dans la base : retiré du code (dépôt public) */
  const IMPORT_ALIASES={
    'djo':'djo', 'enfavet':'enfavet', 'lafprom':'lafprom', 'ditex':'ditex', 'gadh':'gadh',
    'faitplast':'fait plast', 'art martin':'art martin', 'ifce':'ifce doga', 'denim house':'denim house',
