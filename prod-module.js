@@ -1930,7 +1930,7 @@ function prodFeuilleHtml(d){
   }).join('');
   return `
   <div class="pfeuille">
-    <div class="ptitre">Flux d'une commande</div>
+    ${typeof logoDocHTML === 'function' ? logoDocHTML(activeSociete === 'gadh' ? 'gadh' : 'tek', 10) : ''}<div class="ptitre">Flux d'une commande</div>
     <table class="pentete"><tr>
       <td class="pcmd" rowspan="2">Commande: ${esc(d.nom)}</td>
       <td class="plot">LOT/REF</td><td class="pan">ANNEE</td>${d.client ? '<td class="pan">CLIENT</td>' : ''}
