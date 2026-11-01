@@ -5,7 +5,7 @@
 // « Situation de paiement » (clients × 12 mois, mois impayés en rouge) et « Registre détaillé »
 // des factures, avec import de l'historique 2026. Les factures restent dans la fiche client
 // (mgt_clients[id].factures : {number, date, amount, paid, type, status, note}).
-// Chargé après mgt-crm-ecrans.js et mgt-historique-2026.js.
+// Chargé après mgt-crm-ecrans.js.
 
 const LET = {tab:'situation', q:'', an:String(new Date().getFullYear()), cid:''};
 const LET_MOIS = ['JANV', 'FÉVR', 'MARS', 'AVRIL', 'MAI', 'JUIN', 'JUIL', 'AOÛT', 'SEPT', 'OCT', 'NOV', 'DÉC'];
@@ -21,7 +21,7 @@ function letStatut(f){ const p = crmNombre(f.paid), a = crmNombre(f.amount); ret
 function renderMgtLettrage(main){
   const ed = crmEd(), clients = Object.entries(crmClients()).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '', 'fr'));
   const annees = Array.from(new Set(crmToutesFactures().map(f => String(crmISO(f.date) || f.date || '').slice(0, 4)).filter(Boolean).concat([LET.an !== 'all' ? LET.an : String(new Date().getFullYear())]))).sort().reverse();
-  const b = mgtSection(main, ICONS.invoice + ' Facturation & Lettrage', ed ? `<button class="btn btn-ghost" onclick="letImporter()">Importer historique 2026</button><button class="btn btn-primary" onclick="crmForm('factures','')">+ Facture</button>` : '');
+  const b = mgtSection(main, ICONS.invoice + ' Facturation & Lettrage', ed ? `<button class="btn btn-primary" onclick="crmForm('factures','')">+ Facture</button>` : '');
   b.innerHTML = `<div class="card" style="padding:10px 12px;"><div style="display:flex;gap:8px;flex-wrap:wrap;">
       <input class="mgt-in" type="search" style="flex:1;min-width:150px;" placeholder="Rechercher facture ou client…" value="${esc(LET.q)}" oninput="LET.q=this.value;letRes()">
       <select class="mgt-in" onchange="LET.an=this.value;letRes()"><option value="all" ${LET.an === 'all' ? 'selected' : ''}>Toutes les années</option>${annees.map(a => `<option ${a === LET.an ? 'selected' : ''}>${a}</option>`).join('')}</select>
@@ -52,30 +52,7 @@ window.letRes = function(){
   }
   z.innerHTML = `<div class="kpi-mini-grid" style="grid-template-columns:repeat(2,1fr);margin-top:8px;">${tuile(letMt(tot), 'Facturé')}${tuile(letMt(enc), 'Encaissé')}${tuile(letMt(Math.max(0, tot - enc)), 'Reste à encaisser', tot - enc > 0.0005 ? 'hour-rend warn' : '')}${tuile(l.length, 'Factures')}</div>${onglets}${corps}`;
 };
-// ---------- Import de l'historique 2026 (les factures déjà présentes, par numéro, ne sont jamais doublées) ----------
-function letClientDe(source){
-  const s = crmNorm(source), al = crmNorm(LET_ALIAS[s] || ''), cl = Object.entries(crmClients());
-  const ex = cl.find(([, c]) => crmNorm(c.nom) === s || (al && crmNorm(c.nom) === al)); if(ex) return ex[0];
-  const cand = cl.filter(([, c]) => { const n = crmNorm(c.nom); return n && ((s && (n.includes(s) || s.includes(n))) || (al && (n.includes(al) || al.includes(n)))); });
-  return cand.length === 1 ? cand[0][0] : null;
-}
-window.letImporter = function(){
-  if(!confirm('Importer les ' + MGT_HISTORIQUE_2026.length + ' factures 2026 de l\'historique Excel (celles déjà présentes sont ignorées) ?')) return;
-  {
-    const existants = new Set(crmToutesFactures().map(f => String(f.number || '').trim()).filter(Boolean)), clients = crmClients(), par = {}, sans = []; let ajout = 0, doublon = 0;
-    MGT_HISTORIQUE_2026.forEach(h => {
-      const n = String(h.number || '').trim(); if(!n) return; if(existants.has(n)){ doublon++; return; }
-      const id = letClientDe(h.sourceClient); if(!id){ sans.push(h.sourceClient); return; }
-      const rec = par[id] || (par[id] = JSON.parse(JSON.stringify(clients[id]))); rec.factures = crmTableau(rec.factures).slice();
-      rec.factures.push({id:'FAC-2026-' + n, number:n, date:h.date, amount:h.amount, paid:0, type:h.type || 'AUTRE', status:'Impayée', note:'Import historique Excel LETTRAGE CLIENT 2026 — paiement à renseigner.'});
-      existants.add(n); ajout++;
-    });
-    Object.entries(par).forEach(([id, rec]) => crmEnregistrerClient(id, rec));
-    const inconnus = Array.from(new Set(sans));
-    showToast(ajout + ' facture(s) importée(s), ' + doublon + ' déjà présente(s)' + (inconnus.length ? ' · client introuvable : ' + inconnus.join(', ') : ''));
-    nav('mgt-lettrage');
-  }
-};
+// L'historique 2026 (74 factures) est déjà importé dans les fiches clients (base Firebase) : il ne figure plus dans le code.
 // ---------- Branchement ----------
 MGT_GROUPES.ventes.onglets.push(['mgt-lettrage', 'Lettrage']);
 MGT_PARENT['mgt-lettrage'] = 'mgt-offres';
