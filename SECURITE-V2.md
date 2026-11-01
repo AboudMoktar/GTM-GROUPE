@@ -57,15 +57,15 @@ La matrice complète, ressource par ressource, est dans `MATRICE-PERMISSIONS.md`
 | `audit-module.js` | Accès au journal selon le rôle |
 | `tests/` (nouveau) | Simulateur, scénarios, tests sur l'émulateur officiel, tests des fonctions, test de bout en bout |
 
-`portail-module.js` reste dans le dépôt mais n'est plus chargé.
+`portail-module.js` (plus chargé) et `commande-module.js` (vide) ont été supprimés le 02/11/2026. `database.rules.json` est conservé comme archive des anciennes règles.
 
 ## 4. Résultats des tests (31/10/2026)
 
 | Série | Outil | Résultat |
 | --- | --- | --- |
-| Règles V2, 152 scénarios (9 rôles, comptes désactivés, sans profil, visiteur, tentatives d'élévation, requêtes détournées, sessions, audit, validation) | Émulateur Firebase officiel | **152 / 152** |
-| Mêmes scénarios | Simulateur local | 152 / 152 |
-| Mêmes scénarios sur les règles actuelles (pour comparaison) | Simulateur local | 103 / 152 : 49 écarts |
+| Règles V2, 194 scénarios (9 rôles, comptes désactivés, sans profil, visiteur, tentatives d'élévation, requêtes détournées, sessions, audit, validation) | Émulateur Firebase officiel | **194 / 194** |
+| Mêmes scénarios | Simulateur local | 194 / 194 |
+| Mêmes scénarios sur les règles actuelles (pour comparaison) | Simulateur local | 128 / 194 : 66 écarts |
 | Fonctions serveur des comptes (droits de l'appelant, création, doublon, mot de passe faible, désactivation, connexion bloquée, nouveau mot de passe, suppression, données conservées, journal) | Émulateurs Auth, Database, Functions | **15 / 15** |
 | Application réelle connectée aux émulateurs : connexion de chaque rôle, chargement sans refus, écritures autorisées et refusées | Émulateurs + navigateur | **34 / 34** |
 
