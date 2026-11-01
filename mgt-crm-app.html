@@ -988,19 +988,18 @@ try{ document.documentElement.setAttribute('data-mgt-theme', localStorage.getIte
     <div>
       <div class="pilotageEyebrow">Administration du CRM</div>
       <h2>Paramètres</h2>
-      <div class="settingsSub">Outils de gestion, sauvegarde et recherche globale.</div>
+      <div class="settingsSub">Import, export et sauvegarde de la base clients.</div>
     </div>
   </div>
   <div class="settingsSection">
-    <div class="settingsSectionHead"><strong>Outils de gestion</strong><span>Import, export, sauvegarde et accès aux modules utiles</span></div>
+    <div class="settingsSectionHead"><strong>Base clients</strong><span>Importer ou exporter la base clients (Excel) et télécharger une sauvegarde complète</span></div>
     <div id="settingsCommandHost"></div>
   </div>
-  <div class="settingsSection" style="display:block!important">
-    <div class="settingsSectionHead"><strong>Base clients (CRM)</strong><span>Importer une sauvegarde JSON exportée du CRM MGT</span></div>
-    <div style="display:flex!important;flex-wrap:wrap;gap:8px;padding:12px 14px">
-      <button class="iconBtn secondary" id="mainRestoreBackupBtn" title="Restaurer un fichier de sauvegarde (.json) exporté par cette application" style="display:inline-flex!important;flex:1 1 180px;border-color:#7a1aa8;color:#7a1aa8"> Importer une sauvegarde</button>
-    </div>
+  <div class="settingsSection">
+    <div class="settingsSectionHead"><strong>Droits d'accès</strong><span>Définis par le rôle de chaque compte dans GTM Groupe (Administration › Comptes) : ils s'appliquent ici automatiquement.</span></div>
   </div>
+  <!-- Ancienne restauration JSON retirée de l'écran (bouton conservé, masqué, pour les scripts qui le référencent) -->
+  <button id="mainRestoreBackupBtn" hidden style="display:none!important" type="button"></button>
 </section>
 <section class="pilotagePanel">
 <div class="pilotageHead">
@@ -5814,6 +5813,7 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
   });
 })();
 </script>
+<style id="mgt-parametres-nettoyage">#settingsCommandHost #openSearchBtn,#settingsCommandHost #openClientListBtn,#settingsCommandHost #openQuickNoteBtn,#settingsCommandHost #openTaskReminderBtn{display:none!important}</style>
 </body>
 </html>
 
@@ -9367,7 +9367,7 @@ function droitsParDefaut(p){return DEFAUT[p]?DEFAUT[p]():null;}
 function calculer(c){
   if(!c)return null;
   var p=c.profil||'',d;
-  if(DEFAUT[p])d=fusion(DEFAUT[p](),reglages().profils[p]);
+  if(DEFAUT[p])d=DEFAUT[p](); /* droits fixés par le rôle du compte (plus de réglage séparé dans le CRM) */
   else if(p)d=LECTURE();
   else d=(c.role==='viewer')?LECTURE():TOUT();
   d.dashboard.view=true; /* l'accueil reste toujours accessible */
@@ -9445,7 +9445,7 @@ function peutRegler(){return !!(C&&C.gereComptes);}
 function verrou(m,a){return(m==='dashboard'&&a==='view')||(C&&C.profil===vueProfil&&m==='settings'&&(a==='view'||a==='edit'));}
 function lignesTableau(d,modifiable){return MODS.map(function(m){return'<tr><td>'+esc(m[1])+'</td>'+ACTS.map(function(a){var on=d[m[0]][a[0]]||(modifiable&&verrou(m[0],a[0])),bloque=!modifiable||verrou(m[0],a[0]);return'<td><input type="checkbox" data-dr-m="'+m[0]+'" data-dr-a="'+a[0]+'"'+(on?' checked':'')+(bloque?' disabled':'')+' aria-label="'+esc(m[1]+' : '+a[1])+'"></td>';}).join('')+'</tr>';}).join('');}
 function tableau(d,modifiable){return'<div class="drTableau"><table><thead><tr><th>Écran</th>'+ACTS.map(function(a){return'<th title="'+a[1]+'"><span class="drLong">'+a[1]+'</span><span class="drCourt">'+COURT[a[0]]+'</span></th>';}).join('')+'</tr></thead><tbody>'+lignesTableau(d,modifiable)+'</tbody></table></div>';}
-function dessinerSection(){var hoteSec=document.getElementById('settingsModule');if(!hoteSec)return;var sec=document.getElementById('mgtDroitsSection');
+function dessinerSection(){var ancien=document.getElementById('mgtDroitsSection');if(ancien)ancien.remove();return;var hoteSec=document.getElementById('settingsModule');if(!hoteSec)return;var sec=document.getElementById('mgtDroitsSection');
   if(!sec){sec=document.createElement('div');sec.id='mgtDroitsSection';sec.className='settingsSection';hoteSec.appendChild(sec);brancher(sec);}
   var html='<div class="settingsSectionHead"><strong>Droits par profil</strong><span>Ce que chaque compte peut consulter et modifier dans le CRM</span></div><div class="drCorps">';
   if(!C){html+='<div class="drNote">Les droits s’appliquent aux comptes GTM Groupe (page ouverte en dehors de GTM Groupe : aucun contrôle).</div></div>';sec.innerHTML=html;return;}
@@ -9579,7 +9579,7 @@ function etat(t){var e=document.getElementById('cmpEtat');if(e)e.textContent=t;}
 function dfr(s){if(!s)return'date inconnue';var d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 function section(){var hs=document.getElementById('settingsModule');if(!hs)return null;var s=document.getElementById('mgtCmpSection');
   if(!s){s=document.createElement('div');s.id='mgtCmpSection';s.className='settingsSection';var dr=document.getElementById('mgtDroitsSection');if(dr)hs.insertBefore(s,dr);else hs.appendChild(s);brancher(s);}return s;}
-function dessiner(){var s=section();if(!s)return;
+function dessiner(){var ancienne=document.getElementById('mgtCmpSection');if(ancienne)ancienne.remove();return;var s=section();if(!s)return;
   var h='<div class="settingsSectionHead"><strong>Comparer une sauvegarde</strong><span>Voir les différences fiche par fiche, importer la sélection et récupérer les PDF des offres</span></div><div class="cmpCorps">';
   if(!rapport){h+='<div class="cmpNote">Choisissez une sauvegarde complète du CRM (.json, par exemple celle exportée de l’ancienne version). Rien n’est modifié tant que vous n’avez pas cliqué sur « Importer la sélection ».</div>'
     +'<div class="cmpActions"><button type="button" class="cmpBtn ok" id="cmpChoisir">Choisir une sauvegarde</button></div><div class="cmpEtat" id="cmpEtat"></div>';}
