@@ -18,7 +18,7 @@ C.ORDRE.forEach(r => {
   lignes.push('| Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |', '| --- | --- | --- | --- | --- | --- | --- |');
   res.forEach(([id, a]) => {
     const x = C.RESSOURCES[id];
-    lignes.push(`| ${C.SOCIETES[x.societe] || 'TEK-TREND ↔ GADH'} | ${x.module} | ${x.libelle} | ${oui(a, 'l')} | ${oui(a, 'c')} | ${oui(a, 'm')} | ${oui(a, 's')}${a.indexOf('s') >= 0 && !(d.droits[id.split('.')[0] + '.*']) ? ' (sauf collections protégées)' : ''} |`);
+    lignes.push(`| ${C.SOCIETES[x.societe] || 'TEK-TREND ↔ GADH'} | ${x.module} | ${x.libelle} | ${oui(a, 'l')} | ${oui(a, 'c')} | ${oui(a, 'm')} | ${oui(a, 's')}${a.indexOf('s') >= 0 && x.dossier !== 'fichiers' && !(d.droits[id.split('.')[0] + '.*']) ? ' (sauf collections protégées)' : ''} |`);
   });
   lignes.push('');
 });

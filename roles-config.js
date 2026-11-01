@@ -49,16 +49,20 @@
     'liaison.suivi':        {societe:'liaison', module:'Commandes', libelle:'Suivi PERCKO : lots, envois et retours GADH', dossier:'liaison', cles:['suivi_index'], prefixes:['suivi_d_']},
     'liaison.references':   {societe:'liaison', module:'Commandes', libelle:'Catalogue des références', dossier:'liaison', cles:['prod_references']},
     // MGT (dossier mgt/ et fichiers joints fichiers/)
-    'mgt.tout':             {societe:'mgt', module:'MGT', libelle:'Toutes les données MGT (clients, offres, SAV, demandes, factures…)', dossier:'mgt', tout:true},
+    // Le CRM MGT range offres, planning, factures et lettrage DANS chaque fiche client (mgt_crm_clients).
+    'mgt.crm_clients':      {societe:'mgt', module:'MGT', libelle:'Clients : fiches, offres, planning, factures et lettrage (CRM)', dossier:'mgt', cles:['mgt_crm_clients']},
+    'mgt.crm_suivi':        {societe:'mgt', module:'MGT', libelle:'Historique des actions et étiquettes (CRM)', dossier:'mgt', cles:['mgt_crm_history', 'mgt_crm_history_tags', 'mgt_crm_tags']},
+    'mgt.crm_reglages':     {societe:'mgt', module:'MGT', libelle:'Réglages et droits par profil du CRM', dossier:'mgt', cles:['mgt_crm_settings', 'mgt_crm_droits']},
+    'mgt.tout':             {societe:'mgt', module:'MGT', libelle:'Toutes les autres données MGT (SAV, parc, tâches internes…)', dossier:'mgt', tout:true},
     'mgt.fichiers':         {societe:'mgt', module:'MGT', libelle:'Fichiers joints (PDF, photos)', dossier:'fichiers', tout:true}
   };
 
   // Clés dont la suppression entière est réservée aux rôles « complets » (*) :
   // un rôle limité peut modifier ces collections, jamais les effacer d'un coup.
-  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index'];
+  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index', 'mgt_crm_clients', 'mgt_crm_history'];
 
   const TOUT = 'lcms';
-  // --- Rôles (organisation validée le 31/10/2026) ---
+  // --- Rôles (organisation validée le 31/10/2026 ; Secrétaire MGT le 01/11/2026) ---
   // role : rôle technique attendu par les écrans existants (admin, chef_chaine, viewer).
   // interface : modules (et onglets) proposés ; '*' = tous les onglets du module.
   // droits : {ressource ou 'dossier.*' : actions}.
@@ -113,10 +117,11 @@
       droits:{'mgt.*':TOUT}
     },
     secretaire_mgt: {
-      label:'Secrétaire MGT', role:'viewer', groupe:false, societes:{},
-      aide:'Responsabilités à définir : aucun accès pour le moment',
-      interface:{},
-      droits:{}
+      label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true},
+      aide:'Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026)',
+      // Dans le CRM : Offres, Facturation et Planning complets ; Clients en consultation (voir mgt-crm-app.html, profil secretaire_mgt).
+      interface:{mgt:'*'},
+      droits:{'mgt.crm_clients':'lcm', 'mgt.crm_suivi':'lcm', 'mgt.crm_reglages':'l', 'mgt.fichiers':TOUT}
     },
     direction: {
       label:'Direction (lecture seule)', role:'viewer', groupe:true, societes:{tek:true, gadh:true, mgt:true},

@@ -30,7 +30,7 @@ const ECRITURES = {
   resp_gadh: [['cmd_saisies_c9', true], ['gadh_employees', false], ['prod_references', false]],
   secretaire_gadh: [['gadh_employees', true], ['gadh_factures', true], ['cmd_saisies_c9', false]],
   technico_mgt: [['mgt_parametres', true], ['employees', false]],
-  secretaire_mgt: [['mgt_parametres', false]],
+  secretaire_mgt: [['mgt_crm_clients', true], ['mgt_crm_droits', false], ['mgt_parametres', false], ['employees', false]],
   direction: [['prod_2026-11-02', false], ['gadh_employees', false], ['mgt_parametres', false]]
 };
 

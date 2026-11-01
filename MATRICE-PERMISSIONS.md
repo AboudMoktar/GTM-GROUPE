@@ -4,7 +4,7 @@ Générée automatiquement depuis `roles-config.js`, la même source que les rè
 
 « Supprimer » = effacer la clé entière (une collection). Retirer un élément d'une collection est une modification.
 
-Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`.
+Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`, `mgt_crm_clients`, `mgt_crm_history`.
 
 ## Administrateur / Développeur
 
@@ -29,7 +29,10 @@ Accès complet aux trois sociétés · gestion des comptes · configuration · s
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | oui | oui | oui |
-| MGT | MGT | Toutes les données MGT (clients, offres, SAV, demandes, factures…) | oui | oui | oui | oui |
+| MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
+| MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
+| MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |
+| MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | oui | oui | oui |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
 ## Responsable TEK-TREND
@@ -110,14 +113,22 @@ Accès complet au module MGT, y compris les demandes SAV. Rôle technique : `adm
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
-| MGT | MGT | Toutes les données MGT (clients, offres, SAV, demandes, factures…) | oui | oui | oui | oui |
+| MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
+| MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
+| MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |
+| MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | oui | oui | oui |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
 ## Secrétaire MGT
 
-Responsabilités à définir : aucun accès pour le moment. Rôle technique : `viewer`. Sociétés : aucune. Administration des comptes : non. Journal d'audit : non.
+Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026). Rôle technique : `admin`. Sociétés : MGT. Administration des comptes : non. Journal d'audit : non.
 
-Aucun droit sur les données.
+| Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
+| --- | --- | --- | --- | --- | --- | --- |
+| MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | — |
+| MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | — |
+| MGT | MGT | Réglages et droits par profil du CRM | oui | — | — | — |
+| MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
 ## Direction (lecture seule)
 
@@ -142,6 +153,9 @@ Lecture seule sur les trois sociétés · aucune modification. Rôle technique :
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |
-| MGT | MGT | Toutes les données MGT (clients, offres, SAV, demandes, factures…) | oui | — | — | — |
+| MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | — | — | — |
+| MGT | MGT | Historique des actions et étiquettes (CRM) | oui | — | — | — |
+| MGT | MGT | Réglages et droits par profil du CRM | oui | — | — | — |
+| MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | — | — | — |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | — | — | — |
 
