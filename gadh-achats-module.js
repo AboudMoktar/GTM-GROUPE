@@ -16,7 +16,9 @@
 // s'affichent que si le rôle peut écrire ; les règles Firebase l'imposent aussi.
 
 const ACH = {four:'gadh_achat_fournisseurs', art:'gadh_achat_articles', bons:'gadh_achat_bons', mv:'gadh_achat_mouvements', cpt:'gadh_achat_compteurs'};
-const ACH_CATEGORIES = {matiere:'Matière', accessoire:'Accessoire', machine:'Machine'};
+const ACH_CATEGORIES = {matiere:'Matière', accessoire:'Accessoire', machine:'Machine', produit:'Produit / prestation'};
+// Seuls les matières et accessoires sont suivis en stock (machines et produits / prestations : non).
+function achSuiviStock(a){ return !!a && (a.categorie === 'matiere' || a.categorie === 'accessoire'); }
 const ACH_TVA = [0, 7, 13, 19];
 const ACH_MODES = [['virement', 'Virement'], ['cheque', 'Chèque'], ['traite', 'Traite'], ['especes', 'Espèces']];
 const ACH_UNITES = ['pièce', 'mètre', 'kg', 'rouleau', 'boîte', 'litre', 'paquet', 'lot'];
@@ -25,7 +27,7 @@ let achFiltre = 'encours', achBonOuvert = null, achBonEdite = null, achArtFiltre
 function achGet(k){ return getJSON(ACH[k], {}) || {}; }
 function achSet(k, v){ setJSON(ACH[k], v); }
 function achListe(v){ return Array.isArray(v) ? v.filter(x => x != null) : (v && typeof v === 'object' ? Object.keys(v).sort((a, b) => a - b).map(k => v[k]).filter(x => x != null) : []); }
-function achDT(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3}) + ' DT'; }
+function achDT(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €'; } // Toute l'application est en euros.
 function achQte(n){ return (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString('fr-FR'); }
 function achDate(d){ return d ? d.split('-').reverse().join('/') : '—'; }
 function achNombre(v){ const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? 0 : n; }
@@ -70,7 +72,7 @@ function achStock(){
 }
 function achSousSeuil(){
   const st = achStock();
-  return Object.entries(achGet('art')).filter(([id, a]) => a && a.actif !== false && a.categorie !== 'machine' && achNombre(a.seuil) > 0 && (st[id] || 0) <= achNombre(a.seuil));
+  return Object.entries(achGet('art')).filter(([id, a]) => a && a.actif !== false && achSuiviStock(a) && achNombre(a.seuil) > 0 && (st[id] || 0) <= achNombre(a.seuil));
 }
 function achNumero(){
   const an = getTodayISO().slice(0, 4), c = achGet('cpt'), t = c.BA || {};
@@ -221,13 +223,13 @@ function renderAchBonForm(c){
           <div><label style="font-size:12px;color:var(--ink-soft);">Article</label><select class="ab-art" ${champ} onchange="achChoixArticle(${i}, this.value)">${achOptionsArticles(l.articleId)}</select></div>
           <div><label style="font-size:12px;color:var(--ink-soft);">Désignation</label><input class="ab-des" value="${esc(l.designation || '')}" ${champ}></div>
           <div><label style="font-size:12px;color:var(--ink-soft);">Qté</label><input class="ab-qte" inputmode="decimal" value="${esc(String(l.qte))}" ${champ} oninput="achRecalc()"></div>
-          <div><label style="font-size:12px;color:var(--ink-soft);">P.U. HT (DT)</label><input class="ab-pu" inputmode="decimal" value="${esc(String(l.pu))}" ${champ} oninput="achRecalc()"></div>
+          <div><label style="font-size:12px;color:var(--ink-soft);">P.U. HT (€)</label><input class="ab-pu" inputmode="decimal" value="${esc(String(l.pu))}" ${champ} oninput="achRecalc()"></div>
           <div><label style="font-size:12px;color:var(--ink-soft);">TVA</label><select class="ab-tva" ${champ} onchange="achRecalc()">${ACH_TVA.map(x => `<option value="${x}" ${achNombre(l.tva) === x ? 'selected' : ''}>${x} %</option>`).join('')}</select></div>
           <button class="icon-btn" title="Retirer" onclick="achRetirerLigne(${i})" style="height:38px;">✕</button>
         </div>`).join('')}</div>
       <div class="pg-grille2" style="margin-top:12px;">
-        <div class="field"><label>Frais (transport…) DT</label><input id="ab-frais" inputmode="decimal" value="${esc(String(b.frais || 0))}" ${champ} oninput="achRecalc()"></div>
-        <div class="field"><label>Timbre fiscal DT</label><input id="ab-timbre" inputmode="decimal" value="${esc(String(b.timbre || 0))}" ${champ} oninput="achRecalc()"></div>
+        <div class="field"><label>Frais (transport…) (€)</label><input id="ab-frais" inputmode="decimal" value="${esc(String(b.frais || 0))}" ${champ} oninput="achRecalc()"></div>
+        <div class="field"><label>Timbre fiscal (€)</label><input id="ab-timbre" inputmode="decimal" value="${esc(String(b.timbre || 0))}" ${champ} oninput="achRecalc()"></div>
       </div>
       <div class="field"><label>Note</label><textarea id="ab-note" rows="2" ${champ}>${esc(b.note || '')}</textarea></div>
       <div id="ab-totaux" style="text-align:right;font-size:14px;line-height:1.7;"></div>
@@ -309,7 +311,7 @@ window.achValiderReception = (id) => {
     l.recu = achNombre(l.recu) + q; recus.push({designation:l.designation, qte:q, articleId:l.articleId || ''});
     const a = arts[l.articleId];
     if(a){ if(achNombre(l.pu) > 0) a.prix = achNombre(l.pu); a.dernierAchat = date;
-      if(a.categorie !== 'machine') mv[mgtId('mv')] = {date, articleId:l.articleId, type:'entree', qte:q, bonId:id, pu:achNombre(l.pu), motif:'Réception ' + (b.numero || ''), par:currentUser.nom || currentUser.username, t:Date.now()}; }
+      if(achSuiviStock(a)) mv[mgtId('mv')] = {date, articleId:l.articleId, type:'entree', qte:q, bonId:id, pu:achNombre(l.pu), motif:'Réception ' + (b.numero || ''), par:currentUser.nom || currentUser.username, t:Date.now()}; }
   });
   if(!recus.length){ showToast('Aucune quantité saisie'); return; }
   b.receptions = achListe(b.receptions).concat([{date, lignes:recus, par:currentUser.nom || currentUser.username}]);
@@ -321,7 +323,7 @@ window.achValiderReception = (id) => {
 window.achFormPaiement = (id) => {
   const b = achGet('bons')[id]; if(!b) return; const t = achTotaux(b);
   mgtModal('Paiement ' + esc(b.numero || ''), `<p style="font-size:13px;margin-top:0;">Reste à payer : <b>${achDT(t.reste)}</b></p>
-    ${mgtChamp('Date', 'ap-date', getTodayISO(), 'date')}${mgtChamp('Montant (DT)', 'ap-montant', String(t.reste), 'text', 'inputmode="decimal"')}
+    ${mgtChamp('Date', 'ap-date', getTodayISO(), 'date')}${mgtChamp('Montant (€)', 'ap-montant', String(t.reste), 'text', 'inputmode="decimal"')}
     ${mgtSelect('Mode', 'ap-mode', ACH_MODES, 'virement')}${mgtChamp('Référence (n° chèque, virement…)', 'ap-ref', '')}
     <button class="btn btn-primary" style="width:100%;" onclick="achValiderPaiement('${id}')">Enregistrer le paiement</button>`);
 };
@@ -343,7 +345,7 @@ window.achImprimer = (id) => {
   const f = achGet('four')[b.fournisseurId] || {}, t = achTotaux(b);
   let P = {raison:SOCIETES.gadh.nom, adresse:'', mf:'', tel:'', email:''};
   try { if(typeof factParams === 'function') P = Object.assign(P, factParams('gadh')); } catch(e) {}
-  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:3, maximumFractionDigits:3});
+  const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(b.numero || 'Bon de commande')}</title><style>
     body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;font-size:13px;} h1{font-size:20px;margin:0 0 4px;} .ent{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px;}
     .boite{border:1px solid #999;border-radius:6px;padding:10px 12px;min-width:240px;} table{width:100%;border-collapse:collapse;margin-top:12px;} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left;} th{background:#eee;} .n{text-align:right;white-space:nowrap;}
@@ -353,7 +355,7 @@ window.achImprimer = (id) => {
     <div class="boite" style="max-width:360px;"><b>Fournisseur</b><br>${esc(f.nom || '')}<br>${esc(f.adresse || '')}${f.mf ? '<br>MF ' + esc(f.mf) : ''}${f.tel ? '<br>Tél. ' + esc(f.tel) : ''}</div>
     <table><thead><tr><th>Désignation</th><th class="n">Qté</th><th class="n">P.U. HT</th><th class="n">TVA</th><th class="n">Total HT</th></tr></thead><tbody>
       ${achListe(b.lignes).map(l => `<tr><td>${esc(l.designation)}</td><td class="n">${achQte(l.qte)} ${esc(l.unite || '')}</td><td class="n">${n(l.pu)}</td><td class="n">${achNombre(l.tva)} %</td><td class="n">${n(achNombre(l.qte) * achNombre(l.pu))}</td></tr>`).join('')}</tbody></table>
-    <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} DT</td></tr><tr><td>TVA</td><td class="n">${n(t.tva)} DT</td></tr>${t.frais ? `<tr><td>Frais</td><td class="n">${n(t.frais)} DT</td></tr>` : ''}${t.timbre ? `<tr><td>Timbre fiscal</td><td class="n">${n(t.timbre)} DT</td></tr>` : ''}<tr><td><b>Total TTC</b></td><td class="n"><b>${n(t.ttc)} DT</b></td></tr></table>
+    <table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} €</td></tr><tr><td>TVA</td><td class="n">${n(t.tva)} €</td></tr>${t.frais ? `<tr><td>Frais</td><td class="n">${n(t.frais)} €</td></tr>` : ''}${t.timbre ? `<tr><td>Timbre fiscal</td><td class="n">${n(t.timbre)} €</td></tr>` : ''}<tr><td><b>Total TTC</b></td><td class="n"><b>${n(t.ttc)} €</b></td></tr></table>
     ${b.note ? `<p style="margin-top:16px;">${esc(b.note)}</p>` : ''}<div class="sig"><div>Le fournisseur</div><div>Pour ${esc(P.raison || SOCIETES.gadh.nom)}</div></div>
     <script>window.onload=function(){window.print();}<\/script></body></html>`;
   const w = window.open('', '_blank');
@@ -363,7 +365,7 @@ window.achImprimer = (id) => {
 
 // --- Stock ---
 function renderAchStock(c){
-  const ed = achPeutModifier(), st = achStock(), arts = Object.entries(achGet('art')).filter(([, a]) => a && a.categorie !== 'machine' && a.actif !== false)
+  const ed = achPeutModifier(), st = achStock(), arts = Object.entries(achGet('art')).filter(([, a]) => achSuiviStock(a) && a.actif !== false)
     .sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || ''));
   const valeur = arts.reduce((s, [id, a]) => s + Math.max(0, st[id] || 0) * achNombre(a.prix), 0);
   const mvs = Object.entries(achGet('mv')).filter(([, m]) => m).sort((a, b) => (b[1].date || '').localeCompare(a[1].date || '') || (b[1].t || 0) - (a[1].t || 0)).slice(0, 40);
@@ -380,7 +382,7 @@ function renderAchStock(c){
     <div class="card"><h3 style="margin-top:0;">Derniers mouvements</h3>${mvs.length ? mvs.map(([, m]) => `<div class="session-row"><div><b style="font-size:13px;">${esc(achNomArt(m.articleId) || '—')}</b><div style="font-size:12px;color:var(--ink-soft);">${achDate(m.date)} · ${esc(m.motif || '')}${m.par ? ' · ' + esc(m.par) : ''}</div></div>
       <b style="font-size:13px;color:${m.type === 'sortie' ? 'var(--bad)' : 'var(--good)'};">${m.type === 'sortie' ? '−' : (achNombre(m.qte) < 0 ? '' : '+')}${achQte(Math.abs(achNombre(m.qte)) * (m.type !== 'sortie' && achNombre(m.qte) < 0 ? -1 : 1))}</b></div>`).join('') : buildEmptyState('Aucun mouvement')}</div>`;
 }
-function achOptionsStock(){ return Object.entries(achGet('art')).filter(([, a]) => a && a.categorie !== 'machine' && a.actif !== false).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '')).map(([id, a]) => [id, a.nom + (a.unite ? ' (' + a.unite + ')' : '')]); }
+function achOptionsStock(){ return Object.entries(achGet('art')).filter(([, a]) => achSuiviStock(a) && a.actif !== false).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '')).map(([id, a]) => [id, a.nom + (a.unite ? ' (' + a.unite + ')' : '')]); }
 window.achFormSortie = () => {
   const opts = achOptionsStock(); if(!opts.length){ showToast('Créez d\'abord des matières ou accessoires dans Articles'); return; }
   mgtModal('Sortie de stock', `${mgtSelect('Article', 'as-art', opts, opts[0][0])}${mgtChamp('Quantité', 'as-qte', '', 'text', 'inputmode="decimal"')}${mgtChamp('Date', 'as-date', getTodayISO(), 'date')}
@@ -423,7 +425,7 @@ function renderAchArticles(c){
     <div class="card" style="padding:4px 14px;">${l.length ? l.map(([id, a]) => `<div class="session-row" ${ed ? `style="cursor:pointer;" onclick="achFormArticle('${id}')"` : ''}>
       <div style="min-width:0;"><b style="font-size:13px;${a.actif === false ? 'color:var(--ink-faint);' : ''}">${esc(a.nom)}</b> <span style="font-size:12px;color:var(--ink-soft);">${esc(ACH_CATEGORIES[a.categorie] || '')}${a.ref ? ' · ' + esc(a.ref) : ''}${a.actif === false ? ' · inactif' : ''}</span>
         <div style="font-size:12px;color:var(--ink-soft);">${a.fournisseurId ? esc(achNomFour(a.fournisseurId)) + ' · ' : ''}${achNombre(a.prix) > 0 ? 'dernier prix ' + achDT(a.prix) + (a.unite ? ' / ' + esc(a.unite) : '') : 'pas encore acheté'}</div></div>
-      ${a.categorie !== 'machine' ? `<b style="font-size:13px;white-space:nowrap;">${achQte(st[id] || 0)} ${esc(a.unite || '')}</b>` : ''}</div>`).join('') : buildEmptyState('Aucun article', ed ? 'Créez vos matières, accessoires et machines avec « + Nouvel article ».' : '')}</div>`;
+      ${achSuiviStock(a) ? `<b style="font-size:13px;white-space:nowrap;">${achQte(st[id] || 0)} ${esc(a.unite || '')}</b>` : ''}</div>`).join('') : buildEmptyState('Aucun article', ed ? 'Créez vos matières, accessoires et machines avec « + Nouvel article ».' : '')}</div>`;
 }
 window.achFormArticle = (id, depuisBon) => {
   if(!achPeutModifier()) return;
@@ -434,7 +436,8 @@ window.achFormArticle = (id, depuisBon) => {
     ${mgtSelect('Catégorie', 'aa-cat', Object.entries(ACH_CATEGORIES), a.categorie || 'matiere')}
     ${mgtSelect('Unité', 'aa-unite', ACH_UNITES.map(u => [u, u]).concat(a.unite && ACH_UNITES.indexOf(a.unite) < 0 ? [[a.unite, a.unite]] : []), a.unite || 'pièce')}
     ${mgtChamp('Seuil d\'alerte (matières et accessoires)', 'aa-seuil', a.seuil || '', 'text', 'inputmode="decimal"')}
-    ${mgtChamp('Prix HT habituel (DT)', 'aa-prix', a.prix || '', 'text', 'inputmode="decimal"')}
+    ${mgtChamp('Prix d\'achat HT habituel (€)', 'aa-prix', a.prix || '', 'text', 'inputmode="decimal"')}
+    ${mgtChamp('Prix de vente HT (€)', 'aa-pv', a.prixVente || '', 'text', 'inputmode="decimal"')}
     ${mgtSelect('TVA habituelle', 'aa-tva', ACH_TVA.map(x => [String(x), x + ' %']), String(a.tva === undefined ? 19 : a.tva))}
     ${mgtSelect('Fournisseur habituel', 'aa-four', fours, a.fournisseurId || '')}
     ${id ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-bottom:12px;"><input type="checkbox" id="aa-actif" ${a.actif === false ? '' : 'checked'} style="width:18px;height:18px;"> Article actif</label>` : ''}
@@ -445,7 +448,7 @@ window.achSauverArticle = (id, depuisBon) => {
   const nom = mgtVal('aa-nom'); if(!nom){ showToast('Nom requis'); return; }
   const arts = achGet('art'), k = id || mgtId('ar'), anc = arts[k] || {};
   const actif = document.getElementById('aa-actif');
-  arts[k] = Object.assign({}, anc, {nom, ref:mgtVal('aa-ref'), categorie:mgtVal('aa-cat'), unite:mgtVal('aa-unite'), seuil:achNombre(mgtVal('aa-seuil')), prix:achNombre(mgtVal('aa-prix')), tva:achNombre(mgtVal('aa-tva')),
+  arts[k] = Object.assign({}, anc, {nom, ref:mgtVal('aa-ref'), categorie:mgtVal('aa-cat'), unite:mgtVal('aa-unite'), seuil:achNombre(mgtVal('aa-seuil')), prix:achNombre(mgtVal('aa-prix')), prixVente:achNombre(mgtVal('aa-pv')), tva:achNombre(mgtVal('aa-tva')),
     fournisseurId:mgtVal('aa-four'), actif:actif ? actif.checked : true, maj:Date.now()});
   achSet('art', arts); mgtFermer(); showToast(id ? 'Article enregistré' : 'Article créé');
   nav(depuisBon ? 'ach-bons' : 'ach-articles');

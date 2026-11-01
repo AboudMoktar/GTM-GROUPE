@@ -509,7 +509,7 @@ window.factFormClient = (id) => {
 window.factSauverClient = (id) => {
   const soc = factSoc(), nom = mgtVal('fc-nom'); if(!nom){ showToast('Nom obligatoire'); return; }
   const cle = factCle(soc, 'fact_clients'), l = getJSON(cle, {}) || {}, nid = id || mgtId('k');
-  l[nid] = {nom, adresse:mgtVal('fc-adresse'), mf:mgtVal('fc-mf'), email:mgtVal('fc-email')};
+  l[nid] = Object.assign({}, l[nid] || {}, {nom, adresse:mgtVal('fc-adresse'), mf:mgtVal('fc-mf'), email:mgtVal('fc-email')});
   setJSON(cle, l); mgtFermer(); showToast('Client enregistré'); nav('fact-clients');
 };
 window.factSupprimerClient = (id) => {
