@@ -346,9 +346,9 @@ function factCarteClient(soc, clientId){
 window.factImprimer = (id, relance) => {
   const soc = factSoc(), l = factListe(soc), f = l[id]; if(!f) return;
   const P = factParams(soc), t = factTotaux(f, l), avoir = f.type === 'avoir';
-  const c = f.statut === 'emise' ? f.client : (factClients(soc)[f.clientId] || {nom:''});
+  const c = (f.statut === 'emise' && f.client) ? f.client : (factClients(soc)[f.clientId] || {nom:''});
   const n = (x) => (Number(x) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const entete = `<div class="top"><div><h1>${esc(P.raison)}</h1><div>${esc(P.adresse).replace(/\n/g, '<br>')}</div><div>${P.tel ? 'Tél. ' + esc(P.tel) : ''}${P.email ? ' · ' + esc(P.email) : ''}</div>${P.mf ? `<div>MF ${esc(P.mf)}</div>` : ''}</div>`;
+  const entete = `<div class="top"><div>${typeof logoDocHTML === 'function' ? logoDocHTML(soc) : ''}<h1>${esc(P.raison)}</h1><div>${esc(P.adresse).replace(/\n/g, '<br>')}</div><div>${P.tel ? 'Tél. ' + esc(P.tel) : ''}${P.email ? ' · ' + esc(P.email) : ''}</div>${P.mf ? `<div>MF ${esc(P.mf)}</div>` : ''}</div>`;
   const clientBox = `<div class="box" style="margin-left:auto;width:45%;"><b>${esc(c.nom || '')}</b>${c.adresse ? '<br>' + esc(c.adresse) : ''}${c.mf ? '<br>MF ' + esc(c.mf) : ''}</div>`;
   const style = `body{font:12px Arial,sans-serif;color:#111;margin:28px;} h1{font-size:20px;margin:0 0 4px;} .top{display:flex;justify-content:space-between;gap:20px;margin-bottom:24px;}
     .box{border:1px solid #999;padding:10px;border-radius:4px;min-width:220px;} table{width:100%;border-collapse:collapse;margin-top:14px;} th,td{border:1px solid #999;padding:6px;vertical-align:top;}

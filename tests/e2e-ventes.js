@@ -142,6 +142,33 @@ const ECRITURES = {
   verif('2e livraison : commande « Livrée », stock 30', await p.evaluate((c) => venStatutCmd(venGet('cmd')[c]).label === 'Livrée' && achStock().art_fil === 30, cmd.id));
   await p.evaluate((id) => venAnnulerBl(id), bl2); await pause(p);
   verif('Annulation : stock revenu à 35, commande de nouveau « Livrée en partie »', await p.evaluate((c) => achStock().art_fil === 35 && venStatutCmd(venGet('cmd')[c]).label === 'Livrée en partie', cmd.id));
+  // Prestation : fiche adaptée (tarification, description, suppléments) puis devis avec supplément, imprimé avec le logo
+  await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-achats'); nav('ach-articles'); achFormArticle(); }); await pause(p, 400);
+  await p.fill('#aa-nom', 'Repassage et pliage'); await p.selectOption('#aa-cat', 'produit'); await pause(p, 200);
+  verif('Fiche prestation : champs de stock masqués, tarification affichée', await p.evaluate(() => document.getElementById('aa-bloc-stock').style.display === 'none' && document.getElementById('aa-bloc-presta').style.display === ''));
+  await p.selectOption('#aa-tarif', '__autre'); await p.fill('#aa-tarif-autre', 'colis');
+  await p.fill('#aa-pp', '4'); await p.fill('#aa-desc', 'Repassage vapeur, pliage et mise sous sachet');
+  await p.evaluate(() => achAjouterOption()); await p.fill('.aa-opt-nom', 'Étiquetage client'); await p.fill('.aa-opt-pu', '0.5');
+  await p.screenshot({path:'/tmp/ventes-8-prestation.png', fullPage:true});
+  await p.evaluate(() => achSauverArticle('', false)); await pause(p);
+  const pr = await p.evaluate(() => { const a = achGet('art'), id = Object.keys(a).find(k => a[k].nom === 'Repassage et pliage'); return id && Object.assign({id}, a[id], {tarifs:achTarifs()}); });
+  verif('Prestation enregistrée : tarif « par colis » créé, prix, description, 1 supplément', pr && pr.unite === 'colis' && pr.prixVente === 4 && /vapeur/.test(pr.description) && pr.options.length === 1 && pr.tarifs.indexOf('colis') >= 0, JSON.stringify(pr));
+  await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-ventes'); nav('ven-devis'); venNouveau('devis'); }); await pause(p);
+  await p.selectOption('#vf-client', cid);
+  await p.evaluate((id) => venChoixArticle(0, id), pr.id); await pause(p, 300);
+  await p.fill('.vf-ligne[data-i="0"] .vf-qte', '10');
+  await p.evaluate(() => venAjouterOption(0, 0)); await pause(p, 300);
+  await p.screenshot({path:'/tmp/ventes-9-devis-presta.png', fullPage:true});
+  await p.evaluate(() => venEnregistrer()); await pause(p);
+  const dv2 = await p.evaluate((cid) => { const l = venGet('devis'), id = Object.keys(l).filter(k => l[k].clientId === cid).sort((a, b) => (l[b].numero || '').localeCompare(l[a].numero || ''))[0]; return {id, d:l[id], t:venTotaux(l[id])}; }, cid);
+  verif('Devis prestation : 10 colis × 4 + supplément 1 × 0,5 = 40,5 HT', Math.abs(dv2.t.ht - 40.5) < 1e-6 && dv2.d.lignes[1].designation === 'Étiquetage client', JSON.stringify(dv2.d.lignes));
+  const html = await p.evaluate((id) => { let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); venImprimer('devis', id); window.open = o; return h; }, dv2.id);
+  verif('Impression du devis : logo GADH intégré et description de la prestation', /<img src="data:image\/png;base64,/.test(html) && /vapeur/.test(html));
+  const v = await S.ctx.newPage(); await v.setContent(html.replace(/<script>[\s\S]*?<\/script>/, ''), {waitUntil:'load'}); await v.screenshot({path:'/tmp/ventes-10-impression.png', fullPage:true}); await v.close();
+  const fh = await p.evaluate(() => { const l = factListe('gadh'), id = Object.keys(l).find(k => l[k].origine && l[k].origine.type === 'vente'); let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); activeSociete = 'gadh'; factImprimer(id); window.open = o; return h; });
+  verif('Impression de la facture GADH : logo intégré', /<img src="data:image\/png;base64,/.test(fh));
+  const ah = await p.evaluate(() => { let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); const b = achGet('bons'); const id = Object.keys(b)[0]; if(id) achImprimer(id); window.open = o; return h; });
+  verif('Impression du bon d\'achat : logo intégré', /<img src="data:image\/png;base64,/.test(ah));
   verif('Secrétaire GADH : aucun refus Firebase ni erreur', !S.refus.length && !S.erreurs.length, S.refus.concat(S.erreurs).join(' | '));
   await S.ctx.close();
 

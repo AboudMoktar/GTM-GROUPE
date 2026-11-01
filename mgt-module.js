@@ -593,7 +593,7 @@ window.mgtImprimerDevis = (id) => {
     th{background:#eee;text-align:left;} td.n{text-align:right;white-space:nowrap;} .tot{width:280px;margin-left:auto;margin-top:12px;} .tot td{border:none;padding:3px 6px;} .tot tr:last-child td{font-weight:bold;font-size:14px;border-top:1px solid #111;}
     .cond{margin-top:22px;white-space:pre-line;} .pied{margin-top:30px;font-size:10px;color:#555;border-top:1px solid #ccc;padding-top:6px;} @media print{body{margin:12mm;}}
   </style></head><body>
-    <div class="top"><div><h1>${esc(P.raison)}</h1><div>${esc(P.adresse).replace(/\n/g, '<br>')}</div><div>${P.tel ? 'Tél. ' + esc(P.tel) : ''}${P.email ? ' · ' + esc(P.email) : ''}</div>${P.mf ? `<div>MF ${esc(P.mf)}</div>` : ''}</div>
+    <div class="top"><div>${typeof logoDocHTML === 'function' ? logoDocHTML('mgt') : ''}<h1>${esc(P.raison)}</h1><div>${esc(P.adresse).replace(/\n/g, '<br>')}</div><div>${P.tel ? 'Tél. ' + esc(P.tel) : ''}${P.email ? ' · ' + esc(P.email) : ''}</div>${P.mf ? `<div>MF ${esc(P.mf)}</div>` : ''}</div>
       <div class="box"><b>DEVIS ${esc(d.numero)}${d.version > 1 ? ' (version ' + d.version + ')' : ''}</b><br>Date : ${mgtDate(d.date)}<br>Valable jusqu'au : ${mgtDate(d.validite)}</div></div>
     <div class="box" style="margin-left:auto;width:45%;"><b>${esc(c.nom || '')}</b><br>${esc([c.adresse, c.ville].filter(Boolean).join(', '))}${c.mf ? '<br>MF ' + esc(c.mf) : ''}</div>
     ${d.objet ? `<p style="margin-top:18px;"><b>Objet :</b> ${esc(d.objet)}</p>` : ''}

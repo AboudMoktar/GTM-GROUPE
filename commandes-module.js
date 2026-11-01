@@ -1597,7 +1597,7 @@ function cmdRapportHtml(cmdIds){
       </table>
     </div>`).join('');
   return `
-    <div class="rtitre">Rapport des commandes — ${esc(info.titre)}</div>
+    ${typeof logoDocHTML === 'function' ? logoDocHTML(activeSociete === 'gadh' ? 'gadh' : 'tek', 12) : ''}<div class="rtitre">Rapport des commandes — ${esc(info.titre)}</div>
     <div class="rsous">${esc(cmdRapportSousTitre(d))}</div>
     ${synthese}
     <h3>Détail par référence et taille</h3>
@@ -1986,7 +1986,7 @@ function cmdDocColisageHtml(cmdId, cmd, colis){
   const ouverts = colis.some(c => c.ouvert);
   return `
     <div class="col-entete">
-      <div>Expéditeur : <b>${esc(exp.nom)}</b>${exp.lignes.map(l=>`<br>${esc(l)}`).join('')} <b>${esc(exp.pays)}</b>${derniere ? `<br>Date d'export : le ${cmdRapportDateFR(derniere.date)}` : ''}</div>
+      <div>${typeof logoDocHTML === 'function' ? logoDocHTML('tek', 12) : ''}Expéditeur : <b>${esc(exp.nom)}</b>${exp.lignes.map(l=>`<br>${esc(l)}`).join('')} <b>${esc(exp.pays)}</b>${derniere ? `<br>Date d'export : le ${cmdRapportDateFR(derniere.date)}` : ''}</div>
       <div>${cmdDestinataireHtml(cmd.destination)}</div>
     </div>
     <div class="col-info">Commande ${esc(cmd.numero)}${derniere && derniere.bl?` · BL ${esc(derniere.bl)}`:''}${derniere && derniere.transporteur?` · ${esc(derniere.transporteur)}`:''}</div>

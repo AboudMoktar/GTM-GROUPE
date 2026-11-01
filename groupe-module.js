@@ -371,3 +371,18 @@ window.reinitialiserSociete = async function(soc){
   showToast('✓ ' + nom + ' réinitialisé (' + n + ' éléments effacés)');
   setTimeout(function(){ nav(activeTab); }, 300);
 };
+
+// --- Logo de la société sur les documents imprimés (devis, commandes, livraisons, factures, bons d'achat, rapports) ---
+// Les logos sont préchargés en image intégrée : ils s'impriment même hors ligne et dans la fenêtre d'impression.
+const LOGOS_DOC = {};
+(function logoDocPrecharger(){
+  Object.keys(SOCIETES).forEach(k => {
+    const l = SOCIETES[k].logo; if(!l || typeof fetch !== 'function') return;
+    fetch(l).then(r => r.ok ? r.blob() : null).then(b => { if(!b) return; const fr = new FileReader(); fr.onload = () => { LOGOS_DOC[k] = fr.result; }; fr.readAsDataURL(b); }).catch(() => {});
+  });
+})();
+function logoDocSrc(soc){ const s = SOCIETES[soc]; if(!s || !s.logo) return ''; return LOGOS_DOC[soc] || new URL(s.logo, location.href).href; }
+function logoDocHTML(soc, hauteurMm, style){
+  const src = logoDocSrc(soc); if(!src) return '';
+  return `<img src="${src}" alt="${esc(SOCIETES[soc].nom)}" onerror="this.remove()" style="display:block;height:${hauteurMm || 18}mm;max-width:60mm;object-fit:contain;object-position:left center;margin:0 0 2.5mm;${style || ''}">`;
+}

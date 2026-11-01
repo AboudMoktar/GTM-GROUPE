@@ -179,7 +179,7 @@ function renderVenDoc(c, type){
       <div style="font-size:13px;color:var(--ink-soft);line-height:1.6;">Client : <b style="color:var(--ink);">${esc(cl.nom || '—')}</b>${cl.tel ? ' · ' + esc(cl.tel) : ''}<br>Date : ${achDate(d.date)}${infos ? ' · ' + infos : ''}${d.refClient ? '<br>Référence client : ' + esc(d.refClient) : ''}${d.note ? '<br>' + esc(d.note) : ''}</div>
       <div style="overflow-x:auto;margin-top:12px;"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px;">
         <thead><tr style="text-align:left;"><th style="padding:6px;">Désignation</th><th style="padding:6px;text-align:right;">Qté</th>${type === 'cmd' ? '<th style="padding:6px;text-align:right;">Livré</th>' : ''}<th style="padding:6px;text-align:right;">P.U. HT</th><th style="padding:6px;text-align:right;">Remise</th><th style="padding:6px;text-align:right;">Total HT</th></tr></thead>
-        <tbody>${lignes.map(l => `<tr style="border-top:1px solid var(--border);"><td style="padding:6px;">${esc(l.designation)}</td><td style="padding:6px;text-align:right;">${achQte(l.qte)} ${esc(l.unite || '')}</td>${type === 'cmd' ? `<td style="padding:6px;text-align:right;color:${achNombre(l.livre) + 1e-9 >= achNombre(l.qte) ? 'var(--good)' : 'var(--ink-soft)'};">${achQte(l.livre || 0)}</td>` : ''}
+        <tbody>${lignes.map(l => `<tr style="border-top:1px solid var(--border);"><td style="padding:6px;">${esc(l.designation)}${l.detail ? `<div style="font-size:12px;color:var(--ink-soft);">${esc(l.detail).replace(/\n/g, '<br>')}</div>` : ''}</td><td style="padding:6px;text-align:right;">${achQte(l.qte)} ${esc(l.unite || '')}</td>${type === 'cmd' ? `<td style="padding:6px;text-align:right;color:${achNombre(l.livre) + 1e-9 >= achNombre(l.qte) ? 'var(--good)' : 'var(--ink-soft)'};">${achQte(l.livre || 0)}</td>` : ''}
           <td style="padding:6px;text-align:right;">${achDT(l.pu)}</td><td style="padding:6px;text-align:right;">${achNombre(l.remise) ? achNombre(l.remise) + ' %' : ''}</td><td style="padding:6px;text-align:right;">${achDT(achNombre(l.qte) * achNombre(l.pu) * (1 - achNombre(l.remise) / 100))}</td></tr>`).join('')}</tbody></table></div>
       <div style="margin:12px 0 0 auto;max-width:340px;font-size:13.5px;">
         <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Total HT</span><span>${achDT(t.ht)}</span></div>
@@ -230,6 +230,7 @@ function renderVenForm(c){
           <div><label style="font-size:12px;color:var(--ink-soft);">P.U. HT (€)</label><input class="vf-pu" inputmode="decimal" value="${esc(String(l.pu))}" ${champ} oninput="venRecalc()"></div>
           <div><label style="font-size:12px;color:var(--ink-soft);">Remise %</label><input class="vf-rem" inputmode="decimal" value="${esc(String(l.remise || 0))}" ${champ} oninput="venRecalc()"></div>
           <button class="icon-btn" title="Retirer" onclick="venRetirerLigne(${i})" style="height:38px;">✕</button>
+          ${venSousLigne(l, i)}
         </div>`).join('')}</div>
       <div class="pg-grille2" style="margin-top:12px;">
         <div class="field"><label>TVA</label><select id="vf-tva" ${champ} onchange="venRecalc()">${ACH_TVA.map(x => `<option value="${x}" ${achNombre(d.tva) === x ? 'selected' : ''}>${x} %</option>`).join('')}</select></div>
@@ -253,7 +254,7 @@ function venLireForm(){
   d.lignes = Array.from(document.querySelectorAll('.vf-ligne')).map((el, i) => {
     const anc = d.lignes[i] || {}, articleId = el.querySelector('.vf-art').value, a = achGet('art')[articleId];
     return {articleId, designation: el.querySelector('.vf-des').value.trim() || (a ? a.nom : ''), qte: achNombre(el.querySelector('.vf-qte').value), pu: achNombre(el.querySelector('.vf-pu').value),
-      remise: achNombre(el.querySelector('.vf-rem').value), unite: a ? (a.unite || '') : (anc.unite || ''), livre: achNombre(anc.livre)};
+      remise: achNombre(el.querySelector('.vf-rem').value), unite: a ? (a.unite || '') : (anc.unite || ''), detail: anc.detail || '', livre: achNombre(anc.livre)};
   });
   return d;
 }
@@ -262,7 +263,20 @@ window.venAjouterLigne = () => { venLireForm(); venEdition.d.lignes.push({articl
 window.venRetirerLigne = (i) => { venLireForm(); venEdition.d.lignes.splice(i, 1); if(!venEdition.d.lignes.length) venEdition.d.lignes.push({articleId:'', designation:'', qte:1, pu:0, remise:0, unite:''}); nav(VEN_TYPES[venEdition.type].onglet); };
 window.venChoixArticle = (i, id) => {
   venLireForm(); const a = achGet('art')[id], l = venEdition.d.lignes[i];
-  if(a){ l.articleId = id; l.designation = a.nom; l.unite = a.unite || ''; if(achNombre(a.prixVente) > 0) l.pu = achNombre(a.prixVente); }
+  if(a){ l.articleId = id; l.designation = a.nom; l.unite = a.unite || ''; l.detail = a.description || ''; if(achNombre(a.prixVente) > 0) l.pu = achNombre(a.prixVente); if(a.tva !== undefined && venEdition.d.lignes.length === 1) venEdition.d.tva = achNombre(a.tva); }
+  else l.detail = '';
+  nav(VEN_TYPES[venEdition.type].onglet);
+};
+// Sous la ligne : unité de vente (tarification), description de la prestation et suppléments ajoutables.
+function venSousLigne(l, i){
+  const a = achGet('art')[l.articleId], opts = a ? achListe(a.options) : [];
+  if(!l.unite && !l.detail && !opts.length) return '';
+  return `<div style="grid-column:1 / -1;font-size:12px;color:var(--ink-soft);">${l.unite ? 'Prix ' + esc(achTarifLib(l.unite).toLowerCase()) : ''}${l.detail ? (l.unite ? ' · ' : '') + esc(l.detail).replace(/\n/g, ' ') : ''}
+    ${opts.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${opts.map((o, k) => `<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="venAjouterOption(${i}, ${k})">+ ${esc(o.nom)}${achNombre(o.pu) ? ' · ' + achDT(o.pu) + ' ' + esc(achTarifLib(o.unite || 'pièce').toLowerCase()) : ''}</button>`).join('')}</div>` : ''}</div>`;
+}
+window.venAjouterOption = (i, k) => {
+  venLireForm(); const l = venEdition.d.lignes[i], a = l && achGet('art')[l.articleId], o = a && achListe(a.options)[k]; if(!o) return;
+  venEdition.d.lignes.splice(i + 1, 0, {articleId:'', designation:o.nom, qte:o.unite === 'service' ? 1 : (o.unite === l.unite ? l.qte : 1), pu:achNombre(o.pu), remise:0, unite:o.unite || '', detail:''});
   nav(VEN_TYPES[venEdition.type].onglet);
 };
 window.venAnnulerEdition = () => { const e = venEdition; venEdition = null; if(e && e.id) venOuvert[e.type] = e.id; nav(VEN_TYPES[e ? e.type : 'devis'].onglet); };
@@ -319,7 +333,7 @@ window.venValiderLivraison = (id) => {
   const cmds = venGet('cmd'), d = cmds[id]; if(!d) return;
   d.lignes = achListe(d.lignes);
   const date = mgtVal('vl-date') || getTodayISO();
-  const lignes = d.lignes.map((l, i) => ({articleId:l.articleId, designation:l.designation, unite:l.unite || '', pu:achNombre(l.pu), remise:achNombre(l.remise), qte:achNombre(mgtVal('vl-q' + i)), _i:i})).filter(l => l.qte > 0);
+  const lignes = d.lignes.map((l, i) => ({articleId:l.articleId, designation:l.designation, detail:l.detail || '', unite:l.unite || '', pu:achNombre(l.pu), remise:achNombre(l.remise), qte:achNombre(mgtVal('vl-q' + i)), _i:i})).filter(l => l.qte > 0);
   if(!lignes.length){ showToast('Aucune quantité saisie'); return; }
   const bls = venGet('bl'), bid = mgtId('bl'), numero = venNumero('bl');
   if(!venSortieStock(lignes, bid, numero, date)) return;
@@ -343,7 +357,7 @@ window.venFacturer = (id) => {
   if(!venPeutModifier() || !venPeutFacturer() || typeof factCreer !== 'function') return;
   const bls = venGet('bl'), b = bls[id]; if(!b || venFacture(b)) return;
   const fid = factCreer('gadh', {clientId:b.clientId, objet:'Livraison ' + b.numero + (b.refClient ? ' · réf. client ' + b.refClient : ''), tva:achNombre(b.tva),
-    lignes:achListe(b.lignes).map(l => ({designation:l.designation + (l.unite ? ' (' + l.unite + ')' : ''), qte:achNombre(l.qte), pu:achNombre(l.pu), remise:achNombre(l.remise)})),
+    lignes:achListe(b.lignes).map(l => ({designation:l.designation + (l.unite ? ' (' + l.unite + ')' : '') + (l.detail ? '\n' + l.detail : ''), qte:achNombre(l.qte), pu:achNombre(l.pu), remise:achNombre(l.remise)})),
     origine:{type:'vente', id, numero:b.numero}});
   b.factureId = fid; venSet('bl', bls);
   showToast('Facture préparée : vérifiez-la puis émettez-la');
@@ -367,11 +381,11 @@ window.venImprimer = (type, id) => {
     body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;font-size:13px;} h1{font-size:20px;margin:0 0 4px;} .ent{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px;}
     .boite{border:1px solid #999;border-radius:6px;padding:10px 12px;min-width:240px;} table{width:100%;border-collapse:collapse;margin-top:12px;} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left;} th{background:#eee;} .n{text-align:right;white-space:nowrap;}
     .tot{width:auto;margin-left:auto;margin-top:14px;} .tot td{border:none;padding:3px 10px;} .sig{margin-top:50px;display:flex;justify-content:space-between;} @media print{body{margin:12mm;}}</style></head><body>
-    <div class="ent"><div><h1>${esc(P.raison || SOCIETES.gadh.nom)}</h1><div>${esc(P.adresse || '')}</div><div>${P.mf ? 'MF ' + esc(P.mf) : ''}${P.tel ? ' · ' + esc(P.tel) : ''}</div></div>
+    <div class="ent"><div>${logoDocHTML('gadh')}<h1>${esc(P.raison || SOCIETES.gadh.nom)}</h1><div>${esc(P.adresse || '')}</div><div>${P.mf ? 'MF ' + esc(P.mf) : ''}${P.tel ? ' · ' + esc(P.tel) : ''}</div></div>
       <div class="boite"><b>${titre} ${esc(d.numero || '')}</b><br>Date : ${achDate(d.date)}${d.validite && type === 'devis' ? '<br>Valable jusqu\'au ' + achDate(d.validite) : ''}${d.refClient ? '<br>Réf. client : ' + esc(d.refClient) : ''}</div></div>
     <div class="boite" style="max-width:360px;"><b>Client</b><br>${esc(cl.nom || '')}<br>${esc(cl.adresse || '')}${cl.mf ? '<br>MF ' + esc(cl.mf) : ''}</div>
     <table><thead><tr><th>Désignation</th><th class="n">Qté</th>${avecPrix ? '<th class="n">P.U. HT</th><th class="n">Remise</th><th class="n">Total HT</th>' : ''}</tr></thead><tbody>
-      ${achListe(d.lignes).map(l => `<tr><td>${esc(l.designation)}</td><td class="n">${achQte(l.qte)} ${esc(l.unite || '')}</td>${avecPrix ? `<td class="n">${n(l.pu)}</td><td class="n">${achNombre(l.remise) ? achNombre(l.remise) + ' %' : ''}</td><td class="n">${n(achNombre(l.qte) * achNombre(l.pu) * (1 - achNombre(l.remise) / 100))}</td>` : ''}</tr>`).join('')}</tbody></table>
+      ${achListe(d.lignes).map(l => `<tr><td>${esc(l.designation)}${l.detail ? `<div style="font-size:11px;color:#444;">${esc(l.detail).replace(/\n/g, '<br>')}</div>` : ''}</td><td class="n">${achQte(l.qte)} ${esc(l.unite || '')}</td>${avecPrix ? `<td class="n">${n(l.pu)}</td><td class="n">${achNombre(l.remise) ? achNombre(l.remise) + ' %' : ''}</td><td class="n">${n(achNombre(l.qte) * achNombre(l.pu) * (1 - achNombre(l.remise) / 100))}</td>` : ''}</tr>`).join('')}</tbody></table>
     ${avecPrix ? `<table class="tot"><tr><td>Total HT</td><td class="n">${n(t.ht)} €</td></tr><tr><td>TVA ${achNombre(d.tva)} %</td><td class="n">${n(t.tva)} €</td></tr><tr><td><b>Total TTC</b></td><td class="n"><b>${n(t.ttc)} €</b></td></tr></table>` : ''}
     ${d.note ? `<p style="margin-top:16px;">${esc(d.note)}</p>` : ''}<div class="sig"><div>${type === 'bl' ? 'Reçu par le client (nom, date, signature)' : 'Bon pour accord du client'}</div><div>Pour ${esc(P.raison || SOCIETES.gadh.nom)}</div></div>
     <script>window.onload=function(){window.print();}<\/script></body></html>`;

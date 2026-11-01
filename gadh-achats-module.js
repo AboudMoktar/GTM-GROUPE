@@ -15,13 +15,17 @@
 // Droits : roles-config.js (ressource gadh.achats). Les boutons de saisie ne
 // s'affichent que si le rôle peut écrire ; les règles Firebase l'imposent aussi.
 
-const ACH = {four:'gadh_achat_fournisseurs', art:'gadh_achat_articles', bons:'gadh_achat_bons', mv:'gadh_achat_mouvements', cpt:'gadh_achat_compteurs'};
+const ACH = {four:'gadh_achat_fournisseurs', art:'gadh_achat_articles', bons:'gadh_achat_bons', mv:'gadh_achat_mouvements', cpt:'gadh_achat_compteurs', reg:'gadh_achat_reglages'};
 const ACH_CATEGORIES = {matiere:'Matière', accessoire:'Accessoire', machine:'Machine', produit:'Produit / prestation'};
 // Seuls les matières et accessoires sont suivis en stock (machines et produits / prestations : non).
 function achSuiviStock(a){ return !!a && (a.categorie === 'matiere' || a.categorie === 'accessoire'); }
 const ACH_TVA = [0, 7, 13, 19];
 const ACH_MODES = [['virement', 'Virement'], ['cheque', 'Chèque'], ['traite', 'Traite'], ['especes', 'Espèces']];
 const ACH_UNITES = ['pièce', 'mètre', 'kg', 'rouleau', 'boîte', 'litre', 'paquet', 'lot'];
+// Produits / prestations : mode de tarification (= unité de vente). On peut en ajouter d'autres (réglages GADH).
+const ACH_TARIFS = ['pièce', 'service', 'heure', 'jour', 'mètre', 'kg', 'lot'];
+function achTarifs(){ const r = achGet('reg'); return ACH_TARIFS.concat(achListe(r.tarifs).filter(t => ACH_TARIFS.indexOf(t) < 0)); }
+function achTarifLib(t){ return t === 'service' ? 'Par service (forfait)' : 'Par ' + t; }
 let achFiltre = 'encours', achBonOuvert = null, achBonEdite = null, achArtFiltre = 'tous', achFourOuvert = null;
 
 function achGet(k){ return getJSON(ACH[k], {}) || {}; }
@@ -350,7 +354,7 @@ window.achImprimer = (id) => {
     body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;font-size:13px;} h1{font-size:20px;margin:0 0 4px;} .ent{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px;}
     .boite{border:1px solid #999;border-radius:6px;padding:10px 12px;min-width:240px;} table{width:100%;border-collapse:collapse;margin-top:12px;} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left;} th{background:#eee;} .n{text-align:right;white-space:nowrap;}
     .tot{width:auto;margin-left:auto;margin-top:14px;} .tot td{border:none;padding:3px 10px;} .sig{margin-top:50px;display:flex;justify-content:space-between;} @media print{body{margin:12mm;}}</style></head><body>
-    <div class="ent"><div><h1>${esc(P.raison || SOCIETES.gadh.nom)}</h1><div>${esc(P.adresse || '')}</div><div>${P.mf ? 'MF ' + esc(P.mf) : ''}${P.tel ? ' · ' + esc(P.tel) : ''}</div></div>
+    <div class="ent"><div>${logoDocHTML('gadh')}<h1>${esc(P.raison || SOCIETES.gadh.nom)}</h1><div>${esc(P.adresse || '')}</div><div>${P.mf ? 'MF ' + esc(P.mf) : ''}${P.tel ? ' · ' + esc(P.tel) : ''}</div></div>
       <div class="boite"><b>BON DE COMMANDE ${esc(b.numero || '(brouillon)')}</b><br>Date : ${achDate(b.date)}${b.echeance ? '<br>Échéance : ' + achDate(b.echeance) : ''}</div></div>
     <div class="boite" style="max-width:360px;"><b>Fournisseur</b><br>${esc(f.nom || '')}<br>${esc(f.adresse || '')}${f.mf ? '<br>MF ' + esc(f.mf) : ''}${f.tel ? '<br>Tél. ' + esc(f.tel) : ''}</div>
     <table><thead><tr><th>Désignation</th><th class="n">Qté</th><th class="n">P.U. HT</th><th class="n">TVA</th><th class="n">Total HT</th></tr></thead><tbody>
@@ -424,7 +428,7 @@ function renderAchArticles(c){
     </div>
     <div class="card" style="padding:4px 14px;">${l.length ? l.map(([id, a]) => `<div class="session-row" ${ed ? `style="cursor:pointer;" onclick="achFormArticle('${id}')"` : ''}>
       <div style="min-width:0;"><b style="font-size:13px;${a.actif === false ? 'color:var(--ink-faint);' : ''}">${esc(a.nom)}</b> <span style="font-size:12px;color:var(--ink-soft);">${esc(ACH_CATEGORIES[a.categorie] || '')}${a.ref ? ' · ' + esc(a.ref) : ''}${a.actif === false ? ' · inactif' : ''}</span>
-        <div style="font-size:12px;color:var(--ink-soft);">${a.fournisseurId ? esc(achNomFour(a.fournisseurId)) + ' · ' : ''}${achNombre(a.prix) > 0 ? 'dernier prix ' + achDT(a.prix) + (a.unite ? ' / ' + esc(a.unite) : '') : 'pas encore acheté'}</div></div>
+        <div style="font-size:12px;color:var(--ink-soft);">${a.categorie === 'produit' ? (achNombre(a.prixVente) > 0 ? 'vente ' + achDT(a.prixVente) + ' ' + esc(achTarifLib(a.unite || 'pièce').toLowerCase()) : esc(achTarifLib(a.unite || 'pièce'))) + (achListe(a.options).length ? ' · ' + achListe(a.options).length + ' supplément(s)' : '') : (a.fournisseurId ? esc(achNomFour(a.fournisseurId)) + ' · ' : '') + (achNombre(a.prix) > 0 ? 'dernier prix ' + achDT(a.prix) + (a.unite ? ' / ' + esc(a.unite) : '') : 'pas encore acheté')}</div></div>
       ${achSuiviStock(a) ? `<b style="font-size:13px;white-space:nowrap;">${achQte(st[id] || 0)} ${esc(a.unite || '')}</b>` : ''}</div>`).join('') : buildEmptyState('Aucun article', ed ? 'Créez vos matières, accessoires et machines avec « + Nouvel article ».' : '')}</div>`;
 }
 window.achFormArticle = (id, depuisBon) => {
@@ -432,24 +436,66 @@ window.achFormArticle = (id, depuisBon) => {
   if(depuisBon && achBonEdite) achLireForm();
   const a = id ? (achGet('art')[id] || {}) : {categorie:'matiere', unite:'pièce', tva:19};
   const fours = [['', '— Aucun —']].concat(Object.entries(achGet('four')).filter(([, f]) => f && f.actif !== false).sort((x, y) => (x[1].nom || '').localeCompare(y[1].nom || '')).map(([k, f]) => [k, f.nom]));
+  const presta = a.categorie === 'produit', tarifs = achTarifs(), tarif = presta ? (a.unite || 'pièce') : 'pièce';
+  const optTarifs = (val) => tarifs.concat(val && tarifs.indexOf(val) < 0 ? [val] : []).map(t => `<option value="${esc(t)}" ${t === val ? 'selected' : ''}>${esc(achTarifLib(t))}</option>`).join('');
   mgtModal(id ? 'Modifier l\'article' : 'Nouvel article', `${mgtChamp('Nom *', 'aa-nom', a.nom || '')}${mgtChamp('Référence', 'aa-ref', a.ref || '')}
     ${mgtSelect('Catégorie', 'aa-cat', Object.entries(ACH_CATEGORIES), a.categorie || 'matiere')}
-    ${mgtSelect('Unité', 'aa-unite', ACH_UNITES.map(u => [u, u]).concat(a.unite && ACH_UNITES.indexOf(a.unite) < 0 ? [[a.unite, a.unite]] : []), a.unite || 'pièce')}
-    ${mgtChamp('Seuil d\'alerte (matières et accessoires)', 'aa-seuil', a.seuil || '', 'text', 'inputmode="decimal"')}
-    ${mgtChamp('Prix d\'achat HT habituel (€)', 'aa-prix', a.prix || '', 'text', 'inputmode="decimal"')}
-    ${mgtChamp('Prix de vente HT (€)', 'aa-pv', a.prixVente || '', 'text', 'inputmode="decimal"')}
+    <div id="aa-bloc-stock" style="${presta ? 'display:none;' : ''}">
+      ${mgtSelect('Unité', 'aa-unite', ACH_UNITES.map(u => [u, u]).concat(a.unite && ACH_UNITES.indexOf(a.unite) < 0 && !presta ? [[a.unite, a.unite]] : []), presta ? 'pièce' : (a.unite || 'pièce'))}
+      ${mgtChamp('Seuil d\'alerte (matières et accessoires)', 'aa-seuil', a.seuil || '', 'text', 'inputmode="decimal"')}
+      ${mgtChamp('Prix d\'achat HT habituel (€)', 'aa-prix', a.prix || '', 'text', 'inputmode="decimal"')}
+      ${mgtChamp('Prix de vente HT (€)', 'aa-pv', presta ? '' : (a.prixVente || ''), 'text', 'inputmode="decimal"')}
+    </div>
+    <div id="aa-bloc-presta" style="${presta ? '' : 'display:none;'}">
+      <div class="field"><label>Tarification</label><select id="aa-tarif" class="mgt-in" onchange="achTarifChange()">${optTarifs(tarif)}<option value="__autre">+ Autre mode (à créer)…</option></select></div>
+      <div class="field" id="aa-tarif-autre-z" style="display:none;"><label>Nouveau mode de tarification (ex. « m² », « séance », « commande »)</label><input id="aa-tarif-autre"></div>
+      <div class="field"><label id="aa-pp-lib">Prix de vente HT ${esc(achTarifLib(tarif).toLowerCase())} (€)</label><input id="aa-pp" inputmode="decimal" value="${presta ? esc(String(a.prixVente || '')) : ''}"></div>
+      ${mgtZone('Description (reprise sur le devis, la commande et la facture)', 'aa-desc', a.description || '')}
+      <div class="field" style="margin-bottom:6px;"><label>Suppléments et options (ajoutables au devis en un clic)</label></div>
+      <div id="aa-opts">${achListe(a.options).map(o => achLigneOption(o, tarifs)).join('')}</div>
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:12px;" onclick="achAjouterOption()">+ Ajouter un supplément</button>
+    </div>
     ${mgtSelect('TVA habituelle', 'aa-tva', ACH_TVA.map(x => [String(x), x + ' %']), String(a.tva === undefined ? 19 : a.tva))}
-    ${mgtSelect('Fournisseur habituel', 'aa-four', fours, a.fournisseurId || '')}
+    <div id="aa-bloc-four" style="${presta ? 'display:none;' : ''}">${mgtSelect('Fournisseur habituel', 'aa-four', fours, a.fournisseurId || '')}</div>
     ${id ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-bottom:12px;"><input type="checkbox" id="aa-actif" ${a.actif === false ? '' : 'checked'} style="width:18px;height:18px;"> Article actif</label>` : ''}
     <button class="btn btn-primary" style="width:100%;" onclick="achSauverArticle('${id || ''}', ${depuisBon ? 'true' : 'false'})">${id ? 'Enregistrer' : 'Créer l\'article'}</button>`);
+  const cat = document.getElementById('aa-cat');
+  if(cat) cat.onchange = () => { const p = cat.value === 'produit'; ['aa-bloc-stock', 'aa-bloc-four'].forEach(z => { document.getElementById(z).style.display = p ? 'none' : ''; }); document.getElementById('aa-bloc-presta').style.display = p ? '' : 'none'; };
+};
+function achLigneOption(o, tarifs){
+  o = o || {}; const t = tarifs || achTarifs(), m = o.unite || 'pièce';
+  return `<div class="aa-opt" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border);">
+    <input class="aa-opt-nom" style="grid-column:1 / 3;" placeholder="Supplément (ex. repassage, emballage)" value="${esc(o.nom || '')}">
+    <button class="icon-btn" title="Retirer" onclick="this.parentNode.remove()">✕</button>
+    <input class="aa-opt-pu" inputmode="decimal" placeholder="Prix HT €" value="${o.pu ? esc(String(o.pu)) : ''}">
+    <select class="aa-opt-unite mgt-in" style="grid-column:2 / 4;">${t.concat(t.indexOf(m) < 0 ? [m] : []).map(x => `<option value="${esc(x)}" ${x === m ? 'selected' : ''}>${esc(achTarifLib(x).toLowerCase())}</option>`).join('')}</select></div>`;
+}
+window.achAjouterOption = () => { const z = document.getElementById('aa-opts'); if(z) z.insertAdjacentHTML('beforeend', achLigneOption({})); };
+window.achTarifChange = () => {
+  const v = mgtVal('aa-tarif'), autre = v === '__autre';
+  document.getElementById('aa-tarif-autre-z').style.display = autre ? '' : 'none';
+  document.getElementById('aa-pp-lib').textContent = 'Prix de vente HT ' + (autre ? 'par unité' : achTarifLib(v).toLowerCase()) + ' (€)';
+  if(autre) document.getElementById('aa-tarif-autre').focus();
 };
 window.achSauverArticle = (id, depuisBon) => {
   if(!achPeutModifier()) return;
   const nom = mgtVal('aa-nom'); if(!nom){ showToast('Nom requis'); return; }
   const arts = achGet('art'), k = id || mgtId('ar'), anc = arts[k] || {};
-  const actif = document.getElementById('aa-actif');
-  arts[k] = Object.assign({}, anc, {nom, ref:mgtVal('aa-ref'), categorie:mgtVal('aa-cat'), unite:mgtVal('aa-unite'), seuil:achNombre(mgtVal('aa-seuil')), prix:achNombre(mgtVal('aa-prix')), prixVente:achNombre(mgtVal('aa-pv')), tva:achNombre(mgtVal('aa-tva')),
-    fournisseurId:mgtVal('aa-four'), actif:actif ? actif.checked : true, maj:Date.now()});
+  const actif = document.getElementById('aa-actif'), categorie = mgtVal('aa-cat'), presta = categorie === 'produit';
+  const commun = {nom, ref:mgtVal('aa-ref'), categorie, tva:achNombre(mgtVal('aa-tva')), actif:actif ? actif.checked : true, maj:Date.now()};
+  if(presta){
+    let tarif = mgtVal('aa-tarif');
+    if(tarif === '__autre'){
+      tarif = mgtVal('aa-tarif-autre').toLowerCase();
+      if(!tarif){ showToast('Indiquez le nouveau mode de tarification'); return; }
+      const r = achGet('reg'), l = achListe(r.tarifs);
+      if(ACH_TARIFS.indexOf(tarif) < 0 && l.indexOf(tarif) < 0){ r.tarifs = l.concat([tarif]); achSet('reg', r); }
+    }
+    const options = Array.from(document.querySelectorAll('#aa-opts .aa-opt')).map(el => ({nom:el.querySelector('.aa-opt-nom').value.trim(), pu:achNombre(el.querySelector('.aa-opt-pu').value), unite:el.querySelector('.aa-opt-unite').value})).filter(o => o.nom);
+    arts[k] = Object.assign({}, anc, commun, {unite:tarif, prixVente:achNombre(mgtVal('aa-pp')), description:mgtVal('aa-desc'), options, seuil:0});
+  } else {
+    arts[k] = Object.assign({}, anc, commun, {unite:mgtVal('aa-unite'), seuil:achNombre(mgtVal('aa-seuil')), prix:achNombre(mgtVal('aa-prix')), prixVente:achNombre(mgtVal('aa-pv')), fournisseurId:mgtVal('aa-four')});
+  }
   achSet('art', arts); mgtFermer(); showToast(id ? 'Article enregistré' : 'Article créé');
   nav(depuisBon ? 'ach-bons' : 'ach-articles');
 };
