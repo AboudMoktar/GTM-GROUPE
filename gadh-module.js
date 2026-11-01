@@ -917,6 +917,7 @@ function renderGadhHistorique(container){
     <div class="card" style="padding:10px 12px;">
       <div class="field" style="margin:0;"><label>Date</label><input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhHistDate=this.value; nav('gadh-historique')"></div>
     </div>
+    ${typeof rpBoutons === 'function' ? rpBoutons(`rpGadhJourExcel('${date}')`, `rpGadhJourPdf('${date}')`) : ''}
     <div class="card">
       <div class="flex-header" style="margin-bottom:8px;"><h3 style="margin:0;">Pièces retournées — ${date.split('-').reverse().join('/')}</h3><b style="font-size:15px;">${total.toLocaleString('fr-FR')} pcs</b></div>
       ${gadhListeRefsHTML(parRef)}
@@ -969,8 +970,10 @@ function renderGadhStats(container){
     total += t;
     Object.entries(r).forEach(([rk, q]) => { parRef[rk] = (parRef[rk] || 0) + (q || 0); });
   });
+  const rg = gadhStatsRange();
   container.innerHTML = `
     ${gadhStatsFiltreHTML('gadh-stats')}
+    ${typeof rpBoutons === 'function' ? rpBoutons(`rpGadhPeriodeExcel('${rg.start}', '${rg.end}')`, `rpGadhPeriodePdf('${rg.start}', '${rg.end}')`) : ''}
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div></div>
       <div onclick="nav('gadh-historique')" class="kpi-mini"><div class="kpi-mini-val">${joursProd ? Math.round(total / joursProd).toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Moyenne par jour</div><div class="kpi-mini-sub">${joursProd} jour(s) avec retours</div></div>

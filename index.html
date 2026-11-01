@@ -2121,8 +2121,9 @@ function renderHistorique(container){
       <div class="flex-header no-print">
         <div></div>
         <div class="actions">
-          <button class="btn btn-primary" onclick="exportPeriodExcel()">${ICONS.export} Excel (période complète)</button>
-          <button class="btn btn-ghost" onclick="exportCSV()">${ICONS.export} Excel (jour sélectionné)</button>
+          <button class="btn btn-primary" onclick="rpTekPeriodeExcel(histPeriodStart, histPeriodEnd)">${ICONS.export} Excel</button>
+          <button class="btn btn-primary" onclick="rpTekPeriodePdf(histPeriodStart, histPeriodEnd)">${ICONS.export} PDF</button>
+          <button class="btn btn-ghost" onclick="exportPeriodExcel()">${ICONS.export} Excel détaillé (heure par heure)</button>
         </div>
       </div>
       <div class="card">
@@ -2154,8 +2155,8 @@ function renderHistorique(container){
     <div class="flex-header no-print">
       <input type="date" id="hist-date" value="${histDate}" onchange="loadHist()">
       <div class="actions">
-        <button class="btn btn-ghost" onclick="window.print()">${ICONS.export} PDF</button>
-        <button class="btn btn-ghost" onclick="exportCSV()">${ICONS.export} Excel</button>
+        <button class="btn btn-primary" onclick="rpTekJourExcel(histDate)">${ICONS.export} Excel</button>
+        <button class="btn btn-primary" onclick="rpTekJourPdf(histDate)">${ICONS.export} PDF</button>
       </div>
     </div>
     <div class="card" style="margin-bottom:0;padding-bottom:10px;">${viewToggle}</div>
@@ -2289,6 +2290,7 @@ function renderStats(container){
       </div>
       ${rangeError ? `<div style="margin-top:10px;">${buildAlert('bad', rangeError)}</div>` : ''}
     </div>
+    ${!rangeError && typeof rpBoutons === 'function' ? rpBoutons(`rpTekPeriodeExcel('${statRangeStart}', '${statRangeEnd}')`, `rpTekPeriodePdf('${statRangeStart}', '${statRangeEnd}')`) : ''}
 
     <div class="kpi-grid">
       <div class="kpi kpi-ic"><div class="kpi-ic-badge blue">${ICONS.box}</div><div><div class="kpi-ic-label">Production période</div><div class="kpi-ic-value">${totalAll} <span style="font-size:12px;color:var(--ink-faint);">PC</span></div></div></div>
@@ -3091,6 +3093,7 @@ window.onload = init;
 <script src="./dashboards-pc-module.js"></script>
 <script src="./dashboards-modules-module.js"></script>
 <script src="./enregistrer-module.js"></script>
+<script src="./rapports-production-module.js"></script>
 <script src="./rh-rapports-module.js"></script>
 <script src="./fiche-chaine-module.js"></script>
 <script src="./suivi-chaine-module.js"></script>
