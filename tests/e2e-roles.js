@@ -27,9 +27,9 @@ const ECRITURES = {
   responsable: [['prod_2026-11-02', true], ['gadh_employees', true], ['mgt_parametres', false]],
   secretaire_tek: [['employees', true], ['factures', true], ['prod_2026-11-02', false], ['schedule', false]],
   agent_chaine: [['prod_2026-11-02', true], ['fc_2026-11-02', true], ['employees', false], ['factures', false]],
-  resp_gadh: [['cmd_saisies_c9', true], ['gadh_employees', false], ['gadh_achat_bons', false], ['prod_references', false]],
-  secretaire_gadh: [['gadh_employees', true], ['gadh_factures', true], ['gadh_achat_bons', true], ['cmd_saisies_c9', false]],
-  technico_mgt: [['mgt_parametres', true], ['gadh_achat_bons', false], ['employees', false]],
+  resp_gadh: [['cmd_saisies_c9', true], ['gadh_employees', false], ['gadh_achat_bons', false], ['gadh_vente_devis', false], ['prod_references', false]],
+  secretaire_gadh: [['gadh_employees', true], ['gadh_factures', true], ['gadh_achat_bons', true], ['gadh_vente_livraisons', true], ['cmd_saisies_c9', false]],
+  technico_mgt: [['mgt_parametres', true], ['gadh_achat_bons', false], ['gadh_vente_devis', false], ['gadh_factures', false], ['employees', false]],
   secretaire_mgt: [['mgt_crm_clients', true], ['mgt_crm_droits', false], ['mgt_parametres', false], ['employees', false]],
   direction: [['prod_2026-11-02', false], ['gadh_employees', false], ['mgt_parametres', false]]
 };
