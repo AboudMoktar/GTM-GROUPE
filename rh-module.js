@@ -525,13 +525,13 @@ function renderRHDashboard(container){
         <input type="month" value="${monthKey}" style="max-width:140px;" onchange="rhMonthKey=this.value; nav('rh-dashboard')">
       </div>
       <div class="kpi-grid">
-        <div class="kpi">
+        <div onclick="nav('rh-synthese')" class="kpi">
           <div class="label">Heures prévues (base)</div>
           <div class="value">${base!=null ? base+' h' : '—'}</div>
-          ${currentUser.role==='admin' ? `<button class="btn btn-ghost" style="margin-top:6px;padding:5px 10px;font-size:11px;" onclick="showSetBaseForm('${monthKey}')">${base!=null?'Modifier':'Définir'} la base</button>` : ''}
+          ${currentUser.role==='admin' ? `<button class="btn btn-ghost" style="margin-top:6px;padding:5px 10px;font-size:11px;" onclick="event.stopPropagation(); showSetBaseForm('${monthKey}')">${base!=null?'Modifier':'Définir'} la base</button>` : ''}
         </div>
-        <div class="kpi"><div class="label">Heures travaillées</div><div class="value">${totalHeuresMois.toFixed(1)} h</div></div>
-        <div class="kpi"><div class="label">Heures supp.</div><div class="value" style="color:${totalHeuresSupp>0?'var(--warn)':'inherit'};">${base!=null ? totalHeuresSupp.toFixed(1)+' h' : '—'}</div></div>
+        <div onclick="nav('rh-synthese')" class="kpi"><div class="label">Heures travaillées</div><div class="value">${totalHeuresMois.toFixed(1)} h</div></div>
+        <div onclick="nav('rh-synthese')" class="kpi"><div class="label">Heures supp.</div><div class="value" style="color:${totalHeuresSupp>0?'var(--warn)':'inherit'};">${base!=null ? totalHeuresSupp.toFixed(1)+' h' : '—'}</div></div>
       </div>
       <div id="rh-base-form"></div>
       <button class="btn btn-ghost" style="width:100%;margin-top:10px;" onclick="nav('rh-synthese')">Voir les statistiques complètes →</button>

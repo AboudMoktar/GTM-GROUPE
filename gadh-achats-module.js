@@ -117,10 +117,10 @@ function renderAchAccueil(c){
   c.innerHTML = `
     ${achPeutModifier() ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button class="btn btn-primary" onclick="achNouveauBon()">+ Nouveau bon d'achat</button><button class="btn btn-ghost" onclick="achFormSortie()">Sortie de stock</button></div>` : ''}
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(4,1fr);">
-      <div class="kpi-mini tint-blue"><div class="kpi-mini-val" style="font-size:18px;">${achDT(duMois)}</div><div class="kpi-mini-lbl">Achats du mois</div></div>
-      <div class="kpi-mini ${resteTotal > 0 ? 'tint-red' : ''}"><div class="kpi-mini-val" style="font-size:18px;">${achDT(resteTotal)}</div><div class="kpi-mini-lbl">Reste à payer</div></div>
-      <div class="kpi-mini"><div class="kpi-mini-val">${aRecevoir.length}</div><div class="kpi-mini-lbl">Bons à recevoir</div></div>
-      <div class="kpi-mini ${alertes.length ? 'tint-gold' : ''}"><div class="kpi-mini-val">${alertes.length}</div><div class="kpi-mini-lbl">Articles sous le seuil</div></div>
+      <div onclick="achFiltre='encours'; nav('ach-bons')" class="kpi-mini tint-blue"><div class="kpi-mini-val" style="font-size:18px;">${achDT(duMois)}</div><div class="kpi-mini-lbl">Achats du mois</div></div>
+      <div onclick="achFiltre='apayer'; nav('ach-bons')" class="kpi-mini ${resteTotal > 0 ? 'tint-red' : ''}"><div class="kpi-mini-val" style="font-size:18px;">${achDT(resteTotal)}</div><div class="kpi-mini-lbl">Reste à payer</div></div>
+      <div onclick="achFiltre='encours'; nav('ach-bons')" class="kpi-mini"><div class="kpi-mini-val">${aRecevoir.length}</div><div class="kpi-mini-lbl">Bons à recevoir</div></div>
+      <div onclick="nav('ach-stock')" class="kpi-mini ${alertes.length ? 'tint-gold' : ''}"><div class="kpi-mini-val">${alertes.length}</div><div class="kpi-mini-lbl">Articles sous le seuil</div></div>
     </div>
     <div class="pg-grille2">
       <div class="card"><h3 style="margin-top:0;">À payer</h3>${aPayer.length ? aPayer.slice(0, 8).map(ligneBon).join('') : buildEmptyState('Rien à payer')}</div>

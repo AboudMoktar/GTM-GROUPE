@@ -630,7 +630,7 @@ function renderGadhProduction(container){
       </div>
     </div>
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div><div class="kpi-mini-sub">la veille : ${veille.toLocaleString('fr-FR')}</div></div>
+      <div onclick="gadhHistDate='${date}'; nav('gadh-historique')" class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div><div class="kpi-mini-sub">la veille : ${veille.toLocaleString('fr-FR')}</div></div>
       <div class="kpi-mini"><div class="kpi-mini-val">${nbRefs}</div><div class="kpi-mini-lbl">Références</div></div>
       <div class="kpi-mini"><div class="kpi-mini-val">${nbCmd}</div><div class="kpi-mini-lbl">Commandes en cours</div></div>
     </div>
@@ -801,17 +801,17 @@ function renderGadhDashboard(container){
     </div>
 
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini" style="background:linear-gradient(160deg,#EFF6FF,var(--surface));border-color:#BFDBFE;">
+      <div onclick="nav('gadh-production')" class="kpi-mini" style="background:linear-gradient(160deg,#EFF6FF,var(--surface));border-color:#BFDBFE;">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#B84470,#8B1F4B);">🏭</div>
         <div class="kpi-mini-val">${totals.totalReel}</div><div class="kpi-mini-lbl">Production</div>
         ${gadhTrendBadge(totals.totalReel, yTotals.totalReel)}
       </div>
-      <div class="kpi-mini" style="background:linear-gradient(160deg,#ECFDF5,var(--surface));border-color:#A7F3D0;">
+      <div onclick="nav('gadh-production')" class="kpi-mini" style="background:linear-gradient(160deg,#ECFDF5,var(--surface));border-color:#A7F3D0;">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#34D399,#059669);">🎯</div>
         <div class="kpi-mini-val">${totals.totalObj}</div><div class="kpi-mini-lbl">Objectif</div>
         ${totals.totalObj>0?`<div style="width:80%;height:5px;background:var(--border-soft);border-radius:4px;margin-top:4px;overflow:hidden;"><div style="width:${Math.min(100,Math.round(totals.rendement||0))}%;height:100%;background:#10B981;"></div></div><span style="font-size:10.5px;color:var(--ink-faint);font-weight:700;">${Math.round(totals.rendement||0)}% atteint</span>`:''}
       </div>
-      <div class="kpi-mini" style="background:linear-gradient(160deg,#F5F3FF,var(--surface));border-color:#DDD6FE;">
+      <div onclick="nav('gadh-stats')" class="kpi-mini" style="background:linear-gradient(160deg,#F5F3FF,var(--surface));border-color:#DDD6FE;">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#A78BFA,#7C3AED);">📈</div>
         <div class="kpi-mini-val">${totals.rendement!=null?Math.round(totals.rendement)+'%':'—'}</div><div class="kpi-mini-lbl">Rendement</div>
         ${totals.rendement!=null && yTotals.rendement!=null ? gadhTrendBadge(Math.round(totals.rendement), Math.round(yTotals.rendement)) : ''}
@@ -973,8 +973,8 @@ function renderGadhStats(container){
     ${gadhStatsFiltreHTML('gadh-stats')}
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div class="kpi-mini tint-blue"><div class="kpi-mini-val">${total.toLocaleString('fr-FR')}</div><div class="kpi-mini-lbl">Pièces retournées</div></div>
-      <div class="kpi-mini"><div class="kpi-mini-val">${joursProd ? Math.round(total / joursProd).toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Moyenne par jour</div><div class="kpi-mini-sub">${joursProd} jour(s) avec retours</div></div>
-      <div class="kpi-mini"><div class="kpi-mini-val">${meilleur ? meilleur.t.toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Meilleur jour</div><div class="kpi-mini-sub">${meilleur ? meilleur.iso.split('-').reverse().join('/') : ''}</div></div>
+      <div onclick="nav('gadh-historique')" class="kpi-mini"><div class="kpi-mini-val">${joursProd ? Math.round(total / joursProd).toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Moyenne par jour</div><div class="kpi-mini-sub">${joursProd} jour(s) avec retours</div></div>
+      <div onclick="if('${meilleur ? meilleur.iso : ''}'){ gadhHistDate='${meilleur ? meilleur.iso : ''}'; nav('gadh-historique'); }" class="kpi-mini"><div class="kpi-mini-val">${meilleur ? meilleur.t.toLocaleString('fr-FR') : '—'}</div><div class="kpi-mini-lbl">Meilleur jour</div><div class="kpi-mini-sub">${meilleur ? meilleur.iso.split('-').reverse().join('/') : ''}</div></div>
     </div>
     <div class="card"><h3 style="margin-top:0;">Pièces par référence</h3>${gadhListeRefsHTML(parRef, 'Aucune pièce retournée sur la période')}</div>
   `;

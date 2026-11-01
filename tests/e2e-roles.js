@@ -85,6 +85,24 @@ const ECRITURES = {
       if(res === attendu) ok++; else echecs.push(`${r} : écriture ${cle} → ${res ? 'autorisée' : 'refusée'}, attendu ${attendu ? 'autorisée' : 'refusée'}`);
     }
     total++; { const adm = await p.evaluate(() => estAdminSysteme()); if(adm === (r === 'sysadmin')) ok++; else echecs.push(`${r} : réinitialisation ${adm ? 'visible' : 'cachée'}`); }
+    if(r === 'direction' || r === 'sysadmin'){
+      total++;
+      const res = await p.evaluate(async () => {
+        const att = (ms) => new Promise(z => setTimeout(z, ms)), err = [];
+        try {
+          renderDirection(); await att(300);
+          document.querySelector('.dd-bx').click(); await att(500); if(activeModule !== 'rendement') err.push('indicateur direction → ' + activeModule);
+          renderDirection(); await att(300);
+          document.querySelectorAll('.dd-jp')[1].click(); await att(500); if(activeModule !== 'gadh') err.push('jauge GADH → ' + activeModule);
+          kpiAller('tek', 'rendement', 'dashboard'); await att(400);
+          const h = document.querySelector('.hero-card'); if(h){ h.click(); await att(400); if(typeof activeTab !== 'undefined' && activeTab !== 'historique') err.push('hero → ' + activeTab); }
+          kpiAller('tek', 'rh', 'rh-dashboard'); await att(400);
+          const k = document.querySelector('.kpi'); if(k){ k.click(); await att(400); }
+        } catch(e) { err.push(e.message); }
+        return err;
+      });
+      if(!res.length) ok++; else echecs.push(`${r} : indicateurs — ${res.join(' ; ')}`);
+    }
     console.log(`${r.padEnd(16)} écran « ${etat.ecran.trim().slice(0, 40)} » · ${etat.sources.length} source(s) de données chargée(s)`);
     await ctx.close();
   }

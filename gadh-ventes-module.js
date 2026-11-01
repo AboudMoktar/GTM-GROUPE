@@ -111,10 +111,10 @@ function renderVenAccueil(c){
   c.innerHTML = `
     ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button class="btn btn-primary" onclick="venNouveau('devis')">+ Devis</button><button class="btn btn-primary" onclick="venNouveau('cmd')">+ Commande client</button><button class="btn btn-ghost" onclick="venNouveau('bl')">+ Livraison directe</button></div>` : ''}
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
-      <div class="kpi-mini tint-blue"><div class="kpi-mini-val" style="font-size:18px;">${achDT(caMois)}</div><div class="kpi-mini-lbl">Ventes facturées du mois (HT)</div></div>
+      <div onclick="nav('ven-livraisons')" class="kpi-mini tint-blue"><div class="kpi-mini-val" style="font-size:18px;">${achDT(caMois)}</div><div class="kpi-mini-lbl">Ventes facturées du mois (HT)</div></div>
       <div class="kpi-mini ${reste > 0.0005 ? 'tint-red' : ''}"><div class="kpi-mini-val" style="font-size:18px;">${achDT(reste)}</div><div class="kpi-mini-lbl">Reste à encaisser</div></div>
-      <div class="kpi-mini"><div class="kpi-mini-val">${aLivrer.length}</div><div class="kpi-mini-lbl">Commandes à livrer</div></div>
-      <div class="kpi-mini ${aFacturer.length ? 'tint-gold' : ''}"><div class="kpi-mini-val">${aFacturer.length}</div><div class="kpi-mini-lbl">Livraisons à facturer</div></div>
+      <div onclick="nav('ven-commandes')" class="kpi-mini"><div class="kpi-mini-val">${aLivrer.length}</div><div class="kpi-mini-lbl">Commandes à livrer</div></div>
+      <div onclick="nav('ven-livraisons')" class="kpi-mini ${aFacturer.length ? 'tint-gold' : ''}"><div class="kpi-mini-val">${aFacturer.length}</div><div class="kpi-mini-lbl">Livraisons à facturer</div></div>
     </div>
     <div class="pg-grille2">
       <div class="card"><h3 style="margin-top:0;">À encaisser</h3>${aEncaisser.length ? aEncaisser.slice(0, 8).map(([id, f, t, st]) => ligne(venPeutFacturer() ? `venOuvrirFacture('${id}')` : '', esc(f.numero) + ' · ' + esc((f.client && f.client.nom) || venNomClient(f.clientId)), f.echeance ? 'Échéance ' + achDate(f.echeance) + (st === 'retard' ? ' · en retard' : '') : '', achDT(t.reste), st === 'retard')).join('') : buildEmptyState('Rien à encaisser')}</div>

@@ -198,6 +198,18 @@ const ECRITURES = {
   verif('Tableau de bord GADH : reste à encaisser des ventes (' + attendu + ')', tb.indexOf(attendu) >= 0);
   verif('Tableau de bord GADH : aucune erreur', !Rs.erreurs.length && !Rs.refus.length, Rs.erreurs.concat(Rs.refus).join(' | '));
   await p.screenshot({path:'/tmp/ventes-11-tableau.png', fullPage:true});
+  // Indicateurs cliquables
+  await p.evaluate(() => { const b = Array.from(document.querySelectorAll('.dd-bx')).find(x => /Articles sous le seuil/.test(x.textContent)); b.click(); }); await pause(p, 800);
+  verif('Clic « Articles sous le seuil » → écran Stock des achats', await p.evaluate(() => activeModule === 'gadh-achats' && /Articles suivis/.test(document.getElementById('main').innerText)));
+  await p.evaluate(() => nav('ach-accueil')); await pause(p, 500);
+  await p.evaluate(() => { const b = Array.from(document.querySelectorAll('.kpi-mini')).find(x => /Reste à payer/.test(x.textContent)); b.click(); }); await pause(p, 800);
+  verif('Clic « Reste à payer » → bons d\'achat filtrés « à payer »', await p.evaluate(() => achFiltre === 'apayer'));
+  await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-ventes'); }); await pause(p, 600);
+  await p.evaluate(() => { const b = Array.from(document.querySelectorAll('.kpi-mini')).find(x => /Reste à encaisser/.test(x.textContent)); b.click(); }); await pause(p, 900);
+  verif('Clic « Reste à encaisser » (accueil Ventes) → défile vers le détail', await p.evaluate(() => !!document.querySelector('.kpi-flash')));
+  await p.evaluate(() => { const b = Array.from(document.querySelectorAll('.kpi-mini')).find(x => /Commandes à livrer/.test(x.textContent)); b.click(); }); await pause(p, 600);
+  verif('Clic « Commandes à livrer » → liste des commandes', await p.evaluate(() => /Commandes clients/.test(document.getElementById('main').innerText)));
+  verif('Indicateurs : aucune erreur', !Rs.erreurs.length, Rs.erreurs.join(' | '));
   await Rs.ctx.close();
   const Rg2 = await ouvrir('resp_gadh'); p = Rg2.p;
   const vis = await p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-tableau') >= 0);
