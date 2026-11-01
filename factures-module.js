@@ -41,7 +41,7 @@ function canAccessFactures(){ return !!currentUser && (currentUser.role === 'adm
 function canEditFact(soc){ return soc === 'mgt' ? canEditMgt() : !!currentUser && currentUser.role === 'admin'; }
 
 function factParams(soc){
-  const def = {raison:SOCIETES[soc].nom, adresse:'', mf:'', tel:'', email:'', rib:'', tva:19, timbre:1, delai:30, mention:'', tauxHoraire:0, deplacement:0, prix:{}};
+  const def = {raison:SOCIETES[soc].nom, adresse:'', mf:'', tel:'', email:'', rib:'', tva:0, timbre:1, delai:30, mention:'', tauxHoraire:0, deplacement:0, prix:{}};
   const P = Object.assign(def, getJSON(factCle(soc, 'fact_params'), {}) || {});
   if(soc === 'mgt'){ const M = mgtParams(); ['raison', 'adresse', 'mf', 'tel', 'email', 'rib', 'tva'].forEach(k => { P[k] = M[k]; }); }
   return P;
@@ -100,7 +100,7 @@ function factIndicateurs(soc){
   return {aEncaisser, impayees, retard, montantRetard, caMois};
 }
 
-// Montant en lettres : « mille deux cent trente-quatre dinars et cinq cents millimes ».
+// Montant en lettres, toujours en euros : « mille deux cent trente-quatre euros et cinquante centimes ».
 function factEnLettres(montant){
   const u = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
   const d = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
@@ -126,9 +126,9 @@ function factEnLettres(montant){
     if(r) p.push(cent(r));
     return p.join(' ');
   };
-  const tot = Math.round((Number(montant) || 0) * 1000), din = Math.floor(tot / 1000), mil = tot % 1000;
-  let s = entier(din) + ' dinar' + (din > 1 ? 's' : '');
-  if(mil) s += ' et ' + entier(mil) + ' millime' + (mil > 1 ? 's' : '');
+  const tot = Math.round((Number(montant) || 0) * 100), eur = Math.floor(tot / 100), cts = tot % 100;
+  let s = entier(eur) + (eur >= 1e6 && eur % 1e6 === 0 ? ' d\'' : ' ') + 'euro' + (eur > 1 ? 's' : '');
+  if(cts) s += ' et ' + entier(cts) + ' centime' + (cts > 1 ? 's' : '');
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -532,7 +532,7 @@ function renderFactParams(main){
       ${mgtChamp('Téléphone', 'fx-tel', P.tel)}${mgtChamp('E-mail', 'fx-email', P.email)}
       ${mgtChamp('TVA par défaut (%)', 'fx-tva', P.tva, 'number')}</div>`}
     <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Timbre fiscal (€)', 'fx-timbre', P.timbre, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Délai de paiement (jours)', 'fx-delai', P.delai, 'number', 'min="0"')}</div></div>
-    ${mgt ? `<div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Taux horaire technicien (DT HT)', 'fx-taux', P.tauxHoraire, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Forfait déplacement (DT HT)', 'fx-depl', P.deplacement, 'number', 'step="0.001" min="0"')}</div></div>` : ''}
+    ${mgt ? `<div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Taux horaire technicien (€ HT)', 'fx-taux', P.tauxHoraire, 'number', 'step="0.001" min="0"')}</div><div style="flex:1;">${mgtChamp('Forfait déplacement (€ HT)', 'fx-depl', P.deplacement, 'number', 'step="0.001" min="0"')}</div></div>` : ''}
     ${mgtZone('Mentions par défaut (bas de facture)', 'fx-mention', P.mention)}
     <button class="btn btn-primary" style="width:100%;" onclick="factSauverParams()">Enregistrer</button>
   </div>

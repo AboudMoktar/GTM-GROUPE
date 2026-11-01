@@ -84,6 +84,7 @@ const ECRITURES = {
       }, [chemin, cle]);
       if(res === attendu) ok++; else echecs.push(`${r} : écriture ${cle} → ${res ? 'autorisée' : 'refusée'}, attendu ${attendu ? 'autorisée' : 'refusée'}`);
     }
+    total++; { const adm = await p.evaluate(() => estAdminSysteme()); if(adm === (r === 'sysadmin')) ok++; else echecs.push(`${r} : réinitialisation ${adm ? 'visible' : 'cachée'}`); }
     console.log(`${r.padEnd(16)} écran « ${etat.ecran.trim().slice(0, 40)} » · ${etat.sources.length} source(s) de données chargée(s)`);
     await ctx.close();
   }

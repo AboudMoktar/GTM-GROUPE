@@ -46,7 +46,7 @@ function mgtGet(nom){ return getJSON('mgt_' + nom, {}) || {}; }
 function mgtSet(nom, v){ setJSON('mgt_' + nom, v); }
 function mgtId(p){ return p + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
 function mgtParams(){
-  return Object.assign({raison:'MGT', adresse:'', mf:'', tel:'', email:'', rib:'', tva:19, validite:30,
+  return Object.assign({raison:'MGT', adresse:'', mf:'', tel:'', email:'', rib:'', tva:0, validite:30,
     conditions:'Paiement : 30 % à la commande, solde à la livraison.\nDélai de livraison : à confirmer.'}, getJSON('mgt_parametres', {}) || {});
 }
 function canEditMgt(){ return !!currentUser && currentUser.role !== 'viewer'; }
