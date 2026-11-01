@@ -190,6 +190,22 @@ const ECRITURES = {
   verif('Responsable GADH : pas de module Ventes', await p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-ventes') < 0));
   await Rg.ctx.close();
 
+  // 4. Tableau de bord GADH : sections Ventes, Achats et stock, Facturation
+  const Rs = await ouvrir('responsable'); p = Rs.p;
+  await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-tableau'); nav('gadh-tableau-vue'); }); await pause(p, 1200);
+  const tb = await p.evaluate(() => document.getElementById('main').innerText);
+  verif('Tableau de bord GADH : sections Ventes, Achats et stock, Facturation', /Ventes facturées du mois/.test(tb) && /Valeur du stock/.test(tb) && /Facturé ce mois/.test(tb), tb.slice(-600));
+  verif('Tableau de bord GADH : reste à encaisser des ventes (' + attendu + ')', tb.indexOf(attendu) >= 0);
+  verif('Tableau de bord GADH : aucune erreur', !Rs.erreurs.length && !Rs.refus.length, Rs.erreurs.concat(Rs.refus).join(' | '));
+  await p.screenshot({path:'/tmp/ventes-11-tableau.png', fullPage:true});
+  await Rs.ctx.close();
+  const Rg2 = await ouvrir('resp_gadh'); p = Rg2.p;
+  const vis = await p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-tableau') >= 0);
+  if(vis){ await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-tableau'); nav('gadh-tableau-vue'); }); await pause(p, 800); }
+  const tb2 = vis ? await p.evaluate(() => document.getElementById('main').innerText) : '';
+  verif('Responsable GADH : pas de chiffres de ventes, achats ni facturation', !/Ventes facturées|Valeur du stock|Facturé ce mois/.test(tb2) && !Rg2.erreurs.length, Rg2.erreurs.join(' | '));
+  await Rg2.ctx.close();
+
   await b.close();
   console.log(`Parcours ventes GADH : ${ok}/${total} contrôles conformes`);
   echecs.forEach(e => console.log('  ÉCHEC  ' + e));
