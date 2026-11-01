@@ -42,7 +42,8 @@ function donneesInitiales(){
           factures:{f1:{numero:'FA1'}}, fact_params:{rib:'X'}, tek_machines:{m1:{nom:'Presse'}}, stk_mv:{mv1:{q:5}},
           messages:{m1:{text:'Bonjour', authorUsername:'responsable'}}, prod_commandes:{c1:{n:1}}, cle_inconnue:{x:1}},
     gadh: {gadh_employees:{g1:{nom:'Sana'}}, ['gadh_attendance_' + AUJ]:{g1:{statut:'present'}}, gadh_absences:{a1:{}},
-           gadh_plannings:{p1:{nom:'Hiver'}}, gadh_factures:{f1:{numero:'G1'}}, gadh_fact_params:{rib:'Y'}, gadh_machines:{m1:{}}, gadh_cadences:{r1:20}},
+           gadh_plannings:{p1:{nom:'Hiver'}}, gadh_factures:{f1:{numero:'G1'}}, gadh_fact_params:{rib:'Y'}, gadh_machines:{m1:{}}, gadh_cadences:{r1:20},
+           gadh_achat_fournisseurs:{fo1:{nom:'Tissus Sfax'}}, gadh_achat_articles:{ar1:{nom:'Fil', categorie:'accessoire'}}, gadh_achat_bons:{ba1:{numero:'BA-2026-001', statut:'commande'}}, gadh_achat_mouvements:{mv1:{articleId:'ar1', type:'entree', qte:30}}},
     liaison: {cmd_commandes:{c1:{numero:'12'}}, cmd_saisies_c1:{[AUJ]:{retour:{r1:{M:5}}}}, suivi_index:['cfg', 'lines-1'],
               'suivi_d_lines-1':{lot:'1'}, prod_references:{r1:{nom:'Ceinture'}}},
     mgt: {mgt_devis:{d1:{n:1}}, mgt_clients:{c1:{nom:'Client'}}, mgt_demandes:{d1:{clientId:'c1', objet:'Panne', statut:'attente', date:AUJ}}, mgt_crm_data:'__gtm_json_v1:{}',
@@ -177,6 +178,23 @@ const SCENARIOS = [
   ['Secrétaire GADH : lecture du suivi (pièces retournées)', 'u_secr_gadh', 'lire', T + 'liaison/suivi_index', null, true],
   ['Secrétaire GADH : modifier le suivi', 'u_secr_gadh', 'ecrire', T + 'liaison/suivi_d_lines-1', {lot:'2'}, false],
   ['Secrétaire GADH : lecture TEK', 'u_secr_gadh', 'lire', T + 'tek/employees', null, false],
+
+  // --- Achats et stock GADH ---
+  ['Achats GADH : Secrétaire GADH lit les bons', 'u_secr_gadh', 'requete', T + 'gadh', pref('gadh_achat'), true],
+  ['Achats GADH : Secrétaire GADH enregistre un bon', 'u_secr_gadh', 'ecrire', T + 'gadh/gadh_achat_bons', {ba1:{numero:'BA-2026-001', statut:'commande'}, ba2:{statut:'brouillon'}}, true],
+  ['Achats GADH : Secrétaire GADH crée un fournisseur', 'u_secr_gadh', 'ecrire', T + 'gadh/gadh_achat_fournisseurs', {fo1:{nom:'Tissus Sfax'}, fo2:{nom:'Accessoires Tunis'}}, true],
+  ['Achats GADH : Secrétaire GADH enregistre une sortie de stock', 'u_secr_gadh', 'ecrire', T + 'gadh/gadh_achat_mouvements', {mv1:{qte:30}, mv2:{type:'sortie', qte:5}}, true],
+  ['Achats GADH : Secrétaire GADH efface tous les bons', 'u_secr_gadh', 'supprimer', T + 'gadh/gadh_achat_bons', null, false],
+  ['Achats GADH : Technico MGT lit les bons', 'u_technico', 'lire', T + 'gadh/gadh_achat_bons', null, true],
+  ['Achats GADH : Technico MGT lit le stock (requête)', 'u_technico', 'requete', T + 'gadh', pref('gadh_achat'), true],
+  ['Achats GADH : Technico MGT modifie un bon', 'u_technico', 'ecrire', T + 'gadh/gadh_achat_bons', {}, false],
+  ['Achats GADH : Technico MGT lit la RH GADH', 'u_technico', 'lire', T + 'gadh/gadh_employees', null, false],
+  ['Achats GADH : Technico MGT lit tout GADH', 'u_technico', 'lire', T + 'gadh', null, false],
+  ['Achats GADH : Responsable GADH lit les bons', 'u_resp_gadh', 'lire', T + 'gadh/gadh_achat_bons', null, false],
+  ['Achats GADH : Cheftaine lit les bons', 'u_cheftaine', 'lire', T + 'gadh/gadh_achat_bons', null, false],
+  ['Achats GADH : Responsable TEK-TREND enregistre un bon', 'u_responsable', 'ecrire', T + 'gadh/gadh_achat_bons', {ba1:{statut:'commande'}}, true],
+  ['Achats GADH : Damien lit les bons', 'u_damien', 'lire', T + 'gadh/gadh_achat_bons', null, true],
+  ['Achats GADH : Damien modifie un bon', 'u_damien', 'ecrire', T + 'gadh/gadh_achat_bons', {}, false],
 
   // --- Technico-commercial MGT ---
   ['Technico MGT : lecture MGT', 'u_technico', 'lire', T + 'mgt', null, true],
