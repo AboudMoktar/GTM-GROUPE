@@ -218,6 +218,17 @@ const ECRITURES = {
   verif('Responsable GADH : pas de chiffres de ventes, achats ni facturation', !/Ventes facturées|Valeur du stock|Facturé ce mois/.test(tb2) && !Rg2.erreurs.length, Rg2.erreurs.join(' | '));
   await Rg2.ctx.close();
 
+  // 5. Réinitialisation GADH : n'efface que GADH, jamais les commandes / le suivi PERCKO (liaison) ni TEK-TREND
+  const Ad = await ouvrir('sysadmin'); p = Ad.p;
+  const avant = await p.evaluate(async () => { const v = async (d) => (await fbRootRef.child(d).once('value')).val() || {}; return {liaison:Object.keys(await v('liaison')).sort(), tek:Object.keys(await v('tek')).length, gadh:Object.keys(await v('gadh')).length}; });
+  await p.evaluate(async () => { window.confirm = () => true; window.prompt = () => 'EFFACER'; activeSociete = 'gadh'; await reinitialiserSociete('gadh'); });
+  await pause(p, 1500);
+  const apres = await p.evaluate(async () => { const v = async (d) => (await fbRootRef.child(d).once('value')).val() || {}; return {liaison:Object.keys(await v('liaison')).sort(), tek:Object.keys(await v('tek')).length, gadh:Object.keys(await v('gadh')).length}; });
+  verif('Réinitialisation GADH : données GADH effacées (' + avant.gadh + ' → ' + apres.gadh + ')', avant.gadh > 0 && apres.gadh === 0);
+  verif('Réinitialisation GADH : commandes et suivi PERCKO intacts', JSON.stringify(avant.liaison) === JSON.stringify(apres.liaison), JSON.stringify(avant.liaison) + ' → ' + JSON.stringify(apres.liaison));
+  verif('Réinitialisation GADH : TEK-TREND intact', avant.tek === apres.tek && avant.tek > 0);
+  await Ad.ctx.close();
+
   await b.close();
   console.log(`Parcours ventes GADH : ${ok}/${total} contrôles conformes`);
   echecs.forEach(e => console.log('  ÉCHEC  ' + e));

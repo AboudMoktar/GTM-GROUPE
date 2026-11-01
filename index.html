@@ -2410,7 +2410,7 @@ function renderParams(container){
 
     ${estAdminSysteme() ? `    <div class="card" style="border:1.5px solid #DC2626;">
       <h3 style="margin:0 0 4px;color:#DC2626;">Phase de test — Réinitialiser</h3>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface tout l'historique TEK-TREND (saisies, pointages, absences, commandes…). Les comptes utilisateurs ne sont jamais touchés.</p>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Efface l'historique propre à TEK-TREND (saisies, pointages, absences…). Ne touche jamais aux commandes et au suivi PERCKO (communs à TEK-TREND et GADH), ni aux comptes utilisateurs. Une copie de sauvegarde est téléchargée avant l'effacement.</p>
       <button class="btn btn-warning btn-block" onclick="reinitialiserSociete('tek')">Réinitialiser TEK-TREND</button>
     </div>` : ''}
   `;

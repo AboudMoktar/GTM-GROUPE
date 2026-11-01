@@ -351,19 +351,24 @@ window.reinitialiserSociete = async function(soc){
     }
   }catch(e){}
   Object.keys(memoryCache).forEach(k => { if(k.indexOf(CACHE_PREFIX) === 0) keys.add(k.slice(CACHE_PREFIX.length)); });
+  // Seul le dossier de la société est concerné. Les données communes TEK-TREND ↔ GADH (dossier liaison :
+  // commandes et suivi PERCKO, références) ne sont JAMAIS effacées par une réinitialisation.
+  const sauvegarde = {};
   if(firebaseReady && fbRootRef){
-    const dos = dossiers.concat(['liaison']);
-    for(const d of dos){
-      try{ const snap = await fbRootRef.child(d).once('value'); const v = snap.val() || {}; Object.keys(v).forEach(k => keys.add(k)); }catch(e){}
+    for(const d of dossiers){
+      try{ const snap = await fbRootRef.child(d).once('value'); const v = snap.val() || {}; Object.keys(v).forEach(k => { keys.add(k); sauvegarde[k] = v[k]; }); }catch(e){}
     }
   }
+  const aEffacer = Array.from(keys).filter(k => REINIT_GARDER.indexOf(k) < 0 && firebaseDossierDe(k) === dossiers[0] && (tout || REINIT_PARAMS.indexOf(k) < 0));
+  // Copie de sauvegarde téléchargée avant tout effacement.
+  try{
+    const copie = {}; aEffacer.forEach(k => { if(sauvegarde[k] !== undefined) copie[k] = sauvegarde[k]; });
+    const url = URL.createObjectURL(new Blob([JSON.stringify({societe:soc, dossier:dossiers[0], date:new Date().toISOString(), par:currentUser.username, donnees:copie})], {type:'application/json'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'sauvegarde-' + soc + '-avant-reinitialisation-' + getTodayISO() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }catch(e){ if(!confirm('La copie de sauvegarde n\'a pas pu être téléchargée. Continuer quand même ?')) return; }
   let n = 0; const taches = [];
-  keys.forEach(k => {
-    if(REINIT_GARDER.indexOf(k) >= 0) return;
-    const d = firebaseDossierDe(k);
-    if(d === null) return;
-    if(d !== dossiers[0] && d !== 'liaison') return;
-    if(!tout && (REINIT_PARAMS.indexOf(k) >= 0)) return;
+  aEffacer.forEach(k => {
     delete memoryCache[CACHE_PREFIX + k];
     try{ localStorage.removeItem(CACHE_PREFIX + k); }catch(e){}
     if(firebaseReady && fbRootRef) taches.push(fbRootRef.child(firebaseCheminDe(k)).remove().catch(function(){}));
