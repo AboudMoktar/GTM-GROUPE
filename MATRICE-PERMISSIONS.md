@@ -4,7 +4,7 @@ Générée automatiquement depuis `roles-config.js`, la même source que les rè
 
 « Supprimer » = effacer la clé entière (une collection). Retirer un élément d'une collection est une modification.
 
-Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`, `mgt_crm_clients`, `mgt_crm_history`.
+Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`, `mgt_crm_clients`, `mgt_crm_history`, `gadh_achat_fournisseurs`, `gadh_achat_articles`, `gadh_achat_bons`, `gadh_achat_mouvements`.
 
 ## Administrateur / Développeur
 
@@ -26,6 +26,7 @@ Accès complet aux trois sociétés · gestion des comptes · configuration · s
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | oui | oui | oui |
+| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | oui | oui | oui |
@@ -55,6 +56,7 @@ Accès complet à TEK-TREND et GADH TUNISIA. Rôle technique : `admin`. Sociét�
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | oui | oui | oui |
+| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | oui | oui | oui |
@@ -97,22 +99,24 @@ Pièces de production et commandes reçues par GADH. Rôle technique : `admin`. 
 
 ## Secrétaire GADH
 
-Ressources humaines et facturation GADH. Rôle technique : `admin`. Sociétés : GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
+Ressources humaines, facturation, achats et stock GADH. Rôle technique : `admin`. Sociétés : GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui (sauf collections protégées) |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui (sauf collections protégées) |
+| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui (sauf collections protégées) |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |
 
 ## Technico-commercial MGT
 
-Accès complet au module MGT, y compris les demandes SAV. Rôle technique : `admin`. Sociétés : MGT. Administration des comptes : non. Journal d'audit : non.
+Accès complet au module MGT, y compris les demandes SAV · consultation des achats GADH. Rôle technique : `admin`. Sociétés : MGT, GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
+| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |
@@ -150,6 +154,7 @@ Lecture seule sur les trois sociétés · aucune modification. Rôle technique :
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | — | — | — |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | — | — | — |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | — | — | — |
+| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |

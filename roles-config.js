@@ -44,6 +44,7 @@
     'gadh.rh':              {societe:'gadh', module:'RH GADH', libelle:'Salariés, pointages, absences, horaires', dossier:'gadh', cles:['gadh_employees', 'gadh_absences', 'gadh_plannings'], prefixes:['gadh_attendance_']},
     'gadh.facturation':     {societe:'gadh', module:'Facturation', libelle:'Factures GADH, clients, paramètres, compteurs', dossier:'gadh', prefixes:['gadh_fact']},
     'gadh.machines':        {societe:'gadh', module:'Machines', libelle:'Machines et arrêts GADH', dossier:'gadh', prefixes:['gadh_machines', 'gadh_arrets']},
+    'gadh.achats':          {societe:'gadh', module:'Achats et stock', libelle:'Fournisseurs, articles, bons d\'achat, paiements, stock (matières, accessoires, machines)', dossier:'gadh', prefixes:['gadh_achat']},
     // Échanges TEK-TREND ↔ GADH (dossier liaison/)
     'liaison.commandes':    {societe:'liaison', module:'Commandes', libelle:'Commandes PERCKO : commandes, saisies, historique, expéditions, emballage', dossier:'liaison', cles:['cmd_commandes'], prefixes:['cmd_saisies_', 'cmd_historique_', 'cmd_expeditions_', 'cmd_embjournal_']},
     'liaison.suivi':        {societe:'liaison', module:'Commandes', libelle:'Suivi PERCKO : lots, envois et retours GADH', dossier:'liaison', cles:['suivi_index'], prefixes:['suivi_d_']},
@@ -59,7 +60,7 @@
 
   // Clés dont la suppression entière est réservée aux rôles « complets » (*) :
   // un rôle limité peut modifier ces collections, jamais les effacer d'un coup.
-  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index', 'mgt_crm_clients', 'mgt_crm_history'];
+  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index', 'mgt_crm_clients', 'mgt_crm_history', 'gadh_achat_fournisseurs', 'gadh_achat_articles', 'gadh_achat_bons', 'gadh_achat_mouvements'];
 
   const TOUT = 'lcms';
   // --- Rôles (organisation validée le 31/10/2026 ; Secrétaire MGT le 01/11/2026) ---
@@ -104,17 +105,17 @@
     },
     secretaire_gadh: {
       label:'Secrétaire GADH', role:'admin', groupe:false, societes:{gadh:true},
-      aide:'Ressources humaines et facturation GADH',
-      interface:{gadh:{'gadh-rh':'*', factures:'*'}},
-      droits:{'gadh.rh':TOUT, 'gadh.facturation':TOUT,
+      aide:'Ressources humaines, facturation, achats et stock GADH',
+      interface:{gadh:{'gadh-rh':'*', factures:'*', 'gadh-achats':'*'}},
+      droits:{'gadh.rh':TOUT, 'gadh.facturation':TOUT, 'gadh.achats':TOUT,
         // Lecture nécessaire : pièces retournées (factures GADH → TEK-TREND depuis le suivi).
         'liaison.suivi':'l', 'liaison.commandes':'l', 'liaison.references':'l'}
     },
     technico_mgt: {
-      label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true},
-      aide:'Accès complet au module MGT, y compris les demandes SAV',
-      interface:{mgt:'*'},
-      droits:{'mgt.*':TOUT}
+      label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true, gadh:true},
+      aide:'Accès complet au module MGT, y compris les demandes SAV · consultation des achats GADH',
+      interface:{mgt:'*', gadh:{'gadh-achats':'*'}},
+      droits:{'mgt.*':TOUT, 'gadh.achats':'l'}
     },
     secretaire_mgt: {
       label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true},
