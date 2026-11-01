@@ -2,7 +2,8 @@
 // GADH TUNISIA — TABLEAU DE BORD DE LA SOCIÉTÉ (fichier séparé)
 // ============================================================
 // Même principe que tek-dashboard-module.js, pour GADH TUNISIA : Rendement
-// production, État des employés, Commandes (vue GADH). Lecture seule,
+// production, État des employés, Commandes (vue GADH), puis Ventes, Achats et stock,
+// Facturation (selon les droits de lecture du rôle). Lecture seule,
 // aucune donnée modifiée ici ; chaque calcul est protégé par ddSecuriser()
 // (déjà utilisée par la Vue direction) pour qu'une donnée manquante
 // n'empêche jamais l'affichage du reste du tableau de bord.
@@ -52,8 +53,47 @@ function gdCommandes(){
     enAttente: (typeof suiviLotsChezGadh === 'function') ? suiviLotsChezGadh() : 0
   };
 }
+// Droit de lecture sur une donnée GADH (roles-config.js) : les sections Ventes, Achats et Facturation
+// ne s'affichent qu'aux rôles qui peuvent les lire (admin, responsable, direction, secrétaire GADH…).
+function gdPeutLire(cle){
+  const R = window.GTM_ROLES, p = currentUser && currentUser.profil;
+  if(R && p && R.ROLES[p]) return R.autorise(p, 'gadh', cle, 'l');
+  return !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer');
+}
+function gdVentes(){
+  if(typeof venGet !== 'function' || !gdPeutLire('gadh_vente_livraisons')) return null;
+  const mois = getTodayISO().slice(0, 7), fv = gdPeutLire('gadh_factures') ? venFacturesVente() : [];
+  const aEnc = fv.filter(x => x[2].reste > 0.0005).sort((a, b) => (a[1].echeance || '').localeCompare(b[1].echeance || ''));
+  const devis = Object.values(venGet('devis')).filter(d => d && d.statut === 'envoye');
+  const cmds = Object.values(venGet('cmd')).filter(c => c && c.statut !== 'annulee' && venLivraison(c) !== 'totale');
+  const aFact = Object.values(venGet('bl')).filter(b => b && b.statut !== 'annule' && !venFacture(b));
+  return {
+    caMois: fv.filter(x => (x[1].date || '').slice(0, 7) === mois).reduce((t, x) => t + x[2].ht, 0),
+    reste: aEnc.reduce((t, x) => t + x[2].reste, 0), retard: aEnc.filter(x => x[3] === 'retard').length, aEnc,
+    devisNb: devis.length, devisMontant: devis.reduce((t, d) => t + venTotaux(d).ht, 0),
+    cmdNb: cmds.length, aFactNb: aFact.length, aFactMontant: aFact.reduce((t, b) => t + venTotaux(b).ht, 0)
+  };
+}
+function gdAchats(){
+  if(typeof achGet !== 'function' || !gdPeutLire('gadh_achat_bons')) return null;
+  const mois = getTodayISO().slice(0, 7), bons = Object.values(achGet('bons')).filter(b => b && b.statut === 'commande'), st = achStock(), arts = achGet('art');
+  return {
+    duMois: bons.filter(b => (b.date || '').slice(0, 7) === mois).reduce((t, b) => t + achTotaux(b).ttc, 0),
+    reste: bons.reduce((t, b) => t + achTotaux(b).reste, 0), retard: bons.filter(b => achTotaux(b).reste > 0.0005 && achEnRetard(b)).length,
+    aRecevoir: bons.filter(b => achReception(b) !== 'totale').length,
+    seuil: achSousSeuil().map(([id, a]) => ({nom:a.nom, stock:st[id] || 0, seuil:achNombre(a.seuil), unite:a.unite || ''})),
+    valeurStock: Object.entries(arts).filter(([, a]) => achSuiviStock(a)).reduce((t, [id, a]) => t + Math.max(0, st[id] || 0) * achNombre(a.prix), 0)
+  };
+}
+function gdFacturation(){
+  if(typeof factIndicateurs !== 'function' || !gdPeutLire('gadh_factures')) return null;
+  return factIndicateurs('gadh'); // {aEncaisser, impayees, retard, montantRetard, caMois}
+}
 function gdDonnees(){
   const D = {};
+  D.ven = ddSecuriser(gdVentes, null);
+  D.ach = ddSecuriser(gdAchats, null);
+  D.fact = ddSecuriser(gdFacturation, null);
   D.rend = ddSecuriser(gdRendement, {totalReel:0, totalObj:0, rendement:null, hasEntry:false});
   D.emp = ddSecuriser(gdEmployes, {total:0, present:0, absent:0, retard:0, sortie:0, autorisation:0, conge:0, maladie:0, nonRenseigne:0, absents:[], retards:[], presence:null});
   D.cmd = ddSecuriser(gdCommandes, {nb:0, qteTot:0, retourTot:0, avancement:null, lots:[], enAttente:0});
@@ -76,6 +116,44 @@ function gdRetardList(D){
 function gdCommandesList(D){
   if(!D.cmd.lots.length) return '<div class="dd-vide">Aucune commande en cours</div>';
   return D.cmd.lots.map(gdBarreLot).join('');
+}
+function gdEur(n){ return (Number(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €'; }
+// Raccourci vers le module (si le rôle y a accès).
+function gdLien(mod){ return typeof modulesDeSociete === 'function' && modulesDeSociete('gadh').indexOf(mod) >= 0 ? `activeSociete='gadh'; chooseModule('${mod}')` : ''; }
+function gdSectionsGestion(D){
+  let h = '';
+  const titre = (t, mod) => `<div class="dd-ct" style="margin:18px 2px 8px;"><h3>${t}</h3>${gdLien(mod) ? `<span style="cursor:pointer;" onclick="${gdLien(mod)}">Ouvrir ›</span>` : ''}</div>`;
+  if(D.ven){
+    const V = D.ven, l = gdLien('gadh-ventes');
+    h += titre('Ventes', 'gadh-ventes') + `<div class="dd-boites">
+      ${ddBoite(gdEur(V.caMois), 'Ventes facturées du mois (HT)', 'ok', l)}
+      ${ddBoite(gdEur(V.reste), 'Reste à encaisser' + (V.retard ? ' · ' + V.retard + ' en retard' : ''), V.retard ? 'bad' : 'warn', l)}
+      ${ddBoite(V.devisNb, 'Devis en attente · ' + gdEur(V.devisMontant), 'nul', l)}
+      ${ddBoite(V.cmdNb, 'Commandes clients à livrer', V.cmdNb ? 'warn' : 'nul', l)}
+      ${ddBoite(V.aFactNb, 'Livraisons à facturer · ' + gdEur(V.aFactMontant), V.aFactNb ? 'warn' : 'nul', l)}
+    </div>`;
+    if(V.aEnc.length) h += `<div class="dd-card dd-plat"><div class="dd-ct"><h3>À encaisser</h3><span>${V.aEnc.length}</span></div><div class="dd-scroll">${V.aEnc.slice(0, 8).map(([, f, t, st]) => `<div class="dd-li"><i style="background:${st === 'retard' ? 'var(--crit)' : 'var(--warn)'};"></i><div><b>${esc(f.numero || '')} · ${esc((f.client && f.client.nom) || venNomClient(f.clientId))}</b><span>${gdEur(t.reste)}${f.echeance ? ' · échéance ' + achDate(f.echeance) : ''}</span></div></div>`).join('')}</div></div>`;
+  }
+  if(D.ach){
+    const A = D.ach, l = gdLien('gadh-achats');
+    h += titre('Achats et stock', 'gadh-achats') + `<div class="dd-boites">
+      ${ddBoite(gdEur(A.duMois), 'Achats du mois (TTC)', 'nul', l)}
+      ${ddBoite(gdEur(A.reste), 'Reste à payer aux fournisseurs' + (A.retard ? ' · ' + A.retard + ' en retard' : ''), A.retard ? 'bad' : 'warn', l)}
+      ${ddBoite(A.aRecevoir, 'Bons d\'achat à recevoir', A.aRecevoir ? 'warn' : 'nul', l)}
+      ${ddBoite(A.seuil.length, 'Articles sous le seuil', A.seuil.length ? 'bad' : 'nul', l)}
+      ${ddBoite(gdEur(A.valeurStock), 'Valeur du stock (prix d\'achat)', 'ok', l)}
+    </div>`;
+    if(A.seuil.length) h += `<div class="dd-card dd-plat"><div class="dd-ct"><h3>Articles à réapprovisionner</h3><span>${A.seuil.length}</span></div><div class="dd-scroll">${A.seuil.map(x => `<div class="dd-li"><i style="background:var(--crit);"></i><div><b>${esc(x.nom)}</b><span>Stock ${achQte(x.stock)} ${esc(x.unite)} · seuil ${achQte(x.seuil)}</span></div></div>`).join('')}</div></div>`;
+  }
+  if(D.fact){
+    const F = D.fact, l = gdLien('factures');
+    h += titre('Facturation (toutes factures GADH)', 'factures') + `<div class="dd-boites">
+      ${ddBoite(gdEur(F.caMois), 'Facturé ce mois (HT)', 'ok', l)}
+      ${ddBoite(gdEur(F.aEncaisser), F.impayees + ' facture(s) à encaisser', F.impayees ? 'warn' : 'nul', l)}
+      ${ddBoite(gdEur(F.montantRetard), F.retard + ' facture(s) en retard', F.retard ? 'bad' : 'nul', l)}
+    </div>`;
+  }
+  return h;
 }
 function gdRender(main){
   let D;
@@ -103,6 +181,7 @@ function gdRender(main){
           <div class="dd-card dd-plat"><div class="dd-ct"><h3>Retards du jour</h3><span>${D.emp.retards.length}</span></div><div class="dd-scroll">${gdRetardList(D)}</div></div>
         </div>
       </div>
+      ${gdSectionsGestion(D)}
     </div>`;
 }
 
