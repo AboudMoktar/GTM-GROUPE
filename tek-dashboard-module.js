@@ -110,10 +110,10 @@ function tdCommandesList(D){
 function tdChaineResume(T){
   const r = T.rend === null ? null : Math.round(T.rend), tr = r === null ? 'nul' : (r >= 90 ? 'ok' : r >= 70 ? 'warn' : 'bad');
   return `<div class="dd-boites" style="margin:0;">
-    ${ddBoite(T.q + ' / ' + T.o, 'Pièces / objectif', 'nul')}
-    ${ddBoite(r === null ? '—' : r + ' %', 'Rendement', tr)}
-    ${ddBoite(T.pres + '/' + T.n, 'Présentes', 'ok')}
-    ${ddBoite(T.p + ' min', 'Pertes', T.p ? 'bad' : 'nul')}
+    ${ddBoite(T.q + ' / ' + T.o, 'Pièces / objectif', 'nul', "chooseModule('chaine')")}
+    ${ddBoite(r === null ? '—' : r + ' %', 'Rendement', tr, "chooseModule('chaine')")}
+    ${ddBoite(T.pres + '/' + T.n, 'Présentes', 'ok', "chooseModule('chaine')")}
+    ${ddBoite(T.p + ' min', 'Pertes', T.p ? 'bad' : 'nul', "chooseModule('chaine')")}
   </div>`;
 }
 // Jauge cliquable : ddJaugeP n'a pas de paramètre clic, on l'enveloppe.

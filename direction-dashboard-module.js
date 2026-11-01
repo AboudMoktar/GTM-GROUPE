@@ -81,11 +81,11 @@ const ddCouleurRend = (v) => v === null ? 'var(--ink-faint)' : v >= 85 ? 'var(--
 
 // Couleurs de statut de la charte (vert / orange / rouge), gris quand il n'y a pas de données.
 const ddTon = (v) => v === null ? '#94A3B8' : v >= 85 ? '#15803D' : v >= 60 ? '#B45309' : '#B91C1C';
-function ddJaugeP(titre, valeur){
+function ddJaugeP(titre, valeur, clic){
   const c = ddTon(valeur), v = valeur === null ? 0 : Math.max(0, Math.min(100, valeur)), R = 32, C = 2 * Math.PI * R, l = C * v / 100;
   const etat = valeur === null ? 'Pas de données' : valeur >= 85 ? 'Très bon' : valeur >= 60 ? 'À surveiller' : 'Faible';
   const cl = valeur === null ? 'nul' : valeur >= 85 ? 'ok' : valeur >= 60 ? 'warn' : 'bad';
-  return `<div class="dd-jp dd-jp-${cl}" style="--c:${c};"><div class="dd-jp-t">${titre}</div><div class="dd-jp-r">
+  return `<div class="dd-jp dd-jp-${cl}" style="--c:${c};" ${clic ? `onclick="${clic}"` : ''}><div class="dd-jp-t">${titre}</div><div class="dd-jp-r">
     <svg viewBox="0 0 80 80" class="dd-jp-svg"><circle cx="40" cy="40" r="${R}" fill="none" stroke="var(--surface-3)" stroke-width="9"/>${v > 0 ? `<circle cx="40" cy="40" r="${R}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${l} ${C - l}" transform="rotate(-90 40 40)"/>` : ''}</svg>
     <div class="dd-jp-v">${valeur === null ? '—' : Math.round(valeur)}${valeur === null ? '' : '<small>%</small>'}</div></div><span class="dd-jp-s">${etat}</span></div>`;
 }
@@ -102,7 +102,7 @@ function ddCarteSociete(soc, ind){
   const S = SOCIETES[soc];
   return `<div class="dd-card dd-soc"><div class="dd-soc-band" style="background:${societeBande(soc, 90)};"></div>
     <div class="dd-soc-tete" style="background:${S.teinte};">${societeLogo(soc, 38, '', 110)}<div><b>${S.nom}</b><span>${S.sous}</span></div></div>
-    <div class="dd-soc-grille">${ind.filter(i => !i.large).slice(0, 4).map(i => `<div><span>${i.label}</span><b>${esc(String(i.valeur))}</b></div>`).join('')}</div>
+    <div class="dd-soc-grille">${ind.filter(i => !i.large).slice(0, 4).map(i => `<div style="cursor:pointer;" onclick="chooseSociete('${soc}')"><span>${i.label}</span><b>${esc(String(i.valeur))}</b></div>`).join('')}</div>
     <button class="btn btn-ghost" style="width:calc(100% - 28px);margin:0 14px 14px;" onclick="chooseSociete('${soc}')">Ouvrir ${S.nom}</button></div>`;
 }
 function ddHeure(t){ const d = new Date(t || 0); return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }
@@ -118,21 +118,21 @@ window.renderDirection = function(){
   const menu = nav('crown', 'Vue direction', 'renderDirection()', true) + SOCIETE_KEYS.map(k => nav(k === 'mgt' ? 'target' : k === 'gadh' ? 'gadh' : 'prod', SOCIETES[k].nom, `chooseSociete('${k}')`)).join('')
     + (peutAudit ? nav('audit', 'Journal d\'audit', 'auditOuvrir()') : '') + (peutAdmin ? nav('cog', 'Administration', 'ouvrirAdmin()') : '');
   const kpis = [
-    ddKpi('Production TEK-TREND', D.prodTek.toLocaleString('fr-FR'), 'Rendement ' + (D.rendTek === null ? '—' : Math.round(D.rendTek) + ' %'), 'prod', DD_COULEURS.tek),
-    ddKpi('Pièces retournées GADH', D.retGadh.toLocaleString('fr-FR'), 'Aujourd\'hui', 'gadh', DD_COULEURS.gadh),
-    ddKpi('Présents aujourd\'hui', D.presents.n + ' <small>/ ' + D.presents.total + '</small>', 'TEK-TREND + GADH', 'users', '#2563eb'),
-    ddKpi('Commandes en cours', D.cmdTek, D.cmdGadh + ' chez GADH', 'box', '#7c3aed'),
-    ddKpi('À encaisser', ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'Aucun retard', 'euro', '#16a34a'),
-    ddKpi('Pipeline MGT', Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', (D.mgt.offresEnCours || 0) + ' offres · ' + (D.sav.ticketsActifs || 0) + ' tickets SAV', 'target', DD_COULEURS.mgt)
+    ddKpi('Production TEK-TREND', D.prodTek.toLocaleString('fr-FR'), 'Rendement ' + (D.rendTek === null ? '—' : Math.round(D.rendTek) + ' %'), 'prod', DD_COULEURS.tek, "kpiAller('tek', 'rendement')"),
+    ddKpi('Pièces retournées GADH', D.retGadh.toLocaleString('fr-FR'), 'Aujourd\'hui', 'gadh', DD_COULEURS.gadh, "kpiAller('gadh', 'gadh', 'gadh-production')"),
+    ddKpi('Présents aujourd\'hui', D.presents.n + ' <small>/ ' + D.presents.total + '</small>', 'TEK-TREND + GADH', 'users', '#2563eb', "kpiAller('tek', 'rh')"),
+    ddKpi('Commandes en cours', D.cmdTek, D.cmdGadh + ' chez GADH', 'box', '#7c3aed', "kpiAller('tek', 'commandes')"),
+    ddKpi('À encaisser', ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'Aucun retard', 'euro', '#16a34a', "kpiAller('tek', 'factures', 'fact-liste')"),
+    ddKpi('Pipeline MGT', Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', (D.mgt.offresEnCours || 0) + ' offres · ' + (D.sav.ticketsActifs || 0) + ' tickets SAV', 'target', DD_COULEURS.mgt, "kpiAller('mgt', 'mgt')")
   ].join('');
   const ton0 = (n, bon) => !n ? 'nul' : (bon || 'ok');
   const boites = [
-    ddBoite(D.prodTek.toLocaleString('fr-FR'), 'Pièces produites TEK-TREND', ton0(D.prodTek)),
-    ddBoite(D.retGadh.toLocaleString('fr-FR'), 'Pièces retournées GADH', ton0(D.retGadh)),
-    ddBoite(D.presents.n + '<small>/' + D.presents.total + '</small>', 'Présents aujourd\'hui', ton0(D.presents.n)),
-    ddBoite(D.cmdTek, 'Commandes en cours · ' + D.cmdGadh + ' chez GADH', ton0(D.cmdTek)),
-    ddBoite(ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'À encaisser', D.retard ? 'bad' : ton0(D.aEncaisser)),
-    ddBoite(Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', 'Pipeline MGT · ' + (D.mgt.offresEnCours || 0) + ' offres', ton0(D.mgt.pipeline))
+    ddBoite(D.prodTek.toLocaleString('fr-FR'), 'Pièces produites TEK-TREND', ton0(D.prodTek), "kpiAller('tek', 'rendement')"),
+    ddBoite(D.retGadh.toLocaleString('fr-FR'), 'Pièces retournées GADH', ton0(D.retGadh), "kpiAller('gadh', 'gadh', 'gadh-production')"),
+    ddBoite(D.presents.n + '<small>/' + D.presents.total + '</small>', 'Présents aujourd\'hui', ton0(D.presents.n), "kpiAller('tek', 'rh')"),
+    ddBoite(D.cmdTek, 'Commandes en cours · ' + D.cmdGadh + ' chez GADH', ton0(D.cmdTek), "kpiAller('tek', 'commandes')"),
+    ddBoite(ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'À encaisser', D.retard ? 'bad' : ton0(D.aEncaisser), "factFiltre='apayer'; kpiAller('tek', 'factures', 'fact-liste')"),
+    ddBoite(Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', 'Pipeline MGT · ' + (D.mgt.offresEnCours || 0) + ' offres', ton0(D.mgt.pipeline), "kpiAller('mgt', 'mgt')")
   ].join('');
   const alertes = D.alertes.slice(0, 6).map(a => `<div class="dd-li"><i style="background:${a.niveau === 'crit' ? 'var(--crit)' : a.niveau === 'warn' ? 'var(--warn)' : 'var(--accent-2)'};"></i><div><b>${esc(a.titre)}</b><span>${SOCIETES[a.soc] ? SOCIETES[a.soc].nom : ''}${a.detail ? ' · ' + esc(a.detail) : ''}</span></div></div>`).join('');
   const activite = D.activite.map(e => `<div class="dd-li"><i style="background:${DD_COULEURS[e.soc] || 'var(--ink-faint)'};"></i><div><b>${esc(e.u || '')}</b><span>${esc(e.txt || e.lib || '')} · ${ddHeure(e.t)}</span></div></div>`).join('');
@@ -145,7 +145,7 @@ window.renderDirection = function(){
         <div class="dd-actions">${typeof notifCloche === 'function' ? notifCloche().replace('class="notif-btn"', 'class="notif-btn notif-btn-clair btn btn-ghost" style="padding:10px 12px;"') : ''}<button class="theme-btn dd-theme" onclick="themeBasculer()"></button>
           <button class="btn btn-ghost dd-mob" onclick="switchSociete()">Sociétés</button>${peutAudit ? '<button class="btn btn-ghost dd-mob" onclick="auditOuvrir()">Audit</button>' : ''}<button class="btn btn-ghost dd-mob" onclick="logout()">Déconnexion</button></div></div>
       <h3 class="dd-titre">Indicateurs globaux</h3>
-      <div class="dd-jauges4">${ddJaugeP('Rendement TEK-TREND', D.rendTek)}${ddJaugeP('Rendement GADH', D.rendGadh)}${ddJaugeP('Présence du personnel', D.presence)}${ddJaugeP('Commandes expédiées', D.avancement)}</div>
+      <div class="dd-jauges4">${ddJaugeP('Rendement TEK-TREND', D.rendTek, "kpiAller('tek', 'rendement', 'stats')")}${ddJaugeP('Rendement GADH', D.rendGadh, "kpiAller('gadh', 'gadh', 'gadh-stats')")}${ddJaugeP('Présence du personnel', D.presence, "kpiAller('tek', 'rh')")}${ddJaugeP('Commandes expédiées', D.avancement, "kpiAller('tek', 'commandes')")}</div>
       <div class="dd-boites">${boites}</div>
       <div class="dd-g dd-g3">
         <div class="dd-card dd-plat"><div class="dd-ct"><h3>À surveiller</h3><button class="dd-lien" onclick="notifOuvrir()">Tout voir</button></div><div class="dd-scroll">${alertes || '<div class="dd-vide">Rien à signaler</div>'}</div></div>

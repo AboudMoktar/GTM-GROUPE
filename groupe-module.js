@@ -388,3 +388,37 @@ function logoDocHTML(soc, hauteurMm, style){
   const src = logoDocSrc(soc); if(!src) return '';
   return `<img src="${src}" alt="${esc(SOCIETES[soc].nom)}" onerror="this.remove()" style="display:block;height:${hauteurMm || 18}mm;max-width:60mm;object-fit:contain;object-position:left center;margin:0 0 2.5mm;${style || ''}">`;
 }
+
+// --- Indicateurs cliquables ---
+// kpiAller : ouvre un module (et un onglet) depuis un indicateur, si le rôle y a accès.
+window.kpiAller = function(soc, mod, tab){
+  try {
+    if(soc && mod && typeof modulesDeSociete === 'function' && modulesDeSociete(soc).indexOf(mod) < 0){ showToast('Ce détail n\'est pas accessible avec votre profil'); return; }
+    directionOuverte = false;
+    if(soc && activeSociete !== soc){ activeSociete = soc; activeModule = null; }
+    if(mod && activeModule !== mod) chooseModule(mod);
+    if(tab) nav(tab);
+    window.scrollTo(0, 0);
+  } catch(e) { console.error('Indicateur', e); }
+};
+// kpiSuivant : fait défiler jusqu'au détail affiché sous le groupe d'indicateurs (liste, tableau, carte).
+window.kpiSuivant = function(el){
+  const groupe = el.closest('.kpi-mini-grid, .kpi-grid, .dd-boites, .dd-jauges4') || el;
+  let n = groupe, cible = null;
+  for(let niveau = 0; n && niveau < 4 && !cible; niveau++){
+    let x = n.nextElementSibling;
+    while(x && (x.offsetHeight === 0 || x.matches('.kpi-mini-grid, .kpi-grid, .dd-boites, .dd-jauges4, style, script'))) x = x.nextElementSibling;
+    if(x) cible = x; else n = n.parentElement;
+  }
+  if(!cible){ showToast('Le détail est affiché sur cet écran'); return; }
+  cible.style.scrollMarginTop = '76px';
+  cible.scrollIntoView({behavior:'smooth', block:'start'});
+  cible.classList.remove('kpi-flash'); void cible.offsetWidth; cible.classList.add('kpi-flash');
+  setTimeout(() => cible.classList.remove('kpi-flash'), 1300);
+};
+// Par défaut, un indicateur sans action propre mène au détail affiché en dessous.
+document.addEventListener('click', function(ev){
+  const el = ev.target.closest && ev.target.closest('.kpi-mini, .kpi, .dd-bx, .dd-kpi, .dd-jp');
+  if(!el || ev.target.closest('[onclick], button, a, input, select, textarea, label')) return;
+  kpiSuivant(el);
+});

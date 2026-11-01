@@ -182,9 +182,9 @@ function renderFactListe(main){
     .sort((a, c) => (c[1].statut === 'brouillon') - (a[1].statut === 'brouillon') || ((c[1].date || '') + (c[1].numero || '')).localeCompare((a[1].date || '') + (a[1].numero || '')));
   b.innerHTML = `
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
-      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;" class="${k.retard ? 'hour-rend bad' : ''}">${k.retard}</div><div style="font-size:10.5px;color:var(--ink-soft);">en retard</div></div>
-      <div class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ HT facturés ce mois</div></div>
+      <div onclick="factFiltre='apayer'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
+      <div onclick="factFiltre='retard'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;" class="${k.retard ? 'hour-rend bad' : ''}">${k.retard}</div><div style="font-size:10.5px;color:var(--ink-soft);">en retard</div></div>
+      <div onclick="factFiltre='tous'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ HT facturés ce mois</div></div>
     </div>
     <div class="card" style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;">
       ${filtres.map(([f, lb]) => `<button class="btn ${factFiltre === f ? 'btn-primary' : 'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="factFiltre='${f}'; nav('fact-liste')">${lb}</button>`).join('')}

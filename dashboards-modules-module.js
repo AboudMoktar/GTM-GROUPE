@@ -29,14 +29,14 @@ const dmTekNouveau = function(container){
     if(tot.arrets > 0) alertes.push(`<div class="dd-li"><i style="background:var(--warn)"></i><div><b>${tot.arrets} perte(s) / arrêt(s)</b><span>Aujourd'hui</span></div></div>`);
     container.innerHTML = `
       <div class="dd-haut"><div><h2 style="font-size:20px;">Aujourd'hui</h2><div class="dd-date">${jour}</div></div></div>
-      <div class="dd-jauges4">${ddJaugeP('Rendement du jour', rend)}${ddJaugeP('Rythme à cette heure', rythme)}${ddJaugeP('Opératrices actives', presence)}${ddJaugeP('Objectif atteint', obj > 0 ? Math.min(100, tot.totalGeneral / obj * 100) : null)}</div>
+      <div class="dd-jauges4">${ddJaugeP('Rendement du jour', rend, "nav('stats')")}${ddJaugeP('Rythme à cette heure', rythme, "histDate=getTodayISO(); histViewMode='jour'; nav('historique')")}${ddJaugeP('Opératrices actives', presence)}${ddJaugeP('Objectif atteint', obj > 0 ? Math.min(100, tot.totalGeneral / obj * 100) : null, "nav('stats')")}</div>
       <div class="dd-boites">
-        ${ddBoite(tot.totalGeneral, 'Pièces produites', tot.totalGeneral ? 'ok' : 'nul')}
-        ${ddBoite(obj, 'Objectif du jour', 'nul')}
-        ${ddBoite((ecart >= 0 ? '+' : '') + ecart, ecart >= 0 ? 'Pièces d\'avance' : 'Pièces de retard', tot.totalGeneral ? (ecart >= 0 ? 'ok' : 'bad') : 'nul')}
+        ${ddBoite(tot.totalGeneral, 'Pièces produites', tot.totalGeneral ? 'ok' : 'nul', "histDate=getTodayISO(); histViewMode='jour'; nav('historique')")}
+        ${ddBoite(obj, 'Objectif du jour', 'nul', "nav('stats')")}
+        ${ddBoite((ecart >= 0 ? '+' : '') + ecart, ecart >= 0 ? 'Pièces d\'avance' : 'Pièces de retard', tot.totalGeneral ? (ecart >= 0 ? 'ok' : 'bad') : 'nul', "histDate=getTodayISO(); histViewMode='jour'; nav('historique')")}
         ${ddBoite(actives + '<small>/' + OP_KEYS.length + '</small>', 'Opératrices actives', actives ? 'ok' : 'nul')}
-        ${ddBoite(tot.arrets, 'Pertes / arrêts', tot.arrets ? 'bad' : 'nul')}
-        ${ddBoite(meilleurs.length ? '<span style="font-size:20px;">' + esc(meilleurs.join(' & ')) + '</span>' : '—', 'Meilleure performance', meilleurs.length ? 'ok' : 'nul')}
+        ${ddBoite(tot.arrets, 'Pertes / arrêts', tot.arrets ? 'bad' : 'nul', "histDate=getTodayISO(); histViewMode='jour'; nav('historique')")}
+        ${ddBoite(meilleurs.length ? '<span style="font-size:20px;">' + esc(meilleurs.join(' & ')) + '</span>' : '—', 'Meilleure performance', meilleurs.length ? 'ok' : 'nul', "nav('stats')")}
       </div>
       <div class="dd-g dd-g3">
         ${dmPlat('Production par opératrice', totalOps + ' PC', totalOps ? classement.map(r => dmBarre(r.n, r.v + ' PC', max ? r.v / max * 100 : 0, 'gris', `openOperatriceDetail('${r.k}')`)).join('') : '', 'Aucune production enregistrée')}
@@ -76,12 +76,12 @@ window.renderGadhDashboard = function(container){
       <div class="dd-haut"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><h3 style="font-size:16px;font-weight:600;margin:0;">${auj ? 'Aujourd\'hui' : 'Pièces du ' + date.split('-').reverse().join('/')}</h3>
         <input type="date" value="${date}" max="${getTodayISO()}" onchange="gadhProdDate=this.value; nav('gadh-dashboard')" style="min-height:38px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;"></div></div>
       <div class="dd-boites">
-        ${ddBoite(total.toLocaleString('fr-FR'), 'Pièces retournées', total ? 'ok' : 'nul')}
-        ${ddBoite(veille.toLocaleString('fr-FR'), 'La veille', 'nul')}
-        ${ddBoite(semaine.toLocaleString('fr-FR'), '6 derniers jours', 'nul')}
-        ${ddBoite(cmds.length, 'Commandes en cours', cmds.length ? 'ok' : 'nul')}
-        ${ddBoite(retCmd.toLocaleString('fr-FR') + ' / ' + qteCmd.toLocaleString('fr-FR'), 'Pièces des commandes en cours', 'nul')}
-        ${ddBoite(enAttente, 'Lots en attente de retour', enAttente ? 'bad' : 'nul')}
+        ${ddBoite(total.toLocaleString('fr-FR'), 'Pièces retournées', total ? 'ok' : 'nul', `gadhHistDate='${date}'; nav('gadh-historique')`)}
+        ${ddBoite(veille.toLocaleString('fr-FR'), 'La veille', 'nul', `gadhHistDate='${gadhYesterdayISO(date)}'; nav('gadh-historique')`)}
+        ${ddBoite(semaine.toLocaleString('fr-FR'), '6 derniers jours', 'nul', "nav('gadh-stats')")}
+        ${ddBoite(cmds.length, 'Commandes en cours', cmds.length ? 'ok' : 'nul', "nav('commandes-home')")}
+        ${ddBoite(retCmd.toLocaleString('fr-FR') + ' / ' + qteCmd.toLocaleString('fr-FR'), 'Pièces des commandes en cours', 'nul', "nav('commandes-home')")}
+        ${ddBoite(enAttente, 'Lots en attente de retour', enAttente ? 'bad' : 'nul', "nav('commandes-home')")}
       </div>
       <div class="dd-g dd-g2">
         ${dmPlat('Pièces par modèle', total + ' PC', refs.map(([n, q]) => dmBarre(n, q, q / maxRef * 100, 'gris')).join(''), 'Aucune pièce retournée ce jour-là')}

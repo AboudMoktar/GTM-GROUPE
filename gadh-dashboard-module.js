@@ -126,31 +126,31 @@ function gdSectionsGestion(D){
   if(D.ven){
     const V = D.ven, l = gdLien('gadh-ventes');
     h += titre('Ventes', 'gadh-ventes') + `<div class="dd-boites">
-      ${ddBoite(gdEur(V.caMois), 'Ventes facturées du mois (HT)', 'ok', l)}
-      ${ddBoite(gdEur(V.reste), 'Reste à encaisser' + (V.retard ? ' · ' + V.retard + ' en retard' : ''), V.retard ? 'bad' : 'warn', l)}
-      ${ddBoite(V.devisNb, 'Devis en attente · ' + gdEur(V.devisMontant), 'nul', l)}
-      ${ddBoite(V.cmdNb, 'Commandes clients à livrer', V.cmdNb ? 'warn' : 'nul', l)}
-      ${ddBoite(V.aFactNb, 'Livraisons à facturer · ' + gdEur(V.aFactMontant), V.aFactNb ? 'warn' : 'nul', l)}
+      ${ddBoite(gdEur(V.caMois), 'Ventes facturées du mois (HT)', 'ok', "kpiAller('gadh', 'gadh-ventes', 'ven-livraisons')")}
+      ${ddBoite(gdEur(V.reste), 'Reste à encaisser' + (V.retard ? ' · ' + V.retard + ' en retard' : ''), V.retard ? 'bad' : 'warn', "kpiAller('gadh', 'gadh-ventes', 'ven-accueil')")}
+      ${ddBoite(V.devisNb, 'Devis en attente · ' + gdEur(V.devisMontant), 'nul', "kpiAller('gadh', 'gadh-ventes', 'ven-devis')")}
+      ${ddBoite(V.cmdNb, 'Commandes clients à livrer', V.cmdNb ? 'warn' : 'nul', "kpiAller('gadh', 'gadh-ventes', 'ven-commandes')")}
+      ${ddBoite(V.aFactNb, 'Livraisons à facturer · ' + gdEur(V.aFactMontant), V.aFactNb ? 'warn' : 'nul', "kpiAller('gadh', 'gadh-ventes', 'ven-livraisons')")}
     </div>`;
     if(V.aEnc.length) h += `<div class="dd-card dd-plat"><div class="dd-ct"><h3>À encaisser</h3><span>${V.aEnc.length}</span></div><div class="dd-scroll">${V.aEnc.slice(0, 8).map(([, f, t, st]) => `<div class="dd-li"><i style="background:${st === 'retard' ? 'var(--crit)' : 'var(--warn)'};"></i><div><b>${esc(f.numero || '')} · ${esc((f.client && f.client.nom) || venNomClient(f.clientId))}</b><span>${gdEur(t.reste)}${f.echeance ? ' · échéance ' + achDate(f.echeance) : ''}</span></div></div>`).join('')}</div></div>`;
   }
   if(D.ach){
     const A = D.ach, l = gdLien('gadh-achats');
     h += titre('Achats et stock', 'gadh-achats') + `<div class="dd-boites">
-      ${ddBoite(gdEur(A.duMois), 'Achats du mois (TTC)', 'nul', l)}
-      ${ddBoite(gdEur(A.reste), 'Reste à payer aux fournisseurs' + (A.retard ? ' · ' + A.retard + ' en retard' : ''), A.retard ? 'bad' : 'warn', l)}
-      ${ddBoite(A.aRecevoir, 'Bons d\'achat à recevoir', A.aRecevoir ? 'warn' : 'nul', l)}
-      ${ddBoite(A.seuil.length, 'Articles sous le seuil', A.seuil.length ? 'bad' : 'nul', l)}
-      ${ddBoite(gdEur(A.valeurStock), 'Valeur du stock (prix d\'achat)', 'ok', l)}
+      ${ddBoite(gdEur(A.duMois), 'Achats du mois (TTC)', 'nul', "achFiltre='encours'; kpiAller('gadh', 'gadh-achats', 'ach-bons')")}
+      ${ddBoite(gdEur(A.reste), 'Reste à payer aux fournisseurs' + (A.retard ? ' · ' + A.retard + ' en retard' : ''), A.retard ? 'bad' : 'warn', "achFiltre='apayer'; kpiAller('gadh', 'gadh-achats', 'ach-bons')")}
+      ${ddBoite(A.aRecevoir, 'Bons d\'achat à recevoir', A.aRecevoir ? 'warn' : 'nul', "achFiltre='encours'; kpiAller('gadh', 'gadh-achats', 'ach-bons')")}
+      ${ddBoite(A.seuil.length, 'Articles sous le seuil', A.seuil.length ? 'bad' : 'nul', "kpiAller('gadh', 'gadh-achats', 'ach-stock')")}
+      ${ddBoite(gdEur(A.valeurStock), 'Valeur du stock (prix d\'achat)', 'ok', "kpiAller('gadh', 'gadh-achats', 'ach-stock')")}
     </div>`;
     if(A.seuil.length) h += `<div class="dd-card dd-plat"><div class="dd-ct"><h3>Articles à réapprovisionner</h3><span>${A.seuil.length}</span></div><div class="dd-scroll">${A.seuil.map(x => `<div class="dd-li"><i style="background:var(--crit);"></i><div><b>${esc(x.nom)}</b><span>Stock ${achQte(x.stock)} ${esc(x.unite)} · seuil ${achQte(x.seuil)}</span></div></div>`).join('')}</div></div>`;
   }
   if(D.fact){
     const F = D.fact, l = gdLien('factures');
     h += titre('Facturation (toutes factures GADH)', 'factures') + `<div class="dd-boites">
-      ${ddBoite(gdEur(F.caMois), 'Facturé ce mois (HT)', 'ok', l)}
-      ${ddBoite(gdEur(F.aEncaisser), F.impayees + ' facture(s) à encaisser', F.impayees ? 'warn' : 'nul', l)}
-      ${ddBoite(gdEur(F.montantRetard), F.retard + ' facture(s) en retard', F.retard ? 'bad' : 'nul', l)}
+      ${ddBoite(gdEur(F.caMois), 'Facturé ce mois (HT)', 'ok', "factFiltre='tous'; kpiAller('gadh', 'factures', 'fact-liste')")}
+      ${ddBoite(gdEur(F.aEncaisser), F.impayees + ' facture(s) à encaisser', F.impayees ? 'warn' : 'nul', "factFiltre='apayer'; kpiAller('gadh', 'factures', 'fact-liste')")}
+      ${ddBoite(gdEur(F.montantRetard), F.retard + ' facture(s) en retard', F.retard ? 'bad' : 'nul', "factFiltre='retard'; kpiAller('gadh', 'factures', 'fact-liste')")}
     </div>`;
   }
   return h;
@@ -163,16 +163,16 @@ function gdRender(main){
     <div class="pg-tete"><div><h2 class="pg-titre">Tableau de bord GADH TUNISIA</h2><div class="pg-sous">${esc(jour)}</div></div></div>
     <div class="td-wrap">
       <div class="dd-jauges4">
-        ${ddJaugeP('Présence du personnel', D.emp.presence)}
-        ${ddJaugeP('Avancement retours', D.cmd.avancement)}
+        ${ddJaugeP('Présence du personnel', D.emp.presence, "kpiAller('gadh', 'gadh-rh', 'gadh-rh-pointage')")}
+        ${ddJaugeP('Avancement retours', D.cmd.avancement, "kpiAller('gadh', 'gadh', 'commandes-home')")}
       </div>
       <div class="dd-boites">
-        ${ddBoite(D.rend.totalReel, 'Pièces retournées', 'ok')}
-        ${ddBoite(D.emp.present + '/' + D.emp.total, 'Présents', 'ok')}
-        ${ddBoite(D.emp.absent + D.emp.conge + D.emp.maladie, 'Absents (toutes causes)', 'bad')}
-        ${ddBoite(D.emp.retard, 'Retards', D.emp.retard ? 'bad' : 'nul')}
-        ${ddBoite(D.cmd.nb, 'Lots en cours', 'nul')}
-        ${ddBoite(D.cmd.enAttente, 'En attente de retour', D.cmd.enAttente ? 'bad' : 'nul')}
+        ${ddBoite(D.rend.totalReel, 'Pièces retournées', 'ok', "kpiAller('gadh', 'gadh', 'gadh-production')")}
+        ${ddBoite(D.emp.present + '/' + D.emp.total, 'Présents', 'ok', "kpiAller('gadh', 'gadh-rh', 'gadh-rh-pointage')")}
+        ${ddBoite(D.emp.absent + D.emp.conge + D.emp.maladie, 'Absents (toutes causes)', 'bad', "kpiAller('gadh', 'gadh-rh', 'gadh-rh-pointage')")}
+        ${ddBoite(D.emp.retard, 'Retards', D.emp.retard ? 'bad' : 'nul', "kpiAller('gadh', 'gadh-rh', 'gadh-rh-pointage')")}
+        ${ddBoite(D.cmd.nb, 'Lots en cours', 'nul', "kpiAller('gadh', 'gadh', 'commandes-home')")}
+        ${ddBoite(D.cmd.enAttente, 'En attente de retour', D.cmd.enAttente ? 'bad' : 'nul', "kpiAller('gadh', 'gadh', 'commandes-home')")}
       </div>
       <div class="dd-g dd-g2">
         <div class="dd-card dd-plat"><div class="dd-ct"><h3>Commandes (vue GADH)</h3><span>${D.cmd.nb}</span></div><div class="dd-scroll">${gdCommandesList(D)}</div></div>

@@ -407,6 +407,11 @@
   .suivi-frame.suivi-tek{height:calc(100vh - 66px);height:calc(100dvh - 66px);}
   @media (min-width:900px){ .suivi-frame, .suivi-frame.suivi-tek{height:calc(100vh - 130px);height:calc(100dvh - 130px);} }
   .bottomnav.bn-seul{display:none;}
+  /* Tous les indicateurs sont cliquables : vers le module concerné, ou vers le détail affiché juste en dessous. */
+  .kpi-mini, .kpi, .dd-bx, .dd-kpi, .dd-jp{cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;-webkit-tap-highlight-color:transparent;}
+  @media (hover:hover){ .kpi-mini:hover, .kpi:hover, .dd-bx:hover, .dd-kpi:hover, .dd-jp:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,23,42,.10);} }
+  .kpi-mini:active, .kpi:active, .dd-bx:active, .dd-kpi:active, .dd-jp:active{transform:scale(.98);}
+  .kpi-flash{animation:kpiFlash 1.2s ease;} @keyframes kpiFlash{0%,100%{box-shadow:none;}25%{box-shadow:0 0 0 3px var(--accent, #2563eb);}}
 </style>
 </head>
 <body>
@@ -1775,7 +1780,7 @@ function renderDashboard(container){
       </div>
       ${!isEmpty ? `<div class="hero-obj-badge ${cls}">${ICONS.target}<div>${rendLabel(rendement)}<div class="hob-sub">${rendement>=100?'Bravo à l\'équipe !':'Statut du jour'}</div></div></div>` : ''}
     </div>
-    <div class="hero-card">
+    <div class="hero-card" style="cursor:pointer;" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
       <div class="hero-main">
         ${buildGauge(rendement, isEmpty, true, 120)}
         <div class="hero-divider"></div>
@@ -1798,7 +1803,7 @@ function renderDashboard(container){
     ${isEmpty ? buildEmptyState("Aucune production enregistrée aujourd'hui", "La saisie du jour n'a pas encore commencé.") : ''}
 
     <div class="kpi-mini-grid">
-      <div class="kpi-mini tint-blue">
+      <div onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')" class="kpi-mini tint-blue">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#4A9EFF,#0F62D6);">${ICONS.box}</div>
         <div class="kpi-mini-val">${totals.totalGeneral} <span style="font-size:9px;color:var(--ink-faint);">PC</span></div>
         <div class="kpi-mini-lbl">Production totale</div>
@@ -2289,8 +2294,8 @@ function renderStats(container){
       <div class="kpi kpi-ic"><div class="kpi-ic-badge blue">${ICONS.box}</div><div><div class="kpi-ic-label">Production période</div><div class="kpi-ic-value">${totalAll} <span style="font-size:12px;color:var(--ink-faint);">PC</span></div></div></div>
       <div class="kpi kpi-ic"><div class="kpi-ic-badge ${!totalAll?'':(rendClass(avgRend)==='bad'?'red':(rendClass(avgRend)==='excellent'?'gold':'green'))}">${ICONS.target}</div><div><div class="kpi-ic-label">Rendement moyen</div><div class="kpi-ic-value ${totalAll?rendClass(avgRend):''}">${totalAll?avgRend.toFixed(1)+'%':'—'}</div></div></div>
       ${activeDays.length >= 2 ? `
-      <div class="kpi kpi-ic"><div class="kpi-ic-badge green">${ICONS.crown}</div><div><div class="kpi-ic-label">Meilleur jour</div><div class="kpi-ic-value" style="font-size:14px;">${bestDay.iso.split('-').reverse().join('/')}<br>${bestDay.total} PC (${Math.round(bestDay.rend)}%)</div></div></div>
-      <div class="kpi kpi-ic"><div class="kpi-ic-badge red">${ICONS.pause}</div><div><div class="kpi-ic-label">Jour le plus faible</div><div class="kpi-ic-value" style="font-size:14px;">${worstDay.iso.split('-').reverse().join('/')}<br>${worstDay.total} PC (${Math.round(worstDay.rend)}%)</div></div></div>
+      <div onclick="if('${bestDay ? bestDay.iso : ''}'){ histDate='${bestDay ? bestDay.iso : ''}'; histViewMode='jour'; nav('historique'); }" class="kpi kpi-ic"><div class="kpi-ic-badge green">${ICONS.crown}</div><div><div class="kpi-ic-label">Meilleur jour</div><div class="kpi-ic-value" style="font-size:14px;">${bestDay.iso.split('-').reverse().join('/')}<br>${bestDay.total} PC (${Math.round(bestDay.rend)}%)</div></div></div>
+      <div onclick="if('${worstDay ? worstDay.iso : ''}'){ histDate='${worstDay ? worstDay.iso : ''}'; histViewMode='jour'; nav('historique'); }" class="kpi kpi-ic"><div class="kpi-ic-badge red">${ICONS.pause}</div><div><div class="kpi-ic-label">Jour le plus faible</div><div class="kpi-ic-value" style="font-size:14px;">${worstDay.iso.split('-').reverse().join('/')}<br>${worstDay.total} PC (${Math.round(worstDay.rend)}%)</div></div></div>
       ` : ''}
     </div>
 

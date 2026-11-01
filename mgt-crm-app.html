@@ -5439,7 +5439,7 @@ body.mgt-v44-home #pilotDashboard,body.mgt-v44-home #caClientsSection,body.mgt-v
 #mgtHomeDashboard .mgtHomeBadge{display:none}
 
 #mgtHomeDashboard .mgtHomeKpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 auto 18px}
-#mgtHomeDashboard .mgtKpiCard{position:relative;display:flex;align-items:center;gap:12px;min-height:82px;box-sizing:border-box;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 5px 18px rgba(0,0,0,.08);overflow:hidden}
+#mgtHomeDashboard .mgtKpiCard{cursor:pointer;position:relative;display:flex;align-items:center;gap:12px;min-height:82px;box-sizing:border-box;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 5px 18px rgba(0,0,0,.08);overflow:hidden}
 #mgtHomeDashboard .mgtKpiCard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kpi-color,var(--accent))}
 #mgtHomeDashboard .mgtKpiIcon{flex:0 0 44px;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--kpi-color,var(--accent));background:var(--kpi-soft,rgba(239,63,8,.12));border:1px solid var(--kpi-line,rgba(239,63,8,.28))}
 #mgtHomeDashboard .mgtKpiIcon svg{width:24px;height:24px;display:block;stroke-width:2}
@@ -5541,10 +5541,10 @@ function computeHomeStats(){
 }
 function buildKpis(k){
  return ''+
-  '<div class="mgtKpiCard" style="--kpi-color:#ef3f08;--kpi-soft:rgba(239,63,8,.12);--kpi-line:rgba(239,63,8,.3)"><span class="mgtKpiIcon">'+ICON_CLIENTS+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.total)+'</strong><span>Clients suivis</span></div></div>'+
-  '<div class="mgtKpiCard" style="--kpi-color:#d79a1f;--kpi-soft:rgba(215,154,31,.14);--kpi-line:rgba(215,154,31,.32)"><span class="mgtKpiIcon">'+ICON_STAR+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.prioA)+'</strong><span>Priorité A</span></div></div>'+
-  '<div class="mgtKpiCard" style="--kpi-color:#1f9d6b;--kpi-soft:rgba(31,157,107,.14);--kpi-line:rgba(31,157,107,.32)"><span class="mgtKpiIcon">'+ICON_DOC+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.offersActive)+'</strong><span>Offres actives</span></div></div>'+
-  '<div class="mgtKpiCard" style="--kpi-color:#c93104;--kpi-soft:rgba(201,49,4,.13);--kpi-line:rgba(201,49,4,.3)"><span class="mgtKpiIcon">'+ICON_ALERT+'</span><div class="mgtKpiBody"><strong>'+fmtDT(k.impaye)+'</strong><span>Factures impayées</span></div></div>';
+  '<div class="mgtKpiCard" onclick="openModule(\'clients\')" style="--kpi-color:#ef3f08;--kpi-soft:rgba(239,63,8,.12);--kpi-line:rgba(239,63,8,.3)"><span class="mgtKpiIcon">'+ICON_CLIENTS+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.total)+'</strong><span>Clients suivis</span></div></div>'+
+  '<div class="mgtKpiCard" onclick="openModule(\'clients\')" style="--kpi-color:#d79a1f;--kpi-soft:rgba(215,154,31,.14);--kpi-line:rgba(215,154,31,.32)"><span class="mgtKpiIcon">'+ICON_STAR+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.prioA)+'</strong><span>Priorité A</span></div></div>'+
+  '<div class="mgtKpiCard" onclick="openModule(\'commercial\')" style="--kpi-color:#1f9d6b;--kpi-soft:rgba(31,157,107,.14);--kpi-line:rgba(31,157,107,.32)"><span class="mgtKpiIcon">'+ICON_DOC+'</span><div class="mgtKpiBody"><strong>'+fmtInt(k.offersActive)+'</strong><span>Offres actives</span></div></div>'+
+  '<div class="mgtKpiCard" onclick="openModule(\'billing\')" style="--kpi-color:#c93104;--kpi-soft:rgba(201,49,4,.13);--kpi-line:rgba(201,49,4,.3)"><span class="mgtKpiIcon">'+ICON_ALERT+'</span><div class="mgtKpiBody"><strong>'+fmtDT(k.impaye)+'</strong><span>Factures impayées</span></div></div>';
 }
 function buildChart(k){
  var now=new Date(),months=[],values=[];
@@ -5801,6 +5801,19 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
 </script>
 
 
+<script>
+/* Indicateurs du CRM cliquables : vers le détail affiché juste en dessous (les cartes du tableau de bord ouvrent leur module). */
+(function(){
+  var SEL='.projetStatTile,.offresStatTile,.caMetric,.clientRankTile,.summaryTile,.detailKpi';
+  var st=document.createElement('style'); st.textContent=SEL.split(',').join(',')+',.mgtKpiCard{cursor:pointer}'; document.head.appendChild(st);
+  document.addEventListener('click',function(ev){
+    var el=ev.target.closest&&ev.target.closest(SEL); if(!el||ev.target.closest('[onclick],button,a,input,select,textarea')) return;
+    var n=el.parentElement,c=null;
+    for(var i=0;n&&i<4&&!c;i++){var x=n.nextElementSibling; while(x&&x.offsetHeight===0) x=x.nextElementSibling; if(x) c=x; else n=n.parentElement;}
+    if(c){c.style.scrollMarginTop='70px'; c.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+})();
+</script>
 </body>
 </html>
 
