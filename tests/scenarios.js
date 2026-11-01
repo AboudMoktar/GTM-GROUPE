@@ -45,7 +45,8 @@ function donneesInitiales(){
            gadh_plannings:{p1:{nom:'Hiver'}}, gadh_factures:{f1:{numero:'G1'}}, gadh_fact_params:{rib:'Y'}, gadh_machines:{m1:{}}, gadh_cadences:{r1:20}},
     liaison: {cmd_commandes:{c1:{numero:'12'}}, cmd_saisies_c1:{[AUJ]:{retour:{r1:{M:5}}}}, suivi_index:['cfg', 'lines-1'],
               'suivi_d_lines-1':{lot:'1'}, prod_references:{r1:{nom:'Ceinture'}}},
-    mgt: {mgt_devis:{d1:{n:1}}, mgt_clients:{c1:{nom:'Client'}}, mgt_demandes:{d1:{clientId:'c1', objet:'Panne', statut:'attente', date:AUJ}}, mgt_crm_data:'__gtm_json_v1:{}'},
+    mgt: {mgt_devis:{d1:{n:1}}, mgt_clients:{c1:{nom:'Client'}}, mgt_demandes:{d1:{clientId:'c1', objet:'Panne', statut:'attente', date:AUJ}}, mgt_crm_data:'__gtm_json_v1:{}',
+           mgt_crm_clients:'__gtm_json_v1:[{"ID":1}]', mgt_crm_history:'__gtm_json_v1:[]', mgt_crm_tags:'__gtm_json_v1:[]', mgt_crm_settings:'__gtm_json_v1:[]', mgt_crm_droits:{profils:{}}, mgt_crm_taches_internes:'__gtm_json_v1:[]'},
     fichiers: {f1:'data:application/pdf;base64,AAAA'},
     audit: {j:{[AUJ]:{a_vieux:{t:MAINTENANT - 3600000, un:'secretaire', cle:'factures'}, a_recent:{t:MAINTENANT - 60000, un:'secretaire', cle:'factures'}}}},
     portail: {mgt:{c1:{portail_proj_mgt:{nom:'Client'}}}}
@@ -190,11 +191,21 @@ const SCENARIOS = [
   ['Technico MGT : lecture GADH', 'u_technico', 'lire', T + 'gadh', null, false],
   ['Technico MGT : lecture liaison', 'u_technico', 'lire', T + 'liaison', null, false],
 
-  // --- Secrétaire MGT (aucun droit pour le moment) ---
-  ['Secrétaire MGT : lecture MGT', 'u_secr_mgt', 'lire', T + 'mgt', null, false],
-  ['Secrétaire MGT : lecture d\'un fichier', 'u_secr_mgt', 'lire', T + 'fichiers/f1', null, false],
-  ['Secrétaire MGT : écriture MGT', 'u_secr_mgt', 'ecrire', T + 'mgt/mgt_devis', {}, false],
+  // --- Secrétaire MGT : factures, offres, planning (dans les fiches clients du CRM) ---
+  ['Secrétaire MGT : lecture du dossier MGT entier', 'u_secr_mgt', 'lire', T + 'mgt', null, false],
+  ['Secrétaire MGT : lecture des fiches clients', 'u_secr_mgt', 'lire', T + 'mgt/mgt_crm_clients', null, true],
+  ['Secrétaire MGT : enregistrer offre / facture / planning (fiches clients)', 'u_secr_mgt', 'ecrire', T + 'mgt/mgt_crm_clients', '__gtm_json_v1:[{"ID":1,"offres":[{"amount":100}]}]', true],
+  ['Secrétaire MGT : effacer toutes les fiches clients', 'u_secr_mgt', 'supprimer', T + 'mgt/mgt_crm_clients', null, false],
+  ['Secrétaire MGT : enregistrer l\'historique des actions', 'u_secr_mgt', 'ecrire', T + 'mgt/mgt_crm_history', '__gtm_json_v1:[{"id":1}]', true],
+  ['Secrétaire MGT : lecture des réglages du CRM', 'u_secr_mgt', 'lire', T + 'mgt/mgt_crm_settings', null, true],
+  ['Secrétaire MGT : modifier les droits par profil', 'u_secr_mgt', 'ecrire', T + 'mgt/mgt_crm_droits', {profils:{secretaire_mgt:{settings:{edit:true}}}}, false],
+  ['Secrétaire MGT : modifier les réglages du CRM', 'u_secr_mgt', 'ecrire', T + 'mgt/mgt_crm_settings', '__gtm_json_v1:[1]', false],
+  ['Secrétaire MGT : lecture des tâches internes', 'u_secr_mgt', 'lire', T + 'mgt/mgt_crm_taches_internes', null, false],
+  ['Secrétaire MGT : lecture du SAV (devis, demandes)', 'u_secr_mgt', 'lire', T + 'mgt/mgt_devis', null, false],
+  ['Secrétaire MGT : déposer le PDF d\'une offre', 'u_secr_mgt', 'ecrire', T + 'fichiers/f7', 'data:application/pdf;base64,CCCC', true],
+  ['Secrétaire MGT : lecture d\'un fichier joint', 'u_secr_mgt', 'lire', T + 'fichiers/f1', null, true],
   ['Secrétaire MGT : lecture TEK', 'u_secr_mgt', 'lire', T + 'tek', null, false],
+  ['Secrétaire MGT : lecture GADH', 'u_secr_mgt', 'lire', T + 'gadh', null, false],
 
   // --- Direction (Damien, Ghazia) : lecture seule stricte ---
   ['Damien : lecture TEK', 'u_damien', 'lire', T + 'tek', null, true],

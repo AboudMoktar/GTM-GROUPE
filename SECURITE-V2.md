@@ -29,7 +29,7 @@ La matrice complète, ressource par ressource, est dans `MATRICE-PERMISSIONS.md`
 | Responsable GADH (`resp_gadh`) | GADH | Suivi et saisies des commandes reçues (sans suppression) ; lecture du catalogue |
 | Secrétaire GADH (`secretaire_gadh`) | GADH | RH et facturation GADH ; lecture du suivi des commandes |
 | Technico-commercial MGT (`technico_mgt`) | MGT | Tout MGT, dont les demandes SAV et les fichiers joints |
-| Secrétaire MGT (`secretaire_mgt`) | aucune | Aucun droit tant que ses responsabilités ne sont pas définies |
+| Secrétaire MGT (`secretaire_mgt`) | MGT | Factures, offres et planning (lecture et écriture), clients en consultation ; ces données sont dans les fiches clients du CRM (validé le 01/11/2026) |
 | Direction (`direction`) | TEK, GADH, MGT | Lecture seule de tout ; ni comptes, ni journal d'audit |
 
 ### Points déduits du code, à confirmer
