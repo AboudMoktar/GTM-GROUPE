@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v196';
+const CACHE_NAME = 'groupe-v197';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -42,7 +42,6 @@ const APP_SHELL = [
   './mgt-export-module.js',
   './mgt-accueil-module.js',
   './mgt-calendrier-module.js',
-  './mgt-historique-2026.js',
   './mgt-lettrage-module.js',
   './mgt-communication-module.js',
   './mgt-theme-module.js',
