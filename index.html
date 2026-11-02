@@ -1011,13 +1011,19 @@ function getObjHoraireOp() { return getJSON('obj_horaire_op', 20); } // pièces/
 // (08h00-17h00, pause 12h00-12h30). Les libellés générés sont donc
 // identiques caractère pour caractère à l'ancien tableau HOURS, pour
 // que les données déjà saisies restent lisibles sans conversion.
+// Horaires de travail. Un horaire absent ou mal enregistré (heure illisible) est remplacé par
+// l'horaire par défaut, pour que le calcul des créneaux ne bloque jamais l'application.
+const HORAIRES_DEFAUT = {weekdayStart:'08:00', weekdayEnd:'17:00', pauseStart:'12:00', pauseEnd:'12:30', saturdayEnabled:true, saturdayStart:'08:00', saturdayEnd:'12:00'};
+function heureValide(t){ return typeof t === 'string' && /^\d{1,2}:\d{2}$/.test(t.trim()); }
 function getScheduleSettings(){
-  return getJSON('schedule', {
-    weekdayStart:'08:00', weekdayEnd:'17:00', pauseStart:'12:00', pauseEnd:'12:30',
-    saturdayEnabled: true, saturdayStart:'08:00', saturdayEnd:'12:00'
-  });
+  const brut = getJSON('schedule', null), s = (brut && typeof brut === 'object') ? brut : {}, o = Object.assign({}, HORAIRES_DEFAUT);
+  ['weekdayStart', 'weekdayEnd', 'saturdayStart', 'saturdayEnd'].forEach(k => { if(heureValide(s[k])) o[k] = s[k].trim(); });
+  // Pause : une valeur vide signifie « pas de pause » ; une valeur illisible garde la pause par défaut.
+  ['pauseStart', 'pauseEnd'].forEach(k => { if(s[k] === '' || s[k] === null) o[k] = ''; else if(heureValide(s[k])) o[k] = s[k].trim(); });
+  if(typeof s.saturdayEnabled === 'boolean') o.saturdayEnabled = s.saturdayEnabled;
+  return o;
 }
-function timeToMin(t){ const [h,m] = t.split(':').map(Number); return h*60+(m||0); }
+function timeToMin(t){ if(!heureValide(t)) return 0; const [h,m] = t.trim().split(':').map(Number); return h*60+(m||0); }
 function minToLabel(m){ const h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+'h'+String(mm).padStart(2,'0'); }
 function buildSlots(startStr, endStr, pauseStartStr, pauseEndStr){
   let slots = [];
@@ -1113,7 +1119,7 @@ function getDay(date){
   let d = getJSON('prod_'+date, null);
   const scheduled = getHoursForDate(date);
   if(!d){ d = { date: date, status: 'draft', hours: {} }; scheduled.forEach(h => d.hours[h] = { op1:'', op2:'', op3:'', op4:'', obs:'' }); }
-  else { scheduled.forEach(h => { if(!d.hours[h]) d.hours[h] = { op1:'', op2:'', op3:'', op4:'', obs:'' }; }); } // rattrape un changement d'horaires depuis la dernière saisie
+  else { if(!d.hours || typeof d.hours !== 'object') d.hours = {}; scheduled.forEach(h => { if(!d.hours[h]) d.hours[h] = { op1:'', op2:'', op3:'', op4:'', obs:'' }; }); } // rattrape un changement d'horaires depuis la dernière saisie (ou une journée enregistrée sans détail horaire)
   return d;
 }
 function saveDay(date, data){
