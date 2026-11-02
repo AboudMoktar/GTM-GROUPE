@@ -12,32 +12,17 @@
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
-const fs = require('fs'), path = require('path'), http = require('http'), zlib = require('zlib');
+const fs = require('fs'), path = require('path');
 const admin = require('./admin.js');
 const {chromium} = require('playwright');
 const C = require(path.join(__dirname, '..', 'roles-config.js'));
 const {donneesInitiales} = require(path.join(__dirname, 'scenarios.js'));
+const serveurTest = require('./serveur.js');
 
 const RACINE = path.join(__dirname, '..'), PORT = 8791, PROJET = 'demo-gtm-groupe', DOM = '@tek-trend.app', MDP = 'Test2026ok';
 const SITE = `http://localhost:${PORT}/index.html`, SDK = path.join(__dirname, 'node_modules', 'firebase');
 const RESEAU = {offline:false, latency:150, downloadThroughput:1.6 * 1024 * 1024 / 8, uploadThroughput:750 * 1024 / 8}; // « Slow 4G »
-const TYPES = {'.html':'text/html; charset=utf-8', '.js':'application/javascript', '.json':'application/json', '.css':'text/css', '.png':'image/png', '.svg':'image/svg+xml', '.webmanifest':'application/manifest+json'};
-const CONFIG = `const firebaseConfig = {apiKey:'demo-cle', authDomain:'localhost', databaseURL:'http://127.0.0.1:9000?ns=${PROJET}', projectId:'${PROJET}'};
-(function(){ const init = firebase.initializeApp.bind(firebase); firebase.initializeApp = function(c, n){ const app = init(c, n);
-  try { app.auth().useEmulator('http://127.0.0.1:9099', {disableWarnings:true}); } catch(e) {} try { app.database().useEmulator('127.0.0.1', 9000); } catch(e) {} return app; }; })();`;
 
-// Serveur statique avec compression gzip (comme GitHub Pages), cache 10 minutes.
-function serveur(){
-  return http.createServer((req, res) => {
-    let p = decodeURIComponent(req.url.split('?')[0]); if(p.endsWith('/')) p += 'index.html';
-    if(p === '/firebase-config.js'){ res.writeHead(200, {'Content-Type':'application/javascript'}); return res.end(CONFIG); }
-    const f = path.join(RACINE, path.normalize(p));
-    if(!f.startsWith(RACINE) || !fs.existsSync(f) || fs.statSync(f).isDirectory()){ res.writeHead(404); return res.end(); }
-    const corps = fs.readFileSync(f), gz = /gzip/.test(req.headers['accept-encoding'] || '');
-    res.writeHead(200, Object.assign({'Content-Type':TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control':'max-age=600'}, gz ? {'Content-Encoding':'gzip'} : {}));
-    res.end(gz ? zlib.gzipSync(corps) : corps);
-  }).listen(PORT);
-}
 async function contexte(b){
   const ctx = await b.newContext({viewport:{width:412, height:900}, userAgent:'Mozilla/5.0 (Linux; Android 14; Redmi Note 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36', isMobile:true, hasTouch:true});
   await ctx.route(u => { const s = String(u); return !(s.startsWith('http://localhost') || s.startsWith('http://127.0.0.1')); }, rt => {
@@ -88,7 +73,7 @@ async function ouvrirCadre(p, js, motif, pret){
   const regles = fs.readFileSync(path.join(RACINE, 'database.rules.v2.json'), 'utf8');
   await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${PROJET}`, {method:'PUT', headers:{Authorization:'Bearer owner'}, body:regles});
 
-  const srv = serveur(), b = await chromium.launch(), M = {donnees:reelles ? 'réelles (sauvegarde)' : 'données d\'essai', roles:{}};
+  const srv = serveurTest.demarrer(PORT, {gzip:true, cache:'max-age=600'}), b = await chromium.launch(), M = {donnees:reelles ? 'réelles (sauvegarde)' : 'données d\'essai', roles:{}};
   try {
     // 1) Écran de connexion : premier chargement (rien en cache) puis rechargement (cache + service worker)
     const ctx = await contexte(b), p = await page(ctx);

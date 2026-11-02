@@ -69,7 +69,7 @@ La matrice complète, ressource par ressource, est dans `MATRICE-PERMISSIONS.md`
 | Fonctions serveur des comptes (droits de l'appelant, création, doublon, mot de passe faible, désactivation, connexion bloquée, nouveau mot de passe, suppression, données conservées, journal) | Émulateurs Auth, Database, Functions | **15 / 15** |
 | Application réelle connectée aux émulateurs : connexion de chaque rôle, chargement sans refus, écritures autorisées et refusées | Émulateurs + navigateur | **34 / 34** |
 
-Relancer les tests (dans `tests/`, après `npm install`) : `npm run simulateur`, `npm run emulateur`, `npm run fonctions`, `npm run e2e`.
+Relancer les tests (dans `tests/`, après `npm install`) : `npm run simulateur`, `npm run emulateur`, `npm run fonctions` ; avec le serveur `node serveur.js` lancé : `npm run e2e`, `npm run e2e-ventes`, `npm run e2e-rapports`, `npm run csp`, `npm run mesures`.
 
 ## 5. Procédure de mise en production (après ta validation)
 
@@ -99,3 +99,20 @@ Pour activer les fonctions plus tard : offre Blaze, `firebase deploy --only func
 | Données abîmées | Importer l'export JSON de l'étape 1 sur le dossier concerné uniquement | 10 min |
 
 Aucune étape ne supprime de données métier, d'historique ni de journal d'audit. Les anciens comptes ne sont pas supprimés par cette procédure.
+
+## 5. Politique de sécurité du contenu (CSP, 02/11/2026)
+
+Une balise `<meta http-equiv="Content-Security-Policy">` est présente dans `index.html`, `mgt-crm-app.html` et `suivi-commandes.html`. Son texte est **identique** à `tests/csp-politique.txt` : le modifier aux deux endroits (le test `npm run csp` avec `CSP_MODE=meta` vérifie qu'ils sont identiques).
+
+Sites autorisés et pourquoi :
+| Directive | Sites | Raison |
+| --- | --- | --- |
+| `script-src` | `www.gstatic.com`, `cdnjs.cloudflare.com`, `*.firebasedatabase.app`, `apis.google.com` | SDK Firebase ; Excel (xlsx, exceljs) ; Firebase en « long polling » quand le WebSocket est bloqué ; connexion Firebase sur téléphone (chargeur Google) |
+| `connect-src` | `blob:`, `*.firebasedatabase.app` (https et wss), `identitytoolkit` et `securetoken.googleapis.com`, `www.gstatic.com`, `cdnjs`, `apis.google.com` | téléchargements (Excel, PDF), base, connexion des comptes, cache hors ligne |
+| `frame-src` | `gtm-groupe.firebaseapp.com`, `tek-trend-35778.firebaseapp.com`, `*.firebasedatabase.app` | cadre invisible de connexion Firebase sur téléphone (et pour l'ancien projet, module de transfert) ; long polling |
+| `style-src` / `font-src` | `fonts.googleapis.com` / `fonts.gstatic.com` | polices |
+| `img-src` | `data:`, `blob:` | logos intégrés, impressions |
+
+Limites : `'unsafe-inline'` reste nécessaire (plus de 900 actions écrites dans les boutons, `onclick`) ; `frame-ancestors` (protection contre l'intégration dans un autre site) est impossible avec une balise `<meta>` et GitHub Pages.
+
+Tests (dans `tests/`) : `node serveur.js` remplace `python3 -m http.server 8790` (il ajoute les adresses des émulateurs à la politique, côté test uniquement) ; `npm run csp` (politique en Report-Only) et `CSP_MODE=meta npm run csp` (balise active) parcourent tous les rôles, téléphone Android, CRM, suivi, impression, Excel, hors ligne et long polling.
