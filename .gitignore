@@ -4,3 +4,4 @@ tests/.firebase/
 functions/node_modules/
 tests/fonctions-lien
 tests/regles-emulateur.json
+tests/mesures.json

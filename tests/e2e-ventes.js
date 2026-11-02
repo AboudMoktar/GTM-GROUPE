@@ -7,7 +7,7 @@
 'use strict';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), os = require('os');
 const admin = require('../functions/node_modules/firebase-admin');
 const {chromium} = require('playwright');
 const C = require('../roles-config.js');
@@ -79,7 +79,7 @@ const ECRITURES = {
   await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-ventes'); });
   await pause(p);
   verif('Secrétaire GADH : module Ventes ouvert', await p.evaluate(() => activeModule === 'gadh-ventes' && /Ventes/.test(document.body.innerText)));
-  await p.screenshot({path:'/tmp/ventes-1-accueil.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-1-accueil.png'), fullPage:true});
   // Article stocké (accessoire, 50 en stock) et client
   await p.evaluate(() => {
     const a = achGet('art'); a.art_fil = {nom:'Fil polyester', categorie:'accessoire', unite:'bobine', prix:2, prixVente:3.5, actif:true}; a.art_srv = {nom:'Assemblage à façon', categorie:'produit', unite:'pièce', prixVente:1.2, actif:true}; achSet('art', a);
@@ -99,7 +99,7 @@ const ECRITURES = {
   await p.evaluate(() => venChoixArticle(1, 'art_srv')); await pause(p, 300);
   await p.fill('.vf-ligne[data-i="1"] .vf-qte', '100');
   await p.evaluate(() => venRecalc());
-  await p.screenshot({path:'/tmp/ventes-2-devis.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-2-devis.png'), fullPage:true});
   await p.evaluate(() => venEnregistrer()); await pause(p);
   const dv = await p.evaluate((cid) => { const l = venGet('devis'), id = Object.keys(l).find(k => l[k].clientId === cid); return id && {id, d:l[id], t:venTotaux(l[id])}; }, cid);
   verif('Devis enregistré avec son numéro DV', dv && /^DV-\d{4}-\d{3}$/.test(dv.d.numero), dv && dv.d.numero);
@@ -117,13 +117,13 @@ const ECRITURES = {
   verif('Bon de livraison créé (BL)', bl && /^BL-/.test(bl.d.numero));
   verif('Stock du fil : 50 − 15 = 35 (la prestation ne touche pas le stock)', await p.evaluate(() => achStock().art_fil === 35 && !achStock().art_srv), String(await p.evaluate(() => achStock().art_fil)));
   verif('Commande « Livrée en partie »', await p.evaluate((id) => venStatutCmd(venGet('cmd')[id]).label === 'Livrée en partie', cmd.id));
-  await p.screenshot({path:'/tmp/ventes-3-livraison.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-3-livraison.png'), fullPage:true});
   // Facturer
   await p.evaluate((id) => venFacturer(id), bl.id); await pause(p, 1000);
   const fa = await p.evaluate((id) => { const b = venGet('bl')[id], f = factListe('gadh')[b.factureId]; return f && {id:b.factureId, f, t:factTotaux(f), module:activeModule}; }, bl.id);
   verif('Facture préparée dans le module Facturation GADH', fa && fa.f.origine && fa.f.origine.type === 'vente' && fa.module === 'factures');
   verif('Montant facturé = livré (15 × 3,5 + 100 × 1,2 = 172,5 HT)', fa && Math.abs(fa.t.ht - 172.5) < 1e-6, fa && String(fa.t.ht));
-  await p.screenshot({path:'/tmp/ventes-4-facture.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-4-facture.png'), fullPage:true});
   // Émettre + encaissement partiel, comme le ferait la Facturation
   await p.evaluate((id) => { const l = factToutes('gadh'); l[id].statut = 'emise'; l[id].numero = factNumero('gadh', 'facture', getTodayISO().slice(0, 4)); l[id].paiements = [{date:getTodayISO(), montant:100, mode:'cheque'}]; factEnregistrer('gadh', l); }, fa.id);
   await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-ventes'); }); await pause(p);
@@ -131,10 +131,10 @@ const ECRITURES = {
   const attendu = await p.evaluate((id) => achDT(factTotaux(factListe('gadh')[id], factListe('gadh')).reste), fa.id);
   verif('Accueil Ventes : reste à encaisser affiché (' + attendu + ')', acc.indexOf(attendu) >= 0);
   verif('Accueil Ventes : commande toujours à livrer (5 bobines restantes)', /Commandes à livrer/.test(acc) && acc.indexOf(cmd.d.numero) >= 0);
-  await p.screenshot({path:'/tmp/ventes-5-accueil.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-5-accueil.png'), fullPage:true});
   await p.evaluate(() => { venClientOuvert = Object.keys(venClients()).find(k => venClients()[k].nom === 'Confection Monastir'); nav('ven-clients'); }); await pause(p);
   verif('Fiche client : ventes et reste à encaisser', (await p.evaluate(() => document.body.innerText)).indexOf(attendu) >= 0);
-  await p.screenshot({path:'/tmp/ventes-6-client.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-6-client.png'), fullPage:true});
   // Annulation d'une 2e livraison : remise en stock
   await p.evaluate((id) => venFormLivrer(id), cmd.id); await pause(p, 300);
   await p.evaluate((id) => venValiderLivraison(id), cmd.id); await pause(p);
@@ -149,7 +149,7 @@ const ECRITURES = {
   await p.selectOption('#aa-tarif', '__autre'); await p.fill('#aa-tarif-autre', 'colis');
   await p.fill('#aa-pp', '4'); await p.fill('#aa-desc', 'Repassage vapeur, pliage et mise sous sachet');
   await p.evaluate(() => achAjouterOption()); await p.fill('.aa-opt-nom', 'Étiquetage client'); await p.fill('.aa-opt-pu', '0.5');
-  await p.screenshot({path:'/tmp/ventes-8-prestation.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-8-prestation.png'), fullPage:true});
   await p.evaluate(() => achSauverArticle('', false)); await pause(p);
   const pr = await p.evaluate(() => { const a = achGet('art'), id = Object.keys(a).find(k => a[k].nom === 'Repassage et pliage'); return id && Object.assign({id}, a[id], {tarifs:achTarifs()}); });
   verif('Prestation enregistrée : tarif « par colis » créé, prix, description, 1 supplément', pr && pr.unite === 'colis' && pr.prixVente === 4 && /vapeur/.test(pr.description) && pr.options.length === 1 && pr.tarifs.indexOf('colis') >= 0, JSON.stringify(pr));
@@ -158,13 +158,13 @@ const ECRITURES = {
   await p.evaluate((id) => venChoixArticle(0, id), pr.id); await pause(p, 300);
   await p.fill('.vf-ligne[data-i="0"] .vf-qte', '10');
   await p.evaluate(() => venAjouterOption(0, 0)); await pause(p, 300);
-  await p.screenshot({path:'/tmp/ventes-9-devis-presta.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-9-devis-presta.png'), fullPage:true});
   await p.evaluate(() => venEnregistrer()); await pause(p);
   const dv2 = await p.evaluate((cid) => { const l = venGet('devis'), id = Object.keys(l).filter(k => l[k].clientId === cid).sort((a, b) => (l[b].numero || '').localeCompare(l[a].numero || ''))[0]; return {id, d:l[id], t:venTotaux(l[id])}; }, cid);
   verif('Devis prestation : 10 colis × 4 + supplément 1 × 0,5 = 40,5 HT', Math.abs(dv2.t.ht - 40.5) < 1e-6 && dv2.d.lignes[1].designation === 'Étiquetage client', JSON.stringify(dv2.d.lignes));
   const html = await p.evaluate((id) => { let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); venImprimer('devis', id); window.open = o; return h; }, dv2.id);
   verif('Impression du devis : logo GADH intégré et description de la prestation', /<img src="data:image\/png;base64,/.test(html) && /vapeur/.test(html));
-  const v = await S.ctx.newPage(); await v.setContent(html.replace(/<script>[\s\S]*?<\/script>/, ''), {waitUntil:'load'}); await v.screenshot({path:'/tmp/ventes-10-impression.png', fullPage:true}); await v.close();
+  const v = await S.ctx.newPage(); await v.setContent(html.replace(/<script>[\s\S]*?<\/script>/, ''), {waitUntil:'load'}); await v.screenshot({path:path.join(os.tmpdir(), 'ventes-10-impression.png'), fullPage:true}); await v.close();
   const fh = await p.evaluate(() => { const l = factListe('gadh'), id = Object.keys(l).find(k => l[k].origine && l[k].origine.type === 'vente'); let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); activeSociete = 'gadh'; factImprimer(id); window.open = o; return h; });
   verif('Impression de la facture GADH : logo intégré', /<img src="data:image\/png;base64,/.test(fh));
   const ah = await p.evaluate(() => { let h = ''; const o = window.open; window.open = () => ({document:{open(){}, write(x){ h = x; }, close(){}}}); const b = achGet('bons'); const id = Object.keys(b)[0]; if(id) achImprimer(id); window.open = o; return h; });
@@ -180,7 +180,7 @@ const ECRITURES = {
   verif('Technico MGT : voit les ventes et le reste à encaisser', txt.indexOf(attendu) >= 0, txt.slice(0, 300));
   verif('Technico MGT : aucun bouton de saisie', !/\+ Devis|\+ Commande client/.test(txt));
   await p.evaluate(() => nav('ven-livraisons')); await pause(p);
-  await p.screenshot({path:'/tmp/ventes-7-technico.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-7-technico.png'), fullPage:true});
   verif('Technico MGT : aucun refus au chargement ni erreur', !Tq.refus.length && !Tq.erreurs.length, Tq.refus.concat(Tq.erreurs).join(' | '));
   verif('Technico MGT : modification refusée par Firebase', await p.evaluate(async () => { try { await fbRootRef.child(firebaseCheminDe('gadh_vente_devis')).set({x:1}); return false; } catch(e) { return true; } }));
   await Tq.ctx.close();
@@ -197,7 +197,7 @@ const ECRITURES = {
   verif('Tableau de bord GADH : sections Ventes, Achats et stock, Facturation', /Ventes facturées du mois/.test(tb) && /Valeur du stock/.test(tb) && /Facturé ce mois/.test(tb), tb.slice(-600));
   verif('Tableau de bord GADH : reste à encaisser des ventes (' + attendu + ')', tb.indexOf(attendu) >= 0);
   verif('Tableau de bord GADH : aucune erreur', !Rs.erreurs.length && !Rs.refus.length, Rs.erreurs.concat(Rs.refus).join(' | '));
-  await p.screenshot({path:'/tmp/ventes-11-tableau.png', fullPage:true});
+  await p.screenshot({path:path.join(os.tmpdir(), 'ventes-11-tableau.png'), fullPage:true});
   // Indicateurs cliquables
   await p.evaluate(() => { const b = Array.from(document.querySelectorAll('.dd-bx')).find(x => /Articles sous le seuil/.test(x.textContent)); b.click(); }); await pause(p, 800);
   verif('Clic « Articles sous le seuil » → écran Stock des achats', await p.evaluate(() => activeModule === 'gadh-achats' && /Articles suivis/.test(document.getElementById('main').innerText)));

@@ -7,16 +7,16 @@
 'use strict';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
-const fs = require('fs'), path = require('path');
-const admin = require('/home/claude/gtm-groupe/functions/node_modules/firebase-admin');
+const fs = require('fs'), path = require('path'), os = require('os');
+const admin = require('../functions/node_modules/firebase-admin');
 const {chromium} = require('playwright');
-const C = require('/home/claude/gtm-groupe/roles-config.js');
-const {donneesInitiales} = require('/home/claude/gtm-groupe/tests/scenarios.js');
+const C = require('../roles-config.js');
+const {donneesInitiales} = require('./scenarios.js');
 
 const PROJET = 'demo-gtm-groupe', DOM = '@tek-trend.app', MDP = 'Test2026ok';
 const SITE = process.env.GTM_SITE || 'http://localhost:8790/index.html';
 admin.initializeApp({projectId: PROJET, databaseURL: `http://127.0.0.1:9000?ns=${PROJET}`});
-const SDK = path.join('/home/claude/gtm-groupe/tests', 'node_modules', 'firebase');
+const SDK = path.join(__dirname, 'node_modules', 'firebase');
 const CONFIG = `const firebaseConfig = {apiKey:'demo-cle', authDomain:'localhost', databaseURL:'http://127.0.0.1:9000?ns=${PROJET}', projectId:'${PROJET}'};
 (function(){ const init = firebase.initializeApp.bind(firebase); firebase.initializeApp = function(c, n){ const app = init(c, n);
   try { app.auth().useEmulator('http://127.0.0.1:9099', {disableWarnings:true}); } catch(e) {} try { app.database().useEmulator('127.0.0.1', 9000); } catch(e) {} return app; }; })();`;
@@ -43,11 +43,11 @@ const ECRITURES = {
   }
   const base = donneesInitiales(); base.groupe1.users_v2 = comptes; delete base.groupe1.sessions;
   // Données réelles si une sauvegarde est fournie (GTM_SAUVEGARDE=chemin du fichier JSON), sinon données d'essai.
-  const svf = process.env.GTM_SAUVEGARDE || '/home/claude/secret/sauvegarde/gtm-groupe_base_2026-11-01_16h49.json';
-  if(fs.existsSync(svf)){ const sv = JSON.parse(fs.readFileSync(svf, 'utf8')), g1 = sv.groupe1 || sv; base.groupe1.tek = g1.tek; base.groupe1.liaison = g1.liaison; }
+  const svf = process.env.GTM_SAUVEGARDE;
+  if(svf && fs.existsSync(svf)){ const sv = JSON.parse(fs.readFileSync(svf, 'utf8')), g1 = sv.groupe1 || sv; base.groupe1.tek = g1.tek; base.groupe1.liaison = g1.liaison; }
   await admin.database().ref('/').set(base);
   // Règles V2 appliquées à la base utilisée par l'application (même espace de noms).
-  const regles = fs.readFileSync('/home/claude/gtm-groupe/database.rules.v2.json', 'utf8');
+  const regles = fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8');
   const rep = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${PROJET}`, {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: regles});
   if(!rep.ok) throw new Error('Règles non chargées : ' + rep.status + ' ' + await rep.text());
 
@@ -61,7 +61,9 @@ const ECRITURES = {
     p.on('dialog', d => d.accept());
     await p.addInitScript(() => { try { delete window.showSaveFilePicker; } catch(e) {} window.showSaveFilePicker = undefined; });
     await p.route(u => { const s = String(u); return !(s.startsWith('http://localhost') || s.startsWith('http://127.0.0.1')); }, rt => {
-      if(/xlsx\.full\.min\.js$/.test(rt.request().url())) return rt.fulfill({contentType:'application/javascript', body:fs.readFileSync('/home/claude/gtm-groupe/tests/node_modules/xlsx/dist/xlsx.full.min.js', 'utf8')});
+      // Excel : copie locale si présente (npm install --no-save xlsx@0.18.5), sinon chargement normal depuis cdnjs.
+      const XLSX_LOCAL = path.join(__dirname, 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js');
+      if(/xlsx\.full\.min\.js$/.test(rt.request().url())) return fs.existsSync(XLSX_LOCAL) ? rt.fulfill({contentType:'application/javascript', body:fs.readFileSync(XLSX_LOCAL, 'utf8')}) : rt.continue();
       const m = /firebasejs\/[\d.]+\/(firebase-[a-z-]+-compat\.js)$/.exec(rt.request().url());
       if(m && fs.existsSync(path.join(SDK, m[1]))) return rt.fulfill({contentType: 'application/javascript', body: fs.readFileSync(path.join(SDK, m[1]), 'utf8')});
       return rt.abort();
@@ -84,13 +86,13 @@ const ECRITURES = {
     const dl = p.waitForEvent('download', {timeout:15000}).catch(() => null);
     await p.evaluate(`${fn}Excel(${args})`); const d = await dl;
     if(!d) console.log('diag', await p.evaluate(() => ({xlsx: typeof XLSX, toast: (document.querySelector('.toast, #toast') || {}).textContent})));
-    let taille = 0; if(d){ const f = '/tmp/' + d.suggestedFilename(); await d.saveAs(f); taille = fs.statSync(f).size; }
+    let taille = 0; if(d){ const f = path.join(os.tmpdir(), d.suggestedFilename()); await d.saveAs(f); taille = fs.statSync(f).size; }
     verif(lib + ' : fichier Excel ' + (d ? d.suggestedFilename() : '—'), d && taille > 3000, 'taille ' + taille);
     await p.evaluate(`${fn}Pdf(${args})`);
     const html = await p.evaluate(() => window.__html.pop());
     const v = await A.ctx.newPage(); await v.setContent(html.replace(/<script>[\s\S]*?<\/script>/, ''), {waitUntil:'load'});
     const pdf = await v.pdf({preferCSSPageSize:true}); const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-    const nom = '/tmp/fiche-' + fn + '.pdf'; fs.writeFileSync(nom, pdf); await v.close();
+    const nom = path.join(os.tmpdir(), 'fiche-' + fn + '.pdf'); fs.writeFileSync(nom, pdf); await v.close();
     verif(lib + ' : PDF de ' + pages + ' page(s)', pages >= 1 && pages <= 2, 'pages ' + pages);
   }
   // boutons présents à l'écran
@@ -109,7 +111,7 @@ const ECRITURES = {
   const txt = await fr.evaluate(() => document.getElementById('settingsModule').innerText);
   verif('Paramètres MGT : plus de « Droits par profil », « Comparer une sauvegarde », raccourcis', !/Droits par profil|Comparer une sauvegarde|Importer une sauvegarde\b|Note rapide/.test(txt) && !/\bTâches\b/.test(txt), txt);
   console.log(txt);
-  await p.setViewportSize({width:412, height:900}); await p.waitForTimeout(400); await p.screenshot({path:'/tmp/mgt-params.png'});
+  await p.setViewportSize({width:412, height:900}); await p.waitForTimeout(400); await p.screenshot({path:path.join(os.tmpdir(), 'mgt-params.png')});
   verif('Aucune erreur', !A.erreurs.length, A.erreurs.join(' | '));
   await b.close();
   console.log(`Fiches et paramètres : ${ok}/${total} contrôles conformes`); echecs.forEach(e => console.log('  ÉCHEC  ' + e));

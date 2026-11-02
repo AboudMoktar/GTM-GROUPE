@@ -6,10 +6,11 @@
     "regles": "node ../outils/generer-regles.js",
     "simulateur": "node lancer-simulateur.js",
     "emulateur": "firebase emulators:exec --only database --project demo-gtm-groupe \"node emulateur.js\"",
-    "fonctions": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database,functions --project demo-gtm-groupe \"node fonctions.js\"",
+    "fonctions": "node ../outils/generer-regles.js && node -e \"const fs=require('fs');fs.rmSync('fonctions-lien',{force:true,recursive:false});fs.symlinkSync('../functions','fonctions-lien','dir')\" && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database,functions --project demo-gtm-groupe \"node fonctions.js\"",
     "e2e": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-roles.js\"",
     "e2e-ventes": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-ventes.js\"",
-    "e2e-rapports": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-rapports.js\""
+    "e2e-rapports": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-rapports.js\"",
+    "mesures": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mesures.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
