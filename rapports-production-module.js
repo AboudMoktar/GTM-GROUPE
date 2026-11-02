@@ -129,6 +129,17 @@ function rpEnteteExcel(soc, titre, sousTitre){ return [[(SOCIETES[soc] || {}).no
 // ============================================================
 // TEK-TREND — période (statistiques, historique période)
 // ============================================================
+// Détail jour par jour (sur une nouvelle page) quand la synthèse est présentée par semaine :
+// une ligne par jour avec production ; au-delà de 40 jours, deux tableaux côte à côte.
+function rpTekTableJours(D){
+  const JS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  const ligne = j => `<tr><td>${JS[new Date(j.iso + 'T12:00:00').getDay()]} ${rpFr(j.iso)}</td><td class="n">${rpN(j.total)}</td><td class="n">${rpN(j.obj)}</td><td class="n ${rpClsRend(j.rend)}">${rpPct(j.rend)}</td><td class="n">${j.arrets || ''}</td></tr>`;
+  const table = (js, total) => `<table><thead><tr><th>Date</th><th class="n">Pièces</th><th class="n">Objectif</th><th class="n">Rendement</th><th class="n">Arrêts</th></tr></thead><tbody>${js.map(ligne).join('')}${total ? `<tr class="tot"><td>Total</td><td class="n">${rpN(D.total)}</td><td class="n">${rpN(D.obj)}</td><td class="n">${rpPct(D.obj ? D.total / D.obj * 100 : null)}</td><td class="n">${D.arrets || ''}</td></tr>` : ''}</tbody></table>`;
+  if(!D.jours.length) return '';
+  const moitie = D.jours.length > 40 ? Math.ceil(D.jours.length / 2) : D.jours.length;
+  const corps = moitie < D.jours.length ? `<div class="deux"><div>${table(D.jours.slice(0, moitie), false)}</div><div>${table(D.jours.slice(moitie), true)}</div></div>` : table(D.jours, true);
+  return `<div class="saut"></div><h2>Production par jour (${D.jours.length} jours avec production)</h2>${corps}`;
+}
 window.rpTekPeriodePdf = function(debut, fin){
   const D = rpTekPeriode(debut, fin), semaines = D.jours.length > 31;
   const lignes = semaines ? rpParSemaine(D.jours, ['total', 'obj', 'arrets']).map(s => ({lib:'Semaine du ' + rpFr(s.iso), nb:s.nb, total:s.total, obj:s.obj, arrets:s.arrets, rend:s.obj ? s.total / s.obj * 100 : null}))
@@ -143,7 +154,7 @@ window.rpTekPeriodePdf = function(debut, fin){
       <table><thead><tr><th>#</th><th>Opératrice</th><th class="n">Pièces</th><th class="n">Part</th><th class="n">Jours</th><th class="n">Moy./jour</th></tr></thead><tbody>
       ${D.classement.map((o, i) => `<tr><td class="c">${i + 1}${i === 0 ? ' 🏆' : ''}</td><td>${esc(o.nom)}</td><td class="n">${rpN(o.total)}</td><td class="n">${D.total ? Math.round(o.total / D.total * 100) + ' %' : ''}</td><td class="n">${o.jours}</td><td class="n">${o.jours ? rpN(Math.round(o.total / o.jours)) : ''}</td></tr>`).join('') || '<tr><td colspan="6">—</td></tr>'}
       </tbody></table>
-      <p class="note">Le rendement moyen est la moyenne des rendements des jours avec production. Chaque jour, la production est attribuée à l'opératrice qui occupait réellement le poste.</p></div></div>`;
+      <p class="note">Le rendement moyen est la moyenne des rendements des jours avec production. Chaque jour, la production est attribuée à l'opératrice qui occupait réellement le poste.</p></div></div>${semaines ? rpTekTableJours(D) : ''}`;
   rpPdf('tek', 'Statistiques de production', 'Période ' + rpPeriodeTxt(debut, fin), corps, rpNomFichier('tek', 'Statistiques', debut, fin));
 };
 window.rpTekPeriodeExcel = function(debut, fin){
