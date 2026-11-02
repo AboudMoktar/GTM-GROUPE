@@ -1,0 +1,33 @@
+# Vérification automatique de chaque Pull Request vers main :
+#  1) les 194 scénarios de droits doivent tous être conformes (simulateur des règles Firebase) ;
+#  2) les règles générées doivent correspondre à roles-config.js (database.rules.v2.json n'est
+#     jamais modifié à la main : on modifie roles-config.js puis on lance outils/generer-regles.js).
+name: Vérification
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    name: Simulateur et règles générées
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Simulateur des règles (194 scénarios)
+        run: |
+          node tests/lancer-simulateur.js | tee resultat.txt
+          grep -Eq ': ([0-9]+)/\1 scénarios conformes' resultat.txt
+      - name: Règles générées à jour
+        run: |
+          node outils/generer-regles.js
+          if ! git diff --exit-code -- database.rules.v2.json functions/roles-config.js; then
+            echo "::error::database.rules.v2.json ou functions/roles-config.js ne correspond pas à roles-config.js : lancez node outils/generer-regles.js et ajoutez le résultat."
+            exit 1
+          fi
