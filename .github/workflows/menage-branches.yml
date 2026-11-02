@@ -1,0 +1,49 @@
+# Ménage des branches (aucun fichier de l'application n'est touché) :
+#  - après chaque Pull Request fusionnée, sa branche est supprimée ;
+#  - quand ce fichier change sur main, les branches déjà entièrement fusionnées (aucun commit absent de main)
+#    et sans Pull Request ouverte sont supprimées, ainsi que les anciennes branches phase1/2/3
+#    (leurs Pull Requests #1, #2 et #3 sont fermées ; GitHub y garde leurs commits).
+name: Ménage des branches
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/menage-branches.yml']
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  branche-fusionnee:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supprimer la branche de la Pull Request fusionnée
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCHE: ${{ github.event.pull_request.head.ref }}
+        run: |
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$BRANCHE" && echo "Supprimée : $BRANCHE" || echo "Déjà absente : $BRANCHE"
+  menage:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Supprimer les branches terminées
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANCIENNES: phase1-societes phase2-mgt phase3-sav-factures
+        run: |
+          git fetch -q origin '+refs/heads/*:refs/remotes/origin/*'
+          for b in $(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin/); do
+            [ "$b" = main ] || [ "$b" = HEAD ] && continue
+            ouvertes=$(gh api "repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:$b" --jq length || echo "?")
+            if [ "$ouvertes" != 0 ]; then echo "Gardée (Pull Request ouverte) : $b"; continue; fi
+            if git merge-base --is-ancestor "origin/$b" origin/main || [[ " $ANCIENNES " == *" $b "* ]]; then
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$b" && echo "Supprimée : $b"
+            else
+              echo "Gardée (contient des commits absents de main) : $b"
+            fi
+          done
