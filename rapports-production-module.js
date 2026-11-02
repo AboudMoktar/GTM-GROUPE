@@ -88,13 +88,14 @@ function rpPdf(soc, titre, sousTitre, corps, nomFichier, paysage){
     *{box-sizing:border-box;} body{font:10.5px Arial,Helvetica,sans-serif;color:#111;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .ent{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:2px solid ${S.couleur || '#0B3C49'};padding-bottom:6px;margin-bottom:10px;}
     .ent h1{font-size:16px;margin:0;} .ent .s{font-size:10.5px;color:#444;margin-top:2px;} .ent .d{font-size:9.5px;color:#666;text-align:right;}
-    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin:0 0 10px;}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px;margin:0 0 10px;}
     .kpi{border:1px solid #cfd6de;border-radius:6px;padding:6px 8px;background:#f6f8fa;} .kpi b{display:block;font-size:15px;margin-top:2px;} .kpi span{font-size:9px;color:#555;}
     h2{font-size:12px;margin:10px 0 5px;color:${S.couleur || '#0B3C49'};} table{width:100%;border-collapse:collapse;margin-bottom:6px;}
     th{background:${S.couleur || '#0B3C49'};color:#fff;font-size:9.5px;padding:4px 5px;text-align:center;} td{border-bottom:1px solid #dde3e9;padding:3px 5px;font-size:9.8px;}
     td.n,th.n{text-align:right;white-space:nowrap;} td.c{text-align:center;} tr:nth-child(even) td{background:#f7f9fb;} tr.tot td{font-weight:bold;background:#e4eaf0 !important;border-top:1.5px solid #333;}
     .bon{color:#0a7a3a;font-weight:bold;} .mauvais{color:#b42318;font-weight:bold;} .note{font-size:9px;color:#666;margin-top:4px;}
     .deux{display:grid;grid-template-columns:1fr 1fr;gap:12px;} .saut{break-before:page;} table,tr{break-inside:avoid;}
+    table.large{break-inside:auto;} table.large td{padding:3px 6px;} tr.sem td{font-weight:bold;background:#eef2f6 !important;border-bottom:1.5px solid #9aa6b2;}
   </style></head><body>
     <div class="ent"><div style="display:flex;align-items:center;gap:12px;">${typeof logoDocHTML === 'function' ? logoDocHTML(soc, 13, 'margin:0;') : ''}<div><h1>${esc(titre)}</h1><div class="s">${esc(sousTitre)}</div></div></div>
       <div class="d">${esc(S.nom)}<br>Édité le ${rpFr(getTodayISO())}${currentUser ? '<br>par ' + esc(currentUser.nom || currentUser.username) : ''}</div></div>
@@ -129,32 +130,34 @@ function rpEnteteExcel(soc, titre, sousTitre){ return [[(SOCIETES[soc] || {}).no
 // ============================================================
 // TEK-TREND — période (statistiques, historique période)
 // ============================================================
-// Détail jour par jour (sur une nouvelle page) quand la synthèse est présentée par semaine :
-// une ligne par jour avec production ; au-delà de 40 jours, deux tableaux côte à côte.
-function rpTekTableJours(D){
-  const JS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
-  const ligne = j => `<tr><td>${JS[new Date(j.iso + 'T12:00:00').getDay()]} ${rpFr(j.iso)}</td><td class="n">${rpN(j.total)}</td><td class="n">${rpN(j.obj)}</td><td class="n ${rpClsRend(j.rend)}">${rpPct(j.rend)}</td><td class="n">${j.arrets || ''}</td></tr>`;
-  const table = (js, total) => `<table><thead><tr><th>Date</th><th class="n">Pièces</th><th class="n">Objectif</th><th class="n">Rendement</th><th class="n">Arrêts</th></tr></thead><tbody>${js.map(ligne).join('')}${total ? `<tr class="tot"><td>Total</td><td class="n">${rpN(D.total)}</td><td class="n">${rpN(D.obj)}</td><td class="n">${rpPct(D.obj ? D.total / D.obj * 100 : null)}</td><td class="n">${D.arrets || ''}</td></tr>` : ''}</tbody></table>`;
-  if(!D.jours.length) return '';
-  const moitie = D.jours.length > 40 ? Math.ceil(D.jours.length / 2) : D.jours.length;
-  const corps = moitie < D.jours.length ? `<div class="deux"><div>${table(D.jours.slice(0, moitie), false)}</div><div>${table(D.jours.slice(moitie), true)}</div></div>` : table(D.jours, true);
-  return `<div class="saut"></div><h2>Production par jour (${D.jours.length} jours avec production)</h2>${corps}`;
-}
+// Fiche PDF des statistiques : un seul tableau sur toute la largeur. Les lignes des jours se suivent ;
+// sous chaque semaine, une ligne de sous-total ; puis le total de la période et le classement.
 window.rpTekPeriodePdf = function(debut, fin){
-  const D = rpTekPeriode(debut, fin), semaines = D.jours.length > 31;
-  const lignes = semaines ? rpParSemaine(D.jours, ['total', 'obj', 'arrets']).map(s => ({lib:'Semaine du ' + rpFr(s.iso), nb:s.nb, total:s.total, obj:s.obj, arrets:s.arrets, rend:s.obj ? s.total / s.obj * 100 : null}))
-    : D.jours.map(j => ({lib:rpFr(j.iso), total:j.total, obj:j.obj, arrets:j.arrets, rend:j.rend}));
+  const D = rpTekPeriode(debut, fin), JS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  // Colonnes des postes : noms des opératrices si l'équipe n'a pas changé sur la période, sinon « Poste n ».
+  const cle = (j) => j.ops.join('|'), memes = D.jours.length && D.jours.every(j => cle(j) === cle(D.jours[0]));
+  const postes = (D.jours[0] ? D.jours[0].ops : getOpsForDate(fin)).map((n, i) => memes ? n : 'Poste ' + (i + 1));
+  const somme = (js, f) => js.reduce((a, j) => a + (Number(f(j)) || 0), 0);
+  const ligneTot = (cls, lib, js) => { const t = somme(js, j => j.total), o = somme(js, j => j.obj);
+    return `<tr class="${cls}"><td>${lib}</td>${postes.map((_, i) => `<td class="n">${rpN(somme(js, j => j.perOp[i]))}</td>`).join('')}<td class="n">${rpN(t)}</td><td class="n">${rpN(o)}</td><td class="n">${rpPct(o ? t / o * 100 : null)}</td><td class="n">${somme(js, j => j.arrets) || ''}</td></tr>`; };
+  const semaines = rpParSemaine(D.jours, []), plusieurs = semaines.length > 1;
+  let lignes = '';
+  semaines.forEach(sm => {
+    const js = D.jours.filter(j => j.iso >= sm.iso && j.iso <= sm.fin);
+    lignes += js.map(j => `<tr><td>${JS[new Date(j.iso + 'T12:00:00').getDay()]} ${rpFr(j.iso)}</td>${j.perOp.map(v => `<td class="n">${v || ''}</td>`).join('')}<td class="n"><b>${rpN(j.total)}</b></td><td class="n">${rpN(j.obj)}</td><td class="n ${rpClsRend(j.rend)}">${rpPct(j.rend)}</td><td class="n">${j.arrets || ''}</td></tr>`).join('');
+    if(plusieurs) lignes += ligneTot('sem', 'Semaine du ' + rpFr(sm.iso) + ' (' + js.length + ' j)', js);
+  });
   const corps = `<div class="kpis">${rpKpi('Production', rpN(D.total) + ' pcs')}${rpKpi('Objectif cumulé', rpN(D.obj))}${rpKpi('Rendement moyen', rpPct(D.rend), rpClsRend(D.rend))}${rpKpi('Jours avec production', D.jours.length + ' / ' + D.nbTravailles)}${rpKpi('Pertes / arrêts', rpN(D.arrets))}
       ${rpKpi('Meilleur jour', D.meilleur ? rpFr(D.meilleur.iso) + ' · ' + rpPct(D.meilleur.rend) : '—', 'bon')}${rpKpi('Jour le plus faible', D.faible ? rpFr(D.faible.iso) + ' · ' + rpPct(D.faible.rend) : '—', 'mauvais')}</div>
-    <div class="deux"><div><h2>Production ${semaines ? 'par semaine' : 'par jour'}</h2>
-      <table><thead><tr><th>${semaines ? 'Semaine' : 'Date'}</th><th class="n">Pièces</th><th class="n">Objectif</th><th class="n">Rendement</th><th class="n">Arrêts</th></tr></thead><tbody>
-      ${lignes.map(l => `<tr><td>${l.lib}${l.nb ? ' <span style="color:#777">(' + l.nb + ' j)</span>' : ''}</td><td class="n">${rpN(l.total)}</td><td class="n">${rpN(l.obj)}</td><td class="n ${rpClsRend(l.rend)}">${rpPct(l.rend)}</td><td class="n">${l.arrets || ''}</td></tr>`).join('') || '<tr><td colspan="5">Aucune production sur la période</td></tr>'}
-      <tr class="tot"><td>Total</td><td class="n">${rpN(D.total)}</td><td class="n">${rpN(D.obj)}</td><td class="n">${rpPct(D.obj ? D.total / D.obj * 100 : null)}</td><td class="n">${D.arrets || ''}</td></tr></tbody></table></div>
-    <div><h2>Classement des opératrices</h2>
-      <table><thead><tr><th>#</th><th>Opératrice</th><th class="n">Pièces</th><th class="n">Part</th><th class="n">Jours</th><th class="n">Moy./jour</th></tr></thead><tbody>
-      ${D.classement.map((o, i) => `<tr><td class="c">${i + 1}${i === 0 ? ' 🏆' : ''}</td><td>${esc(o.nom)}</td><td class="n">${rpN(o.total)}</td><td class="n">${D.total ? Math.round(o.total / D.total * 100) + ' %' : ''}</td><td class="n">${o.jours}</td><td class="n">${o.jours ? rpN(Math.round(o.total / o.jours)) : ''}</td></tr>`).join('') || '<tr><td colspan="6">—</td></tr>'}
+    <h2>Production jour par jour${plusieurs ? ', avec le total de chaque semaine' : ''}</h2>
+    <table class="large"><thead><tr><th style="text-align:left;">Date</th>${postes.map(n => `<th class="n">${esc(n)}</th>`).join('')}<th class="n">Total</th><th class="n">Objectif</th><th class="n">Rendement</th><th class="n">Arrêts</th></tr></thead><tbody>
+      ${lignes || `<tr><td colspan="${postes.length + 5}">Aucune production sur cette période</td></tr>`}
+      ${D.jours.length ? ligneTot('tot', 'Total de la période', D.jours) : ''}</tbody></table>
+    <h2>Classement des opératrices</h2>
+    <table class="large"><thead><tr><th>#</th><th style="text-align:left;">Opératrice</th><th class="n">Pièces</th><th class="n">Part</th><th class="n">Jours</th><th class="n">Moyenne par jour</th></tr></thead><tbody>
+      ${D.classement.map((o, i) => `<tr><td class="c">${i + 1}${i === 0 ? ' 🏆' : ''}</td><td>${esc(o.nom)}</td><td class="n">${rpN(o.total)}</td><td class="n">${D.total ? Math.round(o.total / D.total * 100) + ' %' : ''}</td><td class="n">${o.jours}</td><td class="n">${o.jours ? rpN(Math.round(o.total / o.jours)) : ''}</td></tr>`).join('') || '<tr><td colspan="6">Aucune donnée</td></tr>'}
       </tbody></table>
-      <p class="note">Le rendement moyen est la moyenne des rendements des jours avec production. Chaque jour, la production est attribuée à l'opératrice qui occupait réellement le poste.</p></div></div>${semaines ? rpTekTableJours(D) : ''}`;
+    <p class="note">Le rendement moyen est la moyenne des rendements des jours avec production. Chaque jour, la production est attribuée à l'opératrice qui occupait réellement le poste.${memes ? '' : ' L\'équipe a changé pendant la période : les colonnes indiquent les postes.'}</p>`;
   rpPdf('tek', 'Statistiques de production', 'Période ' + rpPeriodeTxt(debut, fin), corps, rpNomFichier('tek', 'Statistiques', debut, fin));
 };
 window.rpTekPeriodeExcel = function(debut, fin){
