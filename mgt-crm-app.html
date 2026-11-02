@@ -5589,7 +5589,7 @@ function build(){
  try{ dateStr=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); dateStr=dateStr.charAt(0).toUpperCase()+dateStr.slice(1); }catch(e){}
  var kpisHtml='',chartHtml='';
  /* Les 4 indicateurs du haut de l'accueil sont retirés (demande : accueil plus simple). */
- try{ chartHtml=buildChart(k)+buildRepartition(k); }catch(e){}
+ /* Chiffre d'affaires et répartition des clients retirés de l'accueil (demande du 02/11/2026). */
  home.innerHTML='<div class="mgtHomeInner">'+
    '<div class="mgtHomeTop"><div><h1 class="mgtHomeTitle">Tableau de bord</h1><p class="mgtHomeSub">'+dateStr+(dateStr?' &mdash; ':'')+'<strong>'+fmtInt(k.total)+'</strong> clients suivis</p></div><div class="mgtHomeBadge">Accueil</div></div>'+
    (kpisHtml?'<div class="mgtHomeKpis">'+kpisHtml+'</div>':'')+
@@ -7711,6 +7711,8 @@ html[data-mgt-theme="light"] body .mgtNavSheet button.mgtNavTile.active:not(.sec
     ['__menu','Menu']
   ];
   var PRINCIPAUX=['dashboard','clients','offres','calendar'];
+  /* Écrans retirés du menu « Tous les écrans » (demande du 02/11/2026) : Communication, Rendez-vous, Commercial. */
+  var ECRANS_RETIRES=['communication','appointments','commercial'];
   var ICONE_MENU='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
 
   function iconHtml(id){
@@ -7741,6 +7743,7 @@ html[data-mgt-theme="light"] body .mgtNavSheet button.mgtNavTile.active:not(.sec
     var actuel=(typeof CURRENT_MODULE!=='undefined'&&CURRENT_MODULE)?CURRENT_MODULE:'dashboard';
     document.querySelectorAll('.sidebar [data-module]').forEach(function(el){
       var id=el.getAttribute('data-module'); if(!id||vus[id]) return; vus[id]=1;
+      if(ECRANS_RETIRES.indexOf(id)>=0) return;
       var ic=el.querySelector('.navIcon');
       html+='<button type="button" class="mgtNavTile'+(id===actuel?' active':'')+'" data-nav-ecran="'+esc(id)+'"><span class="mgtNavTileIcone">'+(ic?ic.innerHTML:'◆')+'</span><span class="mgtNavTileNom">'+esc(libelle(el))+'</span></button>';
     });
