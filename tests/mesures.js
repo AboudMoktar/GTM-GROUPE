@@ -13,7 +13,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const fs = require('fs'), path = require('path'), http = require('http'), zlib = require('zlib');
-const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'firebase-admin'));
+const admin = require('./admin.js');
 const {chromium} = require('playwright');
 const C = require(path.join(__dirname, '..', 'roles-config.js'));
 const {donneesInitiales} = require(path.join(__dirname, 'scenarios.js'));

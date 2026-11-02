@@ -7,7 +7,7 @@
 'use strict';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
-const admin = require('../functions/node_modules/firebase-admin');
+const admin = require('./admin.js');
 const {initializeApp} = require('firebase/app');
 const {getAuth, connectAuthEmulator, signInWithEmailAndPassword, signOut} = require('firebase/auth');
 const {getFunctions, connectFunctionsEmulator, httpsCallable} = require('firebase/functions');

@@ -11,7 +11,9 @@
 'use strict';
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const {setGlobalOptions} = require('firebase-functions/v2');
-const admin = require('firebase-admin');
+// firebase-admin 14 : plus d'espace de noms « admin.auth() » ; on garde la même écriture dans ce fichier.
+const {initializeApp} = require('firebase-admin/app'), {getAuth} = require('firebase-admin/auth'), {getDatabase} = require('firebase-admin/database');
+const admin = {initializeApp, auth: () => getAuth(), database: () => getDatabase()};
 const C = require('./roles-config.js');
 
 admin.initializeApp();
