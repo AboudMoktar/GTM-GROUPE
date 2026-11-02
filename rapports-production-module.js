@@ -141,7 +141,7 @@ window.rpTekPeriodePdf = function(debut, fin){
       <tr class="tot"><td>Total</td><td class="n">${rpN(D.total)}</td><td class="n">${rpN(D.obj)}</td><td class="n">${rpPct(D.obj ? D.total / D.obj * 100 : null)}</td><td class="n">${D.arrets || ''}</td></tr></tbody></table></div>
     <div><h2>Classement des opératrices</h2>
       <table><thead><tr><th>#</th><th>Opératrice</th><th class="n">Pièces</th><th class="n">Part</th><th class="n">Jours</th><th class="n">Moy./jour</th></tr></thead><tbody>
-      ${D.classement.map((o, i) => `<tr><td class="c">${i + 1}</td><td>${esc(o.nom)}</td><td class="n">${rpN(o.total)}</td><td class="n">${D.total ? Math.round(o.total / D.total * 100) + ' %' : ''}</td><td class="n">${o.jours}</td><td class="n">${o.jours ? rpN(Math.round(o.total / o.jours)) : ''}</td></tr>`).join('') || '<tr><td colspan="6">—</td></tr>'}
+      ${D.classement.map((o, i) => `<tr><td class="c">${i + 1}${i === 0 ? ' 🏆' : ''}</td><td>${esc(o.nom)}</td><td class="n">${rpN(o.total)}</td><td class="n">${D.total ? Math.round(o.total / D.total * 100) + ' %' : ''}</td><td class="n">${o.jours}</td><td class="n">${o.jours ? rpN(Math.round(o.total / o.jours)) : ''}</td></tr>`).join('') || '<tr><td colspan="6">—</td></tr>'}
       </tbody></table>
       <p class="note">Le rendement moyen est la moyenne des rendements des jours avec production. Chaque jour, la production est attribuée à l'opératrice qui occupait réellement le poste.</p></div></div>`;
   rpPdf('tek', 'Statistiques de production', 'Période ' + rpPeriodeTxt(debut, fin), corps, rpNomFichier('tek', 'Statistiques', debut, fin));
@@ -152,7 +152,7 @@ window.rpTekPeriodeExcel = function(debut, fin){
     ['Jours avec production', D.jours.length], ['Jours travaillés', D.nbTravailles], ['Pertes / arrêts', D.arrets],
     ['Meilleur jour', D.meilleur ? rpFr(D.meilleur.iso) + ' (' + Math.round(D.meilleur.rend) + ' %)' : ''], ['Jour le plus faible', D.faible ? rpFr(D.faible.iso) + ' (' + Math.round(D.faible.rend) + ' %)' : ''],
     [], ['Classement des opératrices'], ['Rang', 'Opératrice', 'Pièces', 'Part (%)', 'Jours', 'Moyenne par jour']])
-    .concat(D.classement.map((o, i) => [i + 1, o.nom, o.total, D.total ? Math.round(o.total / D.total * 1000) / 10 : 0, o.jours, o.jours ? Math.round(o.total / o.jours) : 0]));
+    .concat(D.classement.map((o, i) => [i === 0 ? '1 🏆' : i + 1, o.nom, o.total, D.total ? Math.round(o.total / D.total * 1000) / 10 : 0, o.jours, o.jours ? Math.round(o.total / o.jours) : 0]));
   const ops = getOpsForDate(fin);
   const jours = T.concat([['Date', 'Pièces', 'Objectif', 'Rendement (%)', 'Arrêts'].concat(ops.map((n, i) => 'Poste ' + (i + 1)))])
     .concat(D.jours.map(j => [rpFr(j.iso), j.total, j.obj, j.rend === null ? '' : Math.round(j.rend * 10) / 10, j.arrets].concat(j.perOp)))

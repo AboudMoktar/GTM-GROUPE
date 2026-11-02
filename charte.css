@@ -339,21 +339,29 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
 .dd-bx{min-width:0;}
 
 /* ---------- 15. Tableau de bord Rendement : carte de synthèse sobre ---------- */
-.hero-card{background:var(--nav-bg) !important;border-radius:var(--radius) !important;box-shadow:var(--shadow-sm) !important;}
-.hero-card .hero-illus,.hero-card .hero-tagline{display:none !important;}
-.hero-info-icon{background:rgba(255,255,255,.10) !important;}
-.hero-stat-lbl{color:#CBD5E1 !important;}
-.hero-obj-line{color:#E2E8F0 !important;}
+html:not([data-mod="rendement"]) .hero-card{background:var(--nav-bg) !important;border-radius:var(--radius) !important;box-shadow:var(--shadow-sm) !important;}
+html:not([data-mod="rendement"]) .hero-card .hero-illus,html:not([data-mod="rendement"]) .hero-card .hero-tagline{display:none !important;}
+html:not([data-mod="rendement"]) .hero-info-icon{background:rgba(255,255,255,.10) !important;}
+html:not([data-mod="rendement"]) .hero-stat-lbl{color:#CBD5E1 !important;}
+html:not([data-mod="rendement"]) .hero-obj-line{color:#E2E8F0 !important;}
 .hero-date-icon{background:var(--accent-bg) !important;color:var(--accent) !important;}
 .hero-date h2{font-size:var(--fs-lg) !important;font-weight:600 !important;}
 .hero-date .hd-sub{font-size:var(--fs-sm) !important;color:var(--ink-faint) !important;}
 /* petites tuiles d'indicateurs : fond blanc, icône de couleur */
-.kpi-mini{background:var(--surface) !important;border:1px solid var(--border) !important;border-radius:var(--radius) !important;box-shadow:var(--shadow-sm) !important;}
-.kpi-mini-icon{box-shadow:none !important;background:var(--accent-bg) !important;}
-.kpi-mini-icon svg{color:var(--accent) !important;}
-.kpi-mini-val{font-weight:700 !important;}
-.kpi-mini-lbl{color:var(--ink-soft) !important;font-weight:600 !important;}
+html:not([data-mod="rendement"]) .kpi-mini{background:var(--surface) !important;border:1px solid var(--border) !important;border-radius:var(--radius) !important;box-shadow:var(--shadow-sm) !important;}
+html:not([data-mod="rendement"]) .kpi-mini-icon{box-shadow:none !important;background:var(--accent-bg) !important;}
+html:not([data-mod="rendement"]) .kpi-mini-icon svg{color:var(--accent) !important;}
+html:not([data-mod="rendement"]) .kpi-mini-val{font-weight:700 !important;}
+html:not([data-mod="rendement"]) .kpi-mini-lbl{color:var(--ink-soft) !important;font-weight:600 !important;}
 .summary-strip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+/* ---------- 15 bis. Module Rendement TEK-TREND : carte d'avancement, petites tuiles et pastilles
+   des statistiques identiques à l'application Gestion Rendement (attribut data-mod="rendement" sur <html>).
+   Les règles ci-dessus ne s'appliquent pas à ce module ; on rétablit ici les couleurs et la police
+   des chiffres d'origine, uniquement à l'intérieur de ces éléments. ---------- */
+html[data-mod="rendement"] .hero-card,html[data-mod="rendement"] .kpi-mini-grid,html[data-mod="rendement"] .kpi-ic-badge{
+  --mono:'IBM Plex Mono',monospace; --ink:#111827; --ink-soft:#5B6472; --ink-faint:#94A0AD; --border:#E4E8ED;
+  --accent:#0F3D66; --accent-bg:#E9F1F9; --good:#1F8F5F; --good-bg:#E7F5EE; --bad:#D64545; --bad-bg:#FCEAEA; --crit:#D64545; --crit-bg:#FCEAEA;
+  --warn:#D9822B; --warn-bg:#FDF1E3; --excellent:#B8860B; --excellent-bg:#FBF1D9;}
 /* petites étiquettes dans la barre du bas du téléphone */
 .bottomnav span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
@@ -365,12 +373,12 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
 }
 
 /* ---------- 17. Indicateurs à icône (kpi-ic) : pastilles plates ---------- */
-.kpi-ic-badge{width:40px !important;height:40px !important;border-radius:var(--radius-sm) !important;box-shadow:none !important;background:var(--accent-bg) !important;}
-.kpi-ic-badge svg{width:20px !important;height:20px !important;color:var(--accent) !important;stroke-width:2 !important;}
-.kpi-ic-badge.blue{background:#E0ECFA !important;} .kpi-ic-badge.blue svg{color:#1D4ED8 !important;}
-.kpi-ic-badge.green{background:#DCF3E4 !important;} .kpi-ic-badge.green svg{color:var(--good) !important;}
-.kpi-ic-badge.red{background:#FBE4E4 !important;} .kpi-ic-badge.red svg{color:var(--bad) !important;}
-.kpi-ic-badge.gold{background:#FBEFD5 !important;} .kpi-ic-badge.gold svg{color:var(--warn) !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge{width:40px !important;height:40px !important;border-radius:var(--radius-sm) !important;box-shadow:none !important;background:var(--accent-bg) !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge svg{width:20px !important;height:20px !important;color:var(--accent) !important;stroke-width:2 !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge.blue{background:#E0ECFA !important;} html:not([data-mod="rendement"]) .kpi-ic-badge.blue svg{color:#1D4ED8 !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge.green{background:#DCF3E4 !important;} html:not([data-mod="rendement"]) .kpi-ic-badge.green svg{color:var(--good) !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge.red{background:#FBE4E4 !important;} html:not([data-mod="rendement"]) .kpi-ic-badge.red svg{color:var(--bad) !important;}
+html:not([data-mod="rendement"]) .kpi-ic-badge.gold{background:#FBEFD5 !important;} html:not([data-mod="rendement"]) .kpi-ic-badge.gold svg{color:var(--warn) !important;}
 .kpi-ic-label{font-size:var(--fs-xs) !important;font-weight:600 !important;}
 .kpi-ic-value{font-weight:700 !important;}
 html[data-theme="dark"] .kpi-ic-badge.blue,html[data-theme="dark"] .kpi-ic-badge.green,html[data-theme="dark"] .kpi-ic-badge.red,html[data-theme="dark"] .kpi-ic-badge.gold{background:var(--surface-2) !important;}
