@@ -2717,7 +2717,7 @@ function renderSessions(container){
       nav('sessions');
     }catch(err){
       console.error(err);
-      showToast(err.code === 'auth/wrong-password' ? 'Mot de passe actuel incorrect.' : "Erreur lors du changement de mot de passe.");
+      showToast(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Mot de passe actuel incorrect.' : "Erreur lors du changement de mot de passe.");
     }
   };
 
