@@ -776,11 +776,29 @@ function renderRHPersonnel(container, canEdit){
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="saveEmployeeForm('${mode}','${id||''}')">Enregistrer</button>
           <button class="btn btn-ghost" onclick="document.getElementById('emp-form-zone').innerHTML=''">Annuler</button>
-          ${mode==='edit' ? `<button class="btn btn-warning" style="margin-left:auto;" onclick="deleteEmployeeForm('${id}')">Supprimer</button>` : ''}
+          ${mode==='edit' ? (e.statut==='inactif' ? `<button class="btn btn-ghost" style="margin-left:auto;" onclick="rhReactiverEmploye('${id}')">Réactiver</button>` : `<button class="btn btn-warning" style="margin-left:auto;" onclick="rhDesactiverEmploye('${id}')">Désactiver</button>`) : ''}
         </div>
       </div>
     `;
   }
+  // Plus de suppression définitive d'un employé (une fiche supprimée par erreur le 03/11/2026) :
+  // « Désactiver » le retire du pointage et des listes actives, « Réactiver » le remet. Ses présences
+  // et son historique restent intacts. Il reste visible dans Employés → filtre « Inactifs ».
+  window.rhDesactiverEmploye = (id) => {
+    const list = getEmployees(), e = list[id]; if(!e) return;
+    if(!confirm('Désactiver '+(e.nom||'cette personne')+' ?\nIl n\'apparaîtra plus dans le pointage. Ses présences et son historique sont conservés, et vous pourrez le réactiver à tout moment (Employés → Inactifs).')) return;
+    list[id] = {...e, statut:'inactif', desactiveLe:getTodayISO()};
+    saveEmployees(list);
+    showToast('Employé désactivé (récupérable dans Employés → Inactifs)');
+    nav('rh-personnel');
+  };
+  window.rhReactiverEmploye = (id) => {
+    const list = getEmployees(), e = list[id]; if(!e) return;
+    const r = {...e, statut:'actif'}; delete r.desactiveLe;
+    list[id] = r; saveEmployees(list);
+    showToast('Employé réactivé');
+    nav('rh-personnel');
+  };
   window.deleteEmployeeForm = (id) => {
     const list = getEmployees();
     const e = list[id]; if(!e) return;
@@ -1114,7 +1132,7 @@ function renderRHFiche(container, canEdit, empId){
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="saveEmployeeForm('edit','${id}')">Enregistrer</button>
           <button class="btn btn-ghost" onclick="document.getElementById('fiche-edit-zone').innerHTML=''">Annuler</button>
-          <button class="btn btn-warning" style="margin-left:auto;" onclick="deleteEmployeeFiche('${id}')">Supprimer</button>
+          ${e.statut==='inactif' ? `<button class="btn btn-ghost" style="margin-left:auto;" onclick="rhReactiverEmploye('${id}')">Réactiver</button>` : `<button class="btn btn-warning" style="margin-left:auto;" onclick="rhDesactiverEmploye('${id}')">Désactiver</button>`}
         </div>
       </div>
     `;
