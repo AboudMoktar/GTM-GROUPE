@@ -70,6 +70,7 @@ function hlAppliquerLocal(cle, sous, valeur){
     if(valeur === null || valeur === undefined) delete v[sous]; else v[sous] = valeur;
   }
   memoryCache[CACHE_PREFIX + cle] = v === undefined ? null : JSON.parse(JSON.stringify(v === undefined ? null : v));
+  if(!sous && typeof hlParFiche === 'function' && hlParFiche(cle)) hlFichesLocales[cle] = hlCarteFiches(cle, v) || undefined;
   try { window.localStorage.setItem(CACHE_PREFIX + cle, JSON.stringify(v === undefined ? null : v)); } catch(e) {}
 }
 
@@ -173,11 +174,80 @@ const hlTexteConnu = {};
 function hlMemoriserTexte(cle, texte, valeur){
   if(typeof texte === 'string' && valeur !== undefined && valeur !== null) hlTexteConnu[cle] = {texte, valeur};
 }
-// Pour un dossier entier reçu de Firebase ({cle: valeur, …}).
-function hlDossierDepuisFirebase(data){
+// --- Données du CRM MGT rangées FICHE PAR FICHE (clients, historique) ---
+// Avant : chaque liste était UN seul bloc de texte (958 Ko pour 730 clients) : modifier une fiche
+// renvoyait tout le bloc à tous les appareils. Désormais chaque fiche est un enfant de la clé
+// (mgt/mgt_crm_clients/<ID> = "__gtm_json_v1:{…}") : seule la fiche modifiée circule.
+// Le reste de l'application et le CRM voient toujours un tableau, comme avant.
+// L'ancien format (un seul bloc) reste lu ; il est converti à la première écriture.
+const HL_PAR_FICHE = {mgt_crm_clients:'ID', mgt_crm_history:'id'};
+const hlFichesServeur = {};    // cle -> {cleFirebase: texte} tel que reçu du serveur ; null = ancien format
+const hlFichesLocales = {};    // cle -> {cleFirebase: texte} de la dernière valeur en mémoire sur cet appareil
+const hlFichesCache = {};      // cle -> {map:{k:{texte,valeur}}, tableau, sig}
+const hlTextesDe = new WeakMap();
+function hlParFiche(cle){ return Object.prototype.hasOwnProperty.call(HL_PAR_FICHE, cle); }
+function hlCleFiche(cle, item){
+  const id = item && typeof item === 'object' ? item[HL_PAR_FICHE[cle]] : undefined;
+  return (id === undefined || id === null || id === '') ? null : hlCleVersFirebase(String(id));
+}
+function hlTexteFiche(item){ return HL_TEXTE_JSON + JSON.stringify(item); }
+// {cleFirebase: texte} d'un tableau ; null si une fiche n'a pas d'identifiant ou s'il y a un doublon.
+function hlCarteFiches(cle, tableau){
+  if(!Array.isArray(tableau)) return null;
+  const m = {};
+  for(const it of tableau){ const k = hlCleFiche(cle, it); if(k === null || m[k] !== undefined) return null; m[k] = hlTexteFiche(it); }
+  return m;
+}
+function hlFichesDepuisFirebase(cle, v, depuisServeur){
+  const cache = hlFichesCache[cle] || (hlFichesCache[cle] = {map:{}, tableau:null, sig:''});
+  // Firebase rend un objet dont les clés sont des nombres (ID « 1 », « 2 »…) sous forme de tableau, avec des cases vides : on les ignore.
+  const cles = Object.keys(v || {}).filter(k => v[k] !== null && v[k] !== undefined), textes = {}, map = {};
+  let change = !cache.tableau || cache.sig !== cles.join('|');
+  const tableau = cles.map(k => {
+    const brut = v[k], texte = typeof brut === 'string' ? brut : JSON.stringify(brut);
+    textes[k] = texte;
+    const c = cache.map[k];
+    if(c && c.texte === texte){ map[k] = c; return c.valeur; }
+    change = true;
+    const valeur = (typeof brut === 'string' && brut.indexOf(HL_TEXTE_JSON) === 0) ? hlDepuisFirebase(brut) : hlConvertirCles(brut, hlCleDepuisFirebase);
+    map[k] = {texte, valeur};
+    return valeur;
+  });
+  if(depuisServeur) hlFichesServeur[cle] = textes;
+  if(!change) return cache.tableau;   // rien n'a changé : même tableau (le CRM ne redessine pas)
+  cache.map = map; cache.tableau = tableau; cache.sig = cles.join('|');
+  hlTextesDe.set(tableau, textes);
+  return tableau;
+}
+// Envoi d'une liste « fiche par fiche » : seules les fiches modifiées par CET appareil sont envoyées
+// (comparaison avec la dernière valeur en mémoire ici, pas avec le serveur : on n'écrase jamais une fiche
+// modifiée ailleurs entre-temps). ref.contreServeur (renvoi d'une écriture hors ligne, déjà vérifiée) :
+// comparaison avec le serveur. Format inconnu ou ancien bloc : tout est écrit une fois au nouveau format.
+function hlRequeteParFiche(chemin, cle, valeur, ref){
+  const nouv = hlCarteFiches(cle, valeur), serveur = hlFichesServeur[cle];
+  const base = (ref && ref.contreServeur) ? serveur : (hlFichesLocales[cle] || serveur);
+  if(!nouv){ hlFichesLocales[cle] = undefined; return fbRootRef.child(chemin).set(hlPourFirebase(valeur, ref)); }
+  hlFichesLocales[cle] = nouv;
+  if(!serveur || !base) return fbRootRef.child(chemin).set(Object.keys(nouv).length ? Object.assign({}, nouv) : null);
+  const maj = {}; let n = 0;
+  Object.keys(nouv).forEach(k => { if(base[k] !== nouv[k]){ maj[k] = nouv[k]; n++; } });
+  Object.keys(base).forEach(k => { if(nouv[k] === undefined && serveur[k] !== undefined){ maj[k] = null; n++; } });
+  return n ? fbRootRef.child(chemin).update(maj) : Promise.resolve();
+}
+function hlRequete(chemin, valeur, ref, envoi){
+  if(ref && !ref.sous && hlParFiche(ref.cle)) return hlRequeteParFiche(chemin, ref.cle, valeur, ref);
+  return fbRootRef.child(chemin).set(envoi);
+}
+// Pour un dossier entier reçu de Firebase ({cle: valeur, …}). depuisServeur : vrai pour les données
+// du serveur, faux pour la copie locale (IndexedDB) — seule la première renseigne l'état du serveur.
+function hlDossierDepuisFirebase(data, depuisServeur){
   const out = {};
   Object.keys(data || {}).forEach(k => {
     const cle = hlCleDepuisFirebase(k), v = data[k];
+    if(hlParFiche(cle)){
+      if(v && typeof v === 'object'){ out[cle] = hlFichesDepuisFirebase(cle, v, depuisServeur); return; }
+      if(depuisServeur) hlFichesServeur[cle] = (v === null || v === undefined) ? {} : null;
+    }
     if(typeof v === 'string' && v.indexOf(HL_TEXTE_JSON) === 0){
       const connu = hlTexteConnu[cle];
       if(connu && connu.texte === v){ out[cle] = connu.valeur; return; }
@@ -188,6 +258,7 @@ function hlDossierDepuisFirebase(data){
     }
     out[cle] = hlDepuisFirebase(v);
   });
+  if(depuisServeur) Object.keys(HL_PAR_FICHE).forEach(c => { if(!(hlCleVersFirebase(c) in (data || {})) && hlFichesServeur[c] === undefined) hlFichesServeur[c] = {}; });
   return out;
 }
 // Identifiant de la valeur actuellement en mémoire pour une clé : change dès que la donnée est
@@ -223,8 +294,8 @@ function hlEcrire(chemin, valeur, ref){
     const envoi = hlPourFirebase(valeur, ref);
     // ref.memoire : l'appelant garantit que la mémoire de l'app contient déjà exactement
     // cette valeur (setJSON) — on retient l'association texte -> valeur (voir hlTexteConnu).
-    if(ref && ref.memoire && typeof envoi === 'string') hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
-    requete = fbRootRef.child(chemin).set(envoi);
+    if(ref && ref.memoire && typeof envoi === 'string' && !hlParFiche(ref.cle)) hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
+    requete = hlRequete(chemin, valeur, ref, envoi);
   } catch(err){
     // Donnée refusée AVANT l'envoi (format) : la renvoyer plus tard échouerait exactement
     // de la même façon. Sans ce filet, l'erreur remontait jusqu'à l'écran appelant
@@ -283,8 +354,8 @@ function hlEcrireConfirme(chemin, valeur, ref, timeoutMs){
   let requete;
   try {
     const envoi = hlPourFirebase(valeur, ref);
-    if(ref && ref.memoire && typeof envoi === 'string') hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
-    requete = fbRootRef.child(chemin).set(envoi);
+    if(ref && ref.memoire && typeof envoi === 'string' && !hlParFiche(ref.cle)) hlMemoriserTexte(ref.cle, envoi, memoryCache[CACHE_PREFIX + ref.cle]);
+    requete = hlRequete(chemin, valeur, ref, envoi);
   } catch(err){
     const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b); hlMajBadge();
     console.error('Erreur de synchronisation Firebase (immédiate) :', err);
@@ -366,6 +437,7 @@ function hlRecevoirDossier(dossier, data, depuisServeur){
     hlServeur[k] = data[k];
     if(enAttente.has(k)) return; // tant que l'envoi n'est pas confirmé, la version locale reste affichée
     memoryCache[CACHE_PREFIX + k] = data[k];
+    if(hlParFiche(k)) hlFichesLocales[k] = (data[k] && hlTextesDe.get(data[k])) || (Array.isArray(data[k]) ? hlCarteFiches(k, data[k]) || undefined : undefined);
   });
   hlDossiersCharges.add(dossier);
   // Source partielle (« tek|cle|employees ») : le dossier n'est pas marqué entièrement chargé.
@@ -403,7 +475,7 @@ function hlTraiterDemarrage(dossier){
       const b = hlBoite(); delete b[chemin]; hlLSset(HL_BOITE, b);
     } else if(hS === e.base){
       nbRenvois++;
-      hlEcrire(chemin, loc, e);
+      hlEcrire(chemin, loc, Object.assign({}, e, {contreServeur: true}));
     } else {
       nbConflits++;
       const c = hlConflits();
@@ -464,7 +536,7 @@ async function hlChargerCopies(){
   if(!firebaseConfigured() || !currentUser || !currentUser.uid) return;
   const dossiers = hlDossiersAttendus();
   await Promise.all(dossiers.map(d => hlAvecDelai(hlIdb('readonly', st => st.get(hlCleCopie(d))), 3000).then(rec => {
-    if(rec && rec.data && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, hlDossierDepuisFirebase(rec.data), false);
+    if(rec && rec.data && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, hlDossierDepuisFirebase(rec.data, false), false);
   }).catch(() => {})));
 }
 function hlOublierCompte(uid){

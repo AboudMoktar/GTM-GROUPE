@@ -8,7 +8,7 @@ const TESTS = __dirname, req = require;
 const {chromium} = req('playwright'); const admin = require(TESTS + '/admin.js'); const C = require(path.join(__dirname, '..', 'roles-config.js')); const serveur = require(TESTS + '/serveur.js');
 const SDK = path.join(TESTS, 'node_modules', 'firebase'), MDP = 'Test2026ok';
 const J = (v) => '__gtm_json_v1:' + JSON.stringify(v);
-const lireArr = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JSON.parse(v.slice(14)) : (v || []);
+const lireArr = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JSON.parse(v.slice(14)) : (v && typeof v === 'object' ? Object.keys(v).filter(k => v[k]).map(k => typeof v[k] === 'string' && v[k].startsWith('__gtm_json_v1:') ? JSON.parse(v[k].slice(14)) : v[k]) : []);
 // ----- faux Supabase -----
 const SB = {
   mgt_clients: [
