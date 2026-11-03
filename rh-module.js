@@ -714,16 +714,7 @@ function renderRHPersonnel(container, canEdit){
   window.showAddEmployeeForm = () => renderEmployeeForm('add', null);
   window.showImportForm = () => {
     const zone = document.getElementById('rh-import-zone');
-    const prefill = [
-      '2 dalel','3 khairedine hayet','4 sahraoui aida','5 younes hela','6 chaabane marwa',
-      '9 manai chedia','14 hallouli hamida','101 LAAJIMI DORSAF','42620 GHRAIRI NEDIA',
-      '65354 SALWA GHRAIRI','65364 MASOUDI FATHIA','65380 BESSMA AISAOUI','65390 SOUMAYA KOKI',
-      '65400 bessma ajbouni','65408 Hadj Mansour Naima','65409 Fatima ben nejma','65410 Sahtout Mariem',
-      '65415 ALI SAIDA','65416 Methneni Rahma','65418 Selmi Mounira','65421 KHATTAT NAIMA',
-      '65423 JEMLI MABROUKA','65429 AISSAOUI NOUHA','65431 Aissaoui RANIA','65435 Sghaier Tasnime',
-      '65437 daouthi WAHIDA','65441 Balgouthi Ameni','65442 MANSOURI INES','65443 Ajbouni Sabrine',
-      '65444 Balgouthi zouhour','65445 FOUZIA HADJ MANSOUR','65447 Amene Jendoubi'
-    ].join('\n');
+    const prefill = ''; // (plus aucune donnée d'employé dans le code : voir rh-employes-module.js)
     zone.innerHTML = `
       <div class="card" style="background:var(--surface-2);margin-bottom:8px;">
         <h3 style="margin-top:0;">Importer une liste</h3>
