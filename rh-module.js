@@ -877,29 +877,38 @@ function renderRHPointage(container, canEdit){
     ['conges','Congés', conges.length], ['maladies','Maladies', maladies.length]
   ];
 
+  // En-tête du pointage : date, avancement de la journée, compteurs (touchez pour filtrer), actions, recherche.
+  const dateLongue = (() => { try { const t = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}); return t.charAt(0).toUpperCase() + t.slice(1); } catch(e) { return date; } })();
+  const pct = emps.length ? Math.round(nbRenseignes / emps.length * 100) : 0;
+  const etatJour = !journeeCommencee ? 'Journée pas encore commencée (début ' + minToHHMM(getRefStartMin(date)) + ')' : (complete ? '✓ Pointage complet' : nonRenseigne.length + ' salarié' + (nonRenseigne.length > 1 ? 's' : '') + ' à pointer');
+  const compteur = (k, lib, n, cls) => `<button class="ptg-cpt ptg-cpt-${cls}${f.chip===k?' on':''}" onclick="rhPointageFilter.chip='${f.chip===k?'tous':k}'; nav('rh-pointage')"><b>${n}</b><span>${lib}</span></button>`;
   container.innerHTML = `
-    <div class="card" style="padding:10px 12px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <button class="btn btn-ghost" style="padding:9px 11px;" onclick="rhAttDate='${dateNav(-1)}'; nav('rh-pointage')">‹</button>
-        <div class="field" style="margin:0;flex:1;"><input type="date" value="${date}" max="${getTodayISO()}" onchange="rhAttDate=this.value; nav('rh-pointage')"></div>
-        <button class="btn btn-ghost" style="padding:9px 11px;" onclick="rhAttDate='${dateNav(1)}'; nav('rh-pointage')" ${date>=getTodayISO()?'disabled':''}>›</button>
+    <div class="card ptg-entete">
+      <div class="ptg-date">
+        <button class="btn btn-ghost ptg-fl" onclick="rhAttDate='${dateNav(-1)}'; nav('rh-pointage')" aria-label="Jour précédent">‹</button>
+        <label class="ptg-date-c"><span class="ptg-date-t">${dateLongue}</span><input type="date" value="${date}" max="${getTodayISO()}" onchange="rhAttDate=this.value; nav('rh-pointage')"></label>
+        <button class="btn btn-ghost ptg-fl" onclick="rhAttDate='${dateNav(1)}'; nav('rh-pointage')" ${date>=getTodayISO()?'disabled':''} aria-label="Jour suivant">›</button>
+      </div>
+      <div class="ptg-av-l"><span class="${complete?'ptg-ok':'ptg-aff'}">${etatJour}</span><span class="ptg-av-n">${nbRenseignes} / ${emps.length}</span></div>
+      <div class="ptg-barre"><div style="width:${pct}%;" class="${complete?'ok':''}"></div></div>
+      <div class="ptg-cpts">
+        ${compteur('presents', 'Présents', present.length, 'present')}
+        ${compteur('absents', 'Absents', absent.length, 'absent')}
+        ${compteur('retards', 'Retards', retard.length, 'retard')}
+        ${compteur('non_renseignes', 'À pointer', nonRenseigne.length, 'vide')}
       </div>
       ${canEdit ? `
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" style="flex:1;padding:9px 6px;font-size:12px;" onclick="markAllPresent()">Tout marquer Présent</button>
-        <button class="btn btn-ghost" style="flex:1;padding:9px 6px;font-size:12px;" onclick="resetDay()">Réinitialiser</button>
-      </div>
-      <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:9px 6px;font-size:12px;" onclick="ptgOuvrir('tek')">Importer la pointeuse (fichier Excel)</button>` : ''}
-      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:700;color:${complete?'var(--good)':'var(--warn)'};">
-        ${!journeeCommencee ? 'La journée n\'a pas encore commencé (début '+minToHHMM(getRefStartMin(date))+')' : (complete ? '✓ Journée complète' : '⚠ '+nonRenseigne.length+' salarié(s) non renseigné(s)')}
-        <span style="color:var(--ink-faint);font-weight:600;">· ${nbRenseignes}/${emps.length} renseignés</span>
-      </div>
+      <div class="ptg-actions">
+        <button class="btn btn-primary" onclick="markAllPresent()">✓ Tous présents</button>
+        <button class="btn btn-ghost" onclick="ptgOuvrir('tek')">Importer la pointeuse</button>
+        <button class="btn btn-ghost ptg-reinit" onclick="resetDay()" title="Réinitialiser la journée">↺</button>
+      </div>` : ''}
     </div>
 
-    <div class="card" style="padding:10px 12px;">
-      <input id="rh-poi-search" placeholder="Rechercher un salarié…" value="${esc(f.q)}" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);font-size:14px;margin-bottom:8px;" oninput="rhFilterPointageRows(this.value)">
-      <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;">
-        ${chips.map(([k,l,n]) => `<button class="btn ${f.chip===k?'btn-primary':'btn-ghost'}" style="padding:6px 10px;font-size:11px;white-space:nowrap;flex-shrink:0;" onclick="rhPointageFilter.chip='${k}'; nav('rh-pointage')">${l} (${n})</button>`).join('')}
+    <div class="card ptg-filtres">
+      <input id="rh-poi-search" class="ptg-recherche" placeholder="🔍  Rechercher un salarié…" value="${esc(f.q)}" oninput="rhFilterPointageRows(this.value)">
+      <div class="ptg-pilules">
+        ${chips.map(([k,l,n]) => `<button class="ptg-pil${f.chip===k?' on':''}" onclick="rhPointageFilter.chip='${k}'; nav('rh-pointage')">${l} <b>${n}</b></button>`).join('')}
       </div>
     </div>
 
@@ -919,8 +928,8 @@ function renderRHPointage(container, canEdit){
     else if(f.chip==='conges') v = conges;
     else if(f.chip==='maladies') v = maladies;
     resZone.innerHTML = `
-    <div class="card" style="padding:4px 12px;">
-      ${v.length===0 ? buildEmptyState("Aucun salarié pour ce filtre") : v.map(x => `<div class="rh-poi-row" data-search="${esc(((x.e.nom||'')+' '+(x.e.poste||'')).toLowerCase())}">${rhPointageCard(x, canEdit)}</div>`).join('')}
+    <div class="ptg-liste">
+      ${v.length===0 ? `<div class="card">${buildEmptyState("Aucun salarié pour ce filtre")}</div>` : v.map(x => `<div class="rh-poi-row" data-search="${esc(((x.e.nom||'')+' '+(x.e.poste||'')+' '+(x.e.matricule||'')).toLowerCase())}">${rhPointageCard(x, canEdit)}</div>`).join('')}
     </div>
     `;
     if(f.q.trim()) rhFilterPointageRows(f.q);
