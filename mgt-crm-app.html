@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <!-- Politique de sécurité : liste des sites autorisés (Firebase, Google, cdnjs). Texte identique à tests/csp-politique.txt ; à modifier aux deux endroits. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://*.supabase.co; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script>
 // Mise en forme des montants : un seul formateur par nombre de décimales (toLocaleString avec
 // options en recrée un à chaque appel : ~0,1 s pour afficher la liste des factures).
@@ -5816,6 +5816,213 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
 })();
 </script>
 <style id="mgt-parametres-nettoyage">#settingsCommandHost #openSearchBtn,#settingsCommandHost #openClientListBtn,#settingsCommandHost #openQuickNoteBtn,#settingsCommandHost #openTaskReminderBtn{display:none!important}</style>
+<script>
+/* =====================================================================
+   SYNCHRONISATION : CRM Supabase (application de l'associé) -> CRM MGT de GTM (Firebase)
+   ---------------------------------------------------------------------
+   Sens unique : on LIT Supabase, on n'y écrit jamais.
+   - Réglages (Paramètres › Synchronisation) : adresse du projet, clé publique, identifiant et mot de passe
+     d'un compte de son CRM. Enregistrés dans les réglages du CRM (Firebase), jamais dans le code.
+   - Quand : à l'ouverture du CRM, puis toutes les 5 minutes tant qu'il est ouvert, et au retour sur l'écran.
+   - Optimisé : seules les lignes modifiées depuis la dernière fois sont demandées (date de modification),
+     et la base Firebase n'est réécrite qu'en UNE fois, seulement s'il y a du nouveau.
+   - Fusion : pour chaque fiche, la version la plus récente gagne (Supabase ou GTM).
+   - Tables : mgt_clients (fiches complètes : offres, planning, factures…), crm_history, crm_settings,
+     crm_tags, crm_history_tags. Les comptes, rôles et équipes de son CRM ne sont pas repris (GTM a les siens).
+   ===================================================================== */
+(function(){
+'use strict';
+var CLE_CONFIG='gtm_sb_config';                 /* réglages partagés (Firebase) */
+var CLE_CURSEUR='gtm_sb_curseurs_v1';           /* curseurs : sur cet appareil seulement */
+var CLE_ETAT='gtm_sb_etat_v1';                  /* dernier résultat : sur cet appareil */
+var PAGE=1000, INTERVALLE=5*60*1000;
+/* réglages de son CRM à ne pas reprendre (synchronisation, appareil, migrations internes) */
+var REGLAGES_EXCLUS=/sync|cursor|curseur|supabase|migration|device|last_|gtm_sb/i;
+var enCours=false, jeton=null, jetonFin=0, derniere=0;
+
+function lireLocal(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+function ecrireLocal(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function config(){
+  try{var v=(typeof dms!=='undefined')?dms._cache[CLE_CONFIG]:undefined; if(v===undefined){var r=readArr('crm_settings').find(function(s){return s.key===CLE_CONFIG;}); v=r?r.value:undefined;}
+    var c=v?JSON.parse(v):null; return (c&&c.url&&c.key&&c.login&&c.pw)?c:null;}catch(e){return null;}
+}
+function peutEcrire(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('clients','edit');}catch(e){return true;}}
+function peutRegler(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('settings','edit');}catch(e){return true;}}
+function base(c){return String(c.url).replace(/\/+$/,'');}
+function email(c){var l=String(c.login).trim().toLowerCase(); return l.indexOf('@')>=0?l:l+'@'+(c.domaine||'mgt.local');}
+function tsMax(){var m='';for(var i=0;i<arguments.length;i++){var v=arguments[i]; if(v&&(!m||Date.parse(v)>Date.parse(m)||(Date.parse(v)===Date.parse(m)&&String(v).length>m.length))) m=String(v);} return m;}
+/* les dates Supabase (2026-11-03T18:55:01.123456+00:00) et GTM (…Z) se comparent après conversion */
+function t(v){if(!v) return 0; var n=Date.parse(v); return isNaN(n)?0:n;}
+
+async function connexion(c){
+  if(jeton&&Date.now()<jetonFin-60000) return jeton;
+  var r=await fetch(base(c)+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},body:JSON.stringify({email:email(c),password:c.pw})});
+  var j=null; try{j=await r.json();}catch(e){}
+  if(!r.ok||!j||!j.access_token){ jeton=null; throw new Error(r.status===400||r.status===401?'Identifiant ou mot de passe refusé par le CRM Supabase.':'Connexion au CRM Supabase impossible ('+r.status+').'); }
+  jeton=j.access_token; jetonFin=Date.now()+(j.expires_in||3600)*1000; return jeton;
+}
+/* lecture paginée d'une table ; filtre = texte PostgREST déjà encodé (ex. "updated_at=gt.2026…") */
+async function lire(c, table, ordre, filtre){
+  var tok=await connexion(c), out=[], depart=0;
+  while(true){
+    var url=base(c)+'/rest/v1/'+table+'?select=*'+(ordre?'&order='+ordre+'.asc':'')+(filtre?'&'+filtre:'')+'&limit='+PAGE+'&offset='+depart;
+    var r=await fetch(url,{headers:{'apikey':c.key,'Authorization':'Bearer '+tok,'Accept':'application/json'}});
+    if(r.status===404||r.status===400){ var m=''; try{m=(await r.json()).message||'';}catch(e){} if(/does not exist|schema cache|Could not find/i.test(m)) return null; throw new Error('Lecture '+table+' : '+(m||r.status)); }
+    if(r.status===401){ jeton=null; throw new Error('Session du CRM Supabase expirée, nouvel essai à la prochaine synchronisation.'); }
+    if(!r.ok) throw new Error('Lecture '+table+' impossible ('+r.status+').');
+    var lot=await r.json(); out=out.concat(lot||[]);
+    if(!lot||lot.length<PAGE) break; depart+=PAGE;
+  }
+  return out;
+}
+function filtreDepuis(col, cur){return cur?col+'=gt.'+encodeURIComponent(cur):'';}
+
+/* ---- fusion des fiches clients ---- */
+function fusionClients(lignes){
+  var arr=readArr('crm_clients').slice(), idx={}, n=0, sup=0;
+  arr.forEach(function(c,i){idx[String(c.ID)]=i;});
+  lignes.forEach(function(row){
+    var id=String(row.id), i=idx[id], loc=i!==undefined?arr[i]:null;
+    var tLoc=loc?Math.max(t(loc._updated_at),t(loc._sb_updated_at)):0, tSb=t(row.updated_at);
+    if(row.deleted_at){
+      if(loc&&!loc._deleted_at&&t(row.deleted_at)>tLoc){ arr[i]=Object.assign({},loc,{_deleted_at:row.deleted_at,_deleted_by:'CRM Supabase',_sb_updated_at:row.updated_at||row.deleted_at}); sup++; }
+      return;
+    }
+    if(!row.data||typeof row.data!=='object') return;
+    if(loc&&tSb<=tLoc) return;                          /* la fiche de GTM est aussi récente ou plus récente */
+    var doc=Object.assign({},row.data); doc.ID=doc.ID||id; doc._sb_updated_at=row.updated_at; if(!doc._updated_at) doc._updated_at=row.updated_at;
+    if(i!==undefined) arr[i]=doc; else { idx[id]=arr.length; arr.push(doc); }
+    n++;
+  });
+  return {arr:arr, n:n, sup:sup};
+}
+/* ---- fusion générique par clé (historique, étiquettes, réglages) ---- */
+function fusionParCle(store, cle, lignes, champDate, garder){
+  var arr=readArr(store).slice(), idx={}, n=0;
+  arr.forEach(function(x,i){idx[String(x[cle])]=i;});
+  lignes.forEach(function(row){
+    if(garder&&!garder(row)) return;
+    var k=String(row[cle]), i=idx[k], loc=i!==undefined?arr[i]:null;
+    if(loc&&champDate&&t(row[champDate])<=t(loc[champDate])) return;
+    if(loc&&!champDate&&JSON.stringify(loc)===JSON.stringify(Object.assign({},loc,row))) return;
+    var v=loc?Object.assign({},loc,row):Object.assign({},row);
+    if(i!==undefined) arr[i]=v; else { idx[k]=arr.length; arr.push(v); }
+    n++;
+  });
+  return {arr:arr, n:n};
+}
+function fusionLiens(lignes){
+  var arr=readArr('crm_history_tags').slice(), vus={}, n=0;
+  arr.forEach(function(p){vus[p.history_id+'|'+p.tag_id]=1;});
+  lignes.forEach(function(p){var k=p.history_id+'|'+p.tag_id; if(!vus[k]){vus[k]=1; arr.push({history_id:p.history_id,tag_id:p.tag_id}); n++;}});
+  return {arr:arr, n:n};
+}
+
+async function synchroniser(opts){
+  opts=opts||{};
+  var c=config(); if(!c) return {ok:false, msg:'Synchronisation non configurée'};
+  if(!peutEcrire()) return {ok:false, msg:'Profil en consultation : pas de synchronisation depuis ce compte'};
+  if(enCours) return {ok:false, msg:'Synchronisation déjà en cours'};
+  if(navigator.onLine===false) return {ok:false, msg:'Hors ligne'};
+  enCours=true; afficher('Synchronisation en cours…','wait');
+  var cur=opts.complet?{}:(lireLocal(CLE_CURSEUR)||{}), res={clients:0, supprimes:0, historique:0, etiquettes:0, reglages:0};
+  try{
+    /* 1. fiches clients (seulement celles modifiées depuis la dernière fois) */
+    var cl=await lire(c,'mgt_clients','updated_at',filtreDepuis('updated_at',cur.clients));
+    if(cl&&cl.length){
+      var f=fusionClients(cl);
+      if(f.n||f.sup) await writeArr('crm_clients',f.arr);
+      res.clients=f.n; res.supprimes=f.sup;
+      cur.clients=cl.reduce(function(m,r){return tsMax(m,r.updated_at);},cur.clients||'');
+    }
+    /* 2. historique (visites, offres, tâches…) */
+    var hi=await lire(c,'crm_history','_updated_at',filtreDepuis('_updated_at',cur.historique));
+    if(hi&&hi.length){
+      var fh=fusionParCle('crm_history','id',hi,'_updated_at');
+      if(fh.n) await writeArr('crm_history',fh.arr);
+      res.historique=fh.n; cur.historique=hi.reduce(function(m,r){return tsMax(m,r._updated_at);},cur.historique||'');
+    }
+    /* 3. étiquettes et liens historique-étiquettes (petites tables : lues en entier) */
+    var tg=await lire(c,'crm_tags','id','');
+    if(tg&&tg.length){ var ft=fusionParCle('crm_tags','id',tg,null); if(ft.n){ await writeArr('crm_tags',ft.arr); res.etiquettes+=ft.n; } }
+    var lt=await lire(c,'crm_history_tags','','');
+    if(lt&&lt.length){ var fl=fusionLiens(lt); if(fl.n){ await writeArr('crm_history_tags',fl.arr); res.etiquettes+=fl.n; } }
+    /* 4. réglages du CRM (hors réglages de synchronisation / d'appareil) */
+    var rg=await lire(c,'crm_settings','updated_at',filtreDepuis('updated_at',cur.reglages));
+    if(rg&&rg.length){
+      var fr=fusionParCle('crm_settings','key',rg,'updated_at',function(r){return r.key&&!REGLAGES_EXCLUS.test(r.key);});
+      if(fr.n&&peutRegler()){ await writeArr('crm_settings',fr.arr); res.reglages=fr.n; }
+      cur.reglages=rg.reduce(function(m,r){return tsMax(m,r.updated_at);},cur.reglages||'');
+    }
+    ecrireLocal(CLE_CURSEUR,cur); derniere=Date.now();
+    var total=res.clients+res.supprimes+res.historique+res.etiquettes+res.reglages;
+    if(total) await rafraichir();
+    var msg=total?('À jour — '+[res.clients?res.clients+' fiche(s) client':'',res.supprimes?res.supprimes+' suppression(s)':'',res.historique?res.historique+' action(s) d\'historique':'',res.etiquettes?res.etiquettes+' étiquette(s)':'',res.reglages?res.reglages+' réglage(s)':''].filter(Boolean).join(', ')):'À jour — rien de nouveau';
+    var etat={ok:true, msg:msg, quand:new Date().toISOString(), res:res}; ecrireLocal(CLE_ETAT,etat); afficher(msg,'ok');
+    if(total&&opts.manuel&&typeof toast==='function') toast('Synchronisation : '+msg.replace('À jour — ',''));
+    return etat;
+  }catch(e){
+    var m=(e&&e.message)||String(e); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) m='CRM Supabase injoignable (connexion internet ?)';
+    var et={ok:false, msg:m, quand:new Date().toISOString()}; ecrireLocal(CLE_ETAT,et); afficher(m,'err');
+    if(opts.manuel&&typeof toast==='function') toast('Synchronisation : '+m);
+    return et;
+  }finally{ enCours=false; }
+}
+async function rafraichir(){
+  try{ if(typeof rebuildClientCache==='function') await rebuildClientCache(); }catch(e){}
+  try{ if(typeof dmh!=='undefined') window._historyCache=await dmh.getAll(); }catch(e){}
+  try{ if(typeof dms!=='undefined'){ dms._ready=false; await dms.init(); } }catch(e){}
+  try{ if(typeof refreshFilters==='function') refreshFilters(); if(typeof updateStats==='function') updateStats(); if(typeof render==='function') render(); }catch(e){}
+}
+window.gtmSbSynchroniser=synchroniser;
+
+/* ---- écran de réglage (Paramètres) ---- */
+function esc2(s){return String(s==null?'':s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
+function afficher(msg,cls){var el=document.getElementById('gtmSbEtat'); if(el){el.textContent=msg; el.className='gtmSbEtat '+(cls||'');}}
+function carte(){
+  var mod=document.getElementById('settingsModule'); if(!mod||document.getElementById('gtmSbCarte')) return;
+  var c=config()||{}, etat=lireLocal(CLE_ETAT), regle=peutRegler();
+  var s=document.createElement('div'); s.className='settingsSection'; s.id='gtmSbCarte';
+  s.innerHTML='<div class="settingsSectionHead"><strong>Synchronisation avec le CRM Supabase</strong><span>Les fiches, l\'historique, les étiquettes et les réglages saisis dans le CRM de l\'associé arrivent ici automatiquement (sens unique : rien n\'est modifié chez lui).</span></div>'
+    +(regle?'<div class="gtmSbGrille">'
+      +'<label>Adresse du projet<input id="gtmSbUrl" type="url" placeholder="https://xxxx.supabase.co" value="'+esc2(c.url||'')+'"></label>'
+      +'<label>Clé publique<input id="gtmSbKey" placeholder="sb_publishable_…" value="'+esc2(c.key||'')+'"></label>'
+      +'<label>Identifiant<input id="gtmSbLogin" autocomplete="off" placeholder="ex. gtm" value="'+esc2(c.login||'')+'"></label>'
+      +'<label>Mot de passe<input id="gtmSbPw" type="password" autocomplete="new-password" placeholder="'+(c.pw?'•••••••• (enregistré)':'')+'"></label>'
+      +'</div>':'')
+    +'<div class="gtmSbBoutons">'+(regle?'<button type="button" id="gtmSbEnr">Enregistrer et synchroniser</button>':'')
+    +'<button type="button" class="secondary" id="gtmSbMaint">Synchroniser maintenant</button>'
+    +(regle?'<button type="button" class="secondary" id="gtmSbTout">Tout resynchroniser</button>':'')+'</div>'
+    +'<div id="gtmSbEtat" class="gtmSbEtat '+(etat?(etat.ok?'ok':'err'):'')+'">'+esc2(etat?etat.msg+' ('+new Date(etat.quand).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')':(config()?'Pas encore synchronisé sur cet appareil':'Non configurée'))+'</div>';
+  mod.insertBefore(s, mod.querySelector('#mainRestoreBackupBtn'));
+  var enr=document.getElementById('gtmSbEnr');
+  if(enr) enr.onclick=async function(){
+    var ancien=config()||{}, n={url:document.getElementById('gtmSbUrl').value.trim(), key:document.getElementById('gtmSbKey').value.trim(), login:document.getElementById('gtmSbLogin').value.trim(), pw:document.getElementById('gtmSbPw').value||ancien.pw||''};
+    if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(n.url)){ afficher('Adresse invalide : elle doit être du type https://xxxx.supabase.co','err'); return; }
+    if(!n.key||/^sb_secret_/i.test(n.key)||/service_role/i.test(n.key)){ afficher('Clé refusée : utilisez la clé « Publishable » (sb_publishable_…), jamais la clé secrète.','err'); return; }
+    if(!n.login||!n.pw){ afficher('Identifiant et mot de passe obligatoires.','err'); return; }
+    try{ await dms.set(CLE_CONFIG, JSON.stringify(n), 'Synchronisation CRM Supabase (lecture seule)', 'synchro'); }catch(e){ afficher('Enregistrement impossible : '+((e&&e.message)||e),'err'); return; }
+    jeton=null; document.getElementById('gtmSbPw').value=''; document.getElementById('gtmSbPw').placeholder='•••••••• (enregistré)';
+    await synchroniser({manuel:true, complet:true});
+  };
+  document.getElementById('gtmSbMaint').onclick=function(){ synchroniser({manuel:true}); };
+  var tout=document.getElementById('gtmSbTout'); if(tout) tout.onclick=function(){ if(confirm('Tout relire depuis le CRM Supabase ? (plus long, utile seulement en cas de doute)')) synchroniser({manuel:true, complet:true}); };
+}
+var css=document.createElement('style');
+css.textContent='.gtmSbGrille{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0}.gtmSbGrille label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted,#8a94a3)}.gtmSbGrille input{padding:9px 10px;border-radius:8px}.gtmSbBoutons{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 8px}.gtmSbEtat{font-size:12.5px;font-weight:600;color:var(--muted,#8a94a3)}.gtmSbEtat.ok{color:#1f9d6b}.gtmSbEtat.err{color:#e5484d}.gtmSbEtat.wait{color:#d79a1f}';
+document.head.appendChild(css);
+
+/* ---- déclenchement : à l'ouverture, toutes les 5 minutes, au retour sur l'écran ---- */
+function pret(){ try{ return typeof readArr==='function' && (typeof window.parent==='undefined' || !window.parent.gtmDonneesPretes || window.parent.gtmDonneesPretes('mgt_crm_clients')); }catch(e){ return true; } }
+function demarrer(){
+  var essais=0;
+  (function attendre(){ if(pret()||essais++>60){ carte(); if(config()) synchroniser(); setInterval(function(){ if(document.visibilityState!=='hidden') synchroniser(); }, INTERVALLE); } else setTimeout(attendre, 1000); })();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'&&Date.now()-derniere>2*60*1000) synchroniser(); });
+  new MutationObserver(function(){ if(!document.getElementById('gtmSbCarte')) carte(); }).observe(document.getElementById('settingsModule')||document.body,{childList:true});
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(demarrer, 2500); }); else setTimeout(demarrer, 2500);
+})();
+</script>
 </body>
 </html>
 

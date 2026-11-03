@@ -11,7 +11,8 @@
     "e2e-ventes": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-ventes.js\"",
     "e2e-rapports": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-rapports.js\"",
     "mesures": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mesures.js\"",
-    "csp": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node csp.js\""
+    "csp": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node csp.js\"",
+    "synchro": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node synchro-supabase.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
