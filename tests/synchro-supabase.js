@@ -18,7 +18,12 @@ const SB = {
     {id:'3', data:{ID:'3', Societe:'Gamma'}, updated_at:'2026-11-02T11:00:00+00:00', deleted_at:'2026-11-02T11:00:00+00:00'}],
   crm_history: [{id:'H1', entity_type:'CLIENT', entity_id:'4', event_type:'VISITE_COMMERCIALE', subject:'Visite Delta', _updated_at:'2026-11-02T12:05:00+00:00', _deleted_at:null}],
   crm_settings: [{key:'clients_last_sync', value:'x', updated_at:'2026-11-02T12:00:00+00:00'}, {key:'objectif_visites', value:'12', updated_at:'2026-11-02T12:00:00+00:00'}],
-  crm_tags: [{id:'T1', name:'VIP', color:'#f00'}], crm_history_tags: [{history_id:'H1', tag_id:'T1'}]
+  crm_tags: [{id:'T1', name:'VIP', color:'#f00'}], crm_history_tags: [{history_id:'H1', tag_id:'T1'}],
+  mgt_internal_tasks: [
+    {id:'I1', data:{id:'I1', type:'rapport', status:'En attente', objective:'Rapport mensuel', subs:[{id:'s1', text:'Chiffres', done:true}, {id:'s2', text:'Envoi', done:false}], updated:'2026-11-02T08:00:00Z', _dirty:1}, updated_at:'2026-11-02T08:00:00+00:00', deleted_at:null},
+    {id:'M1', data:{id:'M1', kind:'template', name:'Préparer une offre', type:'offre', items:['Visite', 'Chiffrage', 'Envoi']}, updated_at:'2026-11-02T08:30:00+00:00', deleted_at:null},
+    {id:'I2', data:{id:'I2', type:'appel', objective:'Version associé (ancienne)'}, updated_at:'2026-11-01T08:00:00+00:00', deleted_at:null},
+    {id:'I3', data:{id:'I3', type:'autre', objective:'Supprimée chez l\'associé'}, updated_at:'2026-11-02T09:00:00+00:00', deleted_at:'2026-11-02T09:00:00+00:00'}]
 };
 const appels = [];
 async function fauxSupabase(rt){
@@ -35,7 +40,7 @@ async function fauxSupabase(rt){
   const u = await admin.auth().createUser({email: 'sysadmin@tek-trend.app', password: MDP}), d = C.ROLES.sysadmin;
   const u2 = await admin.auth().createUser({email: 'technicomgt@tek-trend.app', password: MDP}), d2 = C.ROLES.technico_mgt;
   const locaux = [{ID:'1', Societe:'Alpha', _updated_at:'2026-11-01T10:00:00.000Z'}, {ID:'2', Societe:'Beta modifié dans GTM', _updated_at:'2026-11-03T12:00:00.000Z'}, {ID:'3', Societe:'Gamma'}];
-  await admin.database().ref('/groupe1').set({mgt: {mgt_crm_clients: J(locaux), mgt_crm_settings: J([{key:'objectif_visites', value:'5', updated_at:'2026-10-01T00:00:00Z'}, {key:'gtm_sb_config', value:JSON.stringify({url:'https://ancien.supabase.co', key:'sb_publishable_ancien', login:'ancien', pw:'ancien'}), updated_at:'2026-10-01T00:00:00Z'}])}, users_v2: {[u.uid]: {nom: d.label, username: 'sysadmin', role: d.role, profil: 'sysadmin', groupe: true, societes: d.societes}, [u2.uid]: {nom: d2.label, username: 'technicomgt', role: d2.role, profil: 'technico_mgt', groupe: false, societes: d2.societes}}});
+  await admin.database().ref('/groupe1').set({mgt: {mgt_crm_clients: J(locaux), mgt_crm_taches_internes: J([{id:'I2', type:'appel', objective:'Version GTM (récente)', updated:'2026-11-03T08:00:00Z'}, {id:'I3', type:'autre', objective:'À supprimer', updated:'2026-10-01T08:00:00Z'}]), mgt_crm_settings: J([{key:'objectif_visites', value:'5', updated_at:'2026-10-01T00:00:00Z'}, {key:'gtm_sb_config', value:JSON.stringify({url:'https://ancien.supabase.co', key:'sb_publishable_ancien', login:'ancien', pw:'ancien'}), updated_at:'2026-10-01T00:00:00Z'}])}, users_v2: {[u.uid]: {nom: d.label, username: 'sysadmin', role: d.role, profil: 'sysadmin', groupe: true, societes: d.societes}, [u2.uid]: {nom: d2.label, username: 'technicomgt', role: d2.role, profil: 'technico_mgt', groupe: false, societes: d2.societes}}});
   await fetch('http://127.0.0.1:9000/.settings/rules.json?ns=demo-gtm-groupe', {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8')});
   const s = serveur.demarrer(8790), b = await chromium.launch(), ctx = await b.newContext({serviceWorkers: 'block', viewport:{width:1280, height:900}});
   await ctx.route('https://test.supabase.co/**', fauxSupabase);
@@ -74,6 +79,12 @@ async function fauxSupabase(rt){
   r.push(['étiquettes et liens repris', tags.some(t => t.id === 'T1') && liens.some(l => l.history_id === 'H1')]);
   r.push(['réglage repris', regl.some(x => x.key === 'objectif_visites' && x.value === '12')]);
   r.push(['réglage de synchronisation de l\'associé ignoré', !regl.some(x => x.key === 'clients_last_sync')]);
+  const ti = lireArr(g.mgt_crm_taches_internes), parTi = Object.fromEntries(ti.map(x => [x.id, x]));
+  r.push(['tâche interne de l\'associé reprise avec ses sous-tâches', parTi.I1 && parTi.I1.subs && parTi.I1.subs.length === 2 && !('_dirty' in parTi.I1)]);
+  r.push(['modèle de tâche repris', parTi.M1 && parTi.M1.kind === 'template' && parTi.M1.items.length === 3]);
+  r.push(['tâche interne plus récente dans GTM conservée', parTi.I2 && parTi.I2.objective === 'Version GTM (récente)']);
+  r.push(['tâche interne supprimée chez l\'associé retirée', !parTi.I3]);
+  r.push(['modèle absent de la liste des tâches', await fr.evaluate(() => { const l = window.__tkIntActions ? window.__tkIntActions() : []; return l.some(a => a._int.id === 'I1') && !l.some(a => a._int.id === 'M1'); })]);
   r.push(['mot de passe absent du code de la page', !(await fr.content()).includes('Secret123')]);
   r.push(['compte Supabase absent de Firebase', !JSON.stringify((await admin.database().ref('/groupe1').once('value')).val()).includes('Secret123')]);
   // 2e synchronisation : seulement le nouveau

@@ -5828,8 +5828,8 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
    - Optimisé : seules les lignes modifiées depuis la dernière fois sont demandées (date de modification),
      et la base Firebase n'est réécrite qu'en UNE fois, seulement s'il y a du nouveau.
    - Fusion : pour chaque fiche, la version la plus récente gagne (Supabase ou GTM).
-   - Tables : mgt_clients (fiches complètes : offres, planning, factures…), crm_history, crm_settings,
-     crm_tags, crm_history_tags. Les comptes, rôles et équipes de son CRM ne sont pas repris (GTM a les siens).
+   - Tables : mgt_clients (fiches complètes : offres, planning, factures, sous-tâches…), crm_history, crm_settings,
+     crm_tags, crm_history_tags, mgt_internal_tasks (tâches internes et modèles de tâches). Les comptes, rôles et équipes de son CRM ne sont pas repris (GTM a les siens).
    ===================================================================== */
 (function(){
 'use strict';
@@ -5943,7 +5943,7 @@ async function synchroniser(opts){
   if(enCours) return {ok:false, msg:'Synchronisation déjà en cours'};
   if(navigator.onLine===false) return {ok:false, msg:'Hors ligne'};
   enCours=true; afficher('Synchronisation en cours…','wait');
-  var cur=opts.complet?{}:(lireLocal(CLE_CURSEUR)||{}), res={clients:0, supprimes:0, historique:0, etiquettes:0, reglages:0};
+  var cur=opts.complet?{}:(lireLocal(CLE_CURSEUR)||{}), res={clients:0, supprimes:0, historique:0, etiquettes:0, reglages:0, taches:0};
   try{
     /* 1. fiches clients (seulement celles modifiées depuis la dernière fois) */
     var cl=await lire(c,'mgt_clients','updated_at',filtreDepuis('updated_at',cur.clients));
@@ -5972,10 +5972,29 @@ async function synchroniser(opts){
       if(fr.n&&peutRegler()){ await writeArr('crm_settings',fr.arr); res.reglages=fr.n; }
       cur.reglages=rg.reduce(function(m,r){return tsMax(m,r.updated_at);},cur.reglages||'');
     }
+    /* 5. tâches internes et modèles de tâches (table mgt_internal_tasks -> tâches internes du CRM de GTM) */
+    var ti=await lire(c,'mgt_internal_tasks','updated_at',filtreDepuis('updated_at',cur.taches));
+    if(ti&&ti.length){
+      var h=window.parent, liste=[];
+      if(h&&h.gtmDonneesPretes&&!h.gtmDonneesPretes('mgt_crm_taches_internes')) throw new Error('Tâches internes pas encore chargées, nouvel essai à la prochaine synchronisation.');
+      try{ liste=((h&&h.getJSON)?h.getJSON('mgt_crm_taches_internes',[]):[])||[]; }catch(e){ liste=[]; }
+      liste=Array.isArray(liste)?liste.slice():[];
+      var nt=0, index=function(){var m={};liste.forEach(function(x,j){if(x&&x.id)m[x.id]=j;});return m;}, par=index();
+      ti.forEach(function(row){
+        var i=par[row.id], loc=i!==undefined?liste[i]:null, tLoc=loc?Math.max(t(loc.updated),t(loc._sb_updated_at)):0;
+        if(row.deleted_at){ if(loc&&t(row.deleted_at)>tLoc){ liste.splice(i,1); par=index(); nt++; } return; }
+        if(loc&&t(row.updated_at)<=tLoc) return;
+        var x=Object.assign({},row.data||{},{id:row.id,_sb_updated_at:row.updated_at}); delete x._dirty; delete x._srv; if(!x.updated) x.updated=row.updated_at;
+        if(i!==undefined) liste[i]=x; else { par[row.id]=liste.length; liste.push(x); }
+        nt++;
+      });
+      if(nt){ var okT=h&&h.setJSON?h.setJSON('mgt_crm_taches_internes',liste):false; if(okT===false) throw new Error('Tâches internes : enregistrement refusé.'); res.taches=nt; }
+      cur.taches=ti.reduce(function(m,r){return tsMax(m,r.updated_at);},cur.taches||'');
+    }
     ecrireLocal(CLE_CURSEUR,cur); derniere=Date.now();
-    var total=res.clients+res.supprimes+res.historique+res.etiquettes+res.reglages;
+    var total=res.clients+res.supprimes+res.historique+res.etiquettes+res.reglages+res.taches;
     if(total) await rafraichir();
-    var msg=total?('À jour — '+[res.clients?res.clients+' fiche(s) client':'',res.supprimes?res.supprimes+' suppression(s)':'',res.historique?res.historique+' action(s) d\'historique':'',res.etiquettes?res.etiquettes+' étiquette(s)':'',res.reglages?res.reglages+' réglage(s)':''].filter(Boolean).join(', ')):'À jour — rien de nouveau';
+    var msg=total?('À jour — '+[res.clients?res.clients+' fiche(s) client':'',res.supprimes?res.supprimes+' suppression(s)':'',res.historique?res.historique+' action(s) d\'historique':'',res.etiquettes?res.etiquettes+' étiquette(s)':'',res.reglages?res.reglages+' réglage(s)':'',res.taches?res.taches+' tâche(s) interne(s) ou modèle(s)':''].filter(Boolean).join(', ')):'À jour — rien de nouveau';
     var etat={ok:true, msg:msg, quand:new Date().toISOString(), res:res}; ecrireLocal(CLE_ETAT,etat); afficher(msg,'ok');
     if(total&&opts.manuel&&typeof toast==='function') toast('Synchronisation : '+msg.replace('À jour — ',''));
     return etat;
@@ -5991,6 +6010,7 @@ async function rafraichir(){
   try{ if(typeof dmh!=='undefined') window._historyCache=await dmh.getAll(); }catch(e){}
   try{ if(typeof dms!=='undefined'){ dms._ready=false; await dms.init(); } }catch(e){}
   try{ if(typeof refreshFilters==='function') refreshFilters(); if(typeof updateStats==='function') updateStats(); if(typeof render==='function') render(); }catch(e){}
+  try{ if(typeof window.renderTaskReminders==='function') window.renderTaskReminders(); }catch(e){}
 }
 window.gtmSbSynchroniser=synchroniser;
 
@@ -6041,6 +6061,82 @@ function demarrer(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(demarrer, 2500); }); else setTimeout(demarrer, 2500);
 })();
 </script>
+<style id="mgt-v467-t4-css">
+#tkSubSheet,#tkTplPick{position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;--sb:#fff;--sf:#1b2433;--sm:#566377;--sl:#d3dae4;--ss:#eef2f7}
+#tkTplPick{z-index:99200}
+html[data-mgt-theme="dark"] #tkSubSheet,html[data-mgt-theme="dark"] #tkTplPick{--sb:#171c24;--sf:#eef2f8;--sm:#a6b1c2;--sl:#303947;--ss:#232b37}
+.tsBox{width:100%;max-width:560px;max-height:88vh;overflow:auto;box-sizing:border-box;background:var(--sb);color:var(--sf);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+.tsHead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
+.tsSub{font-size:12px;color:var(--sm);margin:6px 0}
+.tsBar{height:10px;border-radius:6px;background:var(--ss);overflow:hidden;margin:6px 0 10px}
+.tsBar i{display:block;height:100%;width:0;background:#16a34a;transition:width .2s}
+.tsRow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--sl)}
+.tsRow.done .tsTxt{text-decoration:line-through;color:var(--sm)}
+.tsTxt{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px}
+.tsAdd{display:flex;gap:8px;margin:10px 0}
+.tsAdd textarea{flex:1;min-width:0;box-sizing:border-box;min-height:48px;padding:8px 10px;font-size:15px;font-family:inherit;resize:vertical;border-radius:10px;border:1px solid var(--sl)!important;background:var(--ss)!important;color:var(--sf)!important}
+.tsBtns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.tsTpl{display:flex;gap:8px;margin:6px 0}
+.tsBox button{all:unset;box-sizing:border-box;min-height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;background:var(--ss)!important;color:var(--sf)!important;border:1px solid var(--sl)!important}
+.tsBox button.ok{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+.tsBox .tsChk{min-width:44px;font-size:22px}
+.tsBox .tsMv{min-width:36px;padding:0 6px}
+.tsBox button[disabled]{opacity:.3}
+.tsRow .tsTxt{cursor:pointer}
+.tsBox .tsPick{flex:1;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:8px 12px;text-align:left}
+.tsBox .tsPick span{font-size:11px;font-weight:600;color:var(--sm)}
+#tsDone{margin-top:8px}
+#tsDone button{width:100%}
+</style>
+
+<!-- Sous-tâches et modèles de tâches : repris du CRM de l'associé (V4.6.7.T4), adapté à GTM (enregistrement via Firebase). -->
+<script id="mgt-v467-t4-js">
+(function(){'use strict';
+var BUILTIN=[
+{id:'B-offre',name:'Offre client',type:'offre',items:['Établir le devis','Vérifier les prix et les conditions','Générer le PDF','Envoyer au client','Relancer dans 7 jours']},
+{id:'B-rapport',name:'Rapport',type:'rapport',items:['Collecter les chiffres','Rédiger le rapport','Relecture','Envoyer']},
+{id:'B-mailing',name:'Mailing',type:'mailing',items:['Choisir la cible','Rédiger le message','Faire valider','Envoyer','Suivre les réponses']},
+{id:'B-presentation',name:'Présentation',type:'presentation',items:['Définir le plan','Préparer les diapositives','Relecture','Envoyer ou présenter']}];
+function say(m){try{toast(m);}catch(e){}}
+function uid(){return 'S'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function can(act){try{if(typeof window.CRM_CAN==='function'&&!window.CRM_CAN('communication',act)){say('Droit insuffisant.');return false;}}catch(e){}return true;}
+function ctxOf(a){if(a._from==='internal')return{k:'int',id:a._int.id,label:'Tâche interne',type:a.type||'autre',status:a.status};var eid=String(a.eventId);if(eid.indexOf('auto-')===0||eid.indexOf('manual-')===0)return null;return{k:'cli',cid:String(a.client[fields.id]),eid:eid,label:String(a.client[fields.name]||''),type:a.type||'autre',status:a.status};}
+function clientOf(x){return (typeof CLIENTS!=='undefined'?CLIENTS:[]).filter(function(c){return String(c[fields.id])===x.cid;})[0];}
+function getSubs(x){if(x.k==='int')return window.__tkInt.getSubs(x.id);var c=clientOf(x),m=c&&c.TaskSubs;return m&&Array.isArray(m[x.eid])?m[x.eid].slice():[];}
+async function setSubs(x,subs){if(x.k==='int'){if(!(await window.__tkInt.setSubs(x.id,subs)))throw new Error('tâche introuvable ou enregistrement refusé');return;}var c=clientOf(x);if(!c)throw new Error('fiche introuvable');var m=Object.assign({},c.TaskSubs||{});if(subs.length)m[x.eid]=subs;else delete m[x.eid];var ok=await dm.updateClient(String(c[fields.id]),{TaskSubs:m});if(!ok)throw new Error('enregistrement refusé');await rebuildClientCache();}
+function label(a){try{var x=ctxOf(a);if(!x)return '☑';var s=getSubs(x);if(!s.length)return '☑';var d=s.filter(function(i){return i.done;}).length;return '☑ '+d+'/'+s.length;}catch(e){return '☑';}}
+function allTemplates(){var c=[];try{c=window.__tkInt.templates();}catch(e){}return BUILTIN.map(function(b){return Object.assign({custom:false},b);}).concat(c);}
+function pickTemplate(cb){var old=document.getElementById('tkTplPick');if(old)old.remove();var m=document.createElement('div');m.id='tkTplPick';var T=allTemplates();
+m.innerHTML='<div class="tsBox"><div class="tsHead"><strong>Choisir un modèle</strong><button type="button" data-x="1">Fermer</button></div>'+T.map(function(t,i){return'<div class="tsTpl"><button type="button" class="tsPick" data-i="'+i+'"><b>'+esc(t.name)+'</b><span>'+t.items.length+' étape(s)'+(t.custom?' · modèle de l’équipe':'')+'</span></button>'+(t.custom?'<button type="button" data-del="'+i+'" title="Supprimer ce modèle">🗑</button>':'')+'</div>';}).join('')+'</div>';
+document.body.appendChild(m);m.onclick=function(e){var t=e.target;if(t===m||t.closest('[data-x]')){m.remove();return;}var d=t.closest('[data-del]');if(d){var tp=T[+d.dataset.del];if(tp&&confirm('Supprimer le modèle « '+tp.name+' » pour toute l’équipe ?')){window.__tkInt.deleteTemplate(tp.id).then(function(ok){if(ok){m.remove();pickTemplate(cb);}});}return;}var p=t.closest('[data-i]');if(p){var tp2=T[+p.dataset.i];m.remove();if(tp2)cb(tp2);}};}
+function openSubs(a){var x=ctxOf(a);if(!x){say('Tâche automatique non enregistrée : changez son état ou modifiez-la d’abord pour ajouter des sous-tâches.');return;}
+var old=document.getElementById('tkSubSheet');if(old)old.remove();var m=document.createElement('div');m.id='tkSubSheet';
+m.innerHTML='<div class="tsBox"><div class="tsHead"><strong>Sous-tâches</strong><button type="button" data-x="1">Fermer</button></div><div class="tsSub" id="tsInfo"></div><div class="tsBar"><i id="tsFill"></i></div><div id="tsList"></div>'
++'<div class="tsAdd"><textarea id="tsNew" rows="2" placeholder="Nouvelle étape (une par ligne pour en ajouter plusieurs)" maxlength="1500"></textarea><button type="button" id="tsAdd" class="ok">Ajouter</button></div>'
++'<div class="tsBtns"><button type="button" id="tsTpl">📋 Appliquer un modèle</button><button type="button" id="tsSave">💾 Enregistrer comme modèle</button></div><div id="tsDone"></div></div>';
+document.body.appendChild(m);var list=m.querySelector('#tsList'),info=m.querySelector('#tsInfo'),fill=m.querySelector('#tsFill'),doneBox=m.querySelector('#tsDone');var busy=false;
+function paint(){var s=getSubs(x),d=s.filter(function(i){return i.done;}).length;info.textContent=(x.label||'')+' · '+(s.length?d+' / '+s.length+' faite(s)':'Aucune sous-tâche');fill.style.width=s.length?Math.round(d*100/s.length)+'%':'0%';
+list.innerHTML=s.map(function(i,n){return'<div class="tsRow'+(i.done?' done':'')+'"><button type="button" class="tsChk" data-t="'+n+'" aria-label="Cocher">'+(i.done?'☑':'☐')+'</button><span class="tsTxt" data-e="'+n+'" title="Toucher pour modifier">'+esc(i.t)+'</span><button type="button" class="tsMv" data-u="'+n+'" title="Monter"'+(n?'':' disabled')+'>▲</button><button type="button" class="tsMv" data-d="'+n+'" title="Descendre"'+(n<s.length-1?'':' disabled')+'>▼</button><button type="button" data-r="'+n+'" title="Retirer">✖</button></div>';}).join('');
+var cur=(window.__tkInt&&x.k==='int')?(window.__tkInt.get(x.id)||{}).status:a.status;doneBox.innerHTML=(s.length&&d===s.length&&cur!=='Termine'&&cur!=='Archive')?'<button type="button" id="tsFinish" class="ok">✅ Tout est coché : marquer la tâche terminée</button>':'';}
+paint();
+async function commit(next){if(busy)return;if(!can('edit'))return;busy=true;try{await setSubs(x,next);}catch(e){say('Enregistrement impossible : '+((e&&e.message)||e));}finally{busy=false;paint();try{renderTaskReminders();}catch(e2){}}}
+function addItems(txts){var s=getSubs(x),have={};s.forEach(function(i){have[String(i.t).trim().toLowerCase()]=1;});var n=0;txts.forEach(function(t){t=String(t||'').trim();if(!t||have[t.toLowerCase()])return;have[t.toLowerCase()]=1;s.push({id:uid(),t:t,done:false});n++;});if(n)commit(s);return n;}
+m.querySelector('#tsAdd').onclick=function(){var i=m.querySelector('#tsNew');var n=addItems(String(i.value||'').split(/\n|;/));if(n>1)say(n+' étapes ajoutées.');i.value='';i.focus();};
+m.querySelector('#tsNew').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();m.querySelector('#tsAdd').click();}};
+m.querySelector('#tsTpl').onclick=function(){pickTemplate(function(tp){var n=addItems(tp.items);say(n?n+' étape(s) ajoutée(s).':'Ces étapes existent déjà.');});};
+m.querySelector('#tsSave').onclick=function(){var s=getSubs(x);if(!s.length){say('Ajoutez d’abord des sous-tâches.');return;}if(!can('create'))return;var nm=prompt('Nom du modèle (visible par toute l’équipe) :',x.label&&x.k==='int'?'':'');if(!nm||!nm.trim())return;window.__tkInt.saveTemplate({name:nm,type:x.type,items:s.map(function(i){return i.t;})}).then(function(ok){say(ok?'Modèle « '+nm.trim()+' » enregistré.':'Enregistrement du modèle impossible.');});};
+m.onclick=function(e){var t=e.target;if(t===m||t.closest('[data-x]')){m.remove();return;}
+var c=t.closest('[data-t]'),r=t.closest('[data-r]'),ed=t.closest('[data-e]'),up=t.closest('[data-u]'),dn=t.closest('[data-d]');
+if(ed){var s3=getSubs(x),i3=+ed.dataset.e;if(s3[i3]){var nt=prompt('Modifier l’étape :',s3[i3].t);if(nt!==null&&nt.trim()){s3[i3].t=nt.trim();commit(s3);}}}
+else if(up&&!up.disabled){var s4=getSubs(x),i4=+up.dataset.u;if(i4>0){var tmp=s4[i4-1];s4[i4-1]=s4[i4];s4[i4]=tmp;commit(s4);}}
+else if(dn&&!dn.disabled){var s5=getSubs(x),i5=+dn.dataset.d;if(i5<s5.length-1){var tmp2=s5[i5+1];s5[i5+1]=s5[i5];s5[i5]=tmp2;commit(s5);}}
+else if(c){var s=getSubs(x);s[+c.dataset.t].done=!s[+c.dataset.t].done;commit(s);}
+else if(r){var s2=getSubs(x);s2.splice(+r.dataset.r,1);commit(s2);}
+else if(t.closest('#tsFinish')){var id=x.k==='int'?'int-'+x.id:x.eid;m.remove();try{window.__tk.patch(id,{status:'Termine'});}catch(e2){say('Changement d’état impossible.');}}};}
+window.__tkSubs={label:label,open:openSubs,pickTemplate:pickTemplate};
+})();
+</script>
+
 </body>
 </html>
 
@@ -9276,7 +9372,8 @@ function auj(){return dateToInput(new Date());}
 function qui(){try{return syncUser()||'';}catch(e){return '';}}
 function versAction(t){var c={};c[fields.id]='__INTERNE__';c[fields.name]='Interne MGT';
   return{client:c,eventId:'int-'+t.id,_from:'internal',_int:t,source:'interne',type:t.type,priority:t.priority,status:t.status,date:t.date||'',objective:t.objective||'',commercial:t.commercial||'',startTime:t.startTime||'',endTime:t.endTime||'',dueDate:t.dueDate||'',doneAt:t.doneAt||''};}
-window.__tkIntActions=function(){return charger().map(versAction);};
+function visible(t){return !!(t&&t.id&&!t.deleted&&t.kind!=='template');}
+window.__tkIntActions=function(){return charger().filter(visible).map(versAction);};
 function libelle(a){if(a._from!=='internal')return a.type||'Tâche';var c=CATS.filter(function(x){return x[0]===a.type;})[0];return c?c[1].replace(/^\S+\s/,''):(a.type||'Tâche');}
 function appliquer(t,f){var fini=f.status==='Termine',etait=t.status==='Termine';f=Object.assign({},f);
   if(fini&&!etait){f.dueDate=t.dueDate||t.date||'';f.date=auj();f.doneAt=auj();}
@@ -9295,11 +9392,26 @@ var INT=window.__tkInt={label:libelle,
     if(await enregistrer(charger().filter(function(x){return x.id!==a._int.id;}))){rafraichir(true);return true;}return false;},
   edit:function(t){formulaire(t);},
   chooser:function(){fermerTout();var m=document.createElement('div');m.id='tkMenu';
-    m.innerHTML='<div class="tkMenuBox" role="dialog" aria-modal="true" aria-label="Nouvelle tâche"><div class="tkMenuTitle">Nouvelle tâche</div><button type="button" data-k="client">👤 Tâche client (visite, offre, rappel…)</button><button type="button" data-k="int">🏢 Tâche interne (sans client)</button><button type="button" data-k="exp">⬇️ Exporter les tâches internes</button><button type="button" data-k="imp">⬆️ Importer des tâches internes (fichier)</button><button type="button" data-x="1" class="tkMenuX">Annuler</button></div>';
+    m.innerHTML='<div class="tkMenuBox" role="dialog" aria-modal="true" aria-label="Nouvelle tâche"><div class="tkMenuTitle">Nouvelle tâche</div><button type="button" data-k="client">👤 Tâche client (visite, offre, rappel…)</button><button type="button" data-k="int">🏢 Tâche interne (sans client)</button><button type="button" data-k="tpl">📋 Tâche interne à partir d’un modèle</button><button type="button" data-k="exp">⬇️ Exporter les tâches internes</button><button type="button" data-k="imp">⬆️ Importer des tâches internes (fichier)</button><button type="button" data-x="1" class="tkMenuX">Annuler</button></div>';
     ouvrirFeuille(m);
-    m.onclick=function(e){var b=e.target.closest('[data-k]');if(b){var k=b.dataset.k;fermerTout();if(k==='client')openEventEditor(null);else if(k==='int')formulaire(null);else if(k==='exp')exporter();else importer();}else if(e.target===m||e.target.closest('[data-x]'))fermerTout();};}};
-function formulaire(t){fermerTout();var nouveau=!t;
-  t=t||{id:'I'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),type:'rapport',priority:'Moyenne',status:'En attente',date:auj(),objective:'',commercial:qui(),startTime:'',endTime:''};
+    m.onclick=function(e){var b=e.target.closest('[data-k]');if(b){var k=b.dataset.k;fermerTout();if(k==='client')openEventEditor(null);else if(k==='int')formulaire(null);else if(k==='tpl'){if(window.__tkSubs)window.__tkSubs.pickTemplate(function(tp){INT.newFromTemplate(tp);});}else if(k==='exp')exporter();else importer();}else if(e.target===m||e.target.closest('[data-x]'))fermerTout();};}};
+/* Sous-tâches et modèles (repris du CRM de l'associé, V4.6.7.T4) : sous-tâches d'une tâche interne dans t.subs ;
+   modèles = éléments {kind:'template', name, type, items:[…]} de la même liste (partagés par toute l'équipe). */
+Object.assign(INT,{
+  get:function(id){return charger().filter(function(x){return x.id===id;})[0]||null;},
+  getSubs:function(id){var t=INT.get(id);return t&&Array.isArray(t.subs)?copie(t.subs):[];},
+  setSubs:async function(id,subs){var l=charger(),t=l.filter(function(x){return x.id===id;})[0];if(!t)return false;if(subs.length)t.subs=subs;else delete t.subs;t.updated=new Date().toISOString();t.updatedBy=qui();if(await enregistrer(l)){rafraichir(true);return true;}return false;},
+  templates:function(){return charger().filter(function(t){return t.kind==='template'&&!t.deleted;}).map(function(t){return Object.assign({},t,{custom:true,items:Array.isArray(t.items)?t.items:[]});});},
+  saveTemplate:async function(tp){if(!droit('create'))return false;var l=charger(),k=String(tp.name||'').trim().toLowerCase(),now=new Date().toISOString();
+    var ex=l.filter(function(t){return t.kind==='template'&&!t.deleted&&String(t.name||'').trim().toLowerCase()===k;})[0];
+    if(ex){ex.type=tp.type;ex.items=tp.items;ex.updated=now;ex.updatedBy=qui();}
+    else l.push({id:'T'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),kind:'template',name:String(tp.name).trim(),type:tp.type||'autre',items:tp.items||[],created:now,updated:now,addedBy:qui()});
+    return await enregistrer(l);},
+  deleteTemplate:async function(id){if(!droit('delete'))return false;var l=charger();if(!l.some(function(x){return x.id===id&&x.kind==='template';}))return false;return await enregistrer(l.filter(function(x){return x.id!==id;}));},
+  newFromTemplate:function(tp){formulaire(null,{type:tp.type||'autre',objective:tp.name||'',subs:(tp.items||[]).map(function(x,i){return{id:'S'+Date.now().toString(36)+i+Math.random().toString(36).slice(2,4),t:x,done:false};})});}
+});
+function formulaire(t,pre){fermerTout();var nouveau=!t;
+  t=t||Object.assign({id:'I'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),type:'rapport',priority:'Moyenne',status:'En attente',date:auj(),objective:'',commercial:qui(),startTime:'',endTime:''},pre||{});
   var m=document.createElement('div');m.id='tkIntModal';
   m.innerHTML='<div class="tkIntBox" role="dialog" aria-modal="true"><div class="tkIntHead"><strong>'+(nouveau?'Nouvelle tâche interne':'Tâche interne')+'</strong><button type="button" data-x="1">Fermer</button></div><div class="tkIntBody">'
   +'<label>Catégorie<select id="tkiType">'+options(CATS,t.type)+'</select></label>'
@@ -9353,6 +9465,7 @@ function preparer(){var list=document.getElementById('taskReminderList');if(!lis
   document.getElementById('tkCat').addEventListener('change',function(){LIM=60;dessiner();});
   list.addEventListener('click',function(e){
     if(e.target.closest('#tkMore')){LIM+=60;dessiner();return;}
+    var sx=e.target.closest('[data-tk-subs]');if(sx){var sa=calendarActionMap[sx.dataset.tkSubs];if(sa&&window.__tkSubs)window.__tkSubs.open(sa);return;}
     var c=e.target.closest('[data-tk-cycle]'),r=e.target.closest('[data-tk-report]'),o=e.target.closest('[data-tk-open]'),dx=e.target.closest('[data-tk-del]');
     if(dx)supprimer(dx.dataset.tkDel);
     else if(c)menuEtat(c.dataset.tkCycle);
@@ -9408,7 +9521,7 @@ function dessiner(){var list=document.getElementById('taskReminderList');if(!lis
     +'<div class="tkBody" data-tk-open="'+id+'"><div class="tkTop"><span title="Importance">'+x.im.i+'</span><span>'+ico(a)+'</span><strong>'+esc(libelle(a))+'</strong><span class="tkClient">· '+esc((a.client&&a.client[fields.name])||'-')+'</span></div>'
     +(a.objective?'<div class="tkObj">'+esc(a.objective)+'</div>':'')+previewImageHtml(a.photoName,a.photoData)
     +'<div class="tkMeta">'+esc(echeance(a,x.d,x.s))+' · '+esc(x.s.l)+(actionCommercial(a)?' · '+esc(actionCommercial(a)):'')+(auto?' · automatique':'')+'</div></div>'
-    +'<div class="tkAct">'+(x.s.k==='done'||x.s.k==='archive'?'':'<button type="button" data-tk-report="'+id+'" title="Reporter de 7 jours">↻ +7 j</button>')+'<button type="button" class="tkDel" data-tk-del="'+id+'" title="Supprimer" aria-label="Supprimer la tâche">🗑</button></div></div>';}).join('')||'<div class="empty">Rien dans cette vue.</div>';
+    +'<div class="tkAct">'+(x.s.k==='done'||x.s.k==='archive'?'':'<button type="button" data-tk-report="'+id+'" title="Reporter de 7 jours">↻ +7 j</button>')+'<button type="button" class="tkSubs" data-tk-subs="'+id+'" title="Sous-tâches" aria-label="Sous-tâches">'+esc(window.__tkSubs?window.__tkSubs.label(a):'☑')+'</button><button type="button" class="tkDel" data-tk-del="'+id+'" title="Supprimer" aria-label="Supprimer la tâche">🗑</button></div></div>';}).join('')||'<div class="empty">Rien dans cette vue.</div>';
   if(v.length>LIM)list.insertAdjacentHTML('beforeend','<button type="button" id="tkMore">Afficher plus ('+(v.length-LIM)+' restantes)</button>');}
 var signature='';
 function rafraichir(force){signature=JSON.stringify(charger());if(force||ecranVisible())dessiner();}
