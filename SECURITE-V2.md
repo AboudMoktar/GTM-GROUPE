@@ -108,7 +108,7 @@ Sites autorisés et pourquoi :
 | Directive | Sites | Raison |
 | --- | --- | --- |
 | `script-src` | `www.gstatic.com`, `cdnjs.cloudflare.com`, `*.firebasedatabase.app`, `apis.google.com` | SDK Firebase ; Excel (xlsx, exceljs) ; Firebase en « long polling » quand le WebSocket est bloqué ; connexion Firebase sur téléphone (chargeur Google) |
-| `connect-src` | `blob:`, `*.firebasedatabase.app` (https et wss), `identitytoolkit` et `securetoken.googleapis.com`, `www.gstatic.com`, `cdnjs`, `apis.google.com`, `*.supabase.co` | téléchargements (Excel, PDF), base, connexion des comptes, cache hors ligne ; lecture du CRM Supabase de l'associé (synchronisation MGT, sens unique, réglée dans Paramètres du CRM : adresse et compte jamais dans le code) |
+| `connect-src` | `blob:`, `*.firebasedatabase.app` (https et wss), `identitytoolkit` et `securetoken.googleapis.com`, `www.gstatic.com`, `cdnjs`, `apis.google.com`, `*.supabase.co` | téléchargements (Excel, PDF), base, connexion des comptes, cache hors ligne ; lecture du CRM Supabase de l'associé (synchronisation MGT, sens unique, réservée au compte Administrateur / Développeur ; adresse et compte enregistrés sur son appareil seulement, jamais dans Firebase ni dans le code) |
 | `frame-src` | `gtm-groupe.firebaseapp.com`, `tek-trend-35778.firebaseapp.com`, `*.firebasedatabase.app` | cadre invisible de connexion Firebase sur téléphone (et pour l'ancien projet, module de transfert) ; long polling |
 | `style-src` / `font-src` | `fonts.googleapis.com` / `fonts.gstatic.com` | polices |
 | `img-src` | `data:`, `blob:` | logos intégrés, impressions |

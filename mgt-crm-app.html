@@ -5821,8 +5821,9 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
    SYNCHRONISATION : CRM Supabase (application de l'associé) -> CRM MGT de GTM (Firebase)
    ---------------------------------------------------------------------
    Sens unique : on LIT Supabase, on n'y écrit jamais.
-   - Réglages (Paramètres › Synchronisation) : adresse du projet, clé publique, identifiant et mot de passe
-     d'un compte de son CRM. Enregistrés dans les réglages du CRM (Firebase), jamais dans le code.
+   - Réservé au compte Administrateur / Développeur (sysadmin) : lui seul voit le réglage et lance la synchronisation.
+   - Réglages (Paramètres › Synchronisation) : adresse du projet, clé publique, identifiant et mot de passe d'un compte
+     de son CRM, enregistrés sur l'appareil de l'administrateur seulement (jamais dans Firebase, jamais dans le code).
    - Quand : à l'ouverture du CRM, puis toutes les 5 minutes tant qu'il est ouvert, et au retour sur l'écran.
    - Optimisé : seules les lignes modifiées depuis la dernière fois sont demandées (date de modification),
      et la base Firebase n'est réécrite qu'en UNE fois, seulement s'il y a du nouveau.
@@ -5832,7 +5833,8 @@ html[data-mgt-theme="light"] #clientModule .mgt45Quick.active{background:rgba(23
    ===================================================================== */
 (function(){
 'use strict';
-var CLE_CONFIG='gtm_sb_config';                 /* réglages partagés (Firebase) */
+var CLE_CONFIG='gtm_sb_config';                 /* ancien emplacement (réglages partagés Firebase) : migré puis effacé */
+var CLE_CONFIG_LOCAL='gtm_sb_config_v1';        /* compte Supabase : sur les appareils de l'administrateur seulement */
 var CLE_CURSEUR='gtm_sb_curseurs_v1';           /* curseurs : sur cet appareil seulement */
 var CLE_ETAT='gtm_sb_etat_v1';                  /* dernier résultat : sur cet appareil */
 var PAGE=1000, INTERVALLE=5*60*1000;
@@ -5842,9 +5844,25 @@ var enCours=false, jeton=null, jetonFin=0, derniere=0;
 
 function lireLocal(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
 function ecrireLocal(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+/* Réservé au compte Administrateur / Développeur (profil sysadmin) : les autres comptes ne voient
+   ni le réglage ni le compte Supabase, et ne lancent aucune synchronisation. */
+function estAdministrateur(){ try{ var u=window.parent&&typeof window.parent.gtmCompteCourant==='function'&&window.parent.gtmCompteCourant(); return !!(u&&u.profil==='sysadmin'); }catch(e){ return false; } }
+var migrationFaite=false;
 function config(){
-  try{var v=(typeof dms!=='undefined')?dms._cache[CLE_CONFIG]:undefined; if(v===undefined){var r=readArr('crm_settings').find(function(s){return s.key===CLE_CONFIG;}); v=r?r.value:undefined;}
-    var c=v?JSON.parse(v):null; return (c&&c.url&&c.key&&c.login&&c.pw)?c:null;}catch(e){return null;}
+  if(!estAdministrateur()) return null;
+  var c=lireLocal(CLE_CONFIG_LOCAL);
+  if(!(c&&c.url&&c.key&&c.login&&c.pw)){
+    /* ancien réglage enregistré dans les réglages partagés : copié sur cet appareil */
+    try{ var v=(typeof dms!=='undefined')?dms._cache[CLE_CONFIG]:undefined; if(v===undefined){ var r=readArr('crm_settings').find(function(x){return x.key===CLE_CONFIG;}); v=r?r.value:undefined; } if(v){ c=JSON.parse(v); ecrireLocal(CLE_CONFIG_LOCAL,c); } }catch(e){}
+  }
+  effacerAncien();
+  return (c&&c.url&&c.key&&c.login&&c.pw)?c:null;
+}
+/* retire le compte Supabase des réglages partagés (lisibles par les autres comptes MGT) */
+function effacerAncien(){
+  if(migrationFaite) return; 
+  try{ if(!readArr('crm_settings').some(function(x){return x.key===CLE_CONFIG;})){ migrationFaite=true; return; } }catch(e){ return; }
+  migrationFaite=true; try{ if(typeof dms!=='undefined') dms.delete(CLE_CONFIG).catch(function(){ migrationFaite=false; }); }catch(e){ migrationFaite=false; }
 }
 function peutEcrire(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('clients','edit');}catch(e){return true;}}
 function peutRegler(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('settings','edit');}catch(e){return true;}}
@@ -5921,7 +5939,7 @@ function fusionLiens(lignes){
 async function synchroniser(opts){
   opts=opts||{};
   var c=config(); if(!c) return {ok:false, msg:'Synchronisation non configurée'};
-  if(!peutEcrire()) return {ok:false, msg:'Profil en consultation : pas de synchronisation depuis ce compte'};
+  if(!estAdministrateur()) return {ok:false, msg:'Synchronisation réservée à l\'administrateur'};
   if(enCours) return {ok:false, msg:'Synchronisation déjà en cours'};
   if(navigator.onLine===false) return {ok:false, msg:'Hors ligne'};
   enCours=true; afficher('Synchronisation en cours…','wait');
@@ -5980,10 +5998,10 @@ window.gtmSbSynchroniser=synchroniser;
 function esc2(s){return String(s==null?'':s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function afficher(msg,cls){var el=document.getElementById('gtmSbEtat'); if(el){el.textContent=msg; el.className='gtmSbEtat '+(cls||'');}}
 function carte(){
-  var mod=document.getElementById('settingsModule'); if(!mod||document.getElementById('gtmSbCarte')) return;
-  var c=config()||{}, etat=lireLocal(CLE_ETAT), regle=peutRegler();
+  var mod=document.getElementById('settingsModule'); if(!mod||document.getElementById('gtmSbCarte')||!estAdministrateur()) return;
+  var c=config()||{}, etat=lireLocal(CLE_ETAT), regle=true;
   var s=document.createElement('div'); s.className='settingsSection'; s.id='gtmSbCarte';
-  s.innerHTML='<div class="settingsSectionHead"><strong>Synchronisation avec le CRM Supabase</strong><span>Les fiches, l\'historique, les étiquettes et les réglages saisis dans le CRM de l\'associé arrivent ici automatiquement (sens unique : rien n\'est modifié chez lui).</span></div>'
+  s.innerHTML='<div class="settingsSectionHead"><strong>Synchronisation avec le CRM Supabase</strong><span>Les fiches, l\'historique, les étiquettes et les réglages saisis dans le CRM de l\'associé arrivent ici automatiquement (sens unique : rien n\'est modifié chez lui). Réservé à l\'administrateur : le compte est enregistré sur cet appareil seulement.</span></div>'
     +(regle?'<div class="gtmSbGrille">'
       +'<label>Adresse du projet<input id="gtmSbUrl" type="url" placeholder="https://xxxx.supabase.co" value="'+esc2(c.url||'')+'"></label>'
       +'<label>Clé publique<input id="gtmSbKey" placeholder="sb_publishable_…" value="'+esc2(c.key||'')+'"></label>'
@@ -6001,7 +6019,7 @@ function carte(){
     if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(n.url)){ afficher('Adresse invalide : elle doit être du type https://xxxx.supabase.co','err'); return; }
     if(!n.key||/^sb_secret_/i.test(n.key)||/service_role/i.test(n.key)){ afficher('Clé refusée : utilisez la clé « Publishable » (sb_publishable_…), jamais la clé secrète.','err'); return; }
     if(!n.login||!n.pw){ afficher('Identifiant et mot de passe obligatoires.','err'); return; }
-    try{ await dms.set(CLE_CONFIG, JSON.stringify(n), 'Synchronisation CRM Supabase (lecture seule)', 'synchro'); }catch(e){ afficher('Enregistrement impossible : '+((e&&e.message)||e),'err'); return; }
+    ecrireLocal(CLE_CONFIG_LOCAL, n); effacerAncien();
     jeton=null; document.getElementById('gtmSbPw').value=''; document.getElementById('gtmSbPw').placeholder='•••••••• (enregistré)';
     await synchroniser({manuel:true, complet:true});
   };
