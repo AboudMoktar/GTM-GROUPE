@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// CRM MGT : sous-tâches (tâche interne et tâche client) et modèles de tâches partagés (données d'essai).
-// Lancement (dans tests/) : npm run mgt-sous-taches
+// CRM MGT : sous-tâches (tâche interne et tâche client), modèles de tâches partagés, pièces jointes (données d'essai).
+// Lancement (dans tests/) : npm run mgt-taches
 'use strict';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'; process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
 const path = require('path'), fs = require('fs');
@@ -80,6 +80,48 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   await fr.locator('#tkSubSheet [data-r]').first().click(); await p.waitForTimeout(1500);
   g = await base(); c1 = lire(g.mgt_crm_clients).find(x => String(x.ID) === '1');
   r.push(['dernière sous-tâche retirée : plus rien dans la fiche', !c1.TaskSubs || !c1.TaskSubs.EV1]);
+  await fr.evaluate(() => { const x = document.getElementById('tkSubSheet'); if(x) x.remove(); });
+  // 6. Pièces jointes d'une tâche interne : fichier rangé dans « fichiers », référence dans la tâche
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
+  const fichiers = async () => (await admin.database().ref('/groupe1/fichiers').once('value')).val() || {};
+  await fr.evaluate(() => renderTaskReminders()); await p.waitForTimeout(500);
+  await fr.click('[data-tk-tab="done"]'); await p.waitForTimeout(500); // I1 est terminée
+  const pj = fr.locator('[data-tk-files="int-I1"]');
+  r.push(['bouton pièces jointes sur la carte', await pj.count() === 1 && (await pj.textContent()).trim() === '📎']);
+  await pj.click(); await p.waitForTimeout(300);
+  r.push(['fenêtre des pièces jointes ouverte', await fr.locator('#tkFilesSheet').count() === 1 && /Aucune pièce jointe/.test(await fr.locator('#tfInfo').textContent())]);
+  await fr.setInputFiles('#tfFile', [{name: 'devis.pdf', mimeType: 'application/pdf', buffer: PDF}, {name: 'photo.png', mimeType: 'image/png', buffer: PNG}, {name: 'virus.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('x')}]);
+  await p.waitForTimeout(3000);
+  t = await tache('I1'); let fx = await fichiers();
+  r.push(['2 fichiers joints, type refusé signalé', t.files && t.files.length === 2 && /virus\.exe \(type non accepté\)/.test(await fr.locator('#tfMsg').textContent())]);
+  r.push(['fichiers rangés à part (pas dans la tâche)', t.files.every(x => x.fid && fx[x.fid] && String(fx[x.fid]).startsWith('data:')) && !JSON.stringify(t).includes('base64')]);
+  r.push(['PDF gardé en PDF', t.files.some(x => x.name === 'devis.pdf' && String(fx[x.fid]).startsWith('data:application/pdf;base64,'))]);
+  await fr.locator('#tkFilesSheet [data-open]').nth(1).click(); await p.waitForTimeout(1200);
+  r.push(['photo ouverte en grand', await fr.locator('#tkImgViewer img').count() === 1]);
+  await fr.locator('#tkImgViewer').click();
+  const [tele] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), fr.locator('#tkFilesSheet [data-open]').first().click()]);
+  r.push(['PDF téléchargé à l\'ouverture', !!tele && tele.suggestedFilename() === 'devis.pdf']);
+  const fidPdf = t.files.find(x => x.name === 'devis.pdf').fid;
+  await fr.locator('#tkFilesSheet [data-del]').first().click(); await p.waitForTimeout(2000);
+  t = await tache('I1'); fx = await fichiers();
+  r.push(['pièce retirée : fichier effacé', t.files.length === 1 && !fx[fidPdf]]);
+  await fr.click('#tkFilesSheet [data-x]'); await fr.evaluate(() => renderTaskReminders()); await p.waitForTimeout(500);
+  r.push(['compteur sur la carte', (await fr.locator('[data-tk-files="int-I1"]').textContent()).trim() === '📎 1']);
+  // « Ajouté par » dans la fiche de la tâche
+  await fr.evaluate(() => window.__tkInt.edit(window.__tkInt.get('I1'))); await p.waitForTimeout(300);
+  r.push(['« Ajouté par » affiché', /Ajouté par/.test(await fr.locator('#tkIntModal .tkiBy').textContent())]);
+  await fr.evaluate(() => { const x = document.getElementById('tkIntModal'); if(x) x.remove(); });
+  // tâche supprimée : ses fichiers aussi
+  const fidPhoto = t.files[0].fid;
+  await fr.evaluate(() => window.__tkInt.del(window.__tkIntActions().find(a => a._int.id === 'I1'))); await p.waitForTimeout(2000);
+  fx = await fichiers(); r.push(['tâche supprimée : fichiers effacés', !(await tache('I1')) && !fx[fidPhoto]]);
+  // 7. Pièce jointe d'une tâche client : dans la fiche du client (TaskFiles)
+  await fr.evaluate(async () => { const c = CLIENTS.find(x => String(x[fields.id]) === '1'); window.__tkFiles.open({client: c, eventId: 'EV1', type: 'visite', status: 'En attente'}); });
+  await p.waitForTimeout(300);
+  await fr.setInputFiles('#tfFile', [{name: 'bon.pdf', mimeType: 'application/pdf', buffer: PDF}]); await p.waitForTimeout(2500);
+  g = await base(); c1 = lire(g.mgt_crm_clients).find(x => String(x.ID) === '1'); fx = await fichiers();
+  r.push(['pièce jointe du client dans sa fiche', c1.TaskFiles && c1.TaskFiles.EV1 && c1.TaskFiles.EV1.length === 1 && !!fx[c1.TaskFiles.EV1[0].fid]]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
