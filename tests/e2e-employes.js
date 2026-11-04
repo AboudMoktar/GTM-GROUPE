@@ -65,6 +65,12 @@ const SDK = path.join(TESTS, 'node_modules', 'firebase'), MDP = 'Test2026ok';
   await p.evaluate((id) => rhReactiverEmploye(id), idDeux); await p.waitForTimeout(1500);
   e = await base(); r.push(['réactivé', e[idDeux].statut === 'actif' && !e[idDeux].desactiveLe]);
   r.push(['aucune donnée d\'employé dans le code', !/65447|Khairedine|dalel/i.test(fs.readFileSync(path.join(__dirname, '..', 'rh-module.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'rh-employes-module.js'), 'utf8'))]);
+  // menu du compte : « Affichage de cet écran »
+  await p.evaluate(() => menuUtilisateur()); await p.waitForTimeout(200);
+  r.push(['menu : affichage de cet écran', await p.locator('#user-menu button', {hasText: 'Affichage de cet écran'}).count() === 1]);
+  await p.locator('#user-menu button', {hasText: 'Affichage de cet écran'}).click(); await p.waitForTimeout(300);
+  await p.locator('input[name="gtm-aff"][value="renforce"]').check(); await p.waitForTimeout(200);
+  r.push(['contraste renforcé choisi', await p.evaluate(() => document.documentElement.getAttribute('data-affichage') === 'renforce' && JSON.parse(localStorage.getItem('gtm_affichage_v1')).mode === 'renforce')]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
