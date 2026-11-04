@@ -96,6 +96,9 @@ function rpPdf(soc, titre, sousTitre, corps, nomFichier, paysage){
     .bon{color:#0a7a3a;font-weight:bold;} .mauvais{color:#b42318;font-weight:bold;} .note{font-size:9px;color:#666;margin-top:4px;}
     .deux{display:grid;grid-template-columns:1fr 1fr;gap:12px;} .saut{break-before:page;} table,tr{break-inside:avoid;}
     table.large{break-inside:auto;} table.large td{padding:3px 6px;} tr.sem td{font-weight:bold;background:#eef2f6 !important;border-bottom:1.5px solid #9aa6b2;}
+    /* à l'écran (avant ou après l'impression) : la page A4 au centre, agrandie, et non étirée sur toute la largeur */
+    @media screen{html{background:#d9dee5;} body{width:${paysage ? '273mm' : '186mm'};margin:18px auto;padding:10mm 12mm;background:#fff;box-shadow:0 4px 22px rgba(0,0,0,.18);}}
+    @media screen and (min-width:1150px){body{zoom:1.3;}}
   </style></head><body>
     <div class="ent"><div style="display:flex;align-items:center;gap:12px;">${typeof logoDocHTML === 'function' ? logoDocHTML(soc, 13, 'margin:0;') : ''}<div><h1>${esc(titre)}</h1><div class="s">${esc(sousTitre)}</div></div></div>
       <div class="d">${esc(S.nom)}<br>Édité le ${rpFr(getTodayISO())}${currentUser ? '<br>par ' + esc(currentUser.nom || currentUser.username) : ''}</div></div>

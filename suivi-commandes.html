@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://*.supabase.co; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"><!-- politique de sécurité : texte identique à tests/csp-politique.txt --><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://*.supabase.co; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"><!-- politique de sécurité : texte identique à tests/csp-politique.txt --><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><script src="./affichage-module.js"></script></head><body>
 <title>Suivi des commandes</title>
 <!-- GTM-GROUPE : reprise de l'application « Suivi PERCKO », affichée dans un cadre par suivi-module.js.
      Les données passent par window.parent.grpSuiviStore (getJSON/setJSON du groupe, dossier Firebase liaison/).
@@ -271,6 +271,8 @@ button.step{cursor:pointer}
 .sx-sz{width:50px;height:50px;border-radius:12px;background:var(--sub);display:grid;place-items:center;font-weight:800;font-size:18px}
 .sx-mid{min-width:0}
 .sx-af{font-size:13px;color:var(--mut);margin-bottom:4px;font-weight:600}
+.sx-af.sx-trop{color:#b42318}
+.sx-alerte{background:#fdecea;color:#7a1a12;border:1px solid #f5c2bd;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-weight:600;font-size:13.5px}
 .sx-step{display:flex;align-items:center;gap:6px}
 .sx-step button{width:44px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--sub);color:var(--ink);font-size:24px;font-weight:700;cursor:pointer;flex:none}
 .sx-step input{width:64px;min-width:0;height:46px;padding:0 4px;text-align:center;font-size:20px;font-weight:800;background:var(--edit);border-color:var(--edit-line)}
@@ -3936,7 +3938,26 @@ function mouvementsCarton(c){
   });
   return out;
 }
+/* Une pièce ne peut être mise en carton que si elle est revenue de la GADH :
+   pièces en carton (tous clients, hors carton en cours de modification) ≤ retour GADH de la ligne. */
+function totalEnCartons(lot, lineId, saufId){
+  var q = 0; ((S.cartons || {})[lot] || []).forEach(function(c){ if (c.id === saufId) return; (c.it || []).forEach(function(x){ if (x[0] === lineId) q += x[1]; }); });
+  return q;
+}
+function retourGadh(lineId){ return (stageTotals()[lineId] || {}).ret || 0; }
+function dispoRetour(lot, lineId, saufId){ return Math.max(0, retourGadh(lineId) - totalEnCartons(lot, lineId, saufId)); }
+function erreurRetour(l, demande, lot, saufId){
+  var ret = retourGadh(l.id), deja = totalEnCartons(lot, l.id, saufId), dispo = Math.max(0, ret - deja);
+  if (demande <= dispo) return "";
+  return nomDoc(l.lib) + " taille " + l.size + " : retour GADH " + fmt(ret) + ", déjà en carton " + fmt(deja) + " — il reste " + fmt(dispo) + " pièce(s) à emballer" + (ret ? "" : " (saisissez d'abord le retour GADH)");
+}
+function verifierRetour(lot, cartons){
+  var parL = {}; cartons.forEach(function(c){ (c.it || []).forEach(function(x){ if (x[1] > 0) parL[x[0]] = (parL[x[0]] || 0) + x[1]; }); });
+  var saufId = cartons.length === 1 ? cartons[0].id : null;
+  Object.keys(parL).forEach(function(id){ var l = lineById(id); if (!l) return; var e = erreurRetour(l, parL[id], lot, saufId); if (e) throw new Error(e + "."); });
+}
 function enregistrerCarton(lot, c){
+  verifierRetour(lot, [c]);
   var anciens = {}; S.moves.forEach(function(m){ if (m.ct && m.ct === c.id) anciens[m.id] = 1; });
   var nm = mouvementsCarton(c);
   checkMoves(nm, anciens);
@@ -4000,7 +4021,9 @@ function sxEmballage(v, lot, rows){
     var l0 = lineById(prevu.items[0].lineId); ui.ct.sel = [l0.client + "|" + l0.lib]; ui.ct.q = {}; ui.ct.q[l0.id] = prevu.items[0].q; ui.ct.nPrevu = prevu.n;
   }
   var E = ui.ct, t1 = !!(R && R.t1), n = edit ? edit.n : (E.nPrevu && !faitsN[E.nPrevu] ? E.nPrevu : prochainNumero(lot, cl));
-  function reste(l){ return (R && R.cde && l.client === cl) ? Math.max(0, l.qty - enCarton(lot, cl, l.id, editId)) : Infinity; }
+  function resteCde(l){ return (R && R.cde && l.client === cl) ? Math.max(0, l.qty - enCarton(lot, cl, l.id, editId)) : Infinity; }
+  /* reste à emballer : limité par la commande (règle du client) ET par le retour GADH */
+  function reste(l){ return Math.min(resteCde(l), dispoRetour(lot, l.id, editId)); }
   var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
   var head = el("div", {class:"sx-carton"}, el("div", {class:"sx-cnum", text:"📦 Carton N°" + n}), el("div", {class:"mut", text:(edit ? "Modification du carton — " : "Nouveau carton — ") + cl + (t1 ? " · une seule taille, " + R.n + " pièces" : "")}));
   if (cl === "ALLOGA") head.appendChild(el("div", {class:"mut", style:"margin-top:4px", text:"Lot " + lot + " · péremption " + (peremption(lot) || "?")}));
@@ -4016,6 +4039,9 @@ function sxEmballage(v, lot, rows){
       v.appendChild(el("p", {class:"mut", style:"margin:-4px 0 10px;font-size:12px", text:"Les cartons N°1, 2, 3… suivent cet ordre. Il se règle aussi tout seul : le premier modèle emballé passe en premier."}));
     } else v.appendChild(el("p", {class:"mut", style:"margin:0 0 10px;font-size:12px", text:"Ordre des cartons : " + modsCl.map(nomDoc).join(" puis ") + " (fixé au premier carton emballé)."}));
   }
+  /* cartons déjà enregistrés avec plus de pièces que le retour GADH (saisie d'avant ce contrôle) */
+  var trops = filtered(lot, "*").filter(function(l){ return totalEnCartons(lot, l.id, null) > retourGadh(l.id) && cartonsManuels(lot, cl).some(function(c){ return (c.it || []).some(function(x){ return x[0] === l.id; }); }); });
+  if (trops.length) v.appendChild(el("div", {class:"sx-alerte", text:"⚠ Plus de pièces en carton que le retour GADH : " + trops.map(function(l){ return nomDoc(l.lib) + " " + l.size + " (+" + fmt(totalEnCartons(lot, l.id, null) - retourGadh(l.id)) + ")"; }).join(", ") + ". Modifiez ou supprimez le carton concerné, ou corrigez le retour GADH."}));
   var tv = (!edit && planCl.length) ? toutValiderCard(lot, cl) : null;
   if (tv) v.appendChild(tv);
   v.appendChild(head);
@@ -4038,7 +4064,8 @@ function sxEmballage(v, lot, rows){
     var t = contenu(), e = [];
     if (R && t1 && t.q > R.n) e.push(R.n + " pièces maximum par carton");
     if (t1 && t.nsz > 1) e.push("une seule taille par carton");
-    t.it.forEach(function(x){ var l = lineById(x[0]); if (l && x[1] > reste(l)) e.push("commande " + cl + " : il reste " + reste(l) + " pièce(s) en taille " + l.size + " (le surplus se met sur un autre export)"); });
+    t.it.forEach(function(x){ var l = lineById(x[0]); if (!l) return; var er = erreurRetour(l, x[1], lot, editId);
+      if (er) e.push(er); else if (x[1] > resteCde(l)) e.push("commande " + cl + " : il reste " + resteCde(l) + " pièce(s) en taille " + l.size + " (le surplus se met sur un autre export)"); });
     return e;
   }
   function maj(){
@@ -4056,10 +4083,12 @@ function sxEmballage(v, lot, rows){
     inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
     inp.addEventListener("input", function(){ E.q[l.id] = Math.max(0, num(inp.value)); maj(); });
     inp.addEventListener("change", function(){ poser(num(inp.value)); });
+    var trop = totalEnCartons(lot, l.id, editId) - (t.ret || 0);
     var infoTxt = a.sur ? "Surplus " + a.src + " : retour " + fmt(t.ret || 0) + " − commande " + fmt(l.qty) + " = " + fmt(Math.max(0, (t.ret || 0) - l.qty)) + " · déjà en carton " + fmt(enCarton(lot, cl, l.id, editId))
       : (R && R.cde) ? "Commande " + fmt(l.qty) + " · en carton " + fmt(enCarton(lot, cl, l.id, editId)) + " · reste " + fmt(reste(l)) + " · retour GADH " + fmt(t.ret || 0)
-      : "Retour GADH " + fmt(t.ret || 0) + " · déjà en carton " + fmt(enCarton(lot, cl, l.id, editId));
-    row.appendChild(el("div", {class:"sx-mid"}, el("div", {class:"sx-af", text:infoTxt}),
+      : "Retour GADH " + fmt(t.ret || 0) + " · déjà en carton " + fmt(enCarton(lot, cl, l.id, editId)) + " · reste " + fmt(dispoRetour(lot, l.id, editId));
+    if (trop > 0) infoTxt += " · ⚠ " + fmt(trop) + " pièce(s) en carton de plus que le retour GADH : corrigez un carton";
+    row.appendChild(el("div", {class:"sx-mid"}, el("div", {class:"sx-af" + (trop > 0 ? " sx-trop" : ""), text:infoTxt}),
       el("div", {class:"sx-step"}, el("button", {text:"−", onclick:function(){ poser(num(inp.value) - 1); }}), inp, el("button", {text:"+", onclick:function(){ poser(num(inp.value) + 1); }}))));
     row.appendChild(R ? el("button", {class:"sx-def", title:"Remplir le carton", onclick:function(){ var rs = R.n; Object.keys(E.q).forEach(function(id){ if (id !== l.id) rs -= E.q[id] || 0; }); poser(Math.max(0, Math.min(rs, reste(l)))); }}, el("span", {text:"▣"}), el("span", {text:"Plein " + R.n})) : el("span"));
     card.appendChild(row);
@@ -4262,7 +4291,9 @@ function ouvrirToutValider(lot, cl, lib){
   box.appendChild(rec);
   box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, tout valider", onclick:function(){
     var ok = commit(function(){
-      cartonsPrevusRestants(lot, cl).filter(function(c){ return !lib || c.items[0].lib === lib; }).forEach(function(c){ var it = c.items[0]; enregistrerCarton(lot, {id:nid("C"), n:c.n, cl:cl, d:today(), it:[[it.lineId, it.q]], kg:null}); });
+      var aValider = cartonsPrevusRestants(lot, cl).filter(function(c){ return !lib || c.items[0].lib === lib; }).map(function(c){ var it = c.items[0]; return {id:nid("C"), n:c.n, cl:cl, d:today(), it:[[it.lineId, it.q]], kg:null}; });
+      verifierRetour(lot, aValider);
+      aValider.forEach(function(c){ enregistrerCarton(lot, c); });
       ui.pend = null; ui.ct = null; ui.ctEdit = null;
     });
     if (!ok) return;

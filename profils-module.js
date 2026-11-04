@@ -428,10 +428,23 @@ window.menuUtilisateur = (e) => {
   const item = (icone, texte, action, cls) => `<button class="${cls || ''}" onclick="menuUtilisateurFermer(); ${action}">${icone}<span>${texte}</span></button>`;
   m.innerHTML = `<div class="um-tete"><div class="um-nom">${esc(currentUser.nom)}</div><div class="um-role">${esc(role)}</div></div>
     ${item('<span style="font-size:16px;">🔑</span>', 'Changer mon mot de passe', 'profilsMonCompte()')}
+    ${window.gtmAffichage ? item('<span style="font-size:16px;">🖥️</span>', 'Affichage de cet écran', 'gtmAffichageChoisir()') : ''}
     ${typeof peutChangerDeModule === 'function' && peutChangerDeModule() ? item(ICONS.switchModule, 'Changer de module', 'switchModule()') : ''}
     ${typeof peutChangerDeSociete === 'function' && peutChangerDeSociete() ? item(ICONS.switchModule, 'Changer de société', 'switchSociete()') : ''}
     ${item(ICONS.logout, 'Déconnexion', 'logout()', 'um-bad')}`;
   document.body.appendChild(m);
   setTimeout(() => document.addEventListener('click', menuUtilisateurFermer, {once:true}), 0);
+};
+// --- Affichage de cet écran (contraste renforcé pour les anciens écrans) ---
+window.gtmAffichageChoisir = () => {
+  const A = window.gtmAffichage; if(!A) return;
+  const a = A.lire(), auto = A.ancienSysteme() ? 'renforcé sur cet ordinateur (Windows 7 / 8)' : 'normal sur cet appareil';
+  const choix = (v, titre, detail) => `<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;">
+      <input type="radio" name="gtm-aff" value="${v}" ${a.mode === v ? 'checked' : ''} style="margin-top:3px;"><span><b>${titre}</b><br><span style="font-size:13px;color:var(--ink-soft);">${detail}</span></span></label>`;
+  mgtModal('Affichage de cet écran', `${choix('auto', 'Automatique', 'Choisi selon l\'appareil : ' + auto + '.')}
+    ${choix('renforce', 'Contraste renforcé', 'Textes plus foncés et un peu plus épais, bordures et champs bien marqués. Pour les écrans anciens ou peu lumineux.')}
+    ${choix('normal', 'Normal', 'Apparence habituelle.')}
+    <p style="font-size:13px;color:var(--ink-soft);margin:6px 0 0;">Ce réglage ne concerne que cet appareil. Pour agrandir ou réduire tout l'affichage : <b>Ctrl +</b> / <b>Ctrl −</b> (Chrome s'en souvient).</p>`);
+  setTimeout(() => document.querySelectorAll('input[name="gtm-aff"]').forEach(r => r.addEventListener('change', () => { A.regler(r.value); showToast('Affichage : ' + (r.value === 'auto' ? 'automatique' : r.value === 'renforce' ? 'contraste renforcé' : 'normal')); })), 0);
 };
 window.menuUtilisateurFermer = () => { const m = document.getElementById('user-menu'); if(m) m.remove(); };
