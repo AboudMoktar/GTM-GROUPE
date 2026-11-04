@@ -7,20 +7,23 @@ const path = require('path'), fs = require('fs');
 const TESTS = __dirname, req = require;
 const {chromium} = req('playwright'); const admin = require(TESTS + '/admin.js'); const C = require(path.join(__dirname, '..', 'roles-config.js')); const serveur = require(TESTS + '/serveur.js');
 const SDK = path.join(TESTS, 'node_modules', 'firebase'), MDP = 'Test2026ok';
+const MARQ = (chemin) => 'data:application/pdf;base64,' + Buffer.from('storage://offres-pdf/' + chemin).toString('base64');
+const STOCK = {'offres-pdf/2026/neuf.pdf': '%PDF-1.4 neuf', 'offres-pdf/2026/of1.pdf': '%PDF-1.4 meme offre', 'taches-pj/2026/photo.jpg': 'JPEGDATA', 'taches-pj/2026/t.pdf': '%PDF-1.4 tache'}, appelsStock = [];
 const J = (v) => '__gtm_json_v1:' + JSON.stringify(v);
 const lireArr = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JSON.parse(v.slice(14)) : (v && typeof v === 'object' ? Object.keys(v).filter(k => v[k]).map(k => typeof v[k] === 'string' && v[k].startsWith('__gtm_json_v1:') ? JSON.parse(v[k].slice(14)) : v[k]) : []);
 // ----- faux Supabase -----
 const SB = {
   mgt_clients: [
-    {id:'1', data:{ID:'1', Societe:'Alpha modifié chez l\'associé'}, updated_at:'2026-11-02T10:00:00.123456+00:00', deleted_at:null},
+    {id:'1', data:{ID:'1', Societe:'Alpha modifié chez l\'associé', Offres:[{offerId:'OF1', pdfName:'of1.pdf', pdfData:MARQ('2026/of1.pdf')}]}, updated_at:'2026-11-02T10:00:00.123456+00:00', deleted_at:null},
     {id:'2', data:{ID:'2', Societe:'Beta ancienne version'}, updated_at:'2026-11-02T09:00:00+00:00', deleted_at:null},
     {id:'4', data:{ID:'4', Societe:'Delta (nouveau)', Offres:[{offerId:'O1', amount:1000}]}, updated_at:'2026-11-02T12:00:00+00:00', deleted_at:null},
+    {id:'6', data:{ID:'6', Societe:'Zeta (fichiers)', Offres:[{offerId:'OZ1', pdfName:'neuf.pdf', pdfData:MARQ('2026/neuf.pdf')}, {offerId:'OZ2', pdfName:'perdu.pdf', pdfData:MARQ('2026/perdu.pdf')}], TaskFiles:{EV9:[{id:'p1', name:'photo.jpg', type:'image/jpeg', size:8, path:'2026/photo.jpg'}]}}, updated_at:'2026-11-02T12:30:00+00:00', deleted_at:null},
     {id:'3', data:{ID:'3', Societe:'Gamma'}, updated_at:'2026-11-02T11:00:00+00:00', deleted_at:'2026-11-02T11:00:00+00:00'}],
   crm_history: [{id:'H1', entity_type:'CLIENT', entity_id:'4', event_type:'VISITE_COMMERCIALE', subject:'Visite Delta', _updated_at:'2026-11-02T12:05:00+00:00', _deleted_at:null}],
   crm_settings: [{key:'clients_last_sync', value:'x', updated_at:'2026-11-02T12:00:00+00:00'}, {key:'objectif_visites', value:'12', updated_at:'2026-11-02T12:00:00+00:00'}],
   crm_tags: [{id:'T1', name:'VIP', color:'#f00'}], crm_history_tags: [{history_id:'H1', tag_id:'T1'}],
   mgt_internal_tasks: [
-    {id:'I1', data:{id:'I1', type:'rapport', status:'En attente', objective:'Rapport mensuel', subs:[{id:'s1', text:'Chiffres', done:true}, {id:'s2', text:'Envoi', done:false}], updated:'2026-11-02T08:00:00Z', _dirty:1}, updated_at:'2026-11-02T08:00:00+00:00', deleted_at:null},
+    {id:'I1', data:{id:'I1', type:'rapport', status:'En attente', objective:'Rapport mensuel', subs:[{id:'s1', text:'Chiffres', done:true}, {id:'s2', text:'Envoi', done:false}], files:[{id:'f1', name:'t.pdf', type:'application/pdf', size:14, path:'2026/t.pdf'}], updated:'2026-11-02T08:00:00Z', _dirty:1}, updated_at:'2026-11-02T08:00:00+00:00', deleted_at:null},
     {id:'M1', data:{id:'M1', kind:'template', name:'Préparer une offre', type:'offre', items:['Visite', 'Chiffrage', 'Envoi']}, updated_at:'2026-11-02T08:30:00+00:00', deleted_at:null},
     {id:'I2', data:{id:'I2', type:'appel', objective:'Version associé (ancienne)'}, updated_at:'2026-11-01T08:00:00+00:00', deleted_at:null},
     {id:'I3', data:{id:'I3', type:'autre', objective:'Supprimée chez l\'associé'}, updated_at:'2026-11-02T09:00:00+00:00', deleted_at:'2026-11-02T09:00:00+00:00'}]
@@ -30,6 +33,7 @@ async function fauxSupabase(rt){
   const u = new URL(rt.request().url()); appels.push(u.pathname + u.search);
   if(u.pathname === '/auth/v1/token'){ const b = JSON.parse(rt.request().postData() || '{}'); return b.email === 'gtm@mgt.local' && b.password === 'Secret123' ? rt.fulfill({status:200, contentType:'application/json', body:JSON.stringify({access_token:'jeton', expires_in:3600})}) : rt.fulfill({status:400, contentType:'application/json', body:'{"error":"invalid_grant"}'}); }
   if(rt.request().headers()['authorization'] !== 'Bearer jeton') return rt.fulfill({status:401, body:'{}'});
+  if(u.pathname.startsWith('/storage/v1/object/authenticated/')){ const k = decodeURIComponent(u.pathname.slice(33)); appelsStock.push(k); return STOCK[k] ? rt.fulfill({status:200, contentType:k.endsWith('.jpg') ? 'image/jpeg' : 'application/pdf', body:STOCK[k]}) : rt.fulfill({status:404, contentType:'application/json', body:'{"error":"not_found"}'}); }
   const table = u.pathname.replace('/rest/v1/', ''); let rows = (SB[table] || []).slice();
   for(const [k, v] of u.searchParams){ if(v.startsWith('gt.')){ const x = Date.parse(decodeURIComponent(v.slice(3))); rows = rows.filter(r => Date.parse(r[k]) > x); } }
   const off = +(u.searchParams.get('offset') || 0), lim = +(u.searchParams.get('limit') || 1000);
@@ -39,7 +43,7 @@ async function fauxSupabase(rt){
   admin.initializeApp({projectId: 'demo-gtm-groupe', databaseURL: 'http://127.0.0.1:9000?ns=demo-gtm-groupe'});
   const u = await admin.auth().createUser({email: 'sysadmin@tek-trend.app', password: MDP}), d = C.ROLES.sysadmin;
   const u2 = await admin.auth().createUser({email: 'technicomgt@tek-trend.app', password: MDP}), d2 = C.ROLES.technico_mgt;
-  const locaux = [{ID:'1', Societe:'Alpha', _updated_at:'2026-11-01T10:00:00.000Z'}, {ID:'2', Societe:'Beta modifié dans GTM', _updated_at:'2026-11-03T12:00:00.000Z'}, {ID:'3', Societe:'Gamma'}];
+  const locaux = [{ID:'1', Societe:'Alpha', Offres:[{offerId:'OF1', pdfId:'crm_1_ancien', pdfName:'of1.pdf', pdfData:''}], _updated_at:'2026-11-01T10:00:00.000Z'}, {ID:'2', Societe:'Beta modifié dans GTM', _updated_at:'2026-11-03T12:00:00.000Z'}, {ID:'3', Societe:'Gamma'}];
   await admin.database().ref('/groupe1').set({mgt: {mgt_crm_clients: J(locaux), mgt_crm_taches_internes: J([{id:'I2', type:'appel', objective:'Version GTM (récente)', updated:'2026-11-03T08:00:00Z'}, {id:'I3', type:'autre', objective:'À supprimer', updated:'2026-10-01T08:00:00Z'}]), mgt_crm_settings: J([{key:'objectif_visites', value:'5', updated_at:'2026-10-01T00:00:00Z'}, {key:'gtm_sb_config', value:JSON.stringify({url:'https://ancien.supabase.co', key:'sb_publishable_ancien', login:'ancien', pw:'ancien'}), updated_at:'2026-10-01T00:00:00Z'}])}, users_v2: {[u.uid]: {nom: d.label, username: 'sysadmin', role: d.role, profil: 'sysadmin', groupe: true, societes: d.societes}, [u2.uid]: {nom: d2.label, username: 'technicomgt', role: d2.role, profil: 'technico_mgt', groupe: false, societes: d2.societes}}});
   await fetch('http://127.0.0.1:9000/.settings/rules.json?ns=demo-gtm-groupe', {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8')});
   const s = serveur.demarrer(8790), b = await chromium.launch(), ctx = await b.newContext({serviceWorkers: 'block', viewport:{width:1280, height:900}});
@@ -85,6 +89,15 @@ async function fauxSupabase(rt){
   r.push(['tâche interne plus récente dans GTM conservée', parTi.I2 && parTi.I2.objective === 'Version GTM (récente)']);
   r.push(['tâche interne supprimée chez l\'associé retirée', !parTi.I3]);
   r.push(['modèle absent de la liste des tâches', await fr.evaluate(() => { const l = window.__tkIntActions ? window.__tkIntActions() : []; return l.some(a => a._int.id === 'I1') && !l.some(a => a._int.id === 'M1'); })]);
+  { const fx = (await admin.database().ref('/groupe1/fichiers').once('value')).val() || {}, z = parId['6'] || {}, oz = z.Offres || [];
+    r.push(['PDF d\'offre de l\'associé récupéré dans GTM', oz[0] && oz[0].pdfId && !oz[0].pdfData && String(fx[oz[0].pdfId] || '').startsWith('data:application/pdf;base64,') && Buffer.from(String(fx[oz[0].pdfId]).split(',')[1], 'base64').toString() === '%PDF-1.4 neuf']);
+    r.push(['PDF déjà présent dans GTM réutilisé (pas retéléchargé)', parId['1'].Offres[0].pdfId === 'crm_1_ancien' && !appelsStock.includes('offres-pdf/2026/of1.pdf')]);
+    r.push(['PDF absent chez l\'associé : abandonné sans erreur', oz[1] && !oz[1].pdfId && oz[1].pdfEssais === 3 && !oz[1].pdfData]);
+    const pz = z.TaskFiles && z.TaskFiles.EV9 && z.TaskFiles.EV9[0];
+    r.push(['pièce jointe d\'une tâche client récupérée', pz && pz.fid && String(fx[pz.fid] || '').startsWith('data:image/jpeg;base64,')]);
+    const fi = parTi.I1 && parTi.I1.files && parTi.I1.files[0];
+    r.push(['pièce jointe d\'une tâche interne récupérée', fi && fi.fid && String(fx[fi.fid] || '').startsWith('data:application/pdf;base64,')]);
+    r.push(['marqueurs de l\'associé retirés des fiches', !JSON.stringify(lireArr(g.mgt_crm_clients)).includes(Buffer.from('storage://').toString('base64').slice(0, 12))]); }
   r.push(['mot de passe absent du code de la page', !(await fr.content()).includes('Secret123')]);
   r.push(['compte Supabase absent de Firebase', !JSON.stringify((await admin.database().ref('/groupe1').once('value')).val()).includes('Secret123')]);
   // 2e synchronisation : seulement le nouveau
@@ -99,6 +112,7 @@ async function fauxSupabase(rt){
   // 3e : rien de nouveau => aucune écriture
   const avant = JSON.stringify(g.mgt_crm_clients); const res3 = await fr.evaluate(() => window.gtmSbSynchroniser({})); await p.waitForTimeout(1000);
   g = (await admin.database().ref('/groupe1/mgt').once('value')).val();
+  r.push(['aucun fichier retéléchargé ensuite', appelsStock.length === 4]);
   r.push(['rien de nouveau : base non réécrite', res3.ok && JSON.stringify(g.mgt_crm_clients) === avant && /rien de nouveau/.test(res3.msg)]);
   r.push(['liste à l\'écran à jour', await fr.evaluate(() => (typeof CLIENTS !== 'undefined' ? CLIENTS : []).some(c => String(c.ID) === '5'))]);
   // Un autre compte MGT : ni réglage ni synchronisation
