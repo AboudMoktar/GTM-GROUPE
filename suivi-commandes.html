@@ -441,6 +441,7 @@ table.sheet td.mdl{font-size:12px}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="./enregistrer-module.js"></script>
+<script src="./suivi-exports.js"></script>
 <script>
 const DEF_NOMEN=[["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XS","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","S","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","M","Caresse Noir","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","L","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XL","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XXL","Caresse Noir","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V NOIR","XXXL","Caresse Noir","",0.65,0.33,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XS","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","S","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","M","Renew Fine Gris","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","L","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XL","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XXL","Renew Fine Gris","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V GRIS","XXXL","Renew Fine Gris","",0.65,0.33,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XS","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","S","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","M","Caresse Beige","",0.65,0.22,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","L","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XL","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XXL","Caresse Beige","",0.65,0.28,0],["PHARMA-HOMME","PHARMA_HOMME COL V SABLE","XXXL","Caresse Beige","",0.65,0.33,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XS","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","S","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","M","Caresse Noir","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","L","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XL","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XXL","Caresse Noir","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V NOIR","XXXL","Caresse Noir","",0.48,0.33,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XS","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","S","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","M","Caresse Rose","",0.48,0.22,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","L","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XL","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XXL","Caresse Rose","",0.48,0.28,0],["PHARMA-FEMME COL V","PHARMA_FEMME COL V ROSE POUDRE","XXXL","Caresse Rose","",0.48,0.33,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XS","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","S","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","M","Caresse Noir","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","L","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XL","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XXL","Caresse Noir","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","XXXL","Caresse Noir","",0.47,0.33,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XS","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","S","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","M","Caresse Rose","",0.47,0.22,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","L","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XL","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XXL","Caresse Rose","",0.47,0.28,0],["PHARMA-FEMME COL ROND","PHARMA_FEMME COL ROND ROSE POUDRE","XXXL","Caresse Rose","",0.47,0.33,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","S","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","M","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","L","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","XL","Revolut Mild Noir","",0.63,0.25,0],["Sport-H-Re-Mi","Tee-shirt Sport homme noir","XXL","Revolut Mild Noir","",0.63,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","XS","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","S","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","M","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","L","Revolut Mild Noir","",0.47,0.25,0],["Sport-F-Re-Mi","Tee-shirt Sport femme noir","XL","Revolut Mild Noir","",0.47,0.25,0],["Gilet-H-Noir","Gilet homme noir","XS","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","S","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","M","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","L","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XL","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XXL","Caresse Noir","",0.49,0.45,0],["Gilet-H-Noir","Gilet homme noir","XXXL","Caresse Noir","",0.49,0.45,0],["Gilet-F-Noir","Gilet femme noir","XS","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","S","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","M","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","L","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XL","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XXL","Caresse Noir","",0.45,0.45,0],["Gilet-F-Noir","Gilet femme noir","XXXL","Caresse Noir","",0.45,0.45,0],["Pro Homme","LYNE PRO homme gris","XS","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","S","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","M","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","L","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XL","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XXL","Vita Titanium","",0.41,0.28,0],["Pro Homme","LYNE PRO homme gris","XXXL","Vita Titanium","",0.41,0.28,0],["Pro Femme","LYNE PRO femme gris","XS","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","S","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","M","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","L","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","XL","Vita Titanium","",0.39,0.28,0],["Pro Femme","LYNE PRO femme gris","XXL","Vita Titanium","",0.39,0.28,0],["Flex Homme","LYNE FLEX homme gris","XS","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","S","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","M","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","L","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XXL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Homme","LYNE FLEX homme gris","XXXL","Renew Fine Gris","Vita Cloud",0.49,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XS","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","S","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","M","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","L","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XXL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26],["Flex Femme","LYNE FLEX femme gris","XXXL","Renew Fine Gris","Vita Cloud",0.45,0.45,0.26]];
 const DEF_RULES=[["PHARMA-HOMME",100,5,400,10,20],["PHARMA-FEMME COL V",100,5,400,10,20],["PHARMA-FEMME COL ROND",100,5,400,10,20],["Sport-H-Re-Mi",100,5,400,10,20],["Sport-F-Re-Mi",100,5,400,10,20],["Gilet-H-Noir",100,5,400,5,5],["Gilet-F-Noir",100,5,400,5,5],["Pro Homme",201,3,1000000,5,5],["Pro Femme",201,3,1000000,5,5],["Flex Homme",100,5,400,5,5],["Flex Femme",100,5,400,5,5],["Lecture : commande < Seuil 1 -> Marge 1 ; sinon < Seuil 2 -> Marge 2 ; sinon Marge 3. Pro : 3 pcs jusqu'à 200, 5 pcs au-delà.",null,null,null,null,null],["*",100,5,1000000,10,10]];
@@ -468,7 +469,7 @@ function ncTotals(){ var t = {}; S.moves.forEach(function(m){ if (!m.nc) return;
 function lotReady(lot){ var i = S.lots[lot]; if (i && i.ready) return true; if (i) return false; return S.lines.some(function(l){ return l.lot === lot; }) && S.moves.length > 0; }
 function ensureLot(lot){ if (!S.lots[lot]) S.lots[lot] = {received:today(), ready:""}; }
 function lotMonth(lot){ var m = /(\d{4})(\d{2})/.exec(String(lot || "")); if (m && +m[2] >= 1 && +m[2] <= 12) return {y:+m[1], m:+m[2]}; return null; }
-var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{proche:3, bloque:7}, motifs:[], colis:{}, colleU:"g", cartons:{}, stk:[]};
+var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{proche:3, bloque:7}, motifs:[], colis:{}, colleU:"g", cartons:{}, stk:[], exports:[]};
 /* ---------- application groupe (cadre) ---------- */
 function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
 var HOST = hostStore();
@@ -594,6 +595,7 @@ function desiredDocs(){
       d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ var a = [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; if (m.motif || m.ct) a.push(m.motif || ""); if (m.ct) a.push(m.ct); return a; })};
     if (S.cartons[lot] && S.cartons[lot].length) d["cartons-"+safeId(lot)] = {lot:lot, cartons:S.cartons[lot]};
   });
+  if (S.exports && S.exports.length) d["exports"] = {liste:S.exports};
   if (S.stk.length) d["stock-mv"] = {mv:S.stk.map(function(m){ return [m.id, m.d, m.t, m.a, m.q, m.dest || "", m.lot || "", m.n || ""]; })};
   return JSON.parse(JSON.stringify(d)); /* Firebase refuse les valeurs « undefined » */
 }
@@ -628,7 +630,7 @@ function flush(){
 }
 function applyDocs(docs){
   var lines = [], moves = [], ver = 0;
-  S.nomen = []; S.rules = []; S.stock = {}; S.lots = {}; S.cartons = {}; S.stk = [];
+  S.nomen = []; S.rules = []; S.stock = {}; S.lots = {}; S.cartons = {}; S.stk = []; S.exports = [];
   Object.keys(docs).forEach(function(id){
     var d = docs[id];
     if (id === "cfg"){
@@ -642,6 +644,9 @@ function applyDocs(docs){
       (d.moves || []).forEach(function(a){ var mv = {id:a[0],date:a[1],lineId:a[2],stage:a[3],qty:a[4],note:a[5],nc:a[6] || 0}; if (a[7]) mv.motif = a[7]; if (a[8]) mv.ct = a[8]; moves.push(mv); });
     } else if (id === "stock-mv"){
       S.stk = (d.mv || []).map(function(a){ return {id:a[0], d:a[1], t:a[2], a:a[3], q:+a[4] || 0, dest:a[5] || "", lot:a[6] || "", n:a[7] || ""}; });
+    } else if (id === "exports"){
+      S.exports = (d.liste || []).map(function(e){ return {id:e.id, n:e.n, d:e.d, cl:e.cl, nat:e.nat || e.cl, dest:e.dest || null, st:e.st === "fini" ? "fini" : "cours", dv:e.dv || "",
+        cartons:(e.cartons || []).map(function(c){ return {id:c.id, n:c.n, kg:c.kg === undefined ? null : c.kg, it:(c.it || []).map(function(x){ return [x[0], x[1]]; })}; })}; });
     } else if (id.indexOf("cartons-") === 0){
       S.cartons[d.lot] = (d.cartons || []).map(function(c){ return {id:c.id, n:c.n, cl:c.cl, d:c.d, it:(c.it || []).map(function(x){ return [x[0], x[1]]; }), kg:c.kg === undefined ? null : c.kg}; });
     }
@@ -1462,9 +1467,10 @@ var ICONS = {
   flux:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
   stock:'<path d="M3 8l9-5 9 5v12H3z"/><path d="M7 20v-7h10v7M7 16h10"/>',
   arch:'<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
+  exp:'<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
   reg:'<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>'
 };
-var TABS = [["dash","Tableau","▦"],["cmd","Commandes","1"],["fiche","Fiches","2"],["suivi","Suivi","3"],["flux","Flux","4"],["stock","Stock","▤"],["arch","Archive","▣"],["reg","Réglages","⚙"]];
+var TABS = [["dash","Tableau","▦"],["cmd","Commandes","1"],["fiche","Fiches","2"],["suivi","Suivi","3"],["flux","Flux","4"],["exp","Exports","5"],["stock","Stock","▤"],["arch","Archive","▣"],["reg","Réglages","⚙"]];
 function tabIcon(k){ var b = el("b"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICONS[k] + "</svg>"; return b; }
 if (VUE === "gadh") TABS = [["dash","Tableau","▦"],["flux","Flux","4"],["fiche","Fiche GADH","2"],["suivi","Suivi","3"],["arch","Archive","▣"]];
 function drawTabs(){
@@ -1475,7 +1481,7 @@ function render(keepScroll){
   var v = document.getElementById("view");
   var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(".tw"), function(e){ return [e.scrollLeft, e.scrollTop]; });
   refreshSelectors(); drawTabs(); v.innerHTML = "";
-  ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, stock:vStock, arch:vArch, reg:vReg})[ui.tab](v);
+  ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, exp:function(x){ if (typeof vExports === "function") vExports(x); }, stock:vStock, arch:vArch, reg:vReg})[ui.tab](v);
   if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(".tw"), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
   else v.scrollTop = 0;
 }
@@ -3526,8 +3532,14 @@ function plages(nums){
 }
 function nomDoc(lib){ return String(lib).replace(/_/g, " ").toLowerCase().replace(/(^|\s)(\S)/g, function(m, a, b){ return a + b.toUpperCase(); }); }
 function hx(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+/* destinataire : celui du client, ou celui saisi sur l'export en cours d'impression */
+var PK_DEST_FORCE = null;
+function destDe(client){ if (PK_DEST_FORCE && PK_DEST_FORCE.client === client) return PK_DEST_FORCE.d; return PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}; }
+/* lot(s) et péremption d'un carton : ceux de ses pièces (export sur plusieurs commandes), sinon ceux du lot */
+function lotsCarton(c, lot){ return c && c.lots && c.lots.length ? c.lots : [lot]; }
+function peremptionLots(lots){ return sortedUniqueKeep(lots.map(function(l){ return peremption(l); }).filter(Boolean)).join(" / "); }
 function destHtml(client){
-  var d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""};
+  var d = destDe(client);
   return "Destinataire:<br><b>" + hx(d.nom) + "</b>" + d.lignes.map(function(l){ return "<br><b>" + hx(l) + "</b>"; }).join("") + (d.tel ? "<br><b>TÉLÉPHONE :</b> " + hx(d.tel) : "");
 }
 function dernierExp(lot, client){ var d = ""; S.moves.forEach(function(m){ if (m.stage !== "exp" || m.qty <= 0) return; var l = lineById(m.lineId); if (l && l.lot === lot && l.client === client && m.date > d) d = m.date; }); return d; }
@@ -3578,18 +3590,19 @@ function regleColis(cl){
 /* pièces d'une ligne déjà mises dans les cartons d'un client (hors carton en cours de modification) */
 function enCarton(lot, cl, lineId, saufId){
   var q = 0; ((S.cartons || {})[lot] || []).forEach(function(c){ if (c.cl !== cl || c.id === saufId) return; (c.it || []).forEach(function(x){ if (x[0] === lineId) q += x[1]; }); });
-  return q;
+  return q + enCartonExports(lineId, saufId, cl);
 }
 function aclDe(item){ var r = refArticle(item.lib, item.size); return r && r.acl ? r.acl : ""; }
 function docCartonsHtml(client, colis, pp, lot){
-  var info = client === "ALLOGA", per = info ? peremption(lot) : "";
+  var info = client === "ALLOGA";
   function etq(c){
+    var lotC = lotsCarton(c, lot).join(" + "), per = info ? peremptionLots(lotsCarton(c, lot)) : "";
     var lignes = c.items.map(function(x){ return '<tr><td>T' + hx(x.size) + '</td><td>' + hx(nomDoc(x.lib)) + '</td>' + (info ? '<td>' + hx(aclDe(x)) + '</td>' : '') + '<td><b>' + x.q + '</b></td></tr>'; }).join("");
     if (c.items.length > 1) lignes += '<tr><td colspan="' + (info ? 3 : 2) + '"><b>Total</b></td><td><b>' + c.q + '</b></td></tr>';
     return '<div class="etq"><div class="etq-haut"><div class="etq-logo"><img src="' + PK_LOGO + '" alt="PERCKO"></div><div class="etq-dest">' + destHtml(client) + '</div></div>' +
       '<div class="etq-num">CARTON N°' + c.n + '</div>' +
       '<table class="etq-tab"><thead><tr><th style="width:16%">Taille</th><th>Modèles</th>' + (info ? '<th style="width:22%">Code ACL</th>' : '') + '<th style="width:18%">Quantité</th></tr></thead><tbody>' + lignes + '</tbody></table>' +
-      (info ? '<table class="etq-info"><tr><td>Lot</td><td><b>' + hx(lot) + '</b></td></tr><tr><td>Date de péremption</td><td><b>' + hx(per) + '</b></td></tr></table>' : '') + '</div>';
+      (info ? '<table class="etq-info"><tr><td>Lot</td><td><b>' + hx(lotC) + '</b></td></tr><tr><td>Date de péremption</td><td><b>' + hx(per) + '</b></td></tr></table>' : '') + '</div>';
   }
   var pages = [], np = pp === "4L" ? 4 : pp;
   for (var i = 0; i < colis.length; i += np) pages.push(colis.slice(i, i + np));
@@ -3600,7 +3613,7 @@ var PP_CHOIX = [1, 2, 4, "4L"];   /* fiches par page : 1, 2, 4 (portrait) ou 4 e
 function logoOctets(){ var b = atob(PK_LOGO.split(",")[1]), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 /* mode "4L" : 4 fiches par page A4 paysage (2 × 2) ; sinon 2 fiches par page A4 portrait */
 function fichesCartonsGrid(lot, client, colis, mode){
-  var L4 = mode === "4L", info = client === "ALLOGA", per = info ? peremption(lot) : "", d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""};
+  var L4 = mode === "4L", info = client === "ALLOGA", d = destDe(client);
   var W = L4 ? [9, 12, 11, 11, 11, 10] : [14, 18, 18, 18, 18, 16];
   var g = {cols:L4 ? W.concat([3]).concat(W) : W.slice(), rows:[], merges:[], breaks:[], landscape:L4}, anchors = [];
   var Z = L4 ? {hd:14, d0:9, d1:10, hn:32, sn:18, hh:20, sh:9, hi:26, si:12, sb:13, hl:24, sl:11, sv:13, cy:1140000}
@@ -3629,7 +3642,7 @@ function fichesCartonsGrid(lot, client, colis, mode){
     });
     if (c.items.length > 1){ gset(g, r, o, "Total", TDB); for (cc = 1; cc < 5; cc++) gset(g, r, o + cc, "", TD); gmerge(g, r, o, r, o + 4); gset(g, r, o + 5, c.q, TDB); h(r, Z.hi); r++; }
     if (info){
-      [["Lot", lot], ["Date de péremption", per]].forEach(function(p){
+      [["Lot", lotsCarton(c, lot).join(" + ")], ["Date de péremption", peremptionLots(lotsCarton(c, lot))]].forEach(function(p){
         gset(g, r, o, "  " + p[0], {sz:Z.sl, al:"l", bd:B}); gset(g, r, o + 1, "", {bd:B}); gset(g, r, o + 2, "", {bd:B}); gmerge(g, r, o, r, o + 2);
         gset(g, r, o + 3, p[1], {b:1, sz:Z.sv, al:"c", bd:B}); gset(g, r, o + 4, "", {bd:B}); gset(g, r, o + 5, "", {bd:B}); gmerge(g, r, o + 3, r, o + 5);
         h(r, Z.hl); r++;
@@ -3718,7 +3731,7 @@ function figerPlans(lot){
 /* Base de données pour NiceLabel 2017 : une ligne par carton (= une étiquette), noms de champs simples, valeurs en texte */
 var NL_CHAMPS = ["N_CARTON", "NB_CARTONS", "CARTON_SUR", "CLIENT", "DEST_NOM", "DEST_ADR1", "DEST_ADR2", "DEST_ADR3", "DEST_ADR4", "DEST_TEL", "MODELE", "TAILLE", "QUANTITE", "CODE_ACL", "EAN", "SKU", "DESIGNATION", "LOT", "PEREMPTION", "COMMANDE"];
 function niceLabelLignes(lot, client, colis){
-  var d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}, per = peremption(lot), nb = colis.length;
+  var d = destDe(client), nb = colis.length;
   return colis.map(function(c){
     var it = c.items, ref = it.length === 1 ? (refArticle(it[0].lib, it[0].size) || {}) : {};
     function j(f){ return it.map(f).join(" + "); }
@@ -3726,7 +3739,7 @@ function niceLabelLignes(lot, client, colis){
       j(function(x){ return nomDoc(x.lib); }), j(function(x){ return x.size; }), String(c.q), j(function(x){ return aclDe(x); }),
       j(function(x){ return (refArticle(x.lib, x.size) || {}).ean || ""; }), j(function(x){ return (refArticle(x.lib, x.size) || {}).sku || ""; }),
       j(function(x){ var r = refArticle(x.lib, x.size); return r && r.nom ? r.nom + " - " + x.size : nomDoc(x.lib) + " - " + x.size; }),
-      lot, per, "PERCKO"];
+      lotsCarton(c, lot).join(" + "), peremptionLots(lotsCarton(c, lot)), "PERCKO"];
   });
 }
 function exportNiceLabel(lot, client, colis){
@@ -3896,6 +3909,7 @@ function cartonsCards(lot, lines){
         el("div", null, el("b", {text:String(colis.length)}), el("span", {text:man ? "carton(s)" : "carton(s) · " + fermes.length + " fermé(s)"})),
         el("div", null, el("b", {text:fmt(poidsTotal(colis), poidsTotal(colis) % 1 ? 1 : 0) + " kg"}), el("span", {text:"poids brut"}))));
       if (!man && r) card.appendChild(el("p", {class:"mut", style:"margin:0", text:"Cartons calculés automatiquement (règle " + cli + " : " + r.n + " pièces maximum, une seule taille, " + fmt(r.kg, r.kg % 1 ? 1 : 0) + " kg le carton plein). Les cartons saisis à l'étape Emballage remplacent ce calcul."}));
+      lines.forEach(function(l){ if (l.client === cli) enCarton += enCartonExports(l.id, null, null); });
       if (man && enCarton !== emb) card.appendChild(el("div", {class:"msg err", text:fmt(emb - enCarton) + " pièce(s) emballée(s) hors carton (saisies en mode détaillé) : elles ne figurent pas sur la liste de colisage."}));
       if (ouverts.length) card.appendChild(el("div", {class:"msg", text:"En cours de remplissage : " + ouverts.map(function(c){ return "N°" + c.n + " " + cartonResume(c) + "/" + r.n; }).join(" · ")}));
       if (colis.length) card.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:"Cartons N° " + plages(colis.map(function(c){ return c.n; }))}));
@@ -3942,6 +3956,11 @@ function mouvementsCarton(c){
    pièces en carton (tous clients, hors carton en cours de modification) ≤ retour GADH de la ligne. */
 function totalEnCartons(lot, lineId, saufId){
   var q = 0; ((S.cartons || {})[lot] || []).forEach(function(c){ if (c.id === saufId) return; (c.it || []).forEach(function(x){ if (x[0] === lineId) q += x[1]; }); });
+  return q + enCartonExports(lineId, saufId, null);
+}
+/* pièces d'une ligne mises dans les cartons des exports (tous, ou ceux d'un client) */
+function enCartonExports(lineId, saufId, cl){
+  var q = 0; (S.exports || []).forEach(function(e){ if (cl && e.cl !== cl) return; e.cartons.forEach(function(c){ if (c.id === saufId) return; c.it.forEach(function(x){ if (x[0] === lineId) q += x[1]; }); }); });
   return q;
 }
 function retourGadh(lineId){ return (stageTotals()[lineId] || {}).ret || 0; }
@@ -3990,6 +4009,10 @@ function ecartCard(lot, rows){
   return c;
 }
 function sxEmballage(v, lot, rows){
+  if (VUE !== "gadh") v.appendChild(el("div", {class:"sx-tout", style:"margin-bottom:12px"},
+    el("div", {style:"font-weight:700;font-size:16px", text:"📦 Les cartons se préparent dans l'onglet Exports"}),
+    el("div", {class:"mut", style:"margin:4px 0 8px", text:"Un export peut contenir des pièces de plusieurs commandes. Cette page reste disponible pour les cartons déjà commencés ici."}),
+    el("button", {class:"btn", text:"Aller aux exports", onclick:function(){ ui.tab = "exp"; ui.xp = null; render(); }})));
   var clients = sortedUnique(rows.map(function(l){ return l.client; }));
   if (!ui.ecl || clients.indexOf(ui.ecl) < 0) ui.ecl = clients[0];
   if (clients.length > 1){

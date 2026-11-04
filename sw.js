@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v213';
+const CACHE_NAME = 'groupe-v214';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -21,6 +21,7 @@ const APP_SHELL = [
   './firebase-config.js',
   './roles-config.js',
   './affichage-module.js',
+  './suivi-exports.js',
   './rh-module.js',
   './gadh-module.js',
   './prod-module.js',
