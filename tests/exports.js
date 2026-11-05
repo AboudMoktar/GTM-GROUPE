@@ -30,41 +30,45 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   let E = (await etat()).ex;
   r.push(['export créé (N°1, NEOLYS, en cours)', E.length === 1 && E[0].n === 1 && E[0].cl === 'NEOLYS' && E[0].st === 'cours' && E[0].d === '2026-11-07']);
   r.push(['éditeur du carton N°1 ouvert', /Carton N°1/.test(await p.locator('#view').textContent())]);
-  r.push(['surplus ALLOGA proposé (64 revenues pour 60 commandées)', await p.locator('.sx-chip', {hasText: 'surplus ALLOGA'}).count() === 1]);
-  // 2. Lyne Pro, automatique : S = 8 (PK202610) + 30 (PK202611) disponibles
-  await p.locator('.sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
-  r.push(['commandes proposées pour le modèle', await p.locator('.xp-cmd .sx-chip').count() === 3]);
+  // 2. saisie libre : commande PK202610, modèle de la commande
   const lig = (sz) => p.locator('.sx-row', {has: p.locator('.sx-sz', {hasText: new RegExp('^' + sz + '$')})});
-  r.push(['disponible par taille et par commande', /Disponible 38 \(PK202610 : 8 · PK202611 : 30\)/.test(await lig('S').textContent())]);
-  await lig('S').locator('input').fill('12'); await lig('M').locator('input').fill('99');
-  r.push(['quantité limitée au disponible', await lig('M').locator('input').inputValue() === '35']);
-  await lig('M').locator('input').fill('5');
+  r.push(['commandes enregistrées proposées', await p.locator('.xp-cmd .sx-chip').count() === 2]);
+  await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202610'}).click(); await p.waitForTimeout(150);
+  r.push(['tous les modèles du catalogue affichés', await p.locator('.sx-opts .sx-chip').count() >= 5 && await p.locator('.sx-opts .sx-chip', {hasText: '● Lyne Pro Homme Gris'}).count() === 1]);
+  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
+  r.push(['chiffres de la commande affichés', /Commandé 20 · retour GADH 8 · en carton 0 · reste 8/.test(await lig('S').textContent())]);
+  await lig('S').locator('input').fill('12'); await lig('M').locator('input').fill('5');
+  r.push(['saisie libre (au-delà du retour)', await lig('S').locator('input').inputValue() === '12']);
   await p.click('text=➕ Ajouter dans le carton'); await p.waitForTimeout(150);
-  // 3. Gilet, commande choisie
-  await p.locator('.sx-chip', {hasText: 'Gilet Homme Noir'}).click(); await p.waitForTimeout(150);
-  await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202611'}).click(); await p.waitForTimeout(150);
-  await lig('L').locator('input').fill('4');
+  r.push(['dépassement du retour signalé', /12 en carton pour 8 revenue/.test(await p.locator('.xp-ligne').first().textContent() + await p.locator('#view').textContent())]);
+  // 3. commande pas encore enregistrée, modèle hors commande
+  await p.fill('input[placeholder^="Autre N° de lot"]', 'pk202612'); await p.click('text=Utiliser ce N°'); await p.waitForTimeout(150);
+  r.push(['N° de lot libre accepté', await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202612 (pas encore enregistrée)'}).count() === 1]);
+  await p.locator('.sx-opts .sx-chip', {hasText: 'Gilet Homme Noir'}).click(); await p.waitForTimeout(150);
+  r.push(['commande non enregistrée : saisie sans chiffres', /Hors commande enregistrée/.test(await lig('L').textContent())]);
+  await lig('L').locator('input').fill('7');
   await p.click('text=➕ Ajouter dans le carton'); await p.waitForTimeout(150);
-  r.push(['contenu du carton affiché (lignes par commande)', await p.locator('.xp-ligne').count() === 4]);
+  r.push(['contenu du carton affiché', await p.locator('.xp-ligne').count() === 3]);
   await p.click('text=✔ Valider et refaire le même'); await p.waitForTimeout(300);
-  ({ex: E} = await etat()); let c1 = E[0].cartons[0], it = Object.fromEntries(c1.it);
-  r.push(['automatique : la plus ancienne commande d\'abord', it.A_S === 8 && it.B_S === 4 && it.A_M === 5 && !it.B_M && it.B_G === 4]);
+  ({ex: E} = await etat()); let c1 = E[0].cartons[0];
+  const q = (c, id, lot, lib, sz) => c.it.filter(x => (id ? x[0] === id : (!x[0] && x[2] === lot && x[3] === lib && x[4] === sz))).reduce((a, x) => a + x[1], 0);
+  r.push(['pièces rattachées à leur commande, ou libres', q(c1, 'A_S') === 12 && q(c1, 'A_M') === 5 && q(c1, null, 'PK202612', 'Gilet homme noir', 'L') === 7]);
   let mv = (await etat()).mv;
-  r.push(['carton = pièces contrôlées et emballées', mv.filter(m => m.ct === c1.id && m.stage === 'emb').reduce((a, m) => a + m.qty, 0) === 21 && mv.filter(m => m.ct === c1.id && m.stage === 'ctl').length === 4]);
-  // 4. « refaire le même » : seulement ce qui reste (PK202610 S épuisé)
-  r.push(['carton N°2 prérempli avec le disponible', /Carton N°2/.test(await p.locator('#view').textContent()) && await p.locator('.xp-ligne').count() === 3]);
+  r.push(['carton : seules les pièces des commandes enregistrées vont au suivi', mv.filter(m => m.ct === c1.id && m.stage === 'emb').reduce((a, m) => a + m.qty, 0) === 17]);
+  r.push(['carton N°2 prérempli avec le même contenu', /Carton N°2/.test(await p.locator('#view').textContent()) && await p.locator('.xp-ligne').count() === 3]);
+  // retirer la ligne PK202610 S du carton N°2
+  await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('.xp-x').click(); await p.waitForTimeout(150);
   await p.click('text=✔ Valider le carton'); await p.waitForTimeout(300);
-  ({ex: E} = await etat());
-  const c2 = E[0].cartons[1], it2 = Object.fromEntries(c2.it);
-  r.push(['carton N°2 enregistré sans dépasser', E[0].cartons.length === 2 && !it2.A_S && it2.A_M === 5 && it2.B_G === 4 && it2.B_S === 4]);
+  ({ex: E} = await etat()); const c2 = E[0].cartons[1];
+  r.push(['carton N°2 enregistré', E[0].cartons.length === 2 && q(c2, 'A_M') === 5 && q(c2, null, 'PK202612', 'Gilet homme noir', 'L') === 7 && !q(c2, 'A_S')]);
   // 5. les cartons de l'export comptent dans le reste à emballer de la commande
-  r.push(['reste à emballer de la commande à jour', await p.evaluate(() => dispoRetour('PK202610', 'A_S', null) === 0 && dispoRetour('PK202611', 'B_G', null) === 4)]);
+  r.push(['reste à emballer de la commande à jour', await p.evaluate(() => dispoRetour('PK202610', 'A_S', null) === 0 && dispoRetour('PK202610', 'A_M', null) === 0)]);
   // 6. documents
   const html = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c), tot: pkExports.totalHtml(e, c), D: pkExports.totalDonneesExport(e, c)}; });
-  r.push(['colisage : commande de chaque ligne', /PK202610/.test(html.col) && /PK202611/.test(html.col) && /Date d'export : le 07\/11\/2026/.test(html.col)]);
-  r.push(['liste total séparée par commande', /Commande PK202610/.test(html.tot) && /Commande PK202611/.test(html.tot) && /TOTAL DE L'EXPORT<\/td><td>34/.test(html.tot)]);
+  r.push(['colisage : commande de chaque ligne', /PK202610/.test(html.col) && /PK202612/.test(html.col) && /Date d'export : le 07\/11\/2026/.test(html.col)]);
+  r.push(['liste total séparée par commande', /Commande PK202610/.test(html.tot) && /Commande PK202612/.test(html.tot) && /TOTAL DE L'EXPORT<\/td><td>36/.test(html.tot) && /\(non enregistrée\)/.test(html.tot)]);
   const etA = html.D.etat.find(x => x.lot === 'PK202610');
-  r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 18 && etA.T.reste === 12]);
+  r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   await p.click('text=← Export N°1').catch(() => {});
   await p.waitForTimeout(200);
   const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), p.click('text=📗 Tout en Excel (4 feuilles)')]);
@@ -77,7 +81,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   ({ex: E, mv} = await etat());
   const exp = (id) => mv.filter(m => m.ct === E[0].id && m.stage === 'exp' && m.lineId === id).reduce((a, m) => a + m.qty, 0);
   r.push(['export validé : FINI', E[0].st === 'fini']);
-  r.push(['pièces expédiées sur leurs commandes', exp('A_S') === 8 && exp('B_S') === 8 && exp('A_M') === 10 && exp('B_G') === 8]);
+  r.push(['pièces expédiées sur leurs commandes', exp('A_S') === 12 && exp('A_M') === 10 && mv.filter(m => m.stage === 'exp').length === 3]);
+  // la commande PK202612 est enregistrée ensuite : rattachement
+  await p.evaluate(() => { S.lines.push({id:'C_G', lot:'PK202612', year:2026, client:'NEOLYS', model:'M', lib:'Gilet homme noir', size:'L', qty:20, cc:0}); ['cp','gadh','asm','ret','conf'].forEach((st, k) => S.moves.push({id:'MC' + k, date:'2026-11-02', lineId:'C_G', stage:st, qty:20, nc:0, note:''})); render(); });
+  r.push(['commande enregistrée ensuite : rattachement proposé', await p.locator('text=Rattacher aux commandes').count() === 1]);
+  await p.click('text=Rattacher aux commandes'); await p.waitForTimeout(300);
+  ({ex: E, mv} = await etat());
+  r.push(['pièces rattachées : emballées et expédiées sur la commande', E[0].cartons.every(c => c.it.every(x => x[0])) && exp('C_G') === 14 && mv.filter(m => m.lineId === 'C_G' && m.stage === 'emb').reduce((a, m) => a + m.qty, 0) === 14]);
   r.push(['export fini : cartons non modifiables', await p.locator('text=+ Ajouter un carton').count() === 0]);
   // 8. sauvegarde : l'export est enregistré et relu
   const rt = await p.evaluate(() => { const d = desiredDocs(); const avant = JSON.stringify(S.exports); applyDocs(d); return {doc: !!d.exports, same: JSON.stringify(S.exports) === avant, mv: S.moves.filter(m => m.ct).length}; });
@@ -92,7 +102,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['export supprimé : pièces de nouveau à emballer', E.length === 0 && mv.length === 0]);
   // 10. ALLOGA : une seule taille, limité à la commande
   const al = await p.evaluate(() => { const e = {id:'X2', n:2, d:'2026-11-08', cl:'ALLOGA', nat:'ALLOGA', dest:null, st:'cours', dv:'', cartons:[]}; S.exports.push(e); const l = lineById('B_AL'); return pkExports.dispoLigne(l, 'ALLOGA', null); });
-  r.push(['ALLOGA : limité à sa commande (60 sur 64 revenues)', al === 60]);
+  r.push(['ALLOGA : disponible indiqué (60 sur 64 revenues)', al === 60]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
