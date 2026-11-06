@@ -449,7 +449,7 @@ const DEF_RULES=[["PHARMA-HOMME",100,5,400,10,20],["PHARMA-FEMME COL V",100,5,40
 </script>
 <script>
 "use strict";
-var SZ = ["XS","S","M","L","XL","XXL","XXXL","TU"];   /* TU = taille unique (exosquelette) */
+var SZ = ["XS","S","M","L","XL","XXL","XXXL","H1.P1","H1.P2","H1.P3","H1.P4","H2.P2","H2.P3","H2.P4","TU"];   /* TU = taille unique (exosquelette) ; H1.P1 … H2.P4 : tailles des sous-vêtements SV */
 /* Parcours : 1 Commande reçue · 2 Commande prête (validée) · puis 9 étapes avec quantités (cumul de pièces ayant atteint l'étape) */
 var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour TEK-TREND"],["conf","En confection"],["ctl","Contrôle"],["emb","Emballage"],["pret","Prêt à expédier"],["exp","Expédiée"]];
 var STG_KEYS = STAGES.map(function(x){ return x[0]; });
@@ -485,7 +485,7 @@ function nid(p){ uid++; return p + Date.now().toString(36) + uid.toString(36) + 
 
 /* ---------- utilitaires ---------- */
 function cleanTxt(s){ return String(s == null ? "" : s).replace(/ /g," ").replace(/\t/g," ").replace(/\s+/g," ").trim(); }
-function normSize(s){ s = cleanTxt(s).toUpperCase(); if (s === "3XL") return "XXXL"; if (s === "2XL") return "XXL"; return s; }
+function normSize(s){ s = cleanTxt(s).toUpperCase(); if (s === "3XL") return "XXXL"; if (s === "2XL") return "XXL"; var h = /^H\s*(\d)\s*[.\- ]?\s*P\s*(\d)$/.exec(s); if (h) return "H" + h[1] + ".P" + h[2]; return s; }
 function refP(lib,size){ return cleanTxt(lib).replace(/ /g,"-") + "_" + normSize(size); }
 function sizeIdx(s){ var i = SZ.indexOf(s); return i < 0 ? 99 : i; }
 function num(v){ var n = parseInt(v,10); return isNaN(n) ? 0 : n; }
@@ -584,7 +584,7 @@ function desiredDocs(){
   var d = {};
   d.cfg = {nomen: S.nomen.map(function(n){ var a = [n.model,n.lib,n.size,n.t1,n.t2,n.cc,n.ca,n.ca2]; if (n.colle) a.push(n.colle); return a; }),
            rules: S.rules.map(function(r){ return [r.model,r.s1,r.m1,r.s2,r.m2,r.m3]; }), stock: S.stock, lots: S.lots, ver: 2,
-           alertes: S.alertes, motifs: S.motifs, colis: S.colis, colleU: S.colleU, refs: S.refs, mat: S.mat, bom: S.bom, bomJ: S.bomJ || [], majNomen: S.majNomen || ""};
+           alertes: S.alertes, motifs: S.motifs, colis: S.colis, colleU: S.colleU, refs: S.refs, mat: S.mat, bom: S.bom, bomJ: S.bomJ || [], majNomen: S.majNomen || "", ajouts: S.ajouts || {}};
   var lots = sortedUnique(S.lines.map(function(l){ return l.lot; }));
   lots.forEach(function(lot){
     var ls = S.lines.filter(function(l){ return l.lot === lot; });
@@ -681,6 +681,7 @@ function cfgOptions(d){
   S.bom = JSON.parse(JSON.stringify(d.bom || DEF_BOM));
   S.bomJ = (d.bomJ || []).slice();
   S.majNomen = d.majNomen || "";
+  S.ajouts = JSON.parse(JSON.stringify(d.ajouts || {}));
 }
 function loadHost(){
   var docs = HOST.lireDocs();
@@ -689,6 +690,7 @@ function loadHost(){
   chargerStock();
   try { if (reprendreAnciensMouvements()) setTimeout(persist, 0); } catch (e) {}
   try { if (appliquerMajNomenclature()){ assurerTissus(); setTimeout(persist, 0); } } catch (e) { console.error(e); }
+  try { if (ajouterSousVetementsSV()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { conditionnementsFils(); } catch (e) {}
 }
 /* appelé par l'application groupe à chaque mise à jour (autre appareil) ; on ne redessine pas sous une saisie en cours */
@@ -1821,6 +1823,22 @@ function besoinsMatieres(lot){
    coques 1 pc = 1 paire ; accessoires brassière et matières exosquelette sortis en confection TEK-TREND ; exosquelette : sac lavage + pack à l'emballage.
    Appliquée une seule fois (S.majNomen), avec une ligne dans le journal de la nomenclature. */
 var NOMEN_MAJ = {"v":"2026-10-21","renommer":{"Revolut Mild Noir":"REVOLUTIONAL MILD NOIR"},"mat":{"TIS-CARESSE-NOIR":["Caresse Noir","Tissu","m","Caresse Noir"],"ADH-VIX1711C-175":["Colle adhésif VIX 1711C/175","Colle","m"],"ACC-ATTACHE-NOIR":["ATTACHES NOIR","Accessoire","pièce"],"TIS-MONOSTRECH-NOIR":["MONOSTRECH NOIR","Tissu","m"],"FIL-EPIC120-9700":["COATS EPIC 120 NOIR COL 9700","Accessoire","m"],"FIL-GRAMAX160-9700":["COATS GRAMAX 160 NOIR COL 9700","Accessoire","m"],"PAC-PACK-PHARMA-HOMME":["PACK PHARMA_HOMME","Packaging","pièce"],"TIS-RENEW-FINE-GRIS":["Renew Fine Gris","Tissu","m","Renew Fine Gris"],"ACC-ATTACHE-GRIS":["ATTACHES GRIS","Accessoire","pièce"],"TIS-MONOSTRECH-GRIS":["MONOSTRECH GRIS","Tissu","m"],"FIL-EPIC120-9581":["COATS EPIC 120 GRIS COL 9581","Accessoire","m"],"FIL-GRAMAX160-9581":["COATS GRAMAX 160 GRIS COL 9581","Accessoire","m"],"TIS-CARESSE-BEIGE":["Caresse Beige","Tissu","m","Caresse Beige"],"ACC-ATTACHE-SABLE":["ATTACHES SABLE","Accessoire","pièce"],"TIS-MONOSTRECH-SABLE":["MONOSTRECH SABLE","Tissu","m"],"FIL-EPIC120-8178":["COATS EPIC 120 BEIGE COL 8178","Accessoire","m"],"FIL-GRAMAX160-8178":["COATS GRAMAX 160 BEIGE COL 8178","Accessoire","m"],"PAC-PACK-PHARMA-FEMME":["PACK PHARMA_FEMME","Packaging","pièce"],"TIS-CARESSE-ROSE":["Caresse Rose","Tissu","m","Caresse Rose"],"ACC-ATTACHE-ROSE":["ATTACHES ROSE","Accessoire","pièce"],"TIS-MONOSTRECH-ROSE":["MONOSTRECH ROSE","Tissu","m"],"FIL-EPIC120-3149":["COATS EPIC 120 ROSE COL 3149","Accessoire","m"],"FIL-GRAMAX160-3149":["COATS GRAMAX 160 ROSE COL 3149","Accessoire","m"],"TIS-REVOLUTIONAL-MILD-NOIR":["REVOLUTIONAL MILD NOIR","Tissu","m","REVOLUTIONAL MILD NOIR"],"PAC-PACK-SPORT":["PACK SPORT","Packaging","pièce"],"ACC-VELCRO-MALE-NOIR-100MM":["VELCRO MALE NOIR 100MM","Accessoire","m"],"ACC-VELCRO-FEMELLE-NOIR-100MM":["VELCRO FEMELLE NOIR 100MM","Accessoire","m"],"PAC-PACK-GILET-NOIR":["PACK GILET_NOIR","Packaging","pièce"],"TIS-VITA-TITANIUM":["Vita Titanium","Tissu","m","Vita Titanium"],"ACC-BOUCLE-MALE":["BOUCLE MALE","Accessoire","pièce"],"ACC-BOUCLE-FEMELLE":["BOUCLE FEMELLE","Accessoire","pièce"],"ACC-BOUTONS-PRESSION":["BOUTONS PRESSION","Accessoire","pièce"],"ACC-ELASTIQUE-624-2-H020-NOIR":["ELASTIQUE 624/2-H020-NOIR","Accessoire","m"],"FIL-M195":["Fil à Coudre GRIS COL M195  5000m","Accessoire","m"],"FIL-M424":["Fil à Coudre GRIS COL M424 10000m","Accessoire","m"],"FIL-M122":["Fil à Coudre COL M122 5000M","Accessoire","m"],"PAC-PACK-PRO-HOMME":["PACK PRO HOMME","Packaging","pièce"],"PAC-PACK-PRO-FEMME":["PACK PRO FEMME","Packaging","pièce"],"TIS-VITA-CLOUD":["Vita Cloud","Tissu","m","Vita Cloud"],"ACC-VELCRO-MALE-BLANC-100MM":["VELCRO MALE BLANC 100MM","Accessoire","m"],"ACC-VELCRO-FEMELLE-BLANC-100MM":["VELCRO FEMELLE BLANC 100MM","Accessoire","m"],"PAC-PACK-FLEX-HOMME":["PACK FLEX HOMME","Packaging","pièce"],"TIS-RENEW-CULT-NOIR":["Renew Cult Noir","Tissu","m","Renew Cult Noir"],"ACC-AGRAFE":["Agrafe","Accessoire","m"],"ACC-LAMINETTE-GOMME-0-5-6MM-S004":["LAMINETTE GOMME 0,5*6MM S004","Accessoire","kg"],"ACC-ATTACHE-REGLEUR-DH821":["Attaches régleurs DH 821 doré","Accessoire","pièce"],"ACC-COQUES-P152SQ10-80":["Coques P152SQ10 -80 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-COQUES-P152SQ10-90":["Coques P152SQ10 -90 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-COQUES-P152SQ10-100":["Coques P152SQ10 -100 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-COQUES-P152SQ10-110":["Coques P152SQ10 -110 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-COQUES-P152SQ10-120":["Coques P152SQ10 -120 (1 pc = 1 paire)","Accessoire","pièce"],"PAC-PACK-BRASSIERE":["PACK BRASSIERE","Packaging","pièce"],"ACC-COQUES-P152SQ10-130":["Coques P152SQ10 -130 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-COQUES-P152SQ10-140":["Coques P152SQ10 -140 (1 pc = 1 paire)","Accessoire","pièce"],"ACC-BOUCLE-4813":["Boucle fixe retour tenseur baudrier (4813 - Wide Mouth sliplok 25 black)","Accessoire","pièce"],"ACC-BOUCLE-W670":["Boucle réglage armement tenseur épaule (W670 - Auto Spring Cam 25 black)","Accessoire","pièce"],"ACC-BOUCLE-7169AT":["Boucle sac à dos (7169-AT - Single Bar Duckbill 25 black)","Accessoire","pièce"],"ACC-BOUCLE-W550-M":["Boucle acétale baudrier mâle (W550 Champion 25 (M) black)","Accessoire","pièce"],"ACC-BOUCLE-W552-F":["Boucle acétale baudrier femelle (W552 Dual Champion 25 (F) black)","Accessoire","pièce"],"ACC-SANGLE-5825":["Sangle principale (5825 largeur 25 couleur 920 tirant rigide)","Accessoire","m"],"ACC-ELASTIQUE-5572":["Élastique tenseurs (5572 U99 largeur 25 sangle élastique)","Accessoire","m"],"ACC-AGRIPPANT-6944":["Élastique attache boucle baudrier (6944 largeur 50 couleur 920 bande agrippante)","Accessoire","m"],"ACC-BORDURE-6478":["Bordage filet (6478 largeur 25 couleur 920 bordure pliante)","Accessoire","m"],"ACC-BORDAGE-FRECCIATINO":["Bordage (NR FRECCIATINO PEC, with 25mm black)","Accessoire","m"],"TIS-MOUSSE-CAREFOAM43":["Mousse (CAREFOAM 43 NOIR - 2200×1100×5 MM SHORE 43 NOIR)","Tissu","panneau"],"TIS-FILET-SPIDER":["Filet (Spider)","Tissu","m"],"TIS-3D-RED-VISEU":["3D (Red Viseu - Laize 150cm)","Tissu","m"],"TIS-MAILLE-PVC-REGILLA6":["Maille PVC (Regilla 6 - Laize 150cm)","Tissu","m"],"PAC-SAC-LAVAGE":["SAC LAVAGE","Packaging","pièce"],"PAC-PACK-EXOSQUELETTE":["PACK EXOSQUELETTE","Packaging","pièce"],"PAC-PACK-FLEX-FEMME":["PACK FLEX FEMME","Packaging","pièce"],"ACC-BRETELLE-TC1276-22":["Bretelle TC1276/22 black","Accessoire","m"]},"bom":{"PHARMA_HOMME COL V NOIR":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-NOIR","*",2,"CONF"],["TIS-MONOSTRECH-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-PHARMA-HOMME","*",1,"EMB"]],"PHARMA_HOMME COL V GRIS":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-GRIS","*",2,"CONF"],["TIS-MONOSTRECH-GRIS","*",0.05,"CONF"],["FIL-EPIC120-9581","*",50,"CONF"],["FIL-GRAMAX160-9581","*",100,"CONF"],["PAC-PACK-PHARMA-HOMME","*",1,"EMB"]],"PHARMA_HOMME COL V SABLE":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-SABLE","*",2,"CONF"],["TIS-MONOSTRECH-SABLE","*",0.05,"CONF"],["FIL-EPIC120-8178","*",50,"CONF"],["FIL-GRAMAX160-8178","*",100,"CONF"],["PAC-PACK-PHARMA-HOMME","*",1,"EMB"]],"PHARMA_FEMME COL V NOIR":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-NOIR","*",2,"CONF"],["TIS-MONOSTRECH-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-PHARMA-FEMME","*",1,"EMB"]],"PHARMA_FEMME COL V ROSE POUDRE":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-ROSE","*",2,"CONF"],["TIS-MONOSTRECH-ROSE","*",0.05,"CONF"],["FIL-EPIC120-3149","*",50,"CONF"],["FIL-GRAMAX160-3149","*",100,"CONF"],["PAC-PACK-PHARMA-FEMME","*",1,"EMB"]],"PHARMA_FEMME COL ROND NOIR":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-NOIR","*",2,"CONF"],["TIS-MONOSTRECH-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-PHARMA-FEMME","*",1,"EMB"]],"PHARMA_FEMME COL ROND ROSE POUDRE":[["ADH-VIX1711C-175","XS",0.22,"GADH"],["ADH-VIX1711C-175","S",0.22,"GADH"],["ADH-VIX1711C-175","M",0.22,"GADH"],["ADH-VIX1711C-175","L",0.28,"GADH"],["ADH-VIX1711C-175","XL",0.28,"GADH"],["ADH-VIX1711C-175","XXL",0.28,"GADH"],["ADH-VIX1711C-175","XXXL",0.33,"GADH"],["ACC-ATTACHE-ROSE","*",2,"CONF"],["TIS-MONOSTRECH-ROSE","*",0.05,"CONF"],["FIL-EPIC120-3149","*",50,"CONF"],["FIL-GRAMAX160-3149","*",100,"CONF"],["PAC-PACK-PHARMA-FEMME","*",1,"EMB"]],"Tee-shirt Sport homme noir":[["ADH-VIX1711C-175","*",0.25,"GADH"],["ACC-ATTACHE-NOIR","*",2,"CONF"],["TIS-REVOLUTIONAL-MILD-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-SPORT","*",1,"EMB"]],"Tee-shirt Sport femme noir":[["ADH-VIX1711C-175","*",0.25,"GADH"],["ACC-ATTACHE-NOIR","*",2,"CONF"],["TIS-REVOLUTIONAL-MILD-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-SPORT","*",1,"EMB"]],"Gilet homme noir":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-VELCRO-MALE-NOIR-100MM","*",0.11,"CONF"],["ACC-VELCRO-FEMELLE-NOIR-100MM","*",0.3,"CONF"],["TIS-MONOSTRECH-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-GILET-NOIR","*",1,"EMB"]],"Gilet femme noir":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-VELCRO-MALE-NOIR-100MM","*",0.11,"CONF"],["ACC-VELCRO-FEMELLE-NOIR-100MM","*",0.3,"CONF"],["TIS-MONOSTRECH-NOIR","*",0.05,"CONF"],["FIL-EPIC120-9700","*",50,"CONF"],["FIL-GRAMAX160-9700","*",100,"CONF"],["PAC-PACK-GILET-NOIR","*",1,"EMB"]],"LYNE PRO homme gris":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-BOUCLE-MALE","*",1,"CONF"],["ACC-BOUCLE-FEMELLE","*",1,"CONF"],["ACC-BOUTONS-PRESSION","*",2,"CONF"],["ACC-ELASTIQUE-624-2-H020-NOIR","*",0.48,"CONF"],["TIS-VITA-TITANIUM","*",0.05,"CONF"],["FIL-M195","*",50,"CONF"],["FIL-M424","*",100,"CONF"],["FIL-M122","*",30,"CONF"],["PAC-PACK-PRO-HOMME","*",1,"EMB"]],"LYNE PRO femme gris":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-BOUCLE-MALE","*",1,"CONF"],["ACC-BOUCLE-FEMELLE","*",1,"CONF"],["ACC-BOUTONS-PRESSION","*",2,"CONF"],["ACC-ELASTIQUE-624-2-H020-NOIR","*",0.48,"CONF"],["TIS-VITA-TITANIUM","*",0.05,"CONF"],["FIL-M195","*",50,"CONF"],["FIL-M424","*",100,"CONF"],["FIL-M122","*",30,"CONF"],["PAC-PACK-PRO-FEMME","*",1,"EMB"]],"LYNE FLEX homme gris":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-VELCRO-MALE-BLANC-100MM","*",0.11,"CONF"],["ACC-VELCRO-FEMELLE-BLANC-100MM","*",0.3,"CONF"],["TIS-VITA-CLOUD","*",0.05,"CONF"],["FIL-EPIC120-9581","*",50,"CONF"],["FIL-GRAMAX160-9581","*",100,"CONF"],["PAC-PACK-FLEX-HOMME","*",1,"EMB"]],"LYNE FLEX femme gris":[["ADH-VIX1711C-175","*",0.3,"GADH"],["ACC-VELCRO-MALE-BLANC-100MM","*",0.11,"CONF"],["ACC-VELCRO-FEMELLE-BLANC-100MM","*",0.3,"CONF"],["TIS-VITA-CLOUD","*",0.05,"CONF"],["FIL-EPIC120-9581","*",50,"CONF"],["FIL-GRAMAX160-9581","*",100,"CONF"],["PAC-PACK-FLEX-FEMME","*",1,"EMB"]],"BRASSIÈRE A-B":[["TIS-RENEW-CULT-NOIR","*",0.115,"MMGT"],["ADH-VIX1711C-175","S",0.127,"GADH"],["ADH-VIX1711C-175","M",0.143,"GADH"],["ADH-VIX1711C-175","L",0.192,"GADH"],["ADH-VIX1711C-175","XL",0.24,"GADH"],["ADH-VIX1711C-175","XXL",0.3,"GADH"],["ACC-AGRAFE","S",0.09,"CONF"],["ACC-AGRAFE","M",0.11,"CONF"],["ACC-AGRAFE","L",0.13,"CONF"],["ACC-AGRAFE","XL",0.15,"CONF"],["ACC-AGRAFE","XXL",0.17,"CONF"],["ACC-LAMINETTE-GOMME-0-5-6MM-S004","*",0.00288,"CONF"],["ACC-ATTACHE-REGLEUR-DH821","*",4,"CONF"],["ACC-BRETELLE-TC1276-22","*",0.51,"CONF"],["ACC-COQUES-P152SQ10-80","S",1,"CONF"],["ACC-COQUES-P152SQ10-90","M",1,"CONF"],["ACC-COQUES-P152SQ10-100","L",1,"CONF"],["ACC-COQUES-P152SQ10-110","XL",1,"CONF"],["ACC-COQUES-P152SQ10-120","XXL",1,"CONF"],["PAC-PACK-BRASSIERE","*",1,"EMB"]],"BRASSIÈRE C-D":[["TIS-RENEW-CULT-NOIR","*",0.137,"MMGT"],["ADH-VIX1711C-175","S",0.158,"GADH"],["ADH-VIX1711C-175","M",0.168,"GADH"],["ADH-VIX1711C-175","L",0.162,"GADH"],["ADH-VIX1711C-175","XL",0.228,"GADH"],["ADH-VIX1711C-175","XXL",0.325,"GADH"],["ACC-AGRAFE","S",0.11,"CONF"],["ACC-AGRAFE","M",0.13,"CONF"],["ACC-AGRAFE","L",0.15,"CONF"],["ACC-AGRAFE","XL",0.17,"CONF"],["ACC-AGRAFE","XXL",0.19,"CONF"],["ACC-LAMINETTE-GOMME-0-5-6MM-S004","*",0.00288,"CONF"],["ACC-ATTACHE-REGLEUR-DH821","*",4,"CONF"],["ACC-BRETELLE-TC1276-22","*",0.41,"CONF"],["ACC-COQUES-P152SQ10-90","S",1,"CONF"],["ACC-COQUES-P152SQ10-100","M",1,"CONF"],["ACC-COQUES-P152SQ10-110","L",1,"CONF"],["ACC-COQUES-P152SQ10-120","XL",1,"CONF"],["ACC-COQUES-P152SQ10-130","XXL",1,"CONF"],["PAC-PACK-BRASSIERE","*",1,"EMB"]],"BRASSIÈRE E-F":[["TIS-RENEW-CULT-NOIR","*",0.157,"MMGT"],["ADH-VIX1711C-175","S",0.158,"GADH"],["ADH-VIX1711C-175","M",0.178,"GADH"],["ADH-VIX1711C-175","L",0.24,"GADH"],["ADH-VIX1711C-175","XL",0.235,"GADH"],["ADH-VIX1711C-175","XXL",0.33,"GADH"],["ACC-AGRAFE","S",0.13,"CONF"],["ACC-AGRAFE","M",0.15,"CONF"],["ACC-AGRAFE","L",0.17,"CONF"],["ACC-AGRAFE","XL",0.19,"CONF"],["ACC-AGRAFE","XXL",0.21,"CONF"],["ACC-LAMINETTE-GOMME-0-5-6MM-S004","*",0.00288,"CONF"],["ACC-ATTACHE-REGLEUR-DH821","*",4,"CONF"],["ACC-BRETELLE-TC1276-22","*",0.41,"CONF"],["ACC-COQUES-P152SQ10-100","S",1,"CONF"],["ACC-COQUES-P152SQ10-110","M",1,"CONF"],["ACC-COQUES-P152SQ10-120","L",1,"CONF"],["ACC-COQUES-P152SQ10-130","XL",1,"CONF"],["ACC-COQUES-P152SQ10-140","XXL",1,"CONF"],["PAC-PACK-BRASSIERE","*",1,"EMB"]],"BRASSIÈRE G-H":[["TIS-RENEW-CULT-NOIR","*",0.187,"MMGT"],["ADH-VIX1711C-175","S",0.158,"GADH"],["ADH-VIX1711C-175","M",0.225,"GADH"],["ADH-VIX1711C-175","L",0.195,"GADH"],["ADH-VIX1711C-175","XL",0.303,"GADH"],["ADH-VIX1711C-175","XXL",0.345,"GADH"],["ACC-AGRAFE","S",0.15,"CONF"],["ACC-AGRAFE","M",0.17,"CONF"],["ACC-AGRAFE","L",0.19,"CONF"],["ACC-AGRAFE","XL",0.21,"CONF"],["ACC-AGRAFE","XXL",0.23,"CONF"],["ACC-LAMINETTE-GOMME-0-5-6MM-S004","*",0.00288,"CONF"],["ACC-ATTACHE-REGLEUR-DH821","*",4,"CONF"],["ACC-BRETELLE-TC1276-22","*",0.41,"CONF"],["ACC-COQUES-P152SQ10-110","S",1,"CONF"],["ACC-COQUES-P152SQ10-120","M",1,"CONF"],["ACC-COQUES-P152SQ10-130","L",1,"CONF"],["ACC-COQUES-P152SQ10-140","XL",1,"CONF"],["ACC-COQUES-P152SQ10-140","XXL",1,"CONF"],["PAC-PACK-BRASSIERE","*",1,"EMB"]],"EXOSQUELETTE":[["ACC-BOUCLE-4813","*",4,"CONF"],["ACC-BOUCLE-W670","*",2,"CONF"],["ACC-BOUCLE-7169AT","*",2,"CONF"],["ACC-BOUCLE-W550-M","*",2,"CONF"],["ACC-BOUCLE-W552-F","*",2,"CONF"],["ACC-SANGLE-5825","*",3.9,"CONF"],["ACC-ELASTIQUE-5572","*",2.0,"CONF"],["ACC-AGRIPPANT-6944","*",0.3,"CONF"],["ACC-BORDURE-6478","*",0.3,"CONF"],["ACC-BORDAGE-FRECCIATINO","*",7.82,"CONF"],["TIS-MOUSSE-CAREFOAM43","*",0.25,"CONF"],["TIS-FILET-SPIDER","*",0.06,"CONF"],["TIS-3D-RED-VISEU","*",0.49,"CONF"],["TIS-MAILLE-PVC-REGILLA6","*",0.49,"CONF"],["PAC-SAC-LAVAGE","*",1,"EMB"],["PAC-PACK-EXOSQUELETTE","*",1,"EMB"]]},"nomen":[["BRASSIÈRE","BRASSIÈRE A-B","S","Renew Cult Noir","",0,0.253,0],["BRASSIÈRE","BRASSIÈRE A-B","M","Renew Cult Noir","",0,0.287,0],["BRASSIÈRE","BRASSIÈRE A-B","L","Renew Cult Noir","",0,0.384,0],["BRASSIÈRE","BRASSIÈRE A-B","XL","Renew Cult Noir","",0,0.48,0],["BRASSIÈRE","BRASSIÈRE A-B","XXL","Renew Cult Noir","",0,0.6,0],["BRASSIÈRE","BRASSIÈRE C-D","S","Renew Cult Noir","",0,0.316,0],["BRASSIÈRE","BRASSIÈRE C-D","M","Renew Cult Noir","",0,0.336,0],["BRASSIÈRE","BRASSIÈRE C-D","L","Renew Cult Noir","",0,0.323,0],["BRASSIÈRE","BRASSIÈRE C-D","XL","Renew Cult Noir","",0,0.455,0],["BRASSIÈRE","BRASSIÈRE C-D","XXL","Renew Cult Noir","",0,0.65,0],["BRASSIÈRE","BRASSIÈRE E-F","S","Renew Cult Noir","",0,0.316,0],["BRASSIÈRE","BRASSIÈRE E-F","M","Renew Cult Noir","",0,0.356,0],["BRASSIÈRE","BRASSIÈRE E-F","L","Renew Cult Noir","",0,0.48,0],["BRASSIÈRE","BRASSIÈRE E-F","XL","Renew Cult Noir","",0,0.47,0],["BRASSIÈRE","BRASSIÈRE E-F","XXL","Renew Cult Noir","",0,0.66,0],["BRASSIÈRE","BRASSIÈRE G-H","S","Renew Cult Noir","",0,0.316,0],["BRASSIÈRE","BRASSIÈRE G-H","M","Renew Cult Noir","",0,0.45,0],["BRASSIÈRE","BRASSIÈRE G-H","L","Renew Cult Noir","",0,0.39,0],["BRASSIÈRE","BRASSIÈRE G-H","XL","Renew Cult Noir","",0,0.607,0],["BRASSIÈRE","BRASSIÈRE G-H","XXL","Renew Cult Noir","",0,0.69,0],["EXOSQUELETTE","EXOSQUELETTE","TU","","",0,0,0]]};
+/* Sous-vêtements SV (ajoutés le 06/11/2026) : 3 modèles, 7 coloris, tailles H1.P1 … H2.P4.
+   Ajoutés une seule fois au catalogue (les tailles déjà présentes ne sont pas touchées) ; consommations de tissu à compléter dans Réglages. */
+var SV_TAILLES = ["H1.P1","H1.P2","H1.P3","H1.P4","H2.P2","H2.P3","H2.P4"];
+var SV_MODELES = [["SV-CV-HOMME", ["Sous-vêtement homme col V noir", "Sous-vêtement homme col V sable", "Sous-vêtement homme col V gris"]],
+  ["SV-CR-FEMME", ["Sous-vêtement femme col rond noir", "Sous-vêtement femme col rond rose poudré"]],
+  ["SV-CV-FEMME", ["Sous-vêtement femme col V noir", "Sous-vêtement femme col V rose poudré"]]];
+function ajouterSousVetementsSV(){
+  S.ajouts = S.ajouts || {};
+  if (S.ajouts.sv20261106 || VUE === "gadh" || lectureSeule()) return false;
+  var n = 0;
+  SV_MODELES.forEach(function(m){ m[1].forEach(function(lib){ SV_TAILLES.forEach(function(t){
+    if (S.nomen.some(function(x){ return x.lib === lib && x.size === t; })) return;
+    S.nomen.push({model:m[0], lib:lib, size:t, t1:"", t2:"", cc:0, ca:0, ca2:0, colle:0}); n++; }); }); });
+  S.ajouts.sv20261106 = today();
+  return true;
+}
 function appliquerMajNomenclature(){
   var M = NOMEN_MAJ; if (S.majNomen === M.v || VUE === "gadh" || lectureSeule()) return false;
   var refsMv = {}; mvListe().forEach(function(m){ refsMv[m.ref] = 1; });
@@ -2040,10 +2058,31 @@ function pfamArr(ref){
   arr.forEach(function(x){ x = PFAM_ALIAS[x] || x; if (PERCKO_FAMILLES.indexOf(x) >= 0 && out.indexOf(x) < 0) out.push(x); });
   return out;
 }
+/* Sous-famille d'un article (état client PERCKO et listes du stock) : choisie sur l'article (S.sp[ref].sfam),
+   sinon déduite de la référence. Les fils à coudre restent à TEK-TREND : jamais dans l'état envoyé à PERCKO. */
+var SFAM_ORDRE = ["Tissu bistrech", "Tissu monostrech", "Tissus techniques", "Attaches", "Velcro", "Boucles", "Élastiques et sangles", "Accessoires", "Packaging", "Colle", "Fils à coudre"];
+function sfamDefaut(ref){
+  var r = String(ref || "").toUpperCase(), m = S.mat[ref] || [];
+  if (/^TIS-MONOSTRECH/.test(r)) return "Tissu monostrech";
+  if (/^TIS-(CARESSE|RENEW|REVOLUTIONAL|VITA)/.test(r)) return "Tissu bistrech";
+  if (/^FIL-/.test(r)) return "Fils à coudre";
+  if (/^PAC-/.test(r) || m[1] === "Packaging") return "Packaging";
+  if (/^ADH-/.test(r) || m[1] === "Colle") return "Colle";
+  if (/^ACC-ATTACHE/.test(r)) return "Attaches";
+  if (/^ACC-VELCRO/.test(r)) return "Velcro";
+  if (/^ACC-BOUCLE/.test(r)) return "Boucles";
+  if (/^ACC-(ELASTIQUE|AGRIPPANT|SANGLE)/.test(r)) return "Élastiques et sangles";
+  if (/^TIS-/.test(r) || m[1] === "Tissu") return "Tissus techniques";
+  return "Accessoires";
+}
+function sfamDe(ref){ var x = (S.sp[ref] || {}).sfam; return x ? String(x) : sfamDefaut(ref); }
+function sfamRang(x){ var i = SFAM_ORDRE.indexOf(x); return i < 0 ? 50 : i; }
+function triSfam(a, b){ var sa = sfamDe(a.ref), sb = sfamDe(b.ref); return (sfamRang(sa) - sfamRang(sb)) || (sa < sb ? -1 : sa > sb ? 1 : 0) || (artNom(a.ref) < artNom(b.ref) ? -1 : 1); }
+function estFil(ref){ return String(ref || "").toUpperCase().indexOf("FIL-") === 0 || sfamDe(ref) === "Fils à coudre"; }
 /* un article TEK-TREND peut être marqué « visible client » (packs, élastique, boutons pression…) pour figurer
    dans l'état envoyé à PERCKO, en plus des articles achetés par PERCKO (toujours inclus). Réglage qui reste
    par défaut d'un envoi à l'autre, modifiable à tout moment dans Stock › Affectation ou sur chaque article. */
-function clientInclus(ref){ var sp = S.sp[ref] || {}; return sp.prop === "PERCKO" || !!sp.clientVisible; }
+function clientInclus(ref){ var sp = S.sp[ref] || {}; if (estFil(ref)) return false; return sp.prop === "PERCKO" || !!sp.clientVisible; }
 /* couleurs et libellés des familles produit, pour l'affichage et l'état client (distinctes des familles « matière ») */
 var PFAM_COUL = {"Sous-vêtements":["0B2C4D", "DCEAF5"], "Brassière":["006070", "DCF5F2"], "Exosquelette":["8B5E00", "FCEBD6"], "?":["555555", "EEEEEE"]};
 var PFAM_PLUR = {"Sous-vêtements":"Sous-vêtements", "Brassière":"Brassières", "Exosquelette":"Exosquelettes", "?":"Non classés"};
@@ -2413,8 +2452,10 @@ function pfamBloc(f, n, table){
 function stkArtTable(list){
   var t = el("table", {class:"stk" + (PC ? "" : " enl")}), tb = el("tbody");
   t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Article"}), el("th", {text:"Physique"}), el("th", {text:"Disponible"}))));
-  list.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; }).forEach(function(a){
-    var d = function(q){ return fmt(q, artDec(a.ref, q)); };
+  var sfP = null;
+  list.sort(triSfam).forEach(function(a){
+    var d = function(q){ return fmt(q, artDec(a.ref, q)); }, sf = sfamDe(a.ref);
+    if (sf !== sfP){ sfP = sf; tb.appendChild(el("tr", {class:"sfam"}, el("td", {colspan:"3", class:"l", style:"font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;background:var(--sub);color:var(--fc,var(--ink))", text:sf}))); }
     tb.appendChild(el("tr", {class:a.rupture || a.manque ? "bad" : a.sousSeuil ? "warn" : ""}, ligneArt(a.ref, a.u),
       el("td", {class:a.phys < 0 ? "neg" : "", text:d(a.phys)}), el("td", {class:"b" + (a.dispo < 0 ? " neg" : ""), text:d(a.dispo)})));
   });
@@ -2720,12 +2761,14 @@ function stkArticles(v, E){
     var iProp = sel([["", "—"]].concat(PROPRIETAIRES.map(function(x){ return [x, x]; })), sp0.prop || "");
     var idEdit = r0 || "+", iP = famCheckboxes(idEdit, "ed-fam-");
     var iCv = el("input", {type:"checkbox"}); iCv.checked = !!sp0.clientVisible;
+    var dlSf = el("datalist", {id:"dl-sfam"}); sortedUnique(SFAM_ORDRE.concat(Object.keys(S.sp).map(function(r){ return (S.sp[r] || {}).sfam; }).filter(Boolean))).forEach(function(x){ dlSf.appendChild(el("option", {value:x})); });
+    var iSf = el("input", {type:"text", value:sp0.sfam || "", placeholder:(neuf ? "" : "automatique : " + sfamDefaut(r0)), list:"dl-sfam"});
     f.appendChild(el("div", {class:"row"}, el("label", {text:"Référence"}, iRef), el("label", {text:"Famille"}, iFam)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Désignation"}, iDes)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Unité de stock"}, iU), el("label", {text:"Seuil minimum"}, iS)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Fournisseur"}, iF), el("label", {text:"Délai (jours)"}, iD)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Emplacement"}, iE), el("label", {text:"Conditionnement"}, iC)));
-    f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Propriétaire"}, iProp)));
+    f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Propriétaire"}, iProp), el("label", {text:"Sous-famille (ex. Tissu bistrech, Attaches)"}, iSf, dlSf)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {text:"Familles produit (PERCKO, plusieurs possibles)"}, iP)));
     f.appendChild(el("div", {class:"row", style:"margin-top:6px"}, el("label", {style:"display:flex;align-items:center;gap:6px"}, iCv, el("span", {text:"Visible dans l'état envoyé au client PERCKO (toujours le cas si Propriétaire = PERCKO)"}))));
     if (!neuf && nbMv[r0]) f.appendChild(el("p", {class:"mut", style:"font-size:12px", text:"L'unité ne peut plus changer : l'article a déjà " + nbMv[r0] + " mouvement(s)."}));
@@ -2740,7 +2783,7 @@ function stkArticles(v, E){
           if (!neuf && nbMv[ref] && u !== S.mat[ref][2]) throw new Error("Unité figée (mouvements existants).");
           if (lectureSeule()) throw new Error("Lecture seule.");
           var old = S.mat[ref] || [], rec = [des, iFam.value, u]; if (old[3]) rec.push(old[3]);
-          var sp = {seuil:numStk(iS.value) || 0, fourn:cleanTxt(iF.value), empl:cleanTxt(iE.value), cond:numStk(iC.value) || 0, delai:Math.round(numStk(iD.value)) || 0, prop:iProp.value || "", pfam:famCheckboxesValeurs(idEdit, "ed-fam-"), clientVisible:!!iCv.checked};
+          var sp = {seuil:numStk(iS.value) || 0, fourn:cleanTxt(iF.value), empl:cleanTxt(iE.value), cond:numStk(iC.value) || 0, delai:Math.round(numStk(iD.value)) || 0, prop:iProp.value || "", sfam:cleanTxt(iSf.value), pfam:famCheckboxesValeurs(idEdit, "ed-fam-"), clientVisible:!!iCv.checked};
           Object.keys(sp).forEach(function(k){ if (!sp[k] || (Array.isArray(sp[k]) && !sp[k].length)) delete sp[k]; });
           if (JSON.stringify(sp) !== JSON.stringify(S.sp[ref] || {})) stkEcrire("sp", ref, Object.keys(sp).length ? sp : null);
           S.mat[ref] = rec; ui.stEdit = null;
@@ -2839,18 +2882,18 @@ function exportStock(E){
    Pour le PDF (qui peut répartir un même bloc de famille sur plusieurs pages), le libellé de famille
    est répété sur chaque ligne plutôt que fusionné, pour qu'il reste toujours visible ; pour l'Excel
    (pas de pagination), la cellule est une vraie fusion verticale sur tout le bloc. */
-var ETAT_CLIENT_COLS = ["Famille", "Référence", "Désignation", "Unité", "Fournisseur", "Seuil", "Physique", "En commande", "Disponible"];
+var ETAT_CLIENT_COLS = ["Famille", "Sous-famille", "Référence", "Désignation", "Unité", "Fournisseur", "Seuil", "Physique", "En commande", "Disponible"];
 function fichesClientGroupes(E){
   var tous = E.arts.filter(function(a){ return clientInclus(a.ref); });
   return PERCKO_FAMILLES.concat(["?"]).map(function(f){
     var list = (f === "?" ? tous.filter(function(a){ return !pfamArr(a.ref).length; }) : tous.filter(function(a){ return pfamArr(a.ref).indexOf(f) >= 0; }));
-    return {f:f, list:list.sort(function(a, b){ return artNom(a.ref) < artNom(b.ref) ? -1 : 1; })};
+    return {f:f, list:list.sort(triSfam)};
   }).filter(function(x){ return x.list.length; });
 }
 function ficheClientGridUnique(E, repeterFamille){
   var groupes = fichesClientGroupes(E);
   if (!groupes.length) return null;
-  var cols = [16, 20, 34, 7, 16, 8, 9, 11, 11], n = cols.length;
+  var cols = [15, 17, 22, 34, 7, 16, 8, 9, 11, 11], n = cols.length;
   var g = {cols:cols, rows:[], merges:[], landscape:true};
   var TBG = "0B2C4D";
   var T = {b:1, sz:13, fg:"FFFFFF", bg:TBG, al:"l", bd:"t"};
@@ -2862,20 +2905,25 @@ function ficheClientGridUnique(E, repeterFamille){
   g.rows[1].h = 30; g.sticky = 2;
   var r = 2;
   groupes.forEach(function(grp){
-    var c = PFAM_COUL[grp.f] || PFAM_COUL["?"], startR = r;
+    var c = PFAM_COUL[grp.f] || PFAM_COUL["?"], startR = r, sfR = r, sfPrec = null;
     grp.list.forEach(function(a, i){
+      var sf = sfamDe(a.ref), nouv = sf !== sfPrec;
+      if (nouv && !repeterFamille && sfPrec !== null && r - 1 > sfR) gmerge(g, sfR, 1, r - 1, 1);
+      if (nouv){ sfR = r; sfPrec = sf; }
       var z = i % 2 ? {bg:"FAFAFA"} : {};
       function st(o){ var x = {sz:10, al:"c", bd:"t"}; Object.keys(z).forEach(function(k){ x[k] = z[k]; }); Object.keys(o || {}).forEach(function(k){ x[k] = o[k]; }); return x; }
       var famSt = {sz:10, b:1, al:"c", fg:"FFFFFF", bg:c[0], bd:"m", wrap:1};
       gset(g, r, 0, (repeterFamille || i === 0) ? (grp.f === "?" ? "Non classé" : grp.f) : "", famSt);
-      gset(g, r, 1, a.ref, st({al:"l"})); gset(g, r, 2, a.des, st({al:"l", wrap:1})); gset(g, r, 3, a.u, st());
-      gset(g, r, 4, a.fourn || "", st({al:"l"})); gset(g, r, 5, a.seuil || "", st());
-      gset(g, r, 6, roundv(a.phys), st({b:1, fg:a.phys < 0 ? "C00000" : "000000"}));
-      gset(g, r, 7, a.att ? roundv(a.att) : "", st());
-      gset(g, r, 8, roundv(a.dispo), st({b:1, fg:a.dispo < 0 ? "C00000" : "000000"}));
+      gset(g, r, 1, (repeterFamille || nouv) ? sf : "", {sz:10, b:1, al:"c", fg:c[0], bg:c[1], bd:"m", wrap:1});
+      gset(g, r, 2, a.ref, st({al:"l"})); gset(g, r, 3, a.des, st({al:"l", wrap:1})); gset(g, r, 4, a.u, st());
+      gset(g, r, 5, a.fourn || "", st({al:"l"})); gset(g, r, 6, a.seuil || "", st());
+      gset(g, r, 7, roundv(a.phys), st({b:1, fg:a.phys < 0 ? "C00000" : "000000"}));
+      gset(g, r, 8, a.att ? roundv(a.att) : "", st());
+      gset(g, r, 9, roundv(a.dispo), st({b:1, fg:a.dispo < 0 ? "C00000" : "000000"}));
       g.rows[r].h = a.des.length > 40 || a.ref.length > 29 ? 28 : 16;
       r++;
     });
+    if (!repeterFamille && r - 1 > sfR) gmerge(g, sfR, 1, r - 1, 1);
     if (!repeterFamille && r - 1 > startR) gmerge(g, startR, 0, r - 1, 0);
   });
   return g;
