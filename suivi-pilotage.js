@@ -271,6 +271,56 @@ function exporterExcel(lot, rows, portee, grp, suffixe){
     return true;
   });
 }
+/* ---------- export PDF ----------
+   Même contenu que l'Excel (sans formules ni code de ligne) : logo et informations de la commande, tableau
+   avec sous-totaux et total général, titres répétés sur chaque page, pagination ; puis le récapitulatif.
+   Format A4 ou A3 paysage. */
+var LOGO_JPG = {};
+function logoJpeg(){
+  var src = G ? "./logo-gadh.png" : "./logo-tek.png";
+  if (LOGO_JPG[src] !== undefined) return Promise.resolve(LOGO_JPG[src]);
+  return new Promise(function(ok){
+    var im = new Image();
+    im.onload = function(){
+      try {
+        var w = 480, h = Math.round(480 * im.height / im.width), cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(im, 0, 0, w, h);
+        var b = atob(cv.toDataURL("image/jpeg", 0.92).split(",")[1]), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+        LOGO_JPG[src] = {d:u, r:w / h}; ok(LOGO_JPG[src]);
+      } catch (e) { LOGO_JPG[src] = null; ok(null); }
+    };
+    im.onerror = function(){ LOGO_JPG[src] = null; ok(null); };
+    im.src = src;
+  });
+}
+/* grille Excel → grille PDF : sans la colonne masquée, pourcentages écrits en texte */
+function versPdf(g){
+  var cache = (g.hide || []).slice().sort(function(a, b){ return b - a; });
+  cache.forEach(function(ci){ g.cols.splice(ci, 1); g.rows.forEach(function(r){ r.cells.splice(ci, 1); }); g.merges = g.merges.filter(function(m){ return m[1] !== ci; }).map(function(m){ return [m[0], m[1], m[2], Math.min(m[3], g.cols.length - 1)]; }); });
+  g.rows.forEach(function(r){ r.cells.forEach(function(c){ if (!c) return; delete c.f; if (c.st && c.st.bg === "FFF3BF"){ c.st = JSON.parse(JSON.stringify(c.st)); delete c.st.bg; }   /* le jaune « à saisir » ne sert qu'à l'écran et dans l'Excel */
+    if (c.st && c.st.nf === "pct" && typeof c.v === "number") c.v = fmtPct(c.v * 100); }); });
+  delete g.hide; delete g.filter; delete g.printTitles;
+  return g;
+}
+function exporterPdf(lot, rows, portee, grp, suffixe, format){
+  if (!rows.length){ toast("Aucune ligne à exporter."); return Promise.resolve(false); }
+  var gS = grilleExcel(lot, rows, portee, grp), gR = recapExcel(lot, gS), A3 = format === "A3";
+  var nom = nomFichier("Suivi_" + lot + "_" + today().replace(/-/g, "") + (suffixe || "") + (A3 ? "_A3" : "")) + ".pdf";
+  /* sous-totaux : libellé sur toute la largeur des colonnes de texte (pas de filtre dans un PDF) */
+  var nT = colsExcel(sortedUnique(lignesPilotage(lot).map(function(r){ return r.client; }))).filter(function(c){ return c.txt; }).length;
+  gS.rows.forEach(function(r, ri){ var c0 = r.cells[0]; if (c0 && /^Sous-total /.test(String(c0.v))) gmerge(gS, ri, 0, ri, nT - 1); });
+  gS.cols = gS.cols.map(function(w, i){ return i === 0 ? Math.max(w, 22) : i === 1 ? Math.max(w, 36) : w; });
+  versPdf(gS); versPdf(gR);
+  if (gR.rows[1] && gR.rows[1].cells[0]) gR.rows[1].cells[0].v = "Lignes : " + portee + " · total général du tableau.";
+  var pied = (G ? "GADH" : "TEK-TREND") + " · Suivi de commande " + lot + " · " + portee + " · édité le " + dmyL(today());
+  gS.format = gR.format = A3 ? "A3" : "A4"; gS.pied = gR.pied = pied; gS.landscape = gR.landscape = true;
+  gR.cols = [44, 22, 24];
+  return logoJpeg().then(function(L){
+    if (L){ gS.img = L.d; var cy = 380000; gS.anchors = [{row:0, col:0, colOff:60000, rowOff:30000, cx:Math.round(cy * L.r), cy:cy}]; }
+    saveFile(nom, pdfBuild([gS, gR]));
+    return true;
+  });
+}
 /* ---------- réimport du fichier Excel ----------
    Relit la feuille « Suivi » exportée (code de ligne en colonne masquée) et propose les écarts avec le
    suivi actuel ; seules les colonnes saisissables sont reprises ; rien n'est enregistré sans validation. */
@@ -394,10 +444,12 @@ window.vPilotage = function(v){
     var sp = el("select", {title:"Lignes à exporter"}); portees.forEach(function(x){ sp.appendChild(el("option", {value:x[0], text:x[1]})); }); sp.value = P.portee;
     sp.addEventListener("change", function(){ P.portee = sp.value; P.porteeChoisie = true; });
     var bx = el("div", {class:"ph-outils ph-exp"}, el("span", {class:"ph-dsai", text:"Exporter :"}), sp,
-      el("button", {class:"btn small", text:"📗 Excel", onclick:function(){
-        var q = P.portee, rs = q === "coche" ? trier(coches) : q === "filtre" ? vis : trier(toutes);
-        exporterExcel(lot, rs, (portees.filter(function(x){ return x[0] === q; })[0] || portees[0])[1], P.grp, q === "coche" ? "_selection" : q === "filtre" ? "_filtre" : "");
-      }}));
+      el("button", {class:"btn small", text:"📗 Excel", onclick:function(){ var a = argsExport(); exporterExcel(lot, a.rows, a.portee, P.grp, a.suf); }}));
+    function argsExport(){ var q = P.portee; return {rows:q === "coche" ? trier(coches) : q === "filtre" ? vis : trier(toutes), portee:(portees.filter(function(x){ return x[0] === q; })[0] || portees[0])[1], suf:q === "coche" ? "_selection" : q === "filtre" ? "_filtre" : ""}; }
+    var sf = el("select", {title:"Format du PDF"}); [["A4", "PDF A4 paysage"], ["A3", "PDF A3 paysage"]].forEach(function(x){ sf.appendChild(el("option", {value:x[0], text:x[1]})); });
+    sf.value = P.format || "A4"; sf.addEventListener("change", function(){ P.format = sf.value; });
+    bx.appendChild(sf);
+    bx.appendChild(el("button", {class:"btn small", text:"📕 PDF", onclick:function(){ var a = argsExport(); exporterPdf(lot, a.rows, a.portee, P.grp, a.suf, P.format || "A4"); }}));
     if (Object.keys(saisissables()).length){
       var fi = el("input", {type:"file", accept:".xlsx", style:"display:none"});
       fi.addEventListener("change", function(){ if (fi.files.length) reimporter(fi.files[0]); fi.value = ""; });
@@ -601,5 +653,5 @@ window.vPilotage = function(v){
   }
 };
 /* pour les tests */
-window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel};
+window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel, exporterPdf:exporterPdf};
 })();

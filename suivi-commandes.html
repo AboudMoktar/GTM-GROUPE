@@ -1304,7 +1304,9 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
   var PW0 = 595.28, PH0 = 841.89, M = 28, pages = [], PW = PW0, PH = PH0;
   function range(a, b){ var o = []; for (var i = a; i < b; i++) o.push(i); return o; }
   grids.forEach(function(g){
-    PW = g.landscape ? PH0 : PW0; PH = g.landscape ? PW0 : PH0;
+    /* g.format = "A3" (sinon A4) ; g.pied = texte de bas de page, avec « Page x / y » */
+    var W0 = g.format === "A3" ? 841.89 : PW0, H0 = g.format === "A3" ? 1190.55 : PH0, bas = g.pied ? 16 : 0;
+    PW = g.landscape ? H0 : W0; PH = g.landscape ? W0 : H0;
     var colPt = g.cols.map(function(w){ return w * 5.35; }), total = 0; colPt.forEach(function(w){ total += w; });
     var sc = Math.min(1.15, (PW - 2 * M) / total);
     if (g.onePage){ var hTot = 0; g.rows.forEach(function(r){ hTot += r.h; }); sc = Math.min(sc, (PH - 2 * M) / (hTot * 1.05)); }
@@ -1315,7 +1317,7 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
     function legal(r){ for (var k = 0; k < g.merges.length; k++){ var m = g.merges[k]; if (m[0] < r && r <= m[2]) return false; } if (g.keep && g.keep[0] < r && r <= g.keep[1]) return false; return true; }
     var start = nh, sauts = (g.breaks || []).slice().sort(function(a, b){ return a - b; });
     while (start < g.rows.length){
-      var avail = PH - 2 * M - hdrH, used = 0, end = start, lastLegal = -1, lim = g.rows.length;
+      var avail = PH - 2 * M - hdrH - bas, used = 0, end = start, lastLegal = -1, lim = g.rows.length;
       for (var sb = 0; sb < sauts.length; sb++) if (sauts[sb] > start){ lim = sauts[sb]; break; }
       while (end < lim && used + rh[end] <= avail){ used += rh[end]; end++; if (end >= g.rows.length || legal(end)) lastLegal = end; }
       if (end < lim) end = lastLegal > start ? lastLegal : Math.max(end, start + 1);
@@ -1324,7 +1326,7 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
     }
   });
   var contents = [];
-  pages.forEach(function(p){
+  pages.forEach(function(p, pi){
     var g = p.g, c = "", y = p.PH - M, pos = {}, cov = {}, mAt = {};
     g.merges.forEach(function(m){ mAt[m[0] + "," + m[1]] = m; for (var r = m[0]; r <= m[2]; r++) for (var cc = m[1]; cc <= m[3]; cc++) if (r !== m[0] || cc !== m[1]) cov[r + "," + cc] = 1; });
     p.rows.forEach(function(ri){ pos[ri] = y; y -= p.rh[ri]; });
@@ -1360,6 +1362,12 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
       var w = a.cx / 12700 * p.sc, h = a.cy / 12700 * p.sc, x = p.x0 + p.cx[a.col] + (a.colOff || 0) / 12700 * p.sc, top = pos[a.row] - (a.rowOff || 0) / 12700 * p.sc;
       c += "q " + w.toFixed(2) + " 0 0 " + h.toFixed(2) + " " + x.toFixed(2) + " " + (top - h).toFixed(2) + " cm /Im1 Do Q\n"; p.img = 1;
     });
+    if (g.pied){
+      var fy = M * 0.5, ft = pdfTxt(g.pied), num = "Page " + (pi + 1) + " / " + pages.length, nw = pdfW(num, 8, false);
+      c += "0.6 0.6 0.6 RG 0.4 w " + M + " " + (fy + 11) + " m " + (p.PW - M).toFixed(2) + " " + (fy + 11) + " l S\n";
+      c += "BT /F1 8 Tf 0.35 0.35 0.35 rg 1 0 0 1 " + M + " " + fy.toFixed(2) + " Tm (" + ft + ") Tj ET\n";
+      c += "BT /F1 8 Tf 0.35 0.35 0.35 rg 1 0 0 1 " + (p.PW - M - nw).toFixed(2) + " " + fy.toFixed(2) + " Tm (" + pdfTxt(num) + ") Tj ET\n";
+    }
     contents.push(c);
   });
   var n = pages.length, out = "%PDF-1.4\n", offs = [], i, imgG = null;

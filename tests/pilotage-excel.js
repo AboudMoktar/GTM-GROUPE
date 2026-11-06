@@ -85,6 +85,24 @@ async function reimporter(p, wb, nom){ const buf = XLSX.write(wb, {type: 'buffer
   await p.evaluate(() => { ui.lot = 'PK202611'; render(); }); await p.waitForTimeout(150);
   await reimporter(p, XLSX.read(buf));
   r.push(['fichier d\'une autre commande refusé', /autre commande/.test(await p.locator('#toast').textContent())]);
+  // ---------- PDF ----------
+  await p.evaluate(() => { for (let i = 0; i < 80; i++) S.lines.push({id:'P' + i, lot:'PK202611', year:2026, client:'NEOLYS', model:'Mod ' + (i % 6), lib:'Ref ' + (i % 6) + ' gris', size:['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'][i % 7] + (i > 41 ? '' : ''), qty:10 + i, cc:0}); S.lines = S.lines.filter((l, i, a) => a.findIndex(x => x.lot === l.lot && x.lib === l.lib && x.size === l.size) === i); render(); });
+  await p.waitForTimeout(200);
+  const pdf = async (fmt) => { await p.selectOption('.ph-exp select[title="Format du PDF"]', fmt); const n0 = await p.evaluate(() => window.__f.length); await p.click('.ph-exp button:has-text("PDF")'); await p.waitForFunction((n) => window.__f.length > n, n0, {timeout: 10000}); return p.evaluate(() => { const f = window.__f[window.__f.length - 1]; return {n: f.n, d: f.d}; }); };
+  const P4 = await pdf('A4'), b4 = Buffer.from(P4.d), t4 = b4.toString('latin1');
+  if (DOSSIER) fs.writeFileSync(DOSSIER + '/pilotage.pdf', b4);
+  const tmpP = fs.mkdtempSync('/tmp/pilpdf-'); fs.writeFileSync(tmpP + '/a.pdf', b4);
+  const txt4 = require('child_process').execFileSync('pdftotext', ['-layout', tmpP + '/a.pdf', '-']).toString();
+  const pages = txt4.split('\f').filter(x => x.trim());
+  r.push(['PDF : fichier et nom', /^Suivi_PK202611_\d{8}\.pdf$/.test(P4.n) && t4.startsWith('%PDF-1.4')]);
+  r.push(['PDF : A4 paysage, plusieurs pages', /MediaBox \[0 0 841\.89 595\.28\]/.test(t4) && pages.length >= 3]);
+  r.push(['PDF : logo', /\/Subtype \/Image/.test(t4) && /DCTDecode/.test(t4)]);
+  r.push(['PDF : titres répétés sur chaque page du tableau', pages.slice(0, -1).every(x => /Qté coupée/.test(x) && /Suivi de commande N° PK202611/.test(x))]);
+  r.push(['PDF : pagination', pages.every((x, i) => new RegExp('Page ' + (i + 1) + ' / ' + pages.length).test(x))]);
+  r.push(['PDF : sous-totaux, total général et récapitulatif', /Sous-total Mod 0/.test(txt4) && /TOTAL GÉNÉRAL/.test(txt4) && /Récapitulatif/.test(pages[pages.length - 1]) && /Avancement/.test(pages[pages.length - 1])]);
+  r.push(['PDF : sans la colonne « Code »', !/ne pas modifier/.test(txt4) && !/\bP1\b/.test(txt4)]);
+  const P3 = await pdf('A3'), t3 = Buffer.from(P3.d).toString('latin1');
+  r.push(['PDF A3 paysage', /_A3\.pdf$/.test(P3.n) && /MediaBox \[0 0 1190\.55 841\.89\]/.test(t3)]);
   // GADH : export réception / retour, réimport du retour seulement
   const g = await page(b, 'http://localhost:8790/suivi-commandes.html?vue=gadh'); g.on('pageerror', e => err.push(e.message));
   const fg = await exporter(g), wg = XLSX.read(Buffer.from(fg.d)), rg = XLSX.utils.sheet_to_json(wg.Sheets.Suivi, {header: 1, defval: ''});
