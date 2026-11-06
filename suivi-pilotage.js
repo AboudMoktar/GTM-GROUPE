@@ -41,19 +41,26 @@ var CSS = [
   '.ph-t td.g{text-align:left}.ph-t td.mod{font-weight:800;white-space:normal;background:#eef4fb;color:#1d3557;text-align:center;vertical-align:middle}',
   '.ph-t td.cou{font-weight:700;font-size:12px}.ph-t td.bad{background:#fde2e1;color:#b42318;font-weight:800}.ph-t td.ok{color:#11643a;font-weight:800}',
   '.ph-t tr.st td{background:#e3edf8;font-weight:800;color:#1d3557}.ph-t tr.tg td{background:#1d3557;color:#fff;font-weight:800;font-size:14px;border-color:#1d3557}',
+  '.ph-lab{position:sticky;left:42px;display:inline-block}',
   '.ph-t tr.gh td{background:#eef4fb;color:#1d3557;font-weight:800;text-align:left}',
   '.ph-t tr.cochee td:not(.mod){background:#fffbe6}',
   '.ph-av{display:flex;align-items:center;gap:6px}.ph-av .ph-bar{flex:1;margin:0;height:9px}.ph-av b{min-width:42px;text-align:right;font-size:12.5px}',
   '.ph-t .sk{position:sticky;z-index:2}.ph-t th.sk{z-index:5}',
   '.ph-vide{padding:22px;text-align:center;color:var(--mut)}',
+  '.ph-t td.e{padding:0;background:var(--edit)}.ph-t tr.cochee td.e{background:#fff0b3}',
+  '.ph-in{width:100%;height:30px;border:0!important;border-radius:0;background:transparent!important;text-align:center;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;padding:0 4px;min-height:0;box-shadow:none;color:inherit}',
+  '.ph-in:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#fff!important}.ph-t td.e.bad{background:#fde2e1}',
+  '.ph-t td .v{display:block}.ph-tout{display:block;margin:3px auto 0;border:1px solid #2563eb;background:#fff;color:#1d4f91;border-radius:7px;font-size:11px;font-weight:800;padding:2px 6px;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
+  '.ph-t tr.tg .ph-tout{border-color:#fff}.ph-tout:hover{background:#e7f1ff}',
+  '.ph-dsai{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--mut)}.ph-dsai input{height:38px}',
   '.ph-t input[type=checkbox]{width:17px;height:17px;min-height:0;margin:0;padding:0;vertical-align:middle;cursor:pointer}',
   '@media (min-width:1200px){.ph-kpis{grid-template-columns:repeat(10,minmax(0,1fr))}.ph-kpi b{font-size:19px}}',
   '@media (max-width:700px){.ph-titre{flex-basis:100%}.ph-info{flex:1 1 40%;min-width:0;padding:6px 10px}.ph-info b{font-size:15px}.ph-etat{flex:1 1 40%;text-align:center}.ph-titre b{font-size:17px}.ph-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ph-et{flex-basis:80px}}'
 ].join('\n');
 function poserCss(){ if (document.getElementById('ph-css')) return; var st = document.createElement('style'); st.id = 'ph-css'; st.textContent = CSS; document.head.appendChild(st); }
 
-/* étapes affichées (colonnes) et couleurs */
-var ETAPES = [
+/* étapes affichées (colonnes) et couleurs : TEK-TREND (toutes les étapes) ou GADH (réception et retour) */
+var ETAPES_TEK = [
   ["cp", "Qté coupée", "Coupe", "#22a06b"],
   ["gadh", "Passée à l'assemblage (GADH)", "Assemblage GADH", "#e8830c"],
   ["ret", "Revenue chez TEK-TREND", "Retour TEK-TREND", "#c2410c"],
@@ -62,7 +69,14 @@ var ETAPES = [
   ["emb", "Emballée", "Emballage", "#15803d"],
   ["exp", "Expédiée", "Expédition", "#2563eb"]
 ];
-var COLS = [
+var ETAPES_GADH = [
+  ["gadh", "Reçue de TEK-TREND", "Réception", "#e8830c"],
+  ["ret", "Retournée à TEK-TREND (assemblée)", "Retour TEK-TREND", "#1f9254"]
+];
+var G = false, ETAPES = ETAPES_TEK, COLS = [];
+function configurer(){
+  G = VUE === "gadh"; ETAPES = G ? ETAPES_GADH : ETAPES_TEK;
+  COLS = [
   {k:"sel", t:"", w:34},
   {k:"model", t:"Modèle", w:104, txt:1, cm:1},
   {k:"lib", t:"Référence", w:200, txt:1},
@@ -70,8 +84,11 @@ var COLS = [
   {k:"size", t:"Taille", w:56, txt:1},
   {k:"client", t:"Client", w:72, txt:1},
   {k:"fr", t:"Qté commandée", w:78}
-].concat(ETAPES.map(function(e){ return {k:e[0], t:e[1], w:e[0] === "gadh" || e[0] === "ret" ? 92 : 76}; }))
- .concat([{k:"rest", t:"Reste à produire", w:78}, {k:"av", t:"Avancement", w:122}]);
+].concat(ETAPES.map(function(e){ return {k:e[0], t:e[1], w:e[0] === "gadh" || e[0] === "ret" ? 96 : 80}; }))
+ .concat([{k:"rest", t:G ? "Encore à la GADH" : "Reste à produire", w:84}, {k:"av", t:G ? "Retourné" : "Avancement", w:122}]);
+}
+/* colonnes que l'utilisateur peut saisir : TEK-TREND = la commande et toutes les étapes ; GADH = le retour */
+function saisissables(){ if (lectureSeule()) return {}; var o = {}; if (G) o.ret = 1; else { o.fr = 1; ETAPES.forEach(function(e){ o[e[0]] = 1; }); } return o; }
 var CLE_LARG = "pk_pilotage_cols";
 function largeurs(){ var o = {}; try { o = JSON.parse(localStorage.getItem(CLE_LARG) || "{}") || {}; } catch (e) {} return o; }
 function garderLargeur(k, w){ try { var o = largeurs(); o[k] = w; localStorage.setItem(CLE_LARG, JSON.stringify(o)); } catch (e) {} }
@@ -94,15 +111,16 @@ function lignesPilotage(lot){
   var lo = libOrder();
   return suivi(lot, "*").map(function(r){
     var c = couleurDe(r.lib), o = {id:r.id, model:r.model, lib:r.lib, coul:c.t, cbg:c.bg, cfg:c.fg, size:r.size, client:r.client, fr:r.fr, ord:r.lib in lo ? lo[r.lib] : 1000};
-    ETAPES.forEach(function(e){ o[e[0]] = r.s[e[0]] || 0; });
-    o.rest = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.exp, o.fr);
+    ETAPES_TEK.forEach(function(e){ o[e[0]] = r.s[e[0]] || 0; });
+    if (G){ o.rest = Math.max(0, o.gadh - o.ret); o.surplus = 0; o.av = pct(o.ret, o.gadh); }
+    else { o.rest = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.exp, o.fr); }
     return o;
   });
 }
 function sommer(rows){
-  var t = {fr:0, rest:0, surplus:0, n:rows.length}; ETAPES.forEach(function(e){ t[e[0]] = 0; });
-  rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.surplus += r.surplus; ETAPES.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
-  t.av = pct(t.exp, t.fr);
+  var t = {fr:0, rest:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });
+  rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.surplus += r.surplus; ETAPES_TEK.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
+  t.av = G ? pct(t.ret, t.gadh) : pct(t.exp, t.fr);
   return t;
 }
 /* une étape qui dépasse l'étape précédente (sauf coupe > commande, contrôle / emballage > confection) */
@@ -157,7 +175,7 @@ function derniereMaj(lot){
 
 /* ---------- vue ---------- */
 window.vPilotage = function(v){
-  poserCss();
+  poserCss(); configurer();
   var lot = ui.lot;
   if (!lot){ v.appendChild(el("div", {class:"card"}, el("div", {class:"ph-vide", text:"Choisissez une commande (lot) en haut de l'écran."}))); return; }
   var toutes = lignesPilotage(lot);
@@ -177,7 +195,7 @@ window.vPilotage = function(v){
   } else dc = el("b", {text:L.dc ? dmyL(L.dc) : "—"});
   var E = etatLot(lot, Tall), maj = derniereMaj(lot);
   v.appendChild(el("div", {class:"ph-head"},
-    el("div", {class:"ph-titre"}, el("img", {src:"./logo-tek.png", alt:"TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · " + clients.join(" + ")}))),
+    el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · " + clients.join(" + ")}))),
     el("div", {class:"ph-info"}, el("small", {text:"Date commande"}), dc),
     el("div", {class:"ph-info"}, el("small", {text:"Lot"}), el("b", {text:lot})),
     el("div", {class:"ph-info"}, el("small", {text:"Année"}), el("b", {text:String(annee || "—")})),
@@ -198,8 +216,9 @@ window.vPilotage = function(v){
     function carte(titre, val, p, coul, sous){ return el("div", {class:"ph-kpi", style:"--c:" + coul}, el("small", {text:titre}), el("b", {text:val}), p === null ? (sous ? el("div", {class:"p", text:sous}) : null) : el("div", {class:"p", text:fmtPct(p)}), p === null ? null : el("div", {class:"ph-bar"}, el("i", {style:"width:" + Math.min(100, p) + "%"}))); }
     kp.appendChild(carte("Qté commandée" + (filtre ? " (filtre)" : ""), fmt(T.fr) + " pcs", null, "#1d3557", vis.length + " ligne(s)"));
     ETAPES.forEach(function(e){ kp.appendChild(carte(e[1], fmt(T[e[0]]) + " pcs", pct(T[e[0]], T.fr), e[3])); });
-    kp.appendChild(carte("Reste à produire", fmt(T.rest) + " pcs", null, "#b42318", T.surplus ? "+ " + fmt(T.surplus) + " en surplus" : "commandée − expédiée"));
-    kp.appendChild(carte("Avancement", fmtPct(T.av), T.av, T.av >= 100 ? "#1f9254" : "#2563eb"));
+    if (G) kp.appendChild(carte("Encore à la GADH", fmt(T.rest) + " pcs", null, "#b42318", "reçue − retournée"));
+    else kp.appendChild(carte("Reste à produire", fmt(T.rest) + " pcs", null, "#b42318", T.surplus ? "+ " + fmt(T.surplus) + " en surplus" : "commandée − expédiée"));
+    kp.appendChild(carte(G ? "Retourné (sur reçu)" : "Avancement", fmtPct(T.av), T.av, T.av >= 100 ? "#1f9254" : "#2563eb"));
     zone.appendChild(kp);
     /* frise des étapes */
     var fr = el("div", {class:"ph-frise"});
@@ -213,6 +232,11 @@ window.vPilotage = function(v){
     var rq = el("input", {type:"search", placeholder:"🔍 Rechercher une référence, un modèle, une taille…", value:P.q || ""});
     rq.addEventListener("input", function(){ P.q = rq.value; var pos = rq.selectionStart; dessiner(); var n = zone.querySelector(".ph-outils input[type=search]"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch (er) {} } });
     o.appendChild(rq);
+    if (Object.keys(saisissables()).length){
+      var dS = el("input", {type:"date", value:P.date || today(), title:"Date notée sur les quantités saisies"});
+      dS.addEventListener("change", function(){ P.date = dS.value || today(); });
+      o.appendChild(el("label", {class:"ph-dsai"}, "Date de saisie ", dS));
+    }
     function choix(cle, titre, valeurs){
       var s = el("select", {title:titre}); s.appendChild(el("option", {value:"", text:titre + " : tous"}));
       valeurs.forEach(function(x){ s.appendChild(el("option", {value:x[0], text:x[1]})); }); s.value = P.f[cle] || "";
@@ -230,7 +254,50 @@ window.vPilotage = function(v){
     if (nSel) o.appendChild(el("span", {class:"ph-sel"}, nSel + " ligne(s) cochée(s) ", el("button", {class:"btn small sec", text:"Décocher", onclick:function(){ P.sel = {}; dessiner(); }})));
     zone.appendChild(o);
     zone.appendChild(tableau(vis, T));
-    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:"Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
+    var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. " : "";
+    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
+    /* après un enregistrement : retour à la case suivante et à la même position dans le tableau */
+    var tw = zone.querySelector(".ph-tw");
+    if (tw){ if (P.scroll){ tw.scrollTop = P.scroll[0]; tw.scrollLeft = P.scroll[1]; } tw.addEventListener("scroll", function(){ P.scroll = [tw.scrollTop, tw.scrollLeft]; }); }
+    if (P.focus){ var f = zone.querySelector('.ph-in[data-r="' + P.focus[0] + '"][data-c="' + P.focus[1] + '"]'); P.focus = null; if (f){ f.focus(); try { f.select(); } catch (er) {} } }
+  }
+
+  /* ---------- saisie dans le tableau ----------
+     Chaque case = quantité totale (cumul) passée à l'étape. Une modification devient un mouvement daté
+     « Modification de l'étape : Pilotage · utilisateur » (historique du suivi) ; les étapes automatiques
+     suivent comme dans le flux (retour GADH → assemblage et confection ; expédition → prêt à expédier).
+     Qté commandée : modifie la commande (journal du lot). Tout ou rien : en cas d'incohérence, rien n'est enregistré. */
+  function appliquer(changes, msg){
+    if (!changes.length) return false;
+    return commit(function(){
+      var m0 = S.moves.slice(), lines0 = S.lines.slice(), q0 = S.lines.map(function(l){ return [l, l.qty, l.cc]; }), lots0 = JSON.stringify(S.lots);
+      try {
+        var d = P.date || today(), u = utilisateur(), motif = "Pilotage" + (u ? " · " + u : "");
+        changes.filter(function(c){ return c.k === "fr"; }).forEach(function(c){ var l = lineById(c.id); if (l && l.qty !== c.v) setLine(l.lot, l.year, l.client, l.lib, l.size, c.v); });
+        var ks = ETAPES.map(function(e){ return e[0]; });
+        function passe(ordre, monte){
+          ordre.forEach(function(k){
+            var tot = stageTotals(), vals = {}, n = 0;
+            changes.forEach(function(c){ if (c.k !== k) return; var cur = (tot[c.id] || {})[k] || 0; if (monte ? c.v > cur : c.v < cur){ vals[c.id] = c.v; n++; } });
+            if (n) modifierEtape(k, vals, motif, d);
+          });
+        }
+        passe(ks, true); passe(ks.slice().reverse(), false);   /* hausses de l'amont vers l'aval, puis baisses de l'aval vers l'amont */
+      } catch (e){ S.moves = m0; S.lines = lines0; q0.forEach(function(x){ x[0].qty = x[1]; x[0].cc = x[2]; }); S.lots = JSON.parse(lots0); throw e; }
+    }, msg);
+  }
+  function lireNombre(t){ t = String(t === null || t === undefined ? "" : t).replace(/[\s\u00a0\u202f]/g, ""); if (t === "") return null; if (!/^\d+$/.test(t)) return NaN; return parseInt(t, 10); }
+  /* « Tout » : toutes les pièces disponibles (étape précédente − déjà passées) des lignes données */
+  function dispoTout(k, rows){
+    var lines = rows.map(function(r){ return lineById(r.id); }).filter(Boolean), out = {}, n = 0;
+    sxItems(k, lines).forEach(function(it){ if (it.disp > 0){ out[it.l.id] = it.fait + it.disp; n += it.disp; } });
+    return {vals:out, n:n};
+  }
+  function toutPasser(k, rows, nom){
+    var D = dispoTout(k, rows), et = ETAPES.filter(function(e){ return e[0] === k; })[0];
+    if (!D.n){ toast("Rien à passer : l'étape précédente est déjà entièrement passée."); return; }
+    if (!confirm("Passer " + fmt(D.n) + " pièce(s) de " + nom + " à « " + et[1] + " » ?")) return;
+    appliquer(Object.keys(D.vals).map(function(id){ return {id:id, k:k, v:D.vals[id]}; }), fmt(D.n) + " pièce(s) de " + nom + " passées à « " + et[1] + " »");
   }
 
   function tableau(vis, T){
@@ -272,10 +339,59 @@ window.vPilotage = function(v){
     t.appendChild(el("thead", null, hr));
     var tb = el("tbody");
     if (!vis.length){ var tr0 = el("tr"); tr0.appendChild(el("td", {colspan:String(cols.length), class:"ph-vide", text:"Aucune ligne ne correspond à la recherche ou aux filtres."})); tb.appendChild(tr0); }
+    var SA = saisissables(), ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
+    function cellSaisie(r, k, ri){
+      var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "")}), v0 = r[k];
+      var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(v0), "data-r":String(ri), "data-c":String(ecols.indexOf(k)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
+      var fait = false;
+      function valider(cible){
+        if (fait) return; var n = lireNombre(inp.value);
+        if (n === null) n = 0;
+        if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(v0); return; }
+        if (n === v0){ if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } } return; }
+        if (k === "fr" && n === 0 && !confirm("Quantité commandée à 0 : la ligne " + r.lib + " " + r.size + " sera retirée de la commande. Continuer ?")){ inp.value = String(v0); return; }
+        fait = true; P.focus = cible || null;
+        appliquer([{id:r.id, k:k, v:n}], r.lib + " " + r.size + " : " + fmt(n));
+      }
+      inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
+      inp.addEventListener("change", function(){ valider(null); });
+      inp.addEventListener("keydown", function(ev){
+        var c = ecols.indexOf(k), to = null;
+        if (ev.key === "Enter" || ev.key === "ArrowDown") to = [ri + (ev.shiftKey ? -1 : 1), c];
+        else if (ev.key === "ArrowUp") to = [ri - 1, c];
+        else if (ev.key === "Tab") to = ev.shiftKey ? (c > 0 ? [ri, c - 1] : [ri - 1, ecols.length - 1]) : (c < ecols.length - 1 ? [ri, c + 1] : [ri + 1, 0]);
+        else if (ev.key === "ArrowRight" && inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length) to = [ri, c + 1];
+        else if (ev.key === "ArrowLeft" && inp.selectionStart === 0 && inp.selectionEnd === 0) to = [ri, c - 1];
+        else if (ev.key === "Escape"){ inp.value = String(v0); inp.blur(); return; }
+        if (!to) return;
+        ev.preventDefault(); valider(to);
+      });
+      /* coller un bloc copié depuis Excel (plusieurs cases) */
+      inp.addEventListener("paste", function(ev){
+        var t = (ev.clipboardData || window.clipboardData).getData("text") || "";
+        if (!/[\t\n]/.test(t.replace(/\r?\n$/, ""))) return;
+        ev.preventDefault();
+        var lignes = t.replace(/\r/g, "").replace(/\n$/, "").split("\n").map(function(x){ return x.split("\t"); });
+        var ch = [], err = 0, c0 = ecols.indexOf(k);
+        lignes.forEach(function(cells, i){ cells.forEach(function(val, j){
+          var f = zone.querySelector('.ph-in[data-r="' + (ri + i) + '"][data-c="' + (c0 + j) + '"]'); if (!f) return;
+          var n = lireNombre(val); if (n === null) return; if (isNaN(n)){ err++; return; }
+          ch.push({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n});
+        }); });
+        if (err){ toast(err + " case(s) collée(s) ne sont pas des nombres entiers : rien n'est collé."); return; }
+        if (!ch.length){ toast("Rien à coller ici."); return; }
+        if (ch.some(function(c){ return c.k === "fr" && c.v === 0; })){ toast("Une quantité commandée collée vaut 0 : retirez la ligne à part."); return; }
+        if (!confirm("Coller " + ch.length + " quantité(s) dans le tableau ?")) return;
+        fait = true; appliquer(ch, ch.length + " quantité(s) collée(s)");
+      });
+      inp.setAttribute("data-id", r.id); inp.setAttribute("data-k", k);
+      td.appendChild(inp);
+      return td;
+    }
     function cellNum(r, k){ var v0 = r[k], td = el("td", {text:v0 ? fmt(v0) : "0"}); if (incoherent(r, k)) { td.className = "bad"; td.title = "Plus que l'étape précédente"; } if (k === "rest"){ td.textContent = fmt(v0); if (!v0) td.className = "ok"; if (r.surplus) td.title = "+ " + r.surplus + " en surplus"; } if (!v0 && k !== "rest") td.style.color = "var(--mut)"; return td; }
     function avance(p){ var c = p >= 100 ? "#1f9254" : p >= 50 ? "#2563eb" : "#e8830c"; return el("div", {class:"ph-av"}, el("div", {class:"ph-bar"}, el("i", {style:"width:" + Math.min(100, p) + "%;background:" + c})), el("b", {text:fmtPct(p)})); }
     function ligne(r, rowspan, avecMod){
-      var tr = el("tr", {class:P.sel[r.id] ? "cochee" : ""});
+      var ri = nl++, tr = el("tr", {class:P.sel[r.id] ? "cochee" : ""});
       cols.forEach(function(c){
         var td;
         if (c.k === "sel"){ td = el("td"); var cb = el("input", {type:"checkbox"}); cb.checked = !!P.sel[r.id]; cb.addEventListener("change", function(){ P.sel[r.id] = cb.checked; dessiner(); }); td.appendChild(cb); }
@@ -285,26 +401,32 @@ window.vPilotage = function(v){
         else if (c.k === "size") td = el("td", {text:r.size, style:"font-weight:800"});
         else if (c.k === "client") td = el("td", {text:r.client});
         else if (c.k === "av"){ td = el("td"); td.appendChild(avance(r.av)); }
+        else if (SA[c.k]) td = cellSaisie(r, c.k, ri);
         else td = cellNum(r, c.k);
         tr.appendChild(sk(td, c.k));
       });
       return tr;
     }
-    function totalLigne(lib, S2, cls){
+    function totalLigne(lib, S2, cls, rowsT, nomT){
       var tr = el("tr", {class:cls}), nTxt = cols.filter(function(c){ return c.txt; }).length;
       tr.appendChild(sk(el("td"), "sel"));
-      var lab = el("td", {class:"g", colspan:String(nTxt), text:lib}); if ("model" in gauche){ lab.classList.add("sk"); lab.style.left = gauche.model + "px"; } tr.appendChild(lab);
-      cols.forEach(function(c){ if (c.k === "sel" || c.txt) return; var td; if (c.k === "av"){ td = el("td"); td.appendChild(avance(S2.av)); } else td = el("td", {text:fmt(S2[c.k])}); tr.appendChild(td); });
+      var lab = el("td", {class:"g", colspan:String(nTxt)}, el("span", {class:"ph-lab", text:lib})); if ("model" in gauche){ lab.classList.add("sk"); lab.style.left = gauche.model + "px"; } tr.appendChild(lab);
+      cols.forEach(function(c){ if (c.k === "sel" || c.txt) return; var td;
+        if (c.k === "av"){ td = el("td"); td.appendChild(avance(S2.av)); }
+        else { td = el("td", null, el("span", {class:"v", text:fmt(S2[c.k])}));
+          /* « Tout » : passer d'un coup toutes les pièces disponibles du modèle (ou de la commande) */
+          if (SA[c.k] && c.k !== "fr" && rowsT){ var D = dispoTout(c.k, rowsT); if (D.n) td.appendChild(el("button", {class:"ph-tout", text:"Tout +" + fmt(D.n), title:"Passer les " + fmt(D.n) + " pièce(s) disponibles de " + nomT + " à cette étape", onclick:function(){ toutPasser(c.k, rowsT, nomT); }})); } }
+        tr.appendChild(td); });
       return tr;
     }
     if (P.grp){
       grouper(vis).forEach(function(g){
-        if (etroit){ var gh = el("tr", {class:"gh"}); var ght = el("td", {colspan:String(cols.length), text:g.model}); gh.appendChild(ght); tb.appendChild(gh); }
+        if (etroit){ var gh = el("tr", {class:"gh"}); var ght = el("td", {colspan:String(cols.length)}, el("span", {class:"ph-lab", text:g.model})); gh.appendChild(ght); tb.appendChild(gh); }
         g.rows.forEach(function(r, i){ tb.appendChild(ligne(r, g.rows.length, i === 0)); });
-        tb.appendChild(totalLigne("Sous-total " + g.model, sommer(g.rows), "st"));
+        tb.appendChild(totalLigne("Sous-total " + g.model, sommer(g.rows), "st", g.rows, "« " + g.model + " »"));
       });
     } else vis.forEach(function(r){ tb.appendChild(ligne(r, 1, true)); });
-    if (vis.length) tb.appendChild(totalLigne("TOTAL GÉNÉRAL" + (vis.length !== toutes.length ? " (lignes affichées)" : ""), T, "tg"));
+    if (vis.length) tb.appendChild(totalLigne("TOTAL GÉNÉRAL" + (vis.length !== toutes.length ? " (lignes affichées)" : ""), T, "tg", vis, vis.length !== toutes.length ? "toutes les lignes affichées" : "toute la commande"));
     t.appendChild(tb);
     return el("div", {class:"ph-tw"}, t);
   }
