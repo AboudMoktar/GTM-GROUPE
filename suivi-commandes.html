@@ -3018,10 +3018,10 @@ function pager(list, cur, setter, label){
 /* --- 3. Suivi --- */
 function vSuivi(v){
   var rows = suivi(ui.lot, ui.client);
-  if (!ui.smode || ui.smode === "v") ui.smode = VUE === "gadh" ? "q" : "p";
-  if (VUE === "gadh" && (ui.smode === "e" || ui.smode === "p")) ui.smode = "q";
+  if (!ui.smode || ui.smode === "v") ui.smode = "p";
+  if (VUE === "gadh" && ui.smode === "e") ui.smode = "p";
   var sm = el("div", {class:"seg"});
-  (VUE === "gadh" ? [] : [["p","📊 Pilotage"]]).concat([["q","Flux"],["s","Situation"],["n","NC"],["d","Dates"]]).concat(VUE === "gadh" ? [] : [["e","Corriger"]]).forEach(function(x){ sm.appendChild(el("button", {class:ui.smode === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.smode = x[0]; render(); }})); });
+  [["p","📊 Pilotage"]].concat([["q","Flux"],["s","Situation"],["n","NC"],["d","Dates"]]).concat(VUE === "gadh" ? [] : [["e","Corriger"]]).forEach(function(x){ sm.appendChild(el("button", {class:ui.smode === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.smode = x[0]; render(); }})); });
   v.appendChild(sm);
   /* pilotage de la commande (suivi-pilotage.js) */
   if (ui.smode === "p" && typeof window.vPilotage === "function"){ window.vPilotage(v); return; }

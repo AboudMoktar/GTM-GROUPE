@@ -21,7 +21,7 @@ async function donnees(p){
 }
 (async () => {
   const s = serveur.demarrer(8790), b = await chromium.launch(), r = [], err = [];
-  const ctx = await b.newContext({viewport: {width: 1366, height: 900}}); const p = await ctx.newPage(); p.on('pageerror', e => err.push(e.message));
+  const ctx = await b.newContext({viewport: {width: 1366, height: 900}}); const p = await ctx.newPage(); p.on('pageerror', e => err.push(e.message)); p.on('dialog', d => d.accept());
   await p.goto('http://localhost:8790/suivi-commandes.html'); await p.waitForFunction(() => typeof S === 'object' && typeof vPilotage === 'function');
   await donnees(p); await p.waitForTimeout(200);
   const txt = (sel) => p.locator(sel).first().textContent();
@@ -34,9 +34,10 @@ async function donnees(p){
   r.push(['une ligne par référence × taille × client', D.n === 6]);
   r.push(['reste = commandée − expédiée ; avancement = expédiée ÷ commandée', D.g.rest === 20 && D.g.av === 60 && D.T.rest === 630 && D.T.exp === 170]);
   r.push(['couleur lue dans le libellé', D.coul === 'ROSE POUDRE' || D.coul === 'ROSE']);
-  const st = await p.$$eval('.ph-t tr.st', rs => rs.map(x => [...x.children].map(td => td.textContent.trim())));
+  const val = (td) => (td.querySelector('.v') || td).textContent.trim();
+  const st = await p.$$eval('.ph-t tr.st', rs => rs.map(x => [...x.children].map(td => (td.querySelector('.v') || td).textContent.trim())));
   r.push(['sous-total par modèle', st.length === 3 && st[0][1] === 'Sous-total PHARMA-HOMME' && st[0][2] === '220' && st[0][9] === '170' && st[0][10] === '50']);
-  const tg = await p.$$eval('.ph-t tr.tg td', ts => ts.map(td => td.textContent.trim()));
+  const tg = await p.$$eval('.ph-t tr.tg td', ts => ts.map(td => (td.querySelector('.v') || td).textContent.trim()));
   r.push(['total général', tg[1] === 'TOTAL GÉNÉRAL' && tg[2] === '800' && tg[9] === '170' && tg[10] === '630' && /21,3/.test(tg[11])]);
   r.push(['modèle affiché une fois par groupe', await p.locator('.ph-t td.mod').count() === 3]);
   // recherche
@@ -70,6 +71,35 @@ async function donnees(p){
   // état en retard
   await p.evaluate(() => { S.lots['PK202612-1'].livraison = '2026-01-01'; render(); }); await p.waitForTimeout(150);
   r.push(['état « En retard » si la livraison est dépassée', /En retard/.test(await txt('.ph-etat'))]);
+  // ---------- saisie directe dans le tableau ----------
+  await p.evaluate(() => { S.lots['PK202612-1'].livraison = '2099-01-31'; render(); }); await p.waitForTimeout(150);
+  const cell = (id, k) => p.locator('.ph-in[data-id="' + id + '"][data-k="' + k + '"]');
+  const tot = (id, k) => p.evaluate(([id, k]) => (stageTotals()[id] || {})[k] || 0, [id, k]);
+  r.push(['cases de saisie : commande et toutes les étapes', await p.locator('.ph-in').count() === 6 * 8]);
+  await cell('T_M', 'cp').fill('280'); await cell('T_M', 'cp').press('Enter'); await p.waitForTimeout(300);
+  r.push(['saisie d\'une case + Entrée : enregistrée, mouvement daté avec « Pilotage »', await tot('T_M', 'cp') === 280 && await p.evaluate(() => S.moves.some(m => m.lineId === 'T_M' && m.stage === 'cp' && /Pilotage/.test(m.note)))]);
+  await cell('T_M', 'gadh').fill('300'); await cell('T_M', 'gadh').press('Tab'); await p.waitForTimeout(300);
+  r.push(['quantité incohérente refusée (plus que la coupe)', await tot('T_M', 'gadh') === 0 && /dépasse|Coup|ne peut/i.test(await p.locator('#toast').textContent())]);
+  await cell('R_XS', 'ret').fill('95'); await cell('R_XS', 'ret').press('Enter'); await p.waitForTimeout(300);
+  r.push(['retour GADH : confection automatique', await tot('R_XS', 'ret') === 95 && await tot('R_XS', 'conf') === 95]);
+  r.push(['Entrée : la case du dessous est prête', await p.evaluate(() => { const a = document.activeElement; return !!a && a.getAttribute('data-id') === 'R_S' && a.getAttribute('data-k') === 'ret'; })]);
+  await cell('G_S', 'fr').fill('60'); await cell('G_S', 'fr').press('Enter'); await p.waitForTimeout(300);
+  r.push(['quantité commandée modifiée', await p.evaluate(() => lineById('G_S').qty === 60)]);
+  // « Tout » par modèle
+  const btTout = p.locator('.ph-t tr.st', {hasText: 'Sous-total Sport-H-Re-Mi'}).locator('td').nth(4).locator('.ph-tout');
+  r.push(['bouton « Tout » sur le sous-total du modèle', /Tout \+280/.test(await btTout.textContent())]);
+  await btTout.click(); await p.waitForTimeout(300);
+  r.push(['« Tout » : tout le modèle passé à l\'étape', await tot('T_M', 'gadh') === 280]);
+  // coller un bloc copié depuis Excel
+  const coller = (id, k, txt) => p.evaluate(([id, k, txt]) => { const i = document.querySelector('.ph-in[data-id="' + id + '"][data-k="' + k + '"]'); const dt = new DataTransfer(); dt.setData('text/plain', txt); i.focus(); i.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }, [id, k, txt]);
+  await coller('R_XS', 'ctl', '90\t90\r\n'); await p.waitForTimeout(300);
+  r.push(['coller depuis Excel : plusieurs cases', await tot('R_XS', 'ctl') === 90 && await tot('R_XS', 'emb') === 90]);
+  await coller('R_XS', 'ctl', '95\t96'); await p.waitForTimeout(300);
+  r.push(['coller incohérent : rien n\'est enregistré', await tot('R_XS', 'ctl') === 90 && await tot('R_XS', 'emb') === 90]);
+  r.push(['saisies enregistrées (sauvegarde)', await p.evaluate(() => { const d = desiredDocs(); return Object.keys(d).some(k => /^moves-/.test(k) && JSON.stringify(d[k]).includes('Pilotage')); })]);
+  await p.evaluate(() => { window.__ls = lectureSeule; lectureSeule = () => true; render(); }); await p.waitForTimeout(150);
+  r.push(['lecture seule : pas de saisie', await p.locator('.ph-in').count() === 0 && await p.locator('.ph-tout').count() === 0]);
+  await p.evaluate(() => { lectureSeule = window.__ls; render(); });
   if (DOSSIER){ await p.screenshot({path: DOSSIER + '/pc.png', fullPage: false}); await p.locator('.ph-tw').screenshot({path: DOSSIER + '/pc-tab.png'}); }
   // les autres vues restent
   await p.click('.seg button:has-text("Flux")'); await p.waitForTimeout(150);
@@ -82,9 +112,15 @@ async function donnees(p){
   r.push(['téléphone : chiffres clés deux par ligne', await m.evaluate(() => getComputedStyle(document.querySelector('.ph-kpis')).gridTemplateColumns.split(' ').length === 2)]);
   if (DOSSIER){ await m.screenshot({path: DOSSIER + '/tel.png', fullPage: false}); await m.locator('.ph-tw').screenshot({path: DOSSIER + '/tel-tab.png'}); }
   // vue GADH : pas de pilotage (droits inchangés)
-  const g = await b.newPage(); g.on('pageerror', e => err.push(e.message));
+  const g = await b.newPage(); g.on('pageerror', e => err.push(e.message)); g.on('dialog', d => d.accept());
   await g.goto('http://localhost:8790/suivi-commandes.html?vue=gadh'); await g.waitForFunction(() => typeof vPilotage === 'function'); await donnees(g); await g.waitForTimeout(200);
-  r.push(['vue GADH inchangée (pas de pilotage)', await g.locator('.ph-t').count() === 0 && await g.locator('.seg button', {hasText: 'Pilotage'}).count() === 0]);
+  r.push(['GADH : pilotage avec réception et retour', await g.locator('.ph-t').count() === 1 && /Encore à la GADH/.test(await g.locator('.ph-kpis').textContent()) && !/Expédiée/.test(await g.locator('.ph-t thead').textContent())]);
+  r.push(['GADH : seul le retour se saisit', await g.locator('.ph-in').count() === 6 && await g.locator('.ph-in[data-k="ret"]').count() === 6]);
+  await g.locator('.ph-in[data-id="R_XS"][data-k="ret"]').fill('95'); await g.locator('.ph-in[data-id="R_XS"][data-k="ret"]').press('Enter'); await g.waitForTimeout(300);
+  r.push(['GADH : retour saisi dans le tableau', await g.evaluate(() => (stageTotals().R_XS || {}).ret === 95 && (stageTotals().R_XS || {}).conf === 95)]);
+  const gt = g.locator('.ph-t tr.st', {hasText: 'PHARMA-FEMME'}).locator('.ph-tout');
+  r.push(['GADH : « Tout » pour retourner tout le modèle', await gt.count() === 0 || /Tout/.test(await gt.first().textContent())]);
+  if (DOSSIER) await g.screenshot({path: DOSSIER + '/gadh.png', fullPage: false});
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if (err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
