@@ -3645,16 +3645,21 @@ function docCartonsHtml(client, colis, pp, lot){
   var info = client === "ALLOGA";
   function etq(c){
     var lotC = lotsCarton(c, lot).join(" + "), per = info ? peremptionLots(lotsCarton(c, lot)) : "";
-    var lignes = c.items.map(function(x){ return '<tr><td>T' + hx(x.size) + '</td><td>' + hx(nomDoc(x.lib)) + '</td>' + (info ? '<td>' + hx(aclDe(x)) + '</td>' : '') + '<td><b>' + x.q + '</b></td></tr>'; }).join("");
-    if (c.items.length > 1) lignes += '<tr><td colspan="' + (info ? 3 : 2) + '"><b>Total</b></td><td><b>' + c.q + '</b></td></tr>';
+    /* une ligne par taille ; le nom du modèle n'est écrit qu'une fois pour toutes ses tailles */
+    var grp = [], par = {};
+    c.items.forEach(function(x){ var g = par[x.lib]; if (!g){ g = par[x.lib] = {lib:x.lib, it:[]}; grp.push(g); } g.it.push(x); });
+    var lignes = grp.map(function(g){ return g.it.map(function(x, i){
+      return '<tr' + (i === 0 ? ' class="etq-mod"' : '') + '>' + (i === 0 ? '<td class="etq-nom" rowspan="' + g.it.length + '">' + hx(nomDoc(g.lib)) + '</td>' : '') + '<td>' + hx(x.size) + '</td>' + (info ? '<td>' + hx(aclDe(x)) + '</td>' : '') + '<td class="etq-q">' + x.q + '</td></tr>'; }).join(""); }).join("");
+    if (c.items.length > 1) lignes += '<tr class="etq-tot"><td colspan="' + (info ? 3 : 2) + '">Total</td><td class="etq-q">' + c.q + '</td></tr>';
     return '<div class="etq"><div class="etq-haut"><div class="etq-logo"><img src="' + PK_LOGO + '" alt="PERCKO"></div><div class="etq-dest">' + destHtml(client) + '</div></div>' +
       '<div class="etq-num">CARTON N°' + c.n + '</div>' +
-      '<table class="etq-tab"><thead><tr><th style="width:16%">Taille</th><th>Modèles</th>' + (info ? '<th style="width:22%">Code ACL</th>' : '') + '<th style="width:18%">Quantité</th></tr></thead><tbody>' + lignes + '</tbody></table>' +
+      '<table class="etq-tab"><thead><tr><th>Modèle</th><th style="width:17%">Taille</th>' + (info ? '<th style="width:20%">Code ACL</th>' : '') + '<th style="width:17%">Qté</th></tr></thead><tbody>' + lignes + '</tbody></table>' +
       (info ? '<table class="etq-info"><tr><td>Lot</td><td><b>' + hx(lotC) + '</b></td></tr><tr><td>Date de péremption</td><td><b>' + hx(per) + '</b></td></tr></table>' : '') + '</div>';
   }
-  var pages = [], np = pp === "4L" ? 4 : pp;
-  for (var i = 0; i < colis.length; i += np) pages.push(colis.slice(i, i + np));
-  return '<div class="etq-pages p' + String(pp).toLowerCase() + '">' + pages.map(function(pg){ return '<div class="etq-page">' + pg.map(etq).join("") + '</div>'; }).join("") + '</div>';
+  /* les fiches se suivent (2 par rangée, ou 1) et ne sont jamais coupées : une fiche longue (beaucoup de modèles)
+     prend la place qu'il lui faut au lieu de déborder sur la suivante ; « 1 par page » : une fiche par page */
+  if (pp === 1) return '<div class="etq-pages p1">' + colis.map(function(c){ return '<div class="etq-page">' + etq(c) + '</div>'; }).join("") + '</div>';
+  return '<div class="etq-pages etq-flux p' + String(pp).toLowerCase() + '">' + colis.map(etq).join("") + '</div>';
 }
 var PP_CHOIX = [1, 2, 4, "4L"];   /* fiches par page : 1, 2, 4 (portrait) ou 4 en paysage */
 /* Fiches cartons en Excel (à imprimer) : une fiche par carton, deux par page A4, logo PERCKO à gauche */
@@ -3863,21 +3868,31 @@ var PK_DOC_CSS = [
   "#pk-doc-zone .p1 .etq-page{grid-template-columns:1fr}",
   "#pk-doc-zone .p2 .etq-page{grid-template-columns:1fr;grid-template-rows:1fr 1fr;height:270mm}",
   "#pk-doc-zone .p4 .etq-page{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;height:270mm}",
-  "#pk-doc-zone .etq{border:1px dashed #999;padding:4mm;font-family:Georgia,'Times New Roman',serif}",
+  "#pk-doc-zone .etq{border:1px dashed #999;padding:4mm;font-family:Arial,Helvetica,sans-serif;background:#fff}",
+  "#pk-doc-zone .etq-flux .etq{display:inline-block;vertical-align:top;margin:0 0 5mm;break-inside:avoid;page-break-inside:avoid}",
+  "#pk-doc-zone .etq-flux.p4 .etq,#pk-doc-zone .etq-flux.p4l .etq{width:calc(50% - 2.5mm)}",
+  "#pk-doc-zone .etq-flux.p4 .etq:nth-child(odd),#pk-doc-zone .etq-flux.p4l .etq:nth-child(odd){margin-right:5mm}",
+  "#pk-doc-zone .etq-flux.p2 .etq{width:100%}",
+  "#pk-doc-zone .etq-tab td.etq-nom{text-align:left;font-weight:bold;vertical-align:middle}",
+  "#pk-doc-zone .etq-tab td.etq-q{font-weight:bold}",
+  "#pk-doc-zone .etq-tab tr.etq-mod td{border-top:1.5px solid #000}",
+  "#pk-doc-zone .etq-tab tr.etq-tot td{font-weight:bold;background:#eee}",
   "#pk-doc-zone .etq-haut{display:flex;gap:4mm;align-items:flex-start}",
   "#pk-doc-zone .etq-logo{flex:0 0 38%}",
   "#pk-doc-zone .etq-logo img{display:block;height:auto;max-width:100%}",
   "#pk-doc-zone .p4 .etq-logo img{width:24mm}#pk-doc-zone .p2 .etq-logo img{width:34mm}#pk-doc-zone .p1 .etq-logo img{width:50mm}",
-  "#pk-doc-zone .etq-dest{flex:1;line-height:1.3}",
+  "#pk-doc-zone .etq-dest{flex:1;line-height:1.25}",
   "#pk-doc-zone .etq-num{border:1px solid #000;text-align:center;font-family:Arial,Helvetica,sans-serif;font-weight:bold;margin-top:3mm;padding:1mm}",
   "#pk-doc-zone .etq-tab{width:100%;font-family:Arial,Helvetica,sans-serif}",
-  "#pk-doc-zone .etq-tab th,#pk-doc-zone .etq-tab td{text-align:center;padding:1.5mm;border-top:none}",
+  "#pk-doc-zone .etq-tab th,#pk-doc-zone .etq-tab td{text-align:center;padding:1mm 1.5mm;border-top:none}",
+  "#pk-doc-zone .etq-tab th{background:#eee}",
   "#pk-doc-zone .p4 .etq-dest{font-size:8.5pt}#pk-doc-zone .p4 .etq-num{font-size:13pt}#pk-doc-zone .p4 .etq-tab{font-size:9.5pt}",
   "#pk-doc-zone .p2 .etq-dest{font-size:11pt}#pk-doc-zone .p2 .etq-num{font-size:18pt}#pk-doc-zone .p2 .etq-tab{font-size:12pt}",
   "#pk-doc-zone .etq-info{width:100%;margin-top:2mm;font-family:Arial,Helvetica,sans-serif}",
   "#pk-doc-zone .p4l .etq-page{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;height:190mm;gap:5mm}",
-  "#pk-doc-zone .p4l .etq{padding:3mm 4mm}#pk-doc-zone .p4l .etq-logo img{width:30mm}#pk-doc-zone .p4l .etq-dest{font-size:9.5pt}",
-  "#pk-doc-zone .p4l .etq-num{font-size:16pt;margin-top:2mm}#pk-doc-zone .p4l .etq-tab{font-size:11pt}#pk-doc-zone .p4l .etq-info{font-size:11pt}",
+  "#pk-doc-zone .p4l .etq{padding:2.5mm 3.5mm}#pk-doc-zone .p4l .etq-logo{flex:0 0 26%}#pk-doc-zone .p4l .etq-logo img{width:19mm}#pk-doc-zone .p4l .etq-dest{font-size:8.5pt;line-height:1.2}",
+  "#pk-doc-zone .p4l .etq-num{font-size:14pt;margin-top:1.5mm;padding:0.6mm}#pk-doc-zone .p4l .etq-tab{font-size:10pt}#pk-doc-zone .p4l .etq-tab th,#pk-doc-zone .p4l .etq-tab td{padding:0.7mm 1.5mm}#pk-doc-zone .p4l .etq-info{font-size:10pt}",
+  "#pk-doc-zone .etq-flux.p4l .etq{margin-bottom:4mm}",
   "#pk-doc-zone .etq-info td{padding:1.2mm 2mm;text-align:left}#pk-doc-zone .etq-info td:first-child{width:45%}",
   "#pk-doc-zone .p4 .etq-info{font-size:9.5pt}#pk-doc-zone .p2 .etq-info{font-size:12pt}#pk-doc-zone .p1 .etq-info{font-size:16pt}",
   "#pk-doc-zone .p1 .etq-dest{font-size:15pt}#pk-doc-zone .p1 .etq-num{font-size:26pt}#pk-doc-zone .p1 .etq-tab{font-size:16pt}",
