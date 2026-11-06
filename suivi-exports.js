@@ -10,8 +10,9 @@
    - Pièce d'une commande pas encore enregistrée : figure sur les documents ; elle est
      rattachée au suivi (bouton « Rattacher ») une fois la commande enregistrée.
    - Valider l'export (« Fini ») = pièces expédiées, affectées à leurs commandes.
-   - Documents : fiches cartons, liste de colisage, liste total par commande avec
-     l'état des commandes, base NiceLabel ; tout imprimer ou tout en Excel.
+   - Documents, chacun à part (imprimer, PDF ou Excel) : fiches cartons, liste de colisage,
+     liste total au format de la commande, état des commandes, base NiceLabel.
+   - Poids d'un carton : automatique (90 pièces : 18 kg ; sinon 12 kg) ou saisi à la main.
    Données : S.exports (document « exports » du suivi).
    Chargé avant le script principal du suivi : n'utilise ses fonctions qu'à l'affichage.
    ===================================================================== */
@@ -47,7 +48,31 @@ var CSS = [
   '.xp-mx input::placeholder{color:#a3acb9;font-weight:600}.xp-mx input.plein{background:var(--edit);border-color:var(--edit-line)}.xp-mx input.trop{background:#fde2e1;border-color:#b42318;color:#b42318}',
   '.xp-mx input::-webkit-inner-spin-button,.xp-mx input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.xp-mx input{-moz-appearance:textfield;appearance:textfield}',
   '.xp-mx td.x{color:#c8ced6}.xp-mx td.t{font-weight:800;min-width:44px}.xp-mx tfoot td{background:var(--sub);font-weight:800}.xp-mxw{margin:0 0 10px}',
-  '.xp-step input::-webkit-inner-spin-button,.xp-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.xp-step input{-moz-appearance:textfield;appearance:textfield}'
+  '.xp-step input::-webkit-inner-spin-button,.xp-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.xp-step input{-moz-appearance:textfield;appearance:textfield}',
+  /* liste des exports en cartes */
+  '.xp-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:0 0 14px}',
+  '.xp-li{background:var(--card);border:1px solid var(--line);border-left:6px solid #d99a00;border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 3px rgba(0,0,0,.06)}',
+  '.xp-li.fini{border-left-color:#1f9254}.xp-li:hover{box-shadow:0 4px 14px rgba(0,0,0,.12)}.xp-li .btn{align-self:flex-start;margin-top:6px}',
+  '.xp-li-h{display:flex;justify-content:space-between;align-items:center;gap:8px}.xp-li-n{font-size:18px;font-weight:800}',
+  '.xp-li-d{font-size:14.5px}.xp-li-c{font-size:13px;color:var(--mut)}.xp-li-s{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px}.xp-li-s b{font-weight:800}',
+  '.xp-li-com{font-size:13px;color:var(--mut);font-style:italic}',
+  /* fiche de l'export */
+  '.xp-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 0}.xp-kpi div{background:var(--sub);border-radius:12px;padding:10px;text-align:center}',
+  '.xp-kpi b{display:block;font-size:22px;font-weight:800}.xp-kpi span{font-size:12.5px;color:var(--mut);font-weight:600}',
+  '.xp-com-box{margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(255,193,7,.14);border:1px solid rgba(217,154,0,.45);font-size:14px;white-space:pre-wrap}',
+  '.xp-cartons{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}.xp-cartons .xp-carton{margin:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}',
+  '.xp-cq{font-weight:800;font-size:14px;background:var(--sub);border-radius:99px;padding:3px 10px}',
+  '.xp-rl{margin-top:8px}.xp-rl-n{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:14px}',
+  '.xp-tag{display:inline-block;line-height:1.5;white-space:nowrap;font-size:11.5px;font-weight:700;color:var(--mut);background:var(--sub);border-radius:99px;padding:1px 8px}.xp-tag.libre{background:#fff3cd;color:#7a4b00}',
+  '.xp-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.xp-pill{border:1px solid var(--line);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--mut)}.xp-pill b{color:var(--ink);font-weight:800}',
+  '.xp-cedit{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 10px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}',
+  '.xp-cedit label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:700;color:var(--mut)}.xp-cedit input{height:38px}.xp-cedit label.lg2{flex:1 1 140px}',
+  '.xp-kg{width:96px;font-weight:800;text-align:center}.xp-cin{width:100%}',
+  /* documents : chacun à part */
+  '.xp-docs{display:grid;gap:8px;margin-top:10px}',
+  '.xp-doc{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}',
+  '.xp-doc-n{font-size:15.5px;font-weight:800}.xp-doc-s{font-size:12.5px}.xp-doc-b{display:flex;flex-wrap:wrap;gap:6px}.xp-pp{margin-top:6px;flex-wrap:wrap}',
+  '.xp-reg{margin-top:10px}.xp-reg summary{cursor:pointer;color:var(--mut);font-weight:600;font-size:13.5px}'
 ].join('\n');
 function poserCss(){ if (document.getElementById('xp-css')) return; var st = document.createElement('style'); st.id = 'xp-css'; st.textContent = CSS; document.head.appendChild(st); }
 
@@ -77,7 +102,12 @@ function qteCarton(c){ var q = 0; c.it.forEach(function(x){ q += x[1]; }); retur
 function qteExport(e){ var q = 0; e.cartons.forEach(function(c){ q += qteCarton(c); }); return q; }
 function lotsExport(e){ var o = {}; e.cartons.forEach(function(c){ c.it.forEach(function(x){ var i = infoItem(x); if (i.lot) o[i.lot] = 1; }); }); return Object.keys(o).sort(); }
 function lotsDeCarton(c){ var o = {}; c.it.forEach(function(x){ var i = infoItem(x); if (i.lot) o[i.lot] = 1; }); return Object.keys(o).sort(); }
-function poidsDe(e, c){ if (c.kg !== null && c.kg !== undefined && c.kg !== "") return +c.kg || 0; var R = regleColis(e.cl); return R ? poidsCarton(R, qteCarton(c)) : 0; }
+/* poids brut d'un carton : saisi à la main, sinon automatique (carton plein de 90 pièces : 18 kg ; sinon 12 kg) */
+function poidsAuto(q){ return q > 0 ? (q >= 90 ? 18 : 12) : 0; }
+function aPoidsSaisi(c){ return c.kg !== null && c.kg !== undefined && c.kg !== ""; }
+function poidsDe(e, c){ return aPoidsSaisi(c) ? (+c.kg || 0) : poidsAuto(qteCarton(c)); }
+function fmtKg(x){ x = Math.round((+x || 0) * 10) / 10; return fmt(x, x % 1 ? 1 : 0); }
+function lireKg(v){ v = String(v === null || v === undefined ? "" : v).trim().replace(",", "."); return v === "" ? null : (parseFloat(v) || 0); }
 
 /* pièces encore disponibles pour l'export de nature cl, sur une ligne de commande (hors un carton en modification) */
 function dispoLigne(l, cl, saufCt){
@@ -147,46 +177,54 @@ function listeExports(v){
     el("div", {class:"xp-head"}, el("div", null, el("h2", {style:"margin:0", text:"Exports"}), el("div", {class:"mut", text:L.length + " export(s) · " + enCours + " en cours"})),
       el("button", {class:"btn", text:"+ Nouvel export", onclick:function(){ ui.xp = {nouveau:true}; render(); }}))));
   if (!L.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Aucun export pour l'instant. Touchez « + Nouvel export » : date, nature (NEOLYS ou ALLOGA), puis les cartons."}))); return; }
-  var t = el("table", {class:"xp-tab"}), tb = el("tbody");
-  t.appendChild(el("thead", null, el("tr", null, ["N°", "Date d'export", "Nature", "Commandes", "Cartons", "Pièces", "État", ""].map(function(h){ return el("th", {text:h}); }))));
+  var grille = el("div", {class:"xp-list"});
   L.forEach(function(e){
-    var ouvrir = function(){ ui.xp = {id:e.id}; render(); };
-    tb.appendChild(el("tr", {style:"cursor:pointer", onclick:ouvrir},
-      el("td", {text:String(e.n)}), el("td", {text:dmyL(e.d)}), el("td", null, el("b", {text:e.nat || e.cl})),
-      el("td", {text:lotsExport(e).join(", ") || "—"}), el("td", {class:"n", text:String(e.cartons.length)}), el("td", {class:"n", text:fmt(qteExport(e))}),
-      el("td", null, el("span", {class:"xp-et " + (e.st === "fini" ? "fini" : "cours"), text:e.st === "fini" ? "FINI" : "EN COURS"})),
-      el("td", null, el("button", {class:"btn small sec", text:"Ouvrir", onclick:function(ev){ ev.stopPropagation(); ouvrir(); }}))));
+    var ouvrir = function(){ ui.xp = {id:e.id}; render(); }, fini = e.st === "fini", pds = 0; e.cartons.forEach(function(c){ pds += poidsDe(e, c); });
+    grille.appendChild(el("div", {class:"xp-li " + (fini ? "fini" : "cours"), role:"button", tabindex:"0", onclick:ouvrir},
+      el("div", {class:"xp-li-h"}, el("span", {class:"xp-li-n", text:"Export N°" + e.n}), el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI" : "EN COURS"})),
+      el("div", {class:"xp-li-d"}, el("b", {text:e.nat || e.cl}), " · " + dmyL(e.d)),
+      el("div", {class:"xp-li-c", text:"Commandes : " + (lotsExport(e).join(", ") || "—")}),
+      el("div", {class:"xp-li-s"}, el("span", null, el("b", {text:String(e.cartons.length)}), " carton(s)"), el("span", null, el("b", {text:fmt(qteExport(e))}), " pièces"), el("span", null, el("b", {text:fmtKg(pds)}), " kg")),
+      e.com ? el("div", {class:"xp-li-com", text:"💬 " + e.com}) : null,
+      el("button", {class:"btn small sec", text:"Ouvrir", onclick:function(ev){ ev.stopPropagation(); ouvrir(); }})));
   });
-  t.appendChild(tb); v.appendChild(el("div", {class:"card"}, el("div", {class:"tw"}, t)));
+  v.appendChild(grille);
 }
 function formExport(v, e){
   var cls = clientsPossibles(), cl = e ? e.cl : (cls.indexOf("NEOLYS") >= 0 ? "NEOLYS" : cls[0]);
   var dI = el("input", {type:"date", value:e ? e.d : today()});
   var dest = el("textarea", {rows:"5"}); dest.value = destTexte(e && e.dest ? e.dest : destDefaut(cl));
+  var nI = e ? el("input", {type:"number", min:"1", inputmode:"numeric", value:String(e.n)}) : null;
+  var com = el("textarea", {rows:"3", placeholder:"Ex. transporteur, remarque pour le client, palette…"}); com.value = e ? e.com || "" : "";
   var seg = el("div", {class:"seg"});
   function dessinerSeg(){ seg.innerHTML = ""; cls.forEach(function(c){ seg.appendChild(el("button", {class:c === cl ? "on" : "", text:c, onclick:function(){
-    if (e && e.cartons.length && c !== e.cl){ toast("L'export a déjà des cartons : la nature ne peut plus changer."); return; }
+    if (e && e.cartons.length && c !== e.cl){ toast("L'export a déjà des cartons : la nature ne peut plus changer (créez un nouvel export)."); return; }
     var defAvant = destTexte(destDefaut(cl)); cl = c; if (dest.value.trim() === defAvant.trim()) dest.value = destTexte(destDefaut(cl)); dessinerSeg(); }})); }); }
   dessinerSeg();
-  v.appendChild(el("div", {class:"card"}, el("h2", {text:e ? "Modifier l'export N°" + e.n : "Nouvel export"}),
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:e ? "Modifier les informations de l'export N°" + e.n : "Nouvel export"}),
     el("div", {class:"xp-form"},
+      nI ? el("label", null, "N° de l'export", nI) : null,
       el("label", null, "Date d'export", dI),
       el("label", null, "Nature (destination)", seg),
-      el("label", {style:"grid-column:1/-1"}, "Destinataire (repris sur les fiches cartons et la liste de colisage)", dest)),
+      el("label", {style:"grid-column:1/-1"}, "Destinataire (repris sur les fiches cartons et la liste de colisage)", dest),
+      el("label", {style:"grid-column:1/-1"}, "Commentaire (pour vous, n'apparaît pas sur les documents)", com)),
     el("div", {class:"actions", style:"margin-top:12px"},
       el("button", {class:"btn", text:e ? "✔ Enregistrer" : "✔ Créer l'export et ajouter les cartons", onclick:function(){
         if (!dI.value){ toast("Choisissez la date d'export."); return; }
+        var nN = nI ? parseInt(nI.value, 10) : 0;
+        if (nI && !(nN > 0)){ toast("Écrivez le N° de l'export."); return; }
+        if (nI && EX().some(function(x){ return x !== e && x.n === nN; })){ toast("Le N° " + nN + " est déjà pris par un autre export."); return; }
         var d = destDepuisTexte(dest.value), def = destDefaut(cl), memeDest = destTexte(d) === destTexte(def);
         var id = e ? e.id : nid("X");
         var ok = commit(function(){
           if (e){
-            e.d = dI.value; e.cl = cl; e.nat = cl; e.dest = memeDest ? null : d;
-            /* date des mouvements : celle de l'export */
+            e.d = dI.value; e.cl = cl; e.nat = cl; e.dest = memeDest ? null : d; e.com = com.value.trim(); e.n = nN;
+            /* date et libellé des mouvements : ceux de l'export */
             var ids = {}; e.cartons.forEach(function(c){ ids[c.id] = 1; }); ids[e.id] = 1;
-            S.moves.forEach(function(m){ if (ids[m.ct]) m.date = e.d; });
+            S.moves.forEach(function(m){ if (ids[m.ct]){ m.date = e.d; m.note = String(m.note || "").replace(/([Ee]xport N°)\d+/, "$1" + e.n); } });
           } else {
             var n = 0; EX().forEach(function(x){ if (x.n > n) n = x.n; });
-            EX().push({id:id, n:n + 1, d:dI.value, cl:cl, nat:cl, dest:memeDest ? null : d, st:"cours", dv:"", cartons:[]});
+            EX().push({id:id, n:n + 1, d:dI.value, cl:cl, nat:cl, dest:memeDest ? null : d, st:"cours", dv:"", com:com.value.trim(), cartons:[]});
           }
           ui.xp = e ? {id:id} : {id:id, carton:{nouveau:true}};
         });
@@ -198,28 +236,28 @@ function resumeCarton(c){
   var par = {}, ordre = [];
   c.it.forEach(function(x){ var i = infoItem(x), k = i.lib + "|" + i.lot + "|" + (i.src || ""); if (!par[k]){ par[k] = {i:i, t:[]}; ordre.push(k); } par[k].t.push([i.size, x[1]]); });
   return ordre.map(function(k){ var p = par[k], i = p.i; p.t.sort(function(a, b){ return sizeIdx(a[0]) - sizeIdx(b[0]); });
-    return el("div", {class:"lg"}, el("b", {text:nomDoc(i.lib)}), " ", el("span", {text:"(" + i.lot + (!i.l ? " · pas encore enregistrée" : i.src !== ui.xpCl ? " · surplus " + i.src : "") + ")"}), " : " + p.t.map(function(t){ return t[0] + " " + t[1]; }).join(" · ")); });
+    return el("div", {class:"xp-rl"}, el("div", {class:"xp-rl-n"}, el("b", {text:nomDoc(i.lib)}), el("span", {class:"xp-tag" + (!i.l ? " libre" : ""), text:i.lot + (!i.l ? " · non enregistrée" : i.src !== ui.xpCl ? " · surplus " + i.src : "")})),
+      el("div", {class:"xp-pills"}, p.t.map(function(t){ return el("span", {class:"xp-pill"}, t[0] + " ", el("b", {text:String(t[1])})); }))); });
 }
 function ficheExport(v, e){
   var fini = e.st === "fini", q = qteExport(e), pds = 0; e.cartons.forEach(function(c){ pds += poidsDe(e, c); });
   ui.xpCl = e.cl;
   var dest = e.dest || destDefaut(e.cl);
   v.appendChild(el("button", {class:"btn small sec", style:"margin-bottom:10px", text:"← Tous les exports", onclick:function(){ ui.xp = {}; render(); }}));
-  var head = el("div", {class:"card"},
+  var head = el("div", {class:"card xp-fh"},
     el("div", {class:"xp-head"},
       el("div", null, el("h2", {style:"margin:0", text:"Export N°" + e.n + " · " + (e.nat || e.cl)}),
         el("div", {class:"xp-meta"}, el("span", null, "Date d'export : ", el("b", {text:dmyL(e.d)})), el("span", null, "Destinataire : ", el("b", {text:dest.nom})),
           el("span", null, "Commandes : ", el("b", {text:lotsExport(e).join(", ") || "—"})))),
-      el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI · expédié le " + dmyL(e.d) : "EN COURS"})),
-    el("div", {class:"stat", style:"margin:12px 0 0"},
+      el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI · expédié" : "EN COURS"})),
+    el("div", {class:"xp-kpi"},
       el("div", null, el("b", {text:String(e.cartons.length)}), el("span", {text:"carton(s)"})),
       el("div", null, el("b", {text:fmt(q)}), el("span", {text:"pièces"})),
-      el("div", null, el("b", {text:fmt(Math.round(pds * 10) / 10, pds % 1 ? 1 : 0) + " kg"}), el("span", {text:"poids brut"}))));
+      el("div", null, el("b", {text:fmtKg(pds) + " kg"}), el("span", {text:"poids brut"}))),
+    e.com ? el("div", {class:"xp-com-box", text:"💬 " + e.com}) : null);
   var acts = el("div", {class:"actions", style:"margin:12px 0 0"});
-  if (!fini){
-    acts.appendChild(el("button", {class:"btn", text:"+ Ajouter un carton", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true}}; render(); }}));
-    acts.appendChild(el("button", {class:"btn sec", text:"Modifier date / destinataire", onclick:function(){ ui.xp = {id:e.id, modif:true}; render(); }}));
-  }
+  if (!fini) acts.appendChild(el("button", {class:"btn", text:"+ Ajouter un carton", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true}}; render(); }}));
+  acts.appendChild(el("button", {class:"btn sec", text:"✏️ Modifier les informations", title:"N°, date, nature, destinataire, commentaire", onclick:function(){ ui.xp = {id:e.id, modif:true}; render(); }}));
   head.appendChild(acts);
   v.appendChild(head);
   var ar = aRattacher(e), libres = 0; e.cartons.forEach(function(c){ c.it.forEach(function(x){ if (!(x[0] && lineById(x[0]))) libres += x[1]; }); });
@@ -228,19 +266,28 @@ function ficheExport(v, e){
     el("div", {class:"mut", style:"margin:4px 0 8px", text:"Rattachez-les pour qu'elles comptent dans le suivi de ces commandes (emballées" + (fini ? ", expédiées" : "") + ")."}),
     el("button", {class:"btn", text:"Rattacher aux commandes", onclick:function(){ commit(function(){ rattacher(e); }, "Pièces rattachées aux commandes"); }})));
   else if (libres) v.appendChild(el("div", {class:"msg", style:"margin:0 0 12px", text:fmt(libres) + " pièce(s) sur des commandes pas encore enregistrées : elles figurent sur les documents ; elles seront rattachées au suivi quand la commande sera enregistrée."}));
-  /* cartons */
+  /* cartons : contenu, poids et commentaire (modifiables à tout moment) */
   var cc = el("div", {class:"card"}, el("h2", {text:"Cartons"}));
   if (!e.cartons.length) cc.appendChild(el("div", {class:"xp-vide", text:"Pas encore de carton. Touchez « + Ajouter un carton »."}));
+  var lst = el("div", {class:"xp-cartons"});
   e.cartons.slice().sort(function(a, b){ return a.n - b.n; }).forEach(function(c){
+    var qc = qteCarton(c);
     var b = el("div", {class:"xp-carton"},
-      el("div", {class:"t"}, el("span", {class:"num", text:"📦 Carton N°" + c.n}), el("span", {class:"mut", text:fmt(qteCarton(c)) + " pièce(s) · " + fmt(poidsDe(e, c), poidsDe(e, c) % 1 ? 1 : 0) + " kg"})));
+      el("div", {class:"t"}, el("span", {class:"num", text:"📦 Carton N°" + c.n}), el("span", {class:"xp-cq", text:fmt(qc) + " pcs · " + fmtKg(poidsDe(e, c)) + " kg"})));
     resumeCarton(c).forEach(function(x){ b.appendChild(x); });
+    var kgIn = el("input", {type:"number", step:"0.1", min:"0", inputmode:"decimal", class:"xp-kg", value:aPoidsSaisi(c) ? String(c.kg) : "", placeholder:String(poidsAuto(qc)), title:"Vide = automatique (90 pièces : 18 kg ; sinon 12 kg)"});
+    kgIn.addEventListener("change", function(){ commit(function(){ c.kg = lireKg(kgIn.value); }, "Poids du carton N°" + c.n + " : " + fmtKg(poidsDe(e, c)) + " kg"); });
+    var comIn = el("input", {type:"text", class:"xp-cin", value:c.com || "", placeholder:"Commentaire (facultatif)"});
+    comIn.addEventListener("change", function(){ commit(function(){ c.com = comIn.value.trim(); }, "Commentaire du carton N°" + c.n + " enregistré"); });
+    b.appendChild(el("div", {class:"xp-cedit"}, el("label", null, "Poids (kg)", kgIn), el("label", {class:"lg2"}, "Commentaire", comIn)));
     if (!fini) b.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
       el("button", {class:"btn small sec", text:"Modifier", onclick:function(){ ui.xp = {id:e.id, carton:{id:c.id}}; render(); }}),
       el("button", {class:"btn small sec", text:"Refaire le même", title:"Nouveau carton avec le même contenu", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true, depuis:c.id}}; render(); }}),
       el("button", {class:"btn small sec", style:"color:#b42318", text:"Supprimer", onclick:function(){ if (!confirm("Supprimer le carton N°" + c.n + " ? Les cartons suivants sont renumérotés.")) return; commit(function(){ supprimerCartonExport(e, c.id); }, "Carton supprimé"); }})));
-    cc.appendChild(b);
+    lst.appendChild(b);
   });
+  cc.appendChild(lst);
+  if (e.cartons.length) cc.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-top:4px", text:"Poids vide = automatique : 18 kg pour un carton de 90 pièces, sinon 12 kg."}));
   v.appendChild(cc);
   /* documents */
   if (e.cartons.length) v.appendChild(docsCard(e));
@@ -295,7 +342,7 @@ function editeurCarton(v, e){
     var src = C.id ? e.cartons.filter(function(x){ return x.id === C.id; })[0] : C.depuis ? e.cartons.filter(function(x){ return x.id === C.depuis; })[0] : null;
     var n = 0; e.cartons.forEach(function(x){ if (x.n > n) n = x.n; });
     var dernier = null; e.cartons.forEach(function(c){ c.it.forEach(function(x){ dernier = infoItem(x).lot; }); });
-    C.etat = {it:src ? src.it.map(function(x){ return x.slice(); }) : [], kg:C.id && src && src.kg !== null && src.kg !== undefined ? String(src.kg) : "", n:C.id && src ? src.n : n + 1,
+    C.etat = {it:src ? src.it.map(function(x){ return x.slice(); }) : [], kg:C.id && src && aPoidsSaisi(src) ? String(src.kg) : "", com:C.id && src ? src.com || "" : "", n:C.id && src ? src.n : n + 1,
       lot:(src && src.it[0] ? infoItem(src.it[0]).lot : dernier) || sortedUnique(S.lines.map(function(l){ return l.lot; })).pop() || null, tous:false};
   }
   var E = C.etat, saufCt = C.id || null, R = regleColis(e.cl), t1 = !!(R && R.t1), nbC = e.cartons.length + (C.id ? 0 : 1);
@@ -312,7 +359,8 @@ function editeurCarton(v, e){
   /* 1. commande (lot) */
   var cc = el("div", {class:"card"}, el("div", {class:"mut", style:"font-weight:700;margin:0 0 6px", text:"Commande (N° de lot)"}));
   var lc = el("div", {class:"xp-cmd"});
-  sortedUnique(lotsConnus.concat(E.lot ? [E.lot] : [])).reverse().forEach(function(lot){ lc.appendChild(el("button", {class:"sx-chip" + (E.lot === lot ? " on" : ""), text:(E.lot === lot ? "✓ " : "") + lot + (lotsConnus.indexOf(lot) < 0 ? " (non enregistrée)" : ""), onclick:function(){ E.lot = lot; render(true); }})); });
+  var lotsLibres = lotsExport(e).concat(E.it.map(function(x){ return infoItem(x).lot; })).concat(E.lot ? [E.lot] : []).filter(function(l){ return l && lotsConnus.indexOf(l) < 0; });
+  sortedUnique(lotsConnus.concat(lotsLibres)).reverse().forEach(function(lot){ lc.appendChild(el("button", {class:"sx-chip" + (E.lot === lot ? " on" : ""), text:(E.lot === lot ? "✓ " : "") + lot + (lotsConnus.indexOf(lot) < 0 ? " (non enregistrée)" : ""), onclick:function(){ E.lot = lot; render(true); }})); });
   var autre = el("input", {type:"text", placeholder:"Autre N° (ex. PK202612)", style:"max-width:200px;text-transform:uppercase"});
   function prendreAutre(){ var t = String(autre.value || "").trim().toUpperCase().replace(/\s+/g, ""); if (!t){ toast("Écrivez le N° de lot."); return; } E.lot = t; render(true); }
   autre.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); prendreAutre(); } });
@@ -371,16 +419,27 @@ function editeurCarton(v, e){
   recalc();
   /* 3. valider */
   var fin = el("div", {class:"card"});
-  var kgI = el("input", {type:"number", inputmode:"decimal", step:"0.1", min:"0", value:E.kg, placeholder:R ? "auto (" + R.kg + " kg le carton plein)" : "facultatif", style:"max-width:220px"});
-  kgI.addEventListener("input", function(){ E.kg = kgI.value; });
-  fin.appendChild(el("div", {class:"row", style:"margin-bottom:8px"}, el("label", {text:"Poids brut du carton (kg)"}, kgI)));
+  /* poids : automatique (90 pièces : 18 kg ; sinon 12 kg) tant qu'on ne le change pas */
+  var kgI = el("input", {type:"number", inputmode:"decimal", step:"0.1", min:"0", class:"xp-kg"}), kgInfo = el("div", {class:"mut", style:"font-size:12.5px;margin-top:4px"});
+  var kgAuto = el("button", {class:"btn small sec", text:"Automatique", onclick:function(){ E.kg = ""; majKg(); }});
+  function majKg(){ var a = E.kg === ""; if (a) kgI.value = poidsAuto(total()) ? String(poidsAuto(total())) : ""; kgAuto.style.display = a ? "none" : "";
+    kgInfo.textContent = a ? "Automatique : 18 kg pour 90 pièces, sinon 12 kg. Changez le chiffre si besoin." : "Poids saisi à la main."; }
+  kgI.addEventListener("input", function(){ E.kg = kgI.value; majKg(); });
+  if (E.kg !== "") kgI.value = E.kg;
+  majs.push(majKg); majKg();
+  var comI = el("input", {type:"text", class:"xp-cin", value:E.com || "", placeholder:"Commentaire (facultatif)"});
+  comI.addEventListener("input", function(){ E.com = comI.value; });
+  fin.appendChild(el("div", {class:"xp-cedit", style:"margin-bottom:10px"},
+    el("label", null, "Poids brut (kg)", el("span", {style:"display:flex;gap:6px;align-items:center"}, kgI, kgAuto)),
+    el("label", {class:"lg2"}, "Commentaire du carton", comI)));
+  fin.appendChild(kgInfo);
   function enregistrer(suivant){
-    var c = {id:C.id || nid("XC"), n:E.n, kg:E.kg === "" ? null : (parseFloat(String(E.kg).replace(",", ".")) || 0), it:E.it.filter(function(x){ return x[1] > 0; }).map(function(x){ return x.slice(); })};
+    var c = {id:C.id || nid("XC"), n:E.n, kg:lireKg(E.kg), com:String(E.com || "").trim(), it:E.it.filter(function(x){ return x[1] > 0; }).map(function(x){ return x.slice(); })};
     if (!c.it.length){ toast("Le carton est vide."); return; }
     var szs = {}; c.it.forEach(function(x){ szs[infoItem(x).size] = 1; });
     var av = []; if (R && t1 && Object.keys(szs).length > 1) av.push("plusieurs tailles (règle " + e.cl + " : une seule)"); if (R && total() > R.n) av.push("plus de " + R.n + " pièces (règle " + e.cl + ")");
     if (av.length && !confirm("Attention : " + av.join(", ") + ".\nValider quand même ?")) return;
-    var ok = commit(function(){ enregistrerCartonExport(e, c); ui.xp = suivant ? {id:e.id, carton:{nouveau:true}} : {id:e.id}; if (suivant) ui.xp.carton.etat = {it:[], kg:"", n:Math.max.apply(null, e.cartons.map(function(x){ return x.n; })) + 1, lot:E.lot, tous:E.tous}; });
+    var ok = commit(function(){ enregistrerCartonExport(e, c); ui.xp = suivant ? {id:e.id, carton:{nouveau:true}} : {id:e.id}; if (suivant) ui.xp.carton.etat = {it:[], kg:"", com:"", n:Math.max.apply(null, e.cartons.map(function(x){ return x.n; })) + 1, lot:E.lot, tous:E.tous}; });
     if (ok) toast("Carton N°" + c.n + (C.id ? " modifié" : " enregistré") + (suivant ? " — carton N°" + (c.n + 1) : ""));
   }
   fin.appendChild(el("div", {class:"actions"},
@@ -413,9 +472,11 @@ function totalCommandeGrid(e, colis, lot){
   ["Model", "LIBELLE", "Taille", "Quantité", "Total"].forEach(function(h, i){ gset(g, 3, i, h, {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}); });
   var r = 4, pm = null, tops = {}, mtop = null, grand = 0;
   libs.forEach(function(li){
-    if (!li.sizes.length) return;
+    /* seulement les modèles et les tailles qui ont une quantité dans l'export */
+    var tz = li.sizes.filter(function(z){ return q[li.lib + "|" + z] > 0; });
+    if (!tz.length) return;
     var top = r, tot = 0, col = couleurLib(li.lib);
-    li.sizes.forEach(function(z){
+    tz.forEach(function(z){
       var v = q[li.lib + "|" + z] || 0; tot += v;
       gset(g, r, 0, "", {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 1, li.lib, {sz:9, al:"l", bd:"t", bg:col[0], fg:col[1]});
       gset(g, r, 2, z, {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 3, v || "", {b:1, sz:11, al:"c", bd:"t"}); gset(g, r, 4, "", {b:1, sz:11, al:"c", bd:"t"}); r++;
@@ -501,7 +562,7 @@ function totalSansLot(colis){
   return {grp:libs.map(function(b){ var nom = nomDoc(b.lib).toUpperCase(); return {nom:nom, rows:SZ.filter(function(z){ return z in b.q; }).map(function(z){ return [nom + " " + z, b.q[z]]; })}; }), total:total};
 }
 function totalHtml(e, colis, sansLot){
-  var css = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}</style>';
+  var css = GRL_CSS;
   if (sansLot) return css + grilleHtml(totalCommandeGrid(e, colis, null));
   return css + lotsExport(e).map(function(lot, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(totalCommandeGrid(e, colis, lot)) + '</div>'; }).join("");
 }
@@ -593,37 +654,30 @@ function etatGridX(e, colis){
   });
   return g;
 }
+var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}</style>';
+function suffixe(){ return ui.xpSansLot ? "_sans_lot" : ""; }
 function imprimerX(e, quoi){
-  var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = sl ? "_sans_lot" : "";
+  var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
   avecDest(e, function(){
     if (quoi === "fiches") return imprimerDoc(docCartonsHtml(e.cl, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", titreFichier(e, "Fiches_cartons"));
     if (quoi === "colis") return imprimerDoc(colisageHtml(e, colis, sl), "A4 " + ori("col"), "10mm", titreFichier(e, "Colisage") + suf);
     if (quoi === "total") return imprimerDoc(totalHtml(e, colis, sl), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total") + suf);
-    var css = "<style>@page fiches{size:A4 " + (pp === "4L" ? "landscape" : "portrait") + ";margin:8mm}@page colis{size:A4 " + ori("col") + ";margin:10mm}@page total{size:A4 " + ori("tot") + ";margin:10mm}" +
-      "#pk-doc-zone .sec-fiches{page:fiches}#pk-doc-zone .sec-colis{page:colis;break-before:page;page-break-before:always}#pk-doc-zone .sec-total{page:total;break-before:page;page-break-before:always}</style>";
-    imprimerDoc(css + '<div class="sec-fiches">' + docCartonsHtml(e.cl, colis, pp, lot) + '</div><div class="sec-colis">' + colisageHtml(e, colis, sl) + '</div><div class="sec-total">' + totalHtml(e, colis, sl) + '</div>', "A4 portrait", "8mm", titreFichier(e, "Export") + suf);
+    if (quoi === "etat") return imprimerDoc(GRL_CSS + grilleHtml(etatGridX(e, colis)), "A4 portrait", "10mm", titreFichier(e, "Etat_commandes"));
   });
 }
-function excelX(e){
-  var colis = colisExport(e), lot = libelleLots(e), sl = !!ui.xpSansLot;
-  avecDest(e, function(){
-    var f = fichesCartonsGrid(lot, e.cl, colis, ui.etqPP);
-    var feuilles = [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors},
-      {name:"Liste de colisage", grid:colisageGridX(e, colis, sl)}
-    ].concat(sl ? [{name:"Liste total", grid:totalCommandeGrid(e, colis, null)}] : lotsExport(e).map(function(lot){ return {name:"Liste total " + lot, grid:totalCommandeGrid(e, colis, lot)}; }));
-    if (!sl) feuilles.push({name:"Etat des commandes", grid:etatGridX(e, colis)});
-    saveFile(titreFichier(e, "Export") + (sl ? "_sans_lot" : "") + ".xlsx", xlsxBuild(feuilles));
-  });
+/* un document de l'export, en feuilles (Excel) ou en pages (PDF) : chacun à part */
+var DOCS = {fiches:"Fiches_cartons", colis:"Colisage", total:"Liste_total", etat:"Etat_commandes"};
+function feuillesDoc(e, quoi){
+  var colis = colisExport(e), sl = !!ui.xpSansLot;
+  if (quoi === "fiches"){ var f = fichesCartonsGrid(libelleLots(e), e.cl, colis, ui.etqPP === 1 || ui.etqPP === 2 ? 2 : "4L"); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
+    return [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]; }
+  if (quoi === "colis") return [{name:"Liste de colisage", grid:colisageGridX(e, colis, sl)}];
+  if (quoi === "total") return sl ? [{name:"Liste total", grid:totalCommandeGrid(e, colis, null)}] : lotsExport(e).map(function(l){ return {name:"Liste total " + l, grid:totalCommandeGrid(e, colis, l)}; });
+  return [{name:"Etat des commandes", grid:etatGridX(e, colis)}];
 }
-/* tout en PDF (fichier à imprimer avec n'importe quel lecteur PDF) : fiches cartons avec logo, liste de colisage, liste total */
-function pdfX(e){
-  var colis = colisExport(e), lot = libelleLots(e), sl = !!ui.xpSansLot;
-  avecDest(e, function(){
-    var f = fichesCartonsGrid(lot, e.cl, colis, ui.etqPP === 1 || ui.etqPP === 2 ? 2 : "4L"); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
-    var grids = [f.grid, colisageGridX(e, colis, sl)].concat(sl ? [totalCommandeGrid(e, colis, null)] : lotsExport(e).map(function(l){ return totalCommandeGrid(e, colis, l); }));
-    saveFile(titreFichier(e, "Export") + (sl ? "_sans_lot" : "") + ".pdf", pdfBuild(grids));
-  });
-}
+function nomDocX(e, quoi){ return titreFichier(e, DOCS[quoi]) + (quoi === "colis" || quoi === "total" ? suffixe() : ""); }
+function pdfDoc(e, quoi){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".pdf", pdfBuild(feuillesDoc(e, quoi).map(function(f){ return f.grid; }))); }); }
+function excelDoc(e, quoi){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".xlsx", xlsxBuild(feuillesDoc(e, quoi))); }); }
 function niceLabelX(e){
   var colis = colisExport(e);
   avecDest(e, function(){
@@ -635,27 +689,35 @@ function niceLabelX(e){
 }
 function docsCard(e){
   if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
+  var sansLot = !!ui.xpSansLot;
   var c = el("div", {class:"card cartons"}, el("h2", {text:"Documents de l'export"}));
-  var sl = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Liste de colisage et liste total :"}));
-  [[false, "Avec les lots (par commande)"], [true, "Sans lot"]].forEach(function(o){ sl.appendChild(el("button", {class:!!ui.xpSansLot === o[0] ? "on" : "", text:o[1], onclick:function(){ ui.xpSansLot = o[0]; render(true); }})); });
+  var sl = el("div", {class:"seg", style:"flex-wrap:wrap"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Colisage et liste total :"}));
+  [[false, "Avec les lots (par commande)"], [true, "Sans lot"]].forEach(function(o){ sl.appendChild(el("button", {class:sansLot === o[0] ? "on" : "", text:o[1], onclick:function(){ ui.xpSansLot = o[0]; render(true); }})); });
   c.appendChild(sl);
-  c.appendChild(el("div", {class:"sx-tout"},
-    el("div", {class:"mut", style:"font-weight:700;margin-bottom:6px", text:"Tout en un clic : fiches cartons + liste de colisage + liste total (au format de la commande)"}),
-    el("div", {class:"actions", style:"margin:0"},
-      el("button", {class:"btn", text:"🖨 Tout imprimer", onclick:function(){ imprimerX(e, "tout"); }}),
-      el("button", {class:"btn sec", text:"📕 Tout en PDF", title:"Fichier PDF à imprimer (Adobe Reader, navigateur…)", onclick:function(){ pdfX(e); }}),
-      el("button", {class:"btn sec", text:"📗 Tout en Excel", onclick:function(){ excelX(e); }})),
-    oriBloc()));
-  var seg = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center", text:"Fiches cartons par page :"}));
-  PP_CHOIX.forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 (paysage)" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
-  c.appendChild(seg);
-  c.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
-    el("button", {class:"btn small sec", text:"🖨 Fiches cartons", onclick:function(){ imprimerX(e, "fiches"); }}),
-    el("button", {class:"btn small sec", text:ui.xpSansLot ? "🖨 Liste de colisage (sans lot)" : "🖨 Liste de colisage", onclick:function(){ imprimerX(e, "colis"); }}),
-    el("button", {class:"btn small sec", text:ui.xpSansLot ? "🖨 Liste total (sans lot)" : "🖨 Liste total (par commande)", onclick:function(){ imprimerX(e, "total"); }}),
-    el("button", {class:"btn small sec", text:"🏷 Base NiceLabel (Excel)", onclick:function(){ niceLabelX(e); }})));
+  var pp = el("div", {class:"seg xp-pp"}, el("span", {class:"mut", style:"align-self:center", text:"Par page :"}));
+  PP_CHOIX.forEach(function(n){ pp.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 paysage" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
+  var docs = [
+    ["fiches", "📦 Fiches cartons", "Une fiche à coller sur chaque carton", pp],
+    ["colis", "📋 Liste de colisage", sansLot ? "Sans N° de commande" : "Avec le N° de commande de chaque ligne"],
+    ["total", "🧾 Liste total", sansLot ? "Tout l'export, au format de la commande" : "Au format de la commande, une page par commande"]
+  ];
+  if (!sansLot) docs.push(["etat", "📊 État des commandes", "Commandé, expédié avant, cet export, reste"]);
+  var L = el("div", {class:"xp-docs"});
+  docs.forEach(function(d){
+    L.appendChild(el("div", {class:"xp-doc", "data-doc":d[0]},
+      el("div", {class:"xp-doc-i"}, el("div", {class:"xp-doc-n", text:d[1]}), el("div", {class:"mut xp-doc-s", text:d[2]}), d[3] || null),
+      el("div", {class:"xp-doc-b"},
+        el("button", {class:"btn small", text:"🖨 Imprimer", onclick:function(){ imprimerX(e, d[0]); }}),
+        el("button", {class:"btn small sec", text:"📕 PDF", title:"Fichier PDF : s'imprime avec n'importe quel lecteur PDF", onclick:function(){ pdfDoc(e, d[0]); }}),
+        el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ excelDoc(e, d[0]); }}))));
+  });
+  L.appendChild(el("div", {class:"xp-doc", "data-doc":"nicelabel"},
+    el("div", {class:"xp-doc-i"}, el("div", {class:"xp-doc-n", text:"🏷 Base NiceLabel"}), el("div", {class:"mut xp-doc-s", text:"Pour imprimer les étiquettes des cartons"})),
+    el("div", {class:"xp-doc-b"}, el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ niceLabelX(e); }}))));
+  c.appendChild(L);
+  c.appendChild(el("details", {class:"xp-reg"}, el("summary", {text:"Orientation d'impression (portrait / paysage)"}), oriBloc()));
   return c;
 }
 /* pour les tests */
-window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, grilleHtml:grilleHtml, pdfX:pdfX};
+window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();

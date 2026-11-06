@@ -645,8 +645,8 @@ function applyDocs(docs){
     } else if (id === "stock-mv"){
       S.stk = (d.mv || []).map(function(a){ return {id:a[0], d:a[1], t:a[2], a:a[3], q:+a[4] || 0, dest:a[5] || "", lot:a[6] || "", n:a[7] || ""}; });
     } else if (id === "exports"){
-      S.exports = (d.liste || []).map(function(e){ return {id:e.id, n:e.n, d:e.d, cl:e.cl, nat:e.nat || e.cl, dest:e.dest || null, st:e.st === "fini" ? "fini" : "cours", dv:e.dv || "",
-        cartons:(e.cartons || []).map(function(c){ return {id:c.id, n:c.n, kg:c.kg === undefined ? null : c.kg, it:(c.it || []).map(function(x){ return [x[0] || "", +x[1] || 0, x[2] || "", x[3] || "", x[4] || ""]; })}; })}; });
+      S.exports = (d.liste || []).map(function(e){ return {id:e.id, n:e.n, d:e.d, cl:e.cl, nat:e.nat || e.cl, dest:e.dest || null, st:e.st === "fini" ? "fini" : "cours", dv:e.dv || "", com:e.com || "",
+        cartons:(e.cartons || []).map(function(c){ return {id:c.id, n:c.n, kg:c.kg === undefined ? null : c.kg, com:c.com || "", it:(c.it || []).map(function(x){ return [x[0] || "", +x[1] || 0, x[2] || "", x[3] || "", x[4] || ""]; })}; })}; });
     } else if (id.indexOf("cartons-") === 0){
       S.cartons[d.lot] = (d.cartons || []).map(function(c){ return {id:c.id, n:c.n, cl:c.cl, d:c.d, it:(c.it || []).map(function(x){ return [x[0], x[1]]; }), kg:c.kg === undefined ? null : c.kg}; });
     }

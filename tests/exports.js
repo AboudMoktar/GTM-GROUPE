@@ -46,6 +46,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['N° de lot libre accepté', await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202612 (non enregistrée)'}).count() === 1 && /contient aussi 17 pièce/.test(await p.locator('#view').textContent())]);
   await cell('Gilet Homme Noir', 'L').fill('7');
   r.push(['total du carton (deux commandes)', (await p.locator('.xp-sticky .xp-tot').textContent()) === '24']);
+  r.push(['poids automatique : 12 kg (moins de 90 pièces)', await p.inputValue('.xp-cedit .xp-kg') === '12']);
   await p.click('text=✔ Valider et carton suivant'); await p.waitForTimeout(300);
   ({ex: E} = await etat()); let c1 = E[0].cartons[0];
   const q = (c, id, lot, lib, sz) => c.it.filter(x => (id ? x[0] === id : (!x[0] && x[2] === lot && x[3] === lib && x[4] === sz))).reduce((a, x) => a + x[1], 0);
@@ -64,6 +65,18 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['modifier : quantités déjà mises affichées', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && await p.locator('.xp-cmd .sx-chip.on').count() === 1]);
   r.push(['modifier : tableau prérempli', await cell('Lyne Pro Homme Gris', 'S').inputValue() === '12' && await cell('Lyne Pro Homme Gris', 'M').inputValue() === '5']);
   await p.click('text=Annuler'); await p.waitForTimeout(200);
+  // poids et commentaire d'un carton, modifiables sur la fiche de l'export
+  r.push(['poids auto : 90 pièces = 18 kg, sinon 12 kg', await p.evaluate(() => pkExports.poidsAuto(90) === 18 && pkExports.poidsAuto(24) === 12 && S.exports[0].cartons[0].kg === null && pkExports.poidsDe(S.exports[0], S.exports[0].cartons[0]) === 12)]);
+  await p.locator('.xp-carton', {hasText: 'Carton N°1'}).locator('.xp-kg').fill('15'); await p.keyboard.press('Tab'); await p.waitForTimeout(250);
+  await p.locator('.xp-carton', {hasText: 'Carton N°1'}).locator('.xp-cin').fill('Carton renforcé'); await p.keyboard.press('Tab'); await p.waitForTimeout(250);
+  ({ex: E} = await etat());
+  r.push(['poids et commentaire du carton modifiés', E[0].cartons[0].kg === 15 && E[0].cartons[0].com === 'Carton renforcé' && /27 kg/.test(await p.locator('.xp-kpi').textContent())]);
+  // toutes les informations de l'export modifiables (N°, commentaire…)
+  const infos = async (n, com) => { await p.click('text=✏️ Modifier les informations'); await p.waitForTimeout(150); await p.fill('.xp-form input[type=number]', n); await p.locator('.xp-form textarea').nth(1).fill(com); await p.click('text=✔ Enregistrer'); await p.waitForTimeout(250); };
+  await infos('5', 'Transporteur DHL');
+  ({ex: E, mv} = await etat());
+  r.push(['informations modifiées (N°, commentaire), suivi à jour', E[0].n === 5 && E[0].com === 'Transporteur DHL' && mv.every(m => /N°5/.test(m.note)) && /Transporteur DHL/.test(await p.locator('#view').textContent())]);
+  await infos('1', 'Transporteur DHL');
   // 5. les cartons de l'export comptent dans le reste à emballer de la commande
   r.push(['reste à emballer de la commande à jour', await p.evaluate(() => dispoRetour('PK202610', 'A_S', null) === 0 && dispoRetour('PK202610', 'A_M', null) === 0)]);
   // 6. documents
@@ -71,25 +84,29 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['colisage : commande de chaque ligne', /PK202610/.test(html.col) && /PK202612/.test(html.col) && /Date d'export : le 07\/11\/2026/.test(html.col)]);
   const gt = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e), tot = (g) => { const r = g.rows[g.rows.length - 1]; return [r.cells[0].v, r.cells[3].v]; };
     const gA = pkExports.totalCommandeGrid(e, c, 'PK202610'), head = gA.rows[3].cells.map(x => x.v).join('|'), lyneS = gA.rows.find(r => r.cells[1] && r.cells[1].v === 'LYNE PRO homme gris' && r.cells[2].v === 'S');
-    return {head, A: tot(gA), B: tot(pkExports.totalCommandeGrid(e, c, 'PK202612')), tout: tot(pkExports.totalCommandeGrid(e, c, null)), lot: gA.rows[1].cells[3].v, lyneS: lyneS && lyneS.cells[3].v, nRefs: gA.rows.length}; });
-  r.push(['liste total au format de la commande', gt.head === 'Model|LIBELLE|Taille|Quantité|Total' && gt.lot === 'PK202610' && gt.lyneS === 12 && gt.nRefs > 10]);
+    return {head, A: tot(gA), B: tot(pkExports.totalCommandeGrid(e, c, 'PK202612')), tout: tot(pkExports.totalCommandeGrid(e, c, null)), lot: gA.rows[1].cells[3].v, lyneS: lyneS && lyneS.cells[3].v, nRefs: gA.rows.length, vides: gA.rows.slice(4, -1).filter(r => !(r.cells[3].v > 0)).length}; });
+  r.push(['liste total au format de la commande', gt.head === 'Model|LIBELLE|Taille|Quantité|Total' && gt.lot === 'PK202610' && gt.lyneS === 12]);
+  r.push(['liste total : seulement les modèles et tailles avec quantité', gt.nRefs === 7 && gt.vides === 0]);
   r.push(['liste total : une par commande, ou sans lot', gt.A[1] === 22 && gt.B[1] === 14 && gt.tout[1] === 36 && /PK202610/.test(html.tot) && /PK202612/.test(html.tot)]);
   const etA = html.D.etat.find(x => x.lot === 'PK202610');
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
-  await p.click('text=← Export N°1').catch(() => {});
-  await p.waitForTimeout(200);
-  const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), p.click('text=📗 Tout en Excel')]);
-  r.push(['Excel de l\'export (4 feuilles)', (!!dl && /^Export_Export1_NEOLYS_20261107\.xlsx$/.test(dl.suggestedFilename())) || /Fichier prêt : Export_Export1_NEOLYS_20261107\.xlsx/.test(await p.locator('#toast').textContent())]);
+  const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});
+  r.push(['chaque document à part : imprimer, PDF, Excel', await p.locator('.xp-doc').count() === 5 && await doc('total', 'PDF').count() === 1 && await doc('colis', 'Excel').count() === 1 && await p.locator('text=Tout en PDF').count() === 0]);
+  await doc('total', 'Excel').click(); await p.waitForTimeout(300);
+  r.push(['liste total en Excel', /Fichier prêt : Liste_total_Export1_NEOLYS_20261107\.xlsx/.test(await p.locator('#toast').textContent())]);
   const sl = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c, true), tot: pkExports.totalHtml(e, c, true), g: pkExports.totalGridX(e, c, true)}; });
   r.push(['liste de colisage sans lot', !/PK2026/.test(sl.col) && /PERCKO/.test(sl.col) && /Total t-shirt pour export/.test(sl.col)]);
   r.push(['liste total sans lot (un seul total)', /PK202610 \+ PK202612/.test(sl.tot) && />36</.test(sl.tot)]);
-  const pdf = await p.evaluate(() => { let out = null; const sv = window.saveFile; window.saveFile = (n, d) => { out = {n, s: Array.from(d.slice(0, 9)).map(c => String.fromCharCode(c)).join(''), t: Array.from(d).map(c => String.fromCharCode(c)).join('')}; }; pkExports.pdfX(S.exports[0]); window.saveFile = sv; return out && {n: out.n, debut: out.s, logo: /\/Subtype \/Image/.test(out.t) && /DCTDecode/.test(out.t) && /\/Im1 Do/.test(out.t)}; });
-  r.push(['tout en PDF (fiches avec logo, colisage, liste total)', !!pdf && pdf.n === 'Export_Export1_NEOLYS_20261107.pdf' && pdf.debut.startsWith('%PDF-1.4') && pdf.logo]);
+  const pdf = await p.evaluate(() => { const out = {}; const sv = window.saveFile; window.saveFile = (n, d) => { out[n] = Array.from(d).map(c => String.fromCharCode(c)).join(''); };
+    ['fiches', 'colis', 'total', 'etat'].forEach(q => pkExports.pdfDoc(S.exports[0], q)); window.saveFile = sv; return Object.keys(out).map(n => ({n, ok: out[n].startsWith('%PDF-1.4'), logo: /\/Subtype \/Image/.test(out[n]) && /DCTDecode/.test(out[n])})); });
+  r.push(['PDF de chaque document (fiches avec logo)', pdf.length === 4 && pdf.every(x => x.ok) && pdf.find(x => x.n === 'Fiches_cartons_Export1_NEOLYS_20261107.pdf').logo && !!pdf.find(x => x.n === 'Liste_total_Export1_NEOLYS_20261107.pdf')]);
   await p.click('text=Sans lot'); await p.waitForTimeout(150);
-  r.push(['choix « sans lot » pour les documents', await p.locator('text=🖨 Liste total (sans lot)').count() === 1]);
+  r.push(['choix « sans lot » pour les documents', /Tout l'export/.test(await p.locator('.xp-doc[data-doc="total"]').textContent()) && await p.locator('.xp-doc[data-doc="etat"]').count() === 0]);
   await p.click('text=Avec les lots (par commande)'); await p.waitForTimeout(150);
-  await p.click('text=🖨 Tout imprimer'); await p.waitForTimeout(300);
-  r.push(['impression : fiches, colisage, liste total', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML) && /Liste|Total t-shirt pour export/.test(z.innerHTML) && /LIBELLE/.test(z.innerHTML) && /PK202612/.test(z.innerHTML); })]);
+  await doc('total', 'Imprimer').click(); await p.waitForTimeout(300);
+  r.push(['impression de la liste total seule', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /LIBELLE/.test(z.innerHTML) && /PK202612/.test(z.innerHTML) && !/CARTON N°2/.test(z.innerHTML); })]);
+  await doc('fiches', 'Imprimer').click(); await p.waitForTimeout(300);
+  r.push(['impression des fiches cartons', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML); })]);
   // 7. validation : pièces expédiées, affectées à leurs commandes
   await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
   await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);
