@@ -30,69 +30,66 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   let E = (await etat()).ex;
   r.push(['export créé (N°1, NEOLYS, en cours)', E.length === 1 && E[0].n === 1 && E[0].cl === 'NEOLYS' && E[0].st === 'cours' && E[0].d === '2026-11-07']);
   r.push(['éditeur du carton N°1 ouvert', /Carton N°1/.test(await p.locator('#view').textContent())]);
-  // 2. saisie libre : commande PK202610, modèle de la commande
-  const lig = (sz) => p.locator('.sx-row', {has: p.locator('.sx-sz', {hasText: new RegExp('^' + sz + '$')})});
+  // 2. carton en tableau : commande PK202610, modèles de la commande en lignes, tailles en colonnes
+  const cell = (lib, sz) => p.locator('.xp-mx input[title^="' + lib + ' · ' + sz + ' "]');
+  r.push(['bandeau : carton en cours toujours affiché', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && /carton 1 sur 1/.test(await p.locator('.xp-sticky').textContent())]);
   r.push(['commandes enregistrées proposées', await p.locator('.xp-cmd .sx-chip').count() === 2]);
   await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202610'}).click(); await p.waitForTimeout(150);
-  r.push(['tous les modèles du catalogue affichés', await p.locator('.sx-opts .sx-chip').count() >= 5 && await p.locator('.sx-opts .sx-chip', {hasText: '● Lyne Pro Homme Gris'}).count() === 1]);
-  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
-  r.push(['chiffres de la commande affichés', /Commandé 20 · retour GADH 8 · autres cartons 0 · reste 8/.test(await lig('S').textContent())]);
-  await lig('S').locator('input').fill('12'); await lig('M').locator('input').fill('5');
-  r.push(['saisie libre (au-delà du retour)', await lig('S').locator('input').inputValue() === '12']);
-  await p.click('text=✔ Mettre à jour le carton'); await p.waitForTimeout(150);
-  r.push(['dépassement du retour signalé', /12 en carton pour 8 revenue/.test(await p.locator('.xp-ligne').first().textContent() + await p.locator('#view').textContent())]);
-  // 3. commande pas encore enregistrée, modèle hors commande
-  await p.fill('input[placeholder^="Autre N° de lot"]', 'pk202612'); await p.click('text=Utiliser ce N°'); await p.waitForTimeout(150);
-  r.push(['N° de lot libre accepté', await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202612 (pas encore enregistrée)'}).count() === 1]);
-  await p.locator('.sx-opts .sx-chip', {hasText: 'Gilet Homme Noir'}).click(); await p.waitForTimeout(150);
-  r.push(['commande non enregistrée : saisie sans chiffres', /Commande pas encore enregistrée/.test(await lig('L').textContent())]);
-  await lig('L').locator('input').fill('7');
-  await p.click('text=✔ Mettre à jour le carton'); await p.waitForTimeout(150);
-  r.push(['contenu du carton affiché', await p.locator('.xp-ligne').count() === 3]);
-  // modification directe dans le carton : quantité, commande ; pièces déjà mises affichées au choix du modèle
-  const ligneS = p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'});
-  await ligneS.locator('.xp-step button', {hasText: '+'}).click(); await p.waitForTimeout(100);
-  r.push(['quantité modifiée directement (+)', await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').inputValue() === '13']);
-  await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').fill('12'); await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').press('Enter'); await p.waitForTimeout(150);
-  await p.locator('.xp-ligne', {hasText: 'Gilet Homme Noir · L'}).locator('select').selectOption('PK202611'); await p.waitForTimeout(150);
-  r.push(['commande changée directement (rattachée à la ligne)', await p.evaluate(() => { const it = ui.xp.carton.etat.it.find(x => x[3] === 'Gilet homme noir' || x[0] === 'B_G'); return !!it && it[0] === 'B_G' && it[2] === 'PK202611'; })]);
-  await p.locator('.xp-ligne', {hasText: 'Gilet Homme Noir · L'}).locator('select').selectOption('PK202612'); await p.waitForTimeout(150);
-  await p.locator('.xp-cmd .sx-chip', {hasText: /^PK202610$/}).click(); await p.waitForTimeout(150);
-  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
-  r.push(['modèle choisi : pièces déjà dans le carton affichées', await lig('S').locator('input').inputValue() === '12' && await lig('M').locator('input').inputValue() === '5' && /déjà dans ce carton : 12/.test(await lig('S').textContent())]);
-  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(100);
-  await p.click('text=✔ Valider et refaire le même'); await p.waitForTimeout(300);
+  r.push(['tableau : les modèles de la commande', await p.locator('.xp-mx tbody tr').count() === 1 && await cell('Lyne Pro Homme Gris', 'S').count() === 1 && await p.locator('text=Afficher tous les modèles').count() === 1]);
+  r.push(['reste du retour GADH en gris dans la case', await cell('Lyne Pro Homme Gris', 'S').getAttribute('placeholder') === '8']);
+  await cell('Lyne Pro Homme Gris', 'S').fill('12'); await cell('Lyne Pro Homme Gris', 'M').fill('5');
+  r.push(['saisie libre, dépassement en rouge, total à jour', await cell('Lyne Pro Homme Gris', 'S').getAttribute('class') === 'trop' && (await p.locator('.xp-sticky .xp-tot').textContent()) === '17']);
+  await p.click('text=Afficher tous les modèles'); await p.waitForTimeout(150);
+  r.push(['tous les modèles du catalogue sur demande', await p.locator('.xp-mx tbody tr').count() >= 5 && await cell('Lyne Pro Homme Gris', 'S').inputValue() === '12']);
+  // 3. commande pas encore enregistrée
+  await p.fill('input[placeholder^="Autre N°"]', 'pk202612'); await p.click('.xp-cmd button:has-text("OK")'); await p.waitForTimeout(150);
+  r.push(['N° de lot libre accepté', await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202612 (non enregistrée)'}).count() === 1 && /contient aussi 17 pièce/.test(await p.locator('#view').textContent())]);
+  await cell('Gilet Homme Noir', 'L').fill('7');
+  r.push(['total du carton (deux commandes)', (await p.locator('.xp-sticky .xp-tot').textContent()) === '24']);
+  await p.click('text=✔ Valider et carton suivant'); await p.waitForTimeout(300);
   ({ex: E} = await etat()); let c1 = E[0].cartons[0];
   const q = (c, id, lot, lib, sz) => c.it.filter(x => (id ? x[0] === id : (!x[0] && x[2] === lot && x[3] === lib && x[4] === sz))).reduce((a, x) => a + x[1], 0);
   r.push(['pièces rattachées à leur commande, ou libres', q(c1, 'A_S') === 12 && q(c1, 'A_M') === 5 && q(c1, null, 'PK202612', 'Gilet homme noir', 'L') === 7]);
   let mv = (await etat()).mv;
   r.push(['carton : seules les pièces des commandes enregistrées vont au suivi', mv.filter(m => m.ct === c1.id && m.stage === 'emb').reduce((a, m) => a + m.qty, 0) === 17]);
-  r.push(['carton N°2 prérempli avec le même contenu', /Carton N°2/.test(await p.locator('#view').textContent()) && await p.locator('.xp-ligne').count() === 3]);
-  // retirer la ligne PK202610 S du carton N°2
-  await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('.xp-x').click(); await p.waitForTimeout(150);
-  await p.click('text=✔ Valider le carton'); await p.waitForTimeout(300);
+  r.push(['carton suivant ouvert (N°2, même commande)', /Carton N°2/.test(await p.locator('.xp-sticky').textContent()) && await p.locator('.xp-cmd .sx-chip.on', {hasText: 'PK202612'}).count() === 1]);
+  await cell('Gilet Homme Noir', 'L').fill('7');
+  await p.locator('.xp-cmd .sx-chip', {hasText: /^PK202610$/}).click(); await p.waitForTimeout(150);
+  await cell('Lyne Pro Homme Gris', 'M').fill('5');
+  await p.click('text=✔ Valider le carton N°2'); await p.waitForTimeout(300);
   ({ex: E} = await etat()); const c2 = E[0].cartons[1];
   r.push(['carton N°2 enregistré', E[0].cartons.length === 2 && q(c2, 'A_M') === 5 && q(c2, null, 'PK202612', 'Gilet homme noir', 'L') === 7 && !q(c2, 'A_S')]);
+  // modifier un carton : le tableau montre ce qui est déjà dedans
+  await p.locator('.xp-carton', {hasText: 'Carton N°1'}).locator('text=Modifier').click(); await p.waitForTimeout(200);
+  r.push(['modifier : quantités déjà mises affichées', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && await p.locator('.xp-cmd .sx-chip.on').count() === 1]);
+  r.push(['modifier : tableau prérempli', await cell('Lyne Pro Homme Gris', 'S').inputValue() === '12' && await cell('Lyne Pro Homme Gris', 'M').inputValue() === '5']);
+  await p.click('text=Annuler'); await p.waitForTimeout(200);
   // 5. les cartons de l'export comptent dans le reste à emballer de la commande
   r.push(['reste à emballer de la commande à jour', await p.evaluate(() => dispoRetour('PK202610', 'A_S', null) === 0 && dispoRetour('PK202610', 'A_M', null) === 0)]);
   // 6. documents
   const html = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c), tot: pkExports.totalHtml(e, c), D: pkExports.totalDonneesExport(e, c)}; });
   r.push(['colisage : commande de chaque ligne', /PK202610/.test(html.col) && /PK202612/.test(html.col) && /Date d'export : le 07\/11\/2026/.test(html.col)]);
-  r.push(['liste total séparée par commande', /Commande PK202610/.test(html.tot) && /Commande PK202612/.test(html.tot) && /TOTAL DE L'EXPORT<\/td><td>36/.test(html.tot) && /\(non enregistrée\)/.test(html.tot)]);
+  const gt = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e), tot = (g) => { const r = g.rows[g.rows.length - 1]; return [r.cells[0].v, r.cells[3].v]; };
+    const gA = pkExports.totalCommandeGrid(e, c, 'PK202610'), head = gA.rows[3].cells.map(x => x.v).join('|'), lyneS = gA.rows.find(r => r.cells[1] && r.cells[1].v === 'LYNE PRO homme gris' && r.cells[2].v === 'S');
+    return {head, A: tot(gA), B: tot(pkExports.totalCommandeGrid(e, c, 'PK202612')), tout: tot(pkExports.totalCommandeGrid(e, c, null)), lot: gA.rows[1].cells[3].v, lyneS: lyneS && lyneS.cells[3].v, nRefs: gA.rows.length}; });
+  r.push(['liste total au format de la commande', gt.head === 'Model|LIBELLE|Taille|Quantité|Total' && gt.lot === 'PK202610' && gt.lyneS === 12 && gt.nRefs > 10]);
+  r.push(['liste total : une par commande, ou sans lot', gt.A[1] === 22 && gt.B[1] === 14 && gt.tout[1] === 36 && /PK202610/.test(html.tot) && /PK202612/.test(html.tot)]);
   const etA = html.D.etat.find(x => x.lot === 'PK202610');
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   await p.click('text=← Export N°1').catch(() => {});
   await p.waitForTimeout(200);
-  const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), p.click('text=📗 Tout en Excel (4 feuilles)')]);
+  const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), p.click('text=📗 Tout en Excel')]);
   r.push(['Excel de l\'export (4 feuilles)', (!!dl && /^Export_Export1_NEOLYS_20261107\.xlsx$/.test(dl.suggestedFilename())) || /Fichier prêt : Export_Export1_NEOLYS_20261107\.xlsx/.test(await p.locator('#toast').textContent())]);
   const sl = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c, true), tot: pkExports.totalHtml(e, c, true), g: pkExports.totalGridX(e, c, true)}; });
   r.push(['liste de colisage sans lot', !/PK2026/.test(sl.col) && /PERCKO/.test(sl.col) && /Total t-shirt pour export/.test(sl.col)]);
-  r.push(['liste total sans lot (un seul total)', !/PK2026/.test(sl.tot) && /LYNE PRO HOMME GRIS S<\/td><td>12/.test(sl.tot) && /TOTAL<\/td><td>36/.test(sl.tot) && !/État des commandes/.test(sl.tot)]);
+  r.push(['liste total sans lot (un seul total)', /PK202610 \+ PK202612/.test(sl.tot) && />36</.test(sl.tot)]);
+  const pdf = await p.evaluate(() => { let out = null; const sv = window.saveFile; window.saveFile = (n, d) => { out = {n, s: Array.from(d.slice(0, 9)).map(c => String.fromCharCode(c)).join(''), t: Array.from(d).map(c => String.fromCharCode(c)).join('')}; }; pkExports.pdfX(S.exports[0]); window.saveFile = sv; return out && {n: out.n, debut: out.s, logo: /\/Subtype \/Image/.test(out.t) && /DCTDecode/.test(out.t) && /\/Im1 Do/.test(out.t)}; });
+  r.push(['tout en PDF (fiches avec logo, colisage, liste total)', !!pdf && pdf.n === 'Export_Export1_NEOLYS_20261107.pdf' && pdf.debut.startsWith('%PDF-1.4') && pdf.logo]);
   await p.click('text=Sans lot'); await p.waitForTimeout(150);
   r.push(['choix « sans lot » pour les documents', await p.locator('text=🖨 Liste total (sans lot)').count() === 1]);
   await p.click('text=Avec les lots (par commande)'); await p.waitForTimeout(150);
   await p.click('text=🖨 Tout imprimer'); await p.waitForTimeout(300);
-  r.push(['impression : fiches, colisage, liste total', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML) && /Liste|Total t-shirt pour export/.test(z.innerHTML) && /État des commandes/.test(z.innerHTML); })]);
+  r.push(['impression : fiches, colisage, liste total', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML) && /Liste|Total t-shirt pour export/.test(z.innerHTML) && /LIBELLE/.test(z.innerHTML) && /PK202612/.test(z.innerHTML); })]);
   // 7. validation : pièces expédiées, affectées à leurs commandes
   await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
   await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);
