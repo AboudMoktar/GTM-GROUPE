@@ -34,7 +34,11 @@ var CSS = [
   '.xp-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}',
   '.xp-form label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:13px}',
   '.xp-form textarea{min-height:96px;font:inherit}',
-  '.xp-tot{font-size:22px;font-weight:800}'
+  '.xp-tot{font-size:22px;font-weight:800}',
+  '.xp-ligne{grid-template-columns:minmax(0,1fr) auto auto}.xp-lot{max-width:150px;height:34px;padding:0 6px;font-size:13px;margin-top:4px}',
+  '.xp-step{display:flex;align-items:center;gap:4px}.xp-step button{width:34px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--sub);color:var(--ink);font-size:20px;font-weight:700;cursor:pointer}',
+  '.xp-step input{width:58px;height:38px;text-align:center;font-size:17px;font-weight:800;padding:0 2px;background:var(--edit);border-color:var(--edit-line)}',
+  '.xp-step input::-webkit-inner-spin-button,.xp-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.xp-step input{-moz-appearance:textfield;appearance:textfield}'
 ].join('\n');
 function poserCss(){ if (document.getElementById('xp-css')) return; var st = document.createElement('style'); st.id = 'xp-css'; st.textContent = CSS; document.head.appendChild(st); }
 
@@ -294,32 +298,54 @@ function editeurCarton(v, e){
     el("div", {class:"xp-head"}, el("div", {class:"sx-cnum", text:"📦 Carton N°" + E.n}), el("div", null, el("span", {class:"xp-tot", text:fmt(tot)}), el("span", {class:"mut", text:" pièce(s)"}))),
     el("div", {class:"mut", style:"margin:2px 0 8px", text:(C.id ? "Modification du carton" : "Nouveau carton") + " — export N°" + e.n + " · " + e.cl + (R ? " · règle : " + R.n + " pièces par carton" + (t1 ? ", une seule taille" : "") : "")}));
   if (!E.it.length) carte.appendChild(el("div", {class:"xp-vide", text:"Carton vide : choisissez la commande et le modèle ci-dessous, remplissez les tailles, puis « Ajouter dans le carton »."}));
-  var lst = el("div");
+  var lst = el("div"), lotsConnus = sortedUnique(S.lines.map(function(l){ return l.lot; })).reverse();
+  /* change la commande d'une pièce du carton (rattachée à la ligne de cette commande si elle existe) ; regroupe les doublons */
+  function changerLot(x, lot){
+    var I = infoItem(x); if (!lot || lot === I.lot) return;
+    var l = ligneDe(e.cl, lot, I.lib, I.size), autre = E.it.filter(function(y){ if (y === x) return false; var j = infoItem(y); return j.lot === lot && j.lib === I.lib && j.size === I.size; })[0];
+    if (autre){ autre[1] += x[1]; E.it.splice(E.it.indexOf(x), 1); }
+    else { x[0] = l ? l.id : ""; x[2] = lot; x[3] = I.lib; x[4] = I.size; }
+  }
+  function poserQte(x, q){ q = Math.max(0, Math.round(q) || 0); if (!q) E.it.splice(E.it.indexOf(x), 1); else x[1] = q; render(true); }
   E.it.map(function(x, i){ return [x, i, infoItem(x)]; }).sort(function(a, b){ var A = a[2], B = b[2]; return A.lib === B.lib ? (A.lot === B.lot ? sizeIdx(A.size) - sizeIdx(B.size) : (A.lot < B.lot ? -1 : 1)) : (A.lib < B.lib ? -1 : 1); }).forEach(function(p){
-    var x = p[0], I = p[2], info = "Commande " + I.lot, alerte = "";
-    if (!I.l) info += " · pas encore enregistrée";
+    var x = p[0], I = p[2], info = "", alerte = "";
+    if (!I.l) info = lotsConnus.indexOf(I.lot) >= 0 ? "hors commande : modèle ou taille absent de " + I.lot : "commande pas encore enregistrée";
     else {
-      if (I.src !== e.cl) info += " (surplus " + I.src + ")";
+      if (I.src !== e.cl) info = "surplus " + I.src;
       var ret = retourGadh(I.l.id), apres = totalEnCartons(I.lot, I.l.id, saufCt) + dansBrouillon(I.lot, I.lib, I.size);
       if (apres > ret) alerte = "⚠ " + fmt(apres) + " en carton pour " + fmt(ret) + " revenue(s) de la GADH";
     }
+    var selLot = el("select", {class:"xp-lot", title:"Commande (lot)"});
+    var lotsLibres = [E.lot]; E.it.forEach(function(y){ lotsLibres.push(infoItem(y).lot); }); lotsExport(e).forEach(function(l){ lotsLibres.push(l); });
+    sortedUnique(lotsConnus.concat(lotsLibres).filter(Boolean)).reverse().forEach(function(lot){ var o = el("option", {value:lot, text:lot}); if (lot === I.lot) o.selected = true; selLot.appendChild(o); });
+    selLot.appendChild(el("option", {value:"__autre", text:"Autre N°…"}));
+    selLot.addEventListener("change", function(){
+      var v2 = selLot.value;
+      if (v2 === "__autre"){ v2 = String(prompt("N° de lot (ex. PK202612) :", "") || "").trim().toUpperCase().replace(/\s+/g, ""); if (!v2){ selLot.value = I.lot; return; } }
+      changerLot(x, v2); render(true); });
+    var q = el("input", {type:"number", inputmode:"numeric", min:"0", value:String(x[1]), title:"Quantité"});
+    q.addEventListener("focus", function(){ try { q.select(); } catch (er) {} });
+    q.addEventListener("change", function(){ poserQte(x, num(q.value)); });
+    q.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); q.blur(); } });
     lst.appendChild(el("div", {class:"xp-ligne"},
-      el("div", null, el("b", {text:nomDoc(I.lib) + " · " + I.size}), el("div", {class:"xp-dispo", text:info}), alerte ? el("div", {class:"xp-dispo", style:"color:#b42318", text:alerte}) : null),
-      el("b", {style:"font-size:18px", text:fmt(x[1])}),
-      el("button", {class:"xp-x", title:"Retirer", text:"✖", onclick:function(){ E.it.splice(p[1], 1); render(true); }})));
+      el("div", null, el("b", {text:nomDoc(I.lib) + " · " + I.size}), el("div", null, selLot), info ? el("div", {class:"xp-dispo", text:info}) : null, alerte ? el("div", {class:"xp-dispo", style:"color:#b42318", text:alerte}) : null),
+      el("div", {class:"xp-step"}, el("button", {text:"−", title:"Une de moins", onclick:function(){ poserQte(x, x[1] - 1); }}), q, el("button", {text:"+", title:"Une de plus", onclick:function(){ poserQte(x, x[1] + 1); }})),
+      el("button", {class:"xp-x", title:"Retirer", text:"✖", onclick:function(){ E.it.splice(E.it.indexOf(x), 1); render(true); }})));
   });
   carte.appendChild(lst);
   v.appendChild(carte);
   /* ajouter des pièces */
   var ajout = el("div", {class:"card"}, el("h2", {text:"Ajouter des pièces"}));
   ajout.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:0 0 6px", text:"1. Commande (N° de lot)"}));
-  var lotsConnus = sortedUnique(S.lines.map(function(l){ return l.lot; })).reverse();
+  /* quantités déjà dans le carton pour un modèle et une commande (préremplies dans les tailles) */
+  function dejaDansCarton(lot, lib){ var o = {}; E.it.forEach(function(x){ var i = infoItem(x); if (i.lot === lot && i.lib === lib) o[i.size] = (o[i.size] || 0) + x[1]; }); return o; }
+  function choisirLot(lot){ E.lot = lot; E.q = E.m ? dejaDansCarton(lot, E.m) : {}; render(true); }
   var lc = el("div", {class:"xp-cmd"});
-  lotsConnus.forEach(function(lot){ lc.appendChild(el("button", {class:"sx-chip" + (E.lot === lot ? " on" : ""), text:(E.lot === lot ? "✓ " : "") + lot, onclick:function(){ E.lot = lot; E.m = null; E.q = {}; render(true); }})); });
+  lotsConnus.forEach(function(lot){ lc.appendChild(el("button", {class:"sx-chip" + (E.lot === lot ? " on" : ""), text:(E.lot === lot ? "✓ " : "") + lot, onclick:function(){ choisirLot(lot); }})); });
   if (E.lot && lotsConnus.indexOf(E.lot) < 0) lc.appendChild(el("button", {class:"sx-chip on", text:"✓ " + E.lot + " (pas encore enregistrée)"}));
   ajout.appendChild(lc);
   var autre = el("input", {type:"text", placeholder:"Autre N° de lot (ex. PK202612)", style:"max-width:240px;text-transform:uppercase"});
-  function prendreAutre(){ var t = String(autre.value || "").trim().toUpperCase().replace(/\s+/g, ""); if (!t){ toast("Écrivez le N° de lot."); return; } E.lot = t; E.m = null; E.q = {}; render(true); }
+  function prendreAutre(){ var t = String(autre.value || "").trim().toUpperCase().replace(/\s+/g, ""); if (!t){ toast("Écrivez le N° de lot."); return; } choisirLot(t); }
   autre.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); prendreAutre(); } });
   ajout.appendChild(el("div", {class:"actions", style:"margin:0 0 6px;align-items:center"}, autre, el("button", {class:"btn small sec", text:"Utiliser ce N°", onclick:prendreAutre})));
   if (E.lot){
@@ -328,18 +354,20 @@ function editeurCarton(v, e){
     ajout.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:12px 0 6px", text:"2. Modèle" + (mods.some(function(m){ return m.dans; }) ? " (● dans la commande " + E.lot + ")" : "")}));
     var ch = el("div", {class:"sx-opts"});
     mods.forEach(function(m){ var on = E.m === m.lib;
-      ch.appendChild(el("button", {class:"sx-chip" + (on ? " on" : ""), text:(on ? "✓ " : m.dans ? "● " : "") + nomDoc(m.lib), onclick:function(){ E.m = on ? null : m.lib; E.q = {}; render(true); }})); });
+      ch.appendChild(el("button", {class:"sx-chip" + (on ? " on" : ""), text:(on ? "✓ " : m.dans ? "● " : "") + nomDoc(m.lib) + (function(){ var d = dejaDansCarton(E.lot, m.lib), t = 0; Object.keys(d).forEach(function(k){ t += d[k]; }); return t ? " · " + fmt(t) + " dans le carton" : ""; })(), onclick:function(){ E.m = on ? null : m.lib; E.q = on ? {} : dejaDansCarton(E.lot, m.lib); render(true); }})); });
     ajout.appendChild(ch);
     var M = mods.filter(function(m){ return m.lib === E.m; })[0];
     if (M){
-      ajout.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:12px 0 6px", text:"3. Quantités par taille (saisie libre)"}));
+      ajout.appendChild(el("div", {class:"mut", style:"font-weight:600;margin:12px 0 6px", text:"3. Quantités dans le carton, par taille (les pièces déjà mises sont affichées ; 0 = retirer)"}));
       var art = el("div", {class:"sx-art"}, el("div", {class:"hd"}, el("span", {text:nomDoc(M.lib)}), el("span", {class:"cli", text:E.lot})));
       var totAj = el("b", {text:"0"});
       function majTot(){ var t = 0; Object.keys(E.q).forEach(function(s){ t += E.q[s] || 0; }); totAj.textContent = fmt(t); }
       M.sizes.forEach(function(sz){
-        var l = ligneDe(e.cl, E.lot, M.lib, sz), info = "Hors commande enregistrée";
-        if (l){ var ret = retourGadh(l.id), deja = totalEnCartons(l.lot, l.id, saufCt) + dansBrouillon(l.lot, l.lib, l.size);
-          info = (l.client !== e.cl ? "Surplus " + l.client + " · " : "") + "Commandé " + fmt(l.qty) + " · retour GADH " + fmt(ret) + " · en carton " + fmt(deja) + (ret > deja ? " · reste " + fmt(ret - deja) : ""); }
+        var l = ligneDe(e.cl, E.lot, M.lib, sz), info = lotsConnus.indexOf(E.lot) >= 0 ? "Pas dans la commande " + E.lot : "Commande pas encore enregistrée";
+        var ici = dejaDansCarton(E.lot, M.lib)[sz] || 0;
+        if (l){ var ret = retourGadh(l.id), autres = totalEnCartons(l.lot, l.id, saufCt);
+          info = (l.client !== e.cl ? "Surplus " + l.client + " · " : "") + "Commandé " + fmt(l.qty) + " · retour GADH " + fmt(ret) + " · autres cartons " + fmt(autres) + (ret > autres ? " · reste " + fmt(ret - autres) : ""); }
+        if (ici) info += " · déjà dans ce carton : " + fmt(ici);
         var inp = el("input", {type:"number", inputmode:"numeric", min:"0", value:String(E.q[sz] || 0)});
         function poser(q){ q = Math.max(0, Math.round(q) || 0); E.q[sz] = q; inp.value = String(q); majTot(); }
         inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
@@ -347,21 +375,21 @@ function editeurCarton(v, e){
         var row = el("div", {class:"sx-row"}, el("div", {class:"sx-sz", text:sz}),
           el("div", {class:"sx-mid"}, el("div", {class:"sx-af", text:info}),
             el("div", {class:"sx-step"}, el("button", {text:"−", onclick:function(){ poser(num(inp.value) - 1); }}), inp, el("button", {text:"+", onclick:function(){ poser(num(inp.value) + 1); }}))));
-        if (l){ var reste = Math.max(0, retourGadh(l.id) - totalEnCartons(l.lot, l.id, saufCt) - dansBrouillon(l.lot, l.lib, l.size));
+        if (l){ var reste = Math.max(0, retourGadh(l.id) - totalEnCartons(l.lot, l.id, saufCt));
           row.appendChild(el("button", {class:"sx-def", title:"Le reste revenu de la GADH", onclick:function(){ poser(reste); }}, el("span", {text:"Reste"}))); }
         else row.appendChild(el("span"));
         art.appendChild(row);
       });
       ajout.appendChild(art);
       ajout.appendChild(el("div", {class:"actions", style:"margin:10px 0 0;align-items:center"},
-        el("button", {class:"btn", text:"➕ Ajouter dans le carton", onclick:function(){
-          var n = 0;
-          Object.keys(E.q).forEach(function(sz){ var q = E.q[sz] || 0; if (!q) return; n += q;
-            var l = ligneDe(e.cl, E.lot, M.lib, sz), x = E.it.filter(function(y){ var i = infoItem(y); return i.lot === E.lot && i.lib === M.lib && i.size === sz; })[0];
-            if (x) x[1] += q; else E.it.push([l ? l.id : "", q, E.lot, M.lib, sz]); });
-          if (!n){ toast("Saisissez au moins une quantité."); return; }
+        el("button", {class:"btn", text:"✔ Mettre à jour le carton", onclick:function(){
+          /* les quantités saisies remplacent celles du carton pour ce modèle et cette commande */
+          M.sizes.forEach(function(sz){ var q = E.q[sz] || 0;
+            var x = E.it.filter(function(y){ var i = infoItem(y); return i.lot === E.lot && i.lib === M.lib && i.size === sz; })[0];
+            if (x){ if (q) x[1] = q; else E.it.splice(E.it.indexOf(x), 1); }
+            else if (q){ var l = ligneDe(e.cl, E.lot, M.lib, sz); E.it.push([l ? l.id : "", q, E.lot, M.lib, sz]); } });
           E.q = {}; E.m = null; render(true); }}),
-        el("span", {class:"mut"}, "à ajouter : ", totAj, " pièce(s)")));
+        el("span", {class:"mut"}, "pour ce modèle : ", totAj, " pièce(s)")));
       majTot();
     }
   }
@@ -406,17 +434,17 @@ function avecDest(e, fn){ var avant = PK_DEST_FORCE; PK_DEST_FORCE = e.dest ? {c
 function libelleLots(e){ return lotsExport(e).join(" + ") || "—"; }
 function titreFichier(e, quoi){ return nomFichier(quoi + "_Export" + e.n + "_" + e.cl + "_" + e.d.replace(/-/g, "")); }
 /* liste de colisage : une ligne par modèle et par commande dans chaque carton */
-function colisageHtml(e, colis){
+function colisageHtml(e, colis, sansLot){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var totT = {}, total = 0, ex = PK_EXPEDITEUR; tailles.forEach(function(t){ totT[t] = 0; });
   var corps = colis.map(function(c){
     var cles = [], par = {};
-    c.items.forEach(function(x){ var k = x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
+    c.items.forEach(function(x){ var k = sansLot ? x.lib : x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
     return cles.map(function(k, i){ var p = par[k], s = 0; tailles.forEach(function(t){ s += p.q[t] || 0; });
-      return '<tr>' + (i === 0 ? '<td rowspan="' + cles.length + '">' + c.n + '</td>' : '') + '<td>' + hx(p.lot) + '</td><td class="gauche">' + hx(nomDoc(p.lib)) + '</td>' + tailles.map(function(t){ return "<td>" + (p.q[t] || "") + "</td>"; }).join("") + '<td><b>' + s + '</b></td></tr>'; }).join("");
+      return '<tr>' + (i === 0 ? '<td rowspan="' + cles.length + '">' + c.n + '</td>' : '') + '<td>' + hx(sansLot ? "PERCKO" : p.lot) + '</td><td class="gauche">' + hx(nomDoc(p.lib)) + '</td>' + tailles.map(function(t){ return "<td>" + (p.q[t] || "") + "</td>"; }).join("") + '<td><b>' + s + '</b></td></tr>'; }).join("");
   }).join("");
   return '<div class="col-entete"><div>Expéditeur : <b>' + hx(ex.nom) + '</b>' + ex.lignes.map(function(l){ return "<br>" + hx(l); }).join("") + ' <b>' + hx(ex.pays) + '</b><br>Date d\'export : le ' + dmyL(e.d) + '</div><div>' + destHtml(e.cl) + '</div></div>' +
-    '<div class="col-info">Export N°' + e.n + ' · ' + hx(e.nat || e.cl) + ' · commandes ' + hx(lotsExport(e).join(", ")) + '</div>' +
+    '<div class="col-info">Export N°' + e.n + ' · ' + hx(e.nat || e.cl) + (sansLot ? '' : ' · commandes ' + hx(lotsExport(e).join(", "))) + '</div>' +
     '<table class="col-tab"><thead><tr><th>N° colis</th><th>Commande</th><th>Référence</th>' + tailles.map(function(t){ return "<th>" + t + "</th>"; }).join("") + '<th>Total</th></tr></thead><tbody>' + corps +
     '</tbody><tfoot><tr><td colspan="3" class="gauche">Total t-shirt pour export</td>' + tailles.map(function(t){ return "<td>" + totT[t] + "</td>"; }).join("") + '<td>' + total + '</td></tr></tfoot></table>' +
     '<table class="col-pied"><tr><td>Nombre de colis</td><td>' + colis.length + '</td></tr><tr><td>Poids brut</td><td>' + (poidsTotal(colis) ? poidsTotal(colis) + " kg" : "") + '</td></tr></table>';
@@ -440,7 +468,17 @@ function totalDonneesExport(e, colis){
   });
   return {lots:lots, parLot:parLot, etat:etat, total:colis.reduce(function(s, c){ return s + c.q; }, 0)};
 }
-function totalHtml(e, colis){
+/* liste total sans lot : quantités de tout l'export par modèle et taille (format habituel) */
+function totalSansLot(colis){
+  var libs = [], by = {}, total = 0;
+  colis.forEach(function(c){ c.items.forEach(function(x){ var b = by[x.lib]; if (!b){ b = by[x.lib] = {lib:x.lib, q:{}}; libs.push(b); } b.q[x.size] = (b.q[x.size] || 0) + x.q; total += x.q; }); });
+  return {grp:libs.map(function(b){ var nom = nomDoc(b.lib).toUpperCase(); return {nom:nom, rows:SZ.filter(function(z){ return z in b.q; }).map(function(z){ return [nom + " " + z, b.q[z]]; })}; }), total:total};
+}
+function totalHtml(e, colis, sansLot){
+  if (sansLot){ var T = totalSansLot(colis);
+    return '<div class="tot-info">Export N°' + e.n + ' du ' + dmyL(e.d) + ' ' + hx((e.dest || destDefaut(e.cl)).nom) + '</div><table class="tot-tab"><thead><tr><th>MODELE</th><th>QUANTITE</th></tr></thead><tbody>' +
+      T.grp.map(function(g){ return '<tr class="tot-grp"><td>' + hx(g.nom) + '</td><td></td></tr>' + g.rows.map(function(r){ return '<tr><td>' + hx(r[0]) + '</td><td>' + r[1] + '</td></tr>'; }).join(""); }).join("") +
+      '</tbody><tfoot><tr><td>TOTAL</td><td>' + T.total + '</td></tr></tfoot></table>'; }
   var D = totalDonneesExport(e, colis), h = '<div class="tot-info">Export N°' + e.n + ' du ' + dmyL(e.d) + ' · ' + hx((e.dest || destDefaut(e.cl)).nom) + '</div>';
   D.lots.forEach(function(lot){
     var P = D.parLot[lot];
@@ -458,7 +496,7 @@ function totalHtml(e, colis){
   });
   return h;
 }
-function colisageGridX(e, colis){
+function colisageGridX(e, colis, sansLot){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var nc = 4 + tailles.length, last = nc - 1, ex = PK_EXPEDITEUR, d = destDe(e.cl);
   var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:ori("col") === "landscape"}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
@@ -468,16 +506,16 @@ function colisageGridX(e, colis){
     gset(g, r, 0, gauche[i] || "", {sz:10, al:"l", b:i === 0 ? 1 : 0}); gmerge(g, r, 0, r, mid - 1);
     gset(g, r, mid, droite[i] || "", {sz:10, al:"l", b:i > 0 && String(droite[i] || "").indexOf("TÉLÉPHONE") < 0 ? 1 : 0}); gmerge(g, r, mid, r, last); r++;
   }
-  gset(g, r, 0, "Export N°" + e.n + " · " + (e.nat || e.cl) + " · commandes " + lotsExport(e).join(", "), {sz:9, al:"l"}); gmerge(g, r, 0, r, last); r += 2;
+  gset(g, r, 0, "Export N°" + e.n + " · " + (e.nat || e.cl) + (sansLot ? "" : " · commandes " + lotsExport(e).join(", ")), {sz:9, al:"l"}); gmerge(g, r, 0, r, last); r += 2;
   var H = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"}, Cc = {sz:10, al:"c", bd:"t"};
   ["N° colis", "Commande", "Référence"].concat(tailles).concat(["Total"]).forEach(function(h, k){ gset(g, r, k, h, H); }); g.sticky = r + 1; r++;
   var totT = {}, total = 0; tailles.forEach(function(t){ totT[t] = 0; });
   colis.forEach(function(c){
     var cles = [], par = {};
-    c.items.forEach(function(x){ var k = x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
+    c.items.forEach(function(x){ var k = sansLot ? x.lib : x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
     var top = r;
     cles.forEach(function(k, j){ var p = par[k], s = 0;
-      gset(g, r, 0, j ? "" : String(c.n), Cc); gset(g, r, 1, p.lot, Cc); gset(g, r, 2, nomDoc(p.lib), {sz:10, al:"l", bd:"t"});
+      gset(g, r, 0, j ? "" : String(c.n), Cc); gset(g, r, 1, sansLot ? "PERCKO" : p.lot, Cc); gset(g, r, 2, nomDoc(p.lib), {sz:10, al:"l", bd:"t"});
       tailles.forEach(function(t, kk){ var q = p.q[t] || 0; s += q; gset(g, r, 3 + kk, q || "", Cc); });
       gset(g, r, last, s, {b:1, sz:10, al:"c", bd:"t"}); r++; });
     if (cles.length > 1) gmerge(g, top, 0, r - 1, 0);
@@ -490,8 +528,16 @@ function colisageGridX(e, colis){
   gset(g, r, 0, "Poids brut", {sz:10, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); gmerge(g, r, 0, r, 1); gset(g, r, 2, pb ? pb + " kg" : "", {b:1, sz:10, al:"l", bd:"t"});
   return g;
 }
-function totalGridX(e, colis){
-  var D = totalDonneesExport(e, colis), g = {cols:[46, 16], rows:[], merges:[], landscape:ori("tot") === "landscape"}, r = 0;
+function totalGridX(e, colis, sansLot){
+  var g = {cols:[46, 16], rows:[], merges:[], landscape:ori("tot") === "landscape"}, r = 0;
+  if (sansLot){ var T = totalSansLot(colis);
+    gset(g, r, 0, "Export N°" + e.n + " du " + dmyL(e.d) + " " + (e.dest || destDefaut(e.cl)).nom, {b:1, sz:12, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
+    gset(g, r, 0, "MODELE", {sz:11, al:"c", bd:"t"}); gset(g, r, 1, "QUANTITE", {sz:11, al:"c", bd:"t"}); r++;
+    T.grp.forEach(function(gr){ gset(g, r, 0, gr.nom, {b:1, sz:13, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); g.rows[r].h = 20; r++;
+      gr.rows.forEach(function(x){ gset(g, r, 0, x[0], {sz:11, al:"l", bd:"t"}); gset(g, r, 1, x[1], {sz:11, al:"c", bd:"t"}); r++; }); });
+    gset(g, r, 0, "TOTAL", {b:1, sz:11, al:"l", bd:"t"}); gset(g, r, 1, T.total, {b:1, sz:11, al:"c", bd:"t"});
+    return g; }
+  var D = totalDonneesExport(e, colis);
   gset(g, r, 0, "Export N°" + e.n + " du " + dmyL(e.d) + " · " + (e.dest || destDefaut(e.cl)).nom, {b:1, sz:12, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
   D.lots.forEach(function(lot){
     var P = D.parLot[lot];
@@ -517,25 +563,25 @@ function etatGridX(e, colis){
   return g;
 }
 function imprimerX(e, quoi){
-  var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e);
+  var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = sl ? "_sans_lot" : "";
   avecDest(e, function(){
     if (quoi === "fiches") return imprimerDoc(docCartonsHtml(e.cl, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", titreFichier(e, "Fiches_cartons"));
-    if (quoi === "colis") return imprimerDoc(colisageHtml(e, colis), "A4 " + ori("col"), "10mm", titreFichier(e, "Colisage"));
-    if (quoi === "total") return imprimerDoc(totalHtml(e, colis), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total"));
+    if (quoi === "colis") return imprimerDoc(colisageHtml(e, colis, sl), "A4 " + ori("col"), "10mm", titreFichier(e, "Colisage") + suf);
+    if (quoi === "total") return imprimerDoc(totalHtml(e, colis, sl), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total") + suf);
     var css = "<style>@page fiches{size:A4 " + (pp === "4L" ? "landscape" : "portrait") + ";margin:8mm}@page colis{size:A4 " + ori("col") + ";margin:10mm}@page total{size:A4 " + ori("tot") + ";margin:10mm}" +
       "#pk-doc-zone .sec-fiches{page:fiches}#pk-doc-zone .sec-colis{page:colis;break-before:page;page-break-before:always}#pk-doc-zone .sec-total{page:total;break-before:page;page-break-before:always}</style>";
-    imprimerDoc(css + '<div class="sec-fiches">' + docCartonsHtml(e.cl, colis, pp, lot) + '</div><div class="sec-colis">' + colisageHtml(e, colis) + '</div><div class="sec-total">' + totalHtml(e, colis) + '</div>', "A4 portrait", "8mm", titreFichier(e, "Export"));
+    imprimerDoc(css + '<div class="sec-fiches">' + docCartonsHtml(e.cl, colis, pp, lot) + '</div><div class="sec-colis">' + colisageHtml(e, colis, sl) + '</div><div class="sec-total">' + totalHtml(e, colis, sl) + '</div>', "A4 portrait", "8mm", titreFichier(e, "Export") + suf);
   });
 }
 function excelX(e){
-  var colis = colisExport(e), lot = libelleLots(e);
+  var colis = colisExport(e), lot = libelleLots(e), sl = !!ui.xpSansLot;
   avecDest(e, function(){
     var f = fichesCartonsGrid(lot, e.cl, colis, ui.etqPP);
-    saveFile(titreFichier(e, "Export") + ".xlsx", xlsxBuild([
-      {name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors},
-      {name:"Liste de colisage", grid:colisageGridX(e, colis)},
-      {name:"Liste total", grid:totalGridX(e, colis)},
-      {name:"Etat des commandes", grid:etatGridX(e, colis)}]));
+    var feuilles = [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors},
+      {name:"Liste de colisage", grid:colisageGridX(e, colis, sl)},
+      {name:"Liste total", grid:totalGridX(e, colis, sl)}];
+    if (!sl) feuilles.push({name:"Etat des commandes", grid:etatGridX(e, colis)});
+    saveFile(titreFichier(e, "Export") + (sl ? "_sans_lot" : "") + ".xlsx", xlsxBuild(feuilles));
   });
 }
 function niceLabelX(e){
@@ -550,22 +596,25 @@ function niceLabelX(e){
 function docsCard(e){
   if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
   var c = el("div", {class:"card cartons"}, el("h2", {text:"Documents de l'export"}));
+  var sl = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Liste de colisage et liste total :"}));
+  [[false, "Avec les lots (par commande)"], [true, "Sans lot"]].forEach(function(o){ sl.appendChild(el("button", {class:!!ui.xpSansLot === o[0] ? "on" : "", text:o[1], onclick:function(){ ui.xpSansLot = o[0]; render(true); }})); });
+  c.appendChild(sl);
   c.appendChild(el("div", {class:"sx-tout"},
     el("div", {class:"mut", style:"font-weight:700;margin-bottom:6px", text:"Tout en un clic : fiches cartons + liste de colisage + liste total (par commande, avec l'état des commandes)"}),
     el("div", {class:"actions", style:"margin:0"},
       el("button", {class:"btn", text:"🖨 Tout imprimer", onclick:function(){ imprimerX(e, "tout"); }}),
-      el("button", {class:"btn sec", text:"📗 Tout en Excel (4 feuilles)", onclick:function(){ excelX(e); }})),
+      el("button", {class:"btn sec", text:ui.xpSansLot ? "📗 Tout en Excel (3 feuilles, sans lot)" : "📗 Tout en Excel (4 feuilles)", onclick:function(){ excelX(e); }})),
     oriBloc()));
   var seg = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center", text:"Fiches cartons par page :"}));
   PP_CHOIX.forEach(function(n){ seg.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 (paysage)" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
   c.appendChild(seg);
   c.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
     el("button", {class:"btn small sec", text:"🖨 Fiches cartons", onclick:function(){ imprimerX(e, "fiches"); }}),
-    el("button", {class:"btn small sec", text:"🖨 Liste de colisage", onclick:function(){ imprimerX(e, "colis"); }}),
-    el("button", {class:"btn small sec", text:"🖨 Liste total et état des commandes", onclick:function(){ imprimerX(e, "total"); }}),
+    el("button", {class:"btn small sec", text:ui.xpSansLot ? "🖨 Liste de colisage (sans lot)" : "🖨 Liste de colisage", onclick:function(){ imprimerX(e, "colis"); }}),
+    el("button", {class:"btn small sec", text:ui.xpSansLot ? "🖨 Liste total (sans lot)" : "🖨 Liste total et état des commandes", onclick:function(){ imprimerX(e, "total"); }}),
     el("button", {class:"btn small sec", text:"🏷 Base NiceLabel (Excel)", onclick:function(){ niceLabelX(e); }})));
   return c;
 }
 /* pour les tests */
-window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml};
+window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX};
 })();

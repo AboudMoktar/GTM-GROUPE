@@ -36,19 +36,31 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202610'}).click(); await p.waitForTimeout(150);
   r.push(['tous les modèles du catalogue affichés', await p.locator('.sx-opts .sx-chip').count() >= 5 && await p.locator('.sx-opts .sx-chip', {hasText: '● Lyne Pro Homme Gris'}).count() === 1]);
   await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
-  r.push(['chiffres de la commande affichés', /Commandé 20 · retour GADH 8 · en carton 0 · reste 8/.test(await lig('S').textContent())]);
+  r.push(['chiffres de la commande affichés', /Commandé 20 · retour GADH 8 · autres cartons 0 · reste 8/.test(await lig('S').textContent())]);
   await lig('S').locator('input').fill('12'); await lig('M').locator('input').fill('5');
   r.push(['saisie libre (au-delà du retour)', await lig('S').locator('input').inputValue() === '12']);
-  await p.click('text=➕ Ajouter dans le carton'); await p.waitForTimeout(150);
+  await p.click('text=✔ Mettre à jour le carton'); await p.waitForTimeout(150);
   r.push(['dépassement du retour signalé', /12 en carton pour 8 revenue/.test(await p.locator('.xp-ligne').first().textContent() + await p.locator('#view').textContent())]);
   // 3. commande pas encore enregistrée, modèle hors commande
   await p.fill('input[placeholder^="Autre N° de lot"]', 'pk202612'); await p.click('text=Utiliser ce N°'); await p.waitForTimeout(150);
   r.push(['N° de lot libre accepté', await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202612 (pas encore enregistrée)'}).count() === 1]);
   await p.locator('.sx-opts .sx-chip', {hasText: 'Gilet Homme Noir'}).click(); await p.waitForTimeout(150);
-  r.push(['commande non enregistrée : saisie sans chiffres', /Hors commande enregistrée/.test(await lig('L').textContent())]);
+  r.push(['commande non enregistrée : saisie sans chiffres', /Commande pas encore enregistrée/.test(await lig('L').textContent())]);
   await lig('L').locator('input').fill('7');
-  await p.click('text=➕ Ajouter dans le carton'); await p.waitForTimeout(150);
+  await p.click('text=✔ Mettre à jour le carton'); await p.waitForTimeout(150);
   r.push(['contenu du carton affiché', await p.locator('.xp-ligne').count() === 3]);
+  // modification directe dans le carton : quantité, commande ; pièces déjà mises affichées au choix du modèle
+  const ligneS = p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'});
+  await ligneS.locator('.xp-step button', {hasText: '+'}).click(); await p.waitForTimeout(100);
+  r.push(['quantité modifiée directement (+)', await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').inputValue() === '13']);
+  await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').fill('12'); await p.locator('.xp-ligne', {hasText: 'Lyne Pro Homme Gris · S'}).locator('input').press('Enter'); await p.waitForTimeout(150);
+  await p.locator('.xp-ligne', {hasText: 'Gilet Homme Noir · L'}).locator('select').selectOption('PK202611'); await p.waitForTimeout(150);
+  r.push(['commande changée directement (rattachée à la ligne)', await p.evaluate(() => { const it = ui.xp.carton.etat.it.find(x => x[3] === 'Gilet homme noir' || x[0] === 'B_G'); return !!it && it[0] === 'B_G' && it[2] === 'PK202611'; })]);
+  await p.locator('.xp-ligne', {hasText: 'Gilet Homme Noir · L'}).locator('select').selectOption('PK202612'); await p.waitForTimeout(150);
+  await p.locator('.xp-cmd .sx-chip', {hasText: /^PK202610$/}).click(); await p.waitForTimeout(150);
+  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(150);
+  r.push(['modèle choisi : pièces déjà dans le carton affichées', await lig('S').locator('input').inputValue() === '12' && await lig('M').locator('input').inputValue() === '5' && /déjà dans ce carton : 12/.test(await lig('S').textContent())]);
+  await p.locator('.sx-opts .sx-chip', {hasText: 'Lyne Pro Homme Gris'}).click(); await p.waitForTimeout(100);
   await p.click('text=✔ Valider et refaire le même'); await p.waitForTimeout(300);
   ({ex: E} = await etat()); let c1 = E[0].cartons[0];
   const q = (c, id, lot, lib, sz) => c.it.filter(x => (id ? x[0] === id : (!x[0] && x[2] === lot && x[3] === lib && x[4] === sz))).reduce((a, x) => a + x[1], 0);
@@ -73,6 +85,12 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.waitForTimeout(200);
   const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 8000}).catch(() => null), p.click('text=📗 Tout en Excel (4 feuilles)')]);
   r.push(['Excel de l\'export (4 feuilles)', (!!dl && /^Export_Export1_NEOLYS_20261107\.xlsx$/.test(dl.suggestedFilename())) || /Fichier prêt : Export_Export1_NEOLYS_20261107\.xlsx/.test(await p.locator('#toast').textContent())]);
+  const sl = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c, true), tot: pkExports.totalHtml(e, c, true), g: pkExports.totalGridX(e, c, true)}; });
+  r.push(['liste de colisage sans lot', !/PK2026/.test(sl.col) && /PERCKO/.test(sl.col) && /Total t-shirt pour export/.test(sl.col)]);
+  r.push(['liste total sans lot (un seul total)', !/PK2026/.test(sl.tot) && /LYNE PRO HOMME GRIS S<\/td><td>12/.test(sl.tot) && /TOTAL<\/td><td>36/.test(sl.tot) && !/État des commandes/.test(sl.tot)]);
+  await p.click('text=Sans lot'); await p.waitForTimeout(150);
+  r.push(['choix « sans lot » pour les documents', await p.locator('text=🖨 Liste total (sans lot)').count() === 1]);
+  await p.click('text=Avec les lots (par commande)'); await p.waitForTimeout(150);
   await p.click('text=🖨 Tout imprimer'); await p.waitForTimeout(300);
   r.push(['impression : fiches, colisage, liste total', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML) && /Liste|Total t-shirt pour export/.test(z.innerHTML) && /État des commandes/.test(z.innerHTML); })]);
   // 7. validation : pièces expédiées, affectées à leurs commandes
