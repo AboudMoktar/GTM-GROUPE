@@ -20,7 +20,8 @@
     "e2e-employes": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node e2e-employes.js\"",
     "mgt-par-fiche": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-par-fiche.js\"",
     "mgt-taches": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-taches.js\"",
-    "fiches-compactes": "node fiches-compactes.js"
+    "fiches-compactes": "node fiches-compactes.js",
+    "pilotage": "node pilotage.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
