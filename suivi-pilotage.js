@@ -52,6 +52,8 @@ var CSS = [
   '.ph-in:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#fff!important}.ph-t td.e.bad{background:#fde2e1}',
   '.ph-t td .v{display:block}.ph-tout{display:block;margin:3px auto 0;border:1px solid #2563eb;background:#fff;color:#1d4f91;border-radius:7px;font-size:11px;font-weight:800;padding:2px 6px;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
   '.ph-t tr.tg .ph-tout{border-color:#fff}.ph-tout:hover{background:#e7f1ff}',
+  '.ph-exp{background:var(--sub);border-radius:12px;padding:8px 10px}',
+  '.ph-imp{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:10px;margin:0 0 12px}.ph-imp div{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:13px}.ph-imp div b{white-space:nowrap}',
   '.ph-dsai{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--mut)}.ph-dsai input{height:38px}',
   '.ph-t input[type=checkbox]{width:17px;height:17px;min-height:0;margin:0;padding:0;vertical-align:middle;cursor:pointer}',
   '@media (min-width:1200px){.ph-kpis{grid-template-columns:repeat(10,minmax(0,1fr))}.ph-kpi b{font-size:19px}}',
@@ -173,6 +175,135 @@ function derniereMaj(lot){
   return d;
 }
 
+/* ---------- export Excel ----------
+   Feuille « Suivi » : une ligne par référence × taille × client, sous-totaux par modèle (SOUS.TOTAL),
+   total général, reste et avancement en formules, filtres automatiques, en-tête figé et répété à
+   l'impression, code de ligne (colonne masquée) pour réimporter le fichier. Feuille « Récapitulatif ». */
+var X_ENT = 3;   /* ligne (0 = première) des titres de colonnes */
+function colsExcel(clients){
+  return COLS.filter(function(c){ return c.k !== "sel" && !(c.k === "client" && clients.length < 2); }).concat([{k:"code", t:"Code (ne pas modifier)"}]);
+}
+function grilleExcel(lot, rows, portee, grp){
+  var clients = sortedUnique(lignesPilotage(lot).map(function(r){ return r.client; })), cx = colsExcel(clients), ci = {};
+  cx.forEach(function(c, i){ ci[c.k] = i; });
+  var L = colName, nC = cx.length, g = {cols:cx.map(function(c){ return c.k === "lib" ? 34 : c.k === "model" ? 20 : c.k === "coul" ? 13 : c.k === "size" ? 8 : c.k === "client" ? 11 : c.k === "code" ? 12 : c.k === "av" ? 12 : 13; }), rows:[], merges:[], landscape:true, sticky:X_ENT + 1, hide:[ci.code], printTitles:[X_ENT, X_ENT]};
+  var info = S.lots[lot] || {}, annee = (S.lines.filter(function(l){ return l.lot === lot; })[0] || {}).year || "", T0 = sommer(rows);
+  gset(g, 0, 1, (G ? "GADH — " : "TEK-TREND — ") + "Suivi de commande N° " + lot, {b:1, sz:15, fg:"1D3557", al:"l"}); gmerge(g, 0, 1, 0, Math.min(nC - 2, 5)); g.rows[0].h = 34;
+  gset(g, 1, 1, ["Lot : " + lot, "Client(s) : " + clients.join(" + "), "Année : " + (annee || "—"), "Date commande : " + (info.dc ? dmyL(info.dc) : "—"), info.livraison ? "Livraison prévue : " + dmyL(info.livraison) : "", "Export : " + portee, "Édité le " + dmyL(today())].filter(Boolean).join("   ·   "), {sz:10, al:"l"});
+  gmerge(g, 1, 1, 1, nC - 2); g.rows[1].h = 18;
+  var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", wrap:1, bd:"t"};
+  cx.forEach(function(c, i){ gset(g, X_ENT, i, c.t, H); }); g.rows[X_ENT].h = 32;
+  var SA = saisissables(), r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
+  var kFr = G ? "gadh" : "fr", kFin = G ? "ret" : "exp";
+  function fRest(rr){ return "MAX(0," + L(ci[kFr]) + rr + "-" + L(ci[kFin]) + rr + ")"; }
+  function fAv(rr){ return "IF(" + L(ci[kFr]) + rr + "=0,0," + L(ci[kFin]) + rr + "/" + L(ci[kFr]) + rr + ")"; }
+  function ligne(x){
+    var rr = r + 1;
+    cx.forEach(function(c, i){
+      var st = {sz:10, al:c.txt && c.k !== "size" ? "l" : "c", bd:"t"};
+      if (c.k === "coul"){ st.bg = x.cbg; st.fg = x.cfg; st.b = 1; st.al = "c"; }
+      if (c.k === "size") st.b = 1;
+      if (SA[c.k]) st.bg = "FFF3BF";
+      if (c.k === "rest") gset(g, r, i, x.rest, {sz:10, al:"c", bd:"t", b:1, nf:"int"}), g.rows[r].cells[i].f = fRest(rr);
+      else if (c.k === "av") gset(g, r, i, x.av / 100, {sz:10, al:"c", bd:"t", nf:"pct"}), g.rows[r].cells[i].f = fAv(rr);
+      else if (c.k === "code") gset(g, r, i, x.id, {sz:8, fg:"808080", al:"l"});
+      else gset(g, r, i, c.txt ? x[c.k] : x[c.k], c.txt ? st : (st.nf = "int", st));
+    });
+    g.rows[r].h = 16; r++;
+  }
+  function total(lab, rs, a, b, stl){
+    var rr = r + 1, Sx = sommer(rs);
+    cx.forEach(function(c, i){
+      if (c.k === "code"){ gset(g, r, i, "", {}); return; }
+      if (c.txt){ gset(g, r, i, i === 0 ? lab : "", stl); return; }
+      var st = JSON.parse(JSON.stringify(stl)); st.al = "c"; st.nf = c.k === "av" ? "pct" : "int";
+      gset(g, r, i, c.k === "av" ? Sx.av / 100 : Sx[c.k], st);
+      g.rows[r].cells[i].f = c.k === "av" ? fAv(rr) : "SUBTOTAL(9," + L(i) + a + ":" + L(i) + b + ")";
+    });
+    /* pas de cellules fusionnées dans la zone filtrée (le tri d'Excel les refuse) : seulement sur le total général */
+    if (lab === "TOTAL GÉNÉRAL"){ var nT = cx.filter(function(c){ return c.txt; }).length; gmerge(g, r, 0, r, nT - 1); }
+    g.rows[r].h = 18; r++;
+  }
+  if (grp){
+    grouper(rows).forEach(function(gr){ var a = r + 1; gr.rows.forEach(ligne); total("Sous-total " + gr.model, gr.rows, a, r, {b:1, sz:10, bg:"E3EDF8", fg:"1D3557", bd:"t", al:"l"}); });
+  } else rows.forEach(ligne);
+  var fin = r;   /* dernière ligne du filtre (numérotation Excel) */
+  g.filter = "A" + (X_ENT + 1) + ":" + L(nC - 1) + fin;
+  total("TOTAL GÉNÉRAL", rows, deb + 1, fin, {b:1, sz:11, bg:"1D3557", fg:"FFFFFF", bd:"t", al:"l"});
+  g.totalLigne = r;   /* numéro Excel de la ligne du total */
+  g.ci = ci; g.T = T0;
+  return g;
+}
+function recapExcel(lot, gS){
+  var g = {cols:[34, 16, 18], rows:[], merges:[]}, ci = gS.ci, tl = gS.totalLigne, ref = function(k){ return "Suivi!" + colName(ci[k]) + tl; };
+  gset(g, 0, 0, "Récapitulatif — commande " + lot, {b:1, sz:14, fg:"1D3557", al:"l"}); gmerge(g, 0, 0, 0, 2); g.rows[0].h = 26;
+  gset(g, 1, 0, "Chiffres repris du total de la feuille « Suivi » (lignes affichées par les filtres).", {sz:9, fg:"555555", al:"l"}); gmerge(g, 1, 0, 1, 2);
+  var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", bd:"t"};
+  ["Étape", "Quantité", G ? "% du reçu" : "% de la commandée"].forEach(function(h, i){ gset(g, 3, i, h, H); });
+  var kFr = G ? "gadh" : "fr", lignes = [["fr", "Qté commandée"]].concat(ETAPES.map(function(e){ return [e[0], e[1]]; })).concat([["rest", G ? "Encore à la GADH" : "Reste à produire"]]);
+  if (G) lignes = [["fr", "Qté commandée"]].concat(ETAPES.map(function(e){ return [e[0], e[1]]; })).concat([["rest", "Encore à la GADH"]]);
+  var r = 4, rFr = 0;
+  lignes.forEach(function(x){ if (x[0] === kFr) rFr = r + 1; });
+  lignes.forEach(function(x){
+    var v = gS.T[x[0]] || 0;
+    gset(g, r, 0, x[1], {b:1, sz:11, al:"l", bd:"t"});
+    gset(g, r, 1, v, {sz:11, al:"c", bd:"t", nf:"int"}); g.rows[r].cells[1].f = ref(x[0]);
+    gset(g, r, 2, gS.T[kFr] ? v / gS.T[kFr] : 0, {sz:11, al:"c", bd:"t", nf:"pct"}); g.rows[r].cells[2].f = "IF(B" + rFr + "=0,0,B" + (r + 1) + "/B" + rFr + ")";
+    g.rows[r].h = 18; r++;
+  });
+  gset(g, r, 0, G ? "Retourné (sur reçu)" : "Avancement (expédiée ÷ commandée)", {b:1, sz:11, al:"l", bd:"t", bg:"1D3557", fg:"FFFFFF"}); gset(g, r, 1, "", {bd:"t", bg:"1D3557"});
+  gset(g, r, 2, gS.T.av / 100, {b:1, sz:12, al:"c", bd:"t", nf:"pct", bg:"1D3557", fg:"FFFFFF"}); g.rows[r].cells[2].f = ref("av"); g.rows[r].h = 20;
+  return g;
+}
+var LOGO_TEK = null;
+function chargerLogo(){
+  if (LOGO_TEK) return Promise.resolve(LOGO_TEK);
+  try { return fetch(G ? "./logo-gadh.png" : "./logo-tek.png").then(function(r){ if (!r.ok) throw new Error(); return r.arrayBuffer(); }).then(function(b){ LOGO_TEK = new Uint8Array(b); return LOGO_TEK; }).catch(function(){ return null; }); }
+  catch (e) { return Promise.resolve(null); }
+}
+function exporterExcel(lot, rows, portee, grp, suffixe){
+  if (!rows.length){ toast("Aucune ligne à exporter."); return Promise.resolve(false); }
+  var gS = grilleExcel(lot, rows, portee, grp), gR = recapExcel(lot, gS), nom = nomFichier("Suivi_" + lot + "_" + today().replace(/-/g, "") + (suffixe || "")) + ".xlsx";
+  return chargerLogo().then(function(img){
+    var f1 = {name:"Suivi", grid:gS, first:1};
+    if (img) { f1.image = {data:img, ext:"png"}; f1.anchors = [{row:0, col:0, colOff:60000, rowOff:30000, cx:Math.round(380000 * 640 / 417), cy:380000}]; }
+    saveFile(nom, xlsxBuild([f1, {name:"Récapitulatif", grid:gR}]));
+    return true;
+  });
+}
+/* ---------- réimport du fichier Excel ----------
+   Relit la feuille « Suivi » exportée (code de ligne en colonne masquée) et propose les écarts avec le
+   suivi actuel ; seules les colonnes saisissables sont reprises ; rien n'est enregistré sans validation. */
+function lireImport(lot, sheets){
+  var SA = saisissables(), sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
+  if (!sh) throw new Error("Fichier vide.");
+  var rows = sh.rows, hi = -1, col = {};
+  var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code";
+  for (var i = 0; i < rows.length && i < 15; i++){
+    var m = {}; rows[i].forEach(function(v, c){ var k = titres[String(v).trim().toLowerCase()]; if (k) m[k] = c; });
+    if ("code" in m && "lib" in m){ hi = i; col = m; break; }
+  }
+  if (hi < 0) throw new Error("Ce fichier n'est pas un export du pilotage (colonne « Code » introuvable). Exportez d'abord le tableau en Excel.");
+  var tot = stageTotals(), ch = [], vus = 0, autres = 0, err = [];
+  for (var r = hi + 1; r < rows.length; r++){
+    var code = String(rows[r][col.code] || "").trim(); if (!code) continue;
+    var l = lineById(code);
+    if (!l || l.lot !== lot){ autres++; continue; }
+    vus++;
+    Object.keys(SA).forEach(function(k){
+      if (!(k in col)) return;
+      var v = rows[r][col[k]];
+      if (v === "" || v === null || v === undefined) return;
+      var n = typeof v === "number" ? v : Number(String(v).replace(/[\s\u00a0\u202f]/g, "").replace(",", "."));
+      if (!isFinite(n) || n < 0 || Math.round(n) !== n){ err.push(l.lib + " " + l.size + " : « " + v + " »"); return; }
+      var cur = k === "fr" ? l.qty : ((tot[l.id] || {})[k] || 0);
+      if (n !== cur) ch.push({id:l.id, k:k, v:n, avant:cur, lib:l.lib, size:l.size, client:l.client});
+    });
+  }
+  if (!vus) throw new Error(autres ? "Ce fichier concerne une autre commande que " + lot + "." : "Aucune ligne de commande trouvée dans le fichier.");
+  return {changes:ch, lignes:vus, autres:autres, err:err};
+}
+
 /* ---------- vue ---------- */
 window.vPilotage = function(v){
   poserCss(); configurer();
@@ -253,6 +384,27 @@ window.vPilotage = function(v){
     var nSel = Object.keys(P.sel).filter(function(id){ return P.sel[id]; }).length;
     if (nSel) o.appendChild(el("span", {class:"ph-sel"}, nSel + " ligne(s) cochée(s) ", el("button", {class:"btn small sec", text:"Décocher", onclick:function(){ P.sel = {}; dessiner(); }})));
     zone.appendChild(o);
+    /* export Excel (toute la commande, lignes affichées ou cochées) et réimport */
+    var coches = toutes.filter(function(r){ return P.sel[r.id]; });
+    var portees = [["tout", "Toute la commande (" + toutes.length + " lignes)"]];
+    if (filtre) portees.push(["filtre", "Lignes affichées (" + vis.length + ")"]);
+    if (coches.length) portees.push(["coche", "Lignes cochées (" + coches.length + ")"]);
+    /* par défaut : les lignes cochées s'il y en a, sinon les lignes affichées, sinon toute la commande */
+    if (!P.porteeChoisie || !portees.some(function(x){ return x[0] === P.portee; })){ P.portee = coches.length ? "coche" : filtre ? "filtre" : "tout"; P.porteeChoisie = false; }
+    var sp = el("select", {title:"Lignes à exporter"}); portees.forEach(function(x){ sp.appendChild(el("option", {value:x[0], text:x[1]})); }); sp.value = P.portee;
+    sp.addEventListener("change", function(){ P.portee = sp.value; P.porteeChoisie = true; });
+    var bx = el("div", {class:"ph-outils ph-exp"}, el("span", {class:"ph-dsai", text:"Exporter :"}), sp,
+      el("button", {class:"btn small", text:"📗 Excel", onclick:function(){
+        var q = P.portee, rs = q === "coche" ? trier(coches) : q === "filtre" ? vis : trier(toutes);
+        exporterExcel(lot, rs, (portees.filter(function(x){ return x[0] === q; })[0] || portees[0])[1], P.grp, q === "coche" ? "_selection" : q === "filtre" ? "_filtre" : "");
+      }}));
+    if (Object.keys(saisissables()).length){
+      var fi = el("input", {type:"file", accept:".xlsx", style:"display:none"});
+      fi.addEventListener("change", function(){ if (fi.files.length) reimporter(fi.files[0]); fi.value = ""; });
+      bx.appendChild(fi);
+      bx.appendChild(el("button", {class:"btn small sec", text:"📥 Réimporter un Excel", title:"Reprendre les quantités modifiées dans un fichier exporté d'ici", onclick:function(){ fi.click(); }}));
+    }
+    zone.appendChild(bx);
     zone.appendChild(tableau(vis, T));
     var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. " : "";
     zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
@@ -287,6 +439,23 @@ window.vPilotage = function(v){
     }, msg);
   }
   function lireNombre(t){ t = String(t === null || t === undefined ? "" : t).replace(/[\s\u00a0\u202f]/g, ""); if (t === "") return null; if (!/^\d+$/.test(t)) return NaN; return parseInt(t, 10); }
+  function reimporter(file){
+    readWorkbook(file).then(function(sheets){
+      var R; try { R = lireImport(lot, sheets); } catch (e) { toast(e.message); return; }
+      if (R.err.length){ toast("Valeurs non valides (nombres entiers attendus) : " + R.err.slice(0, 3).join(" ; ") + (R.err.length > 3 ? "…" : "")); return; }
+      if (!R.changes.length){ toast("Aucune différence avec le suivi actuel (" + R.lignes + " ligne(s) lue(s))."); return; }
+      ui.pend = {modal:true};
+      var box = sxModal(), noms = {}; COLS.forEach(function(c){ noms[c.k] = c.t; });
+      box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"📥 Réimporter le fichier"}));
+      box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 10px", text:R.changes.length + " quantité(s) différente(s) sur " + R.lignes + " ligne(s) lue(s)" + (R.autres ? " · " + R.autres + " ligne(s) d'une autre commande ignorée(s)" : "")}));
+      var lst = el("div", {class:"ph-imp"});
+      R.changes.slice(0, 60).forEach(function(c){ lst.appendChild(el("div", null, el("span", {text:c.lib + " " + c.size + (c.client ? " · " + c.client : "") + " — " + noms[c.k]}), el("b", {text:fmt(c.avant) + " → " + fmt(c.v)}))); });
+      if (R.changes.length > 60) lst.appendChild(el("div", {class:"mut", text:"… et " + (R.changes.length - 60) + " autre(s)"}));
+      box.appendChild(lst);
+      box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Appliquer ces " + R.changes.length + " modification(s)", onclick:function(){ sxClose(); appliquer(R.changes.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), R.changes.length + " quantité(s) reprises du fichier Excel"); }}));
+      box.appendChild(el("button", {class:"sx-annul", text:"Annuler", onclick:sxClose}));
+    }).catch(function(e){ toast(e.message); });
+  }
   /* « Tout » : toutes les pièces disponibles (étape précédente − déjà passées) des lignes données */
   function dispoTout(k, rows){
     var lines = rows.map(function(r){ return lineById(r.id); }).filter(Boolean), out = {}, n = 0;
@@ -432,5 +601,5 @@ window.vPilotage = function(v){
   }
 };
 /* pour les tests */
-window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier};
+window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel};
 })();
