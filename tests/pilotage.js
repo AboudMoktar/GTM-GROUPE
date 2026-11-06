@@ -14,6 +14,7 @@ async function donnees(p){
       L('T_M', 'NEOLYS', 'Sport-H-Re-Mi', 'Tee-shirt Sport homme noir', 'M', 270));
     const mv = {G_S:[50, 50, 50, 50, 50, 40, 40, 30], G_M:[135, 130, 130, 120, 120, 100, 100, 100], G_MA:[40, 40, 40, 40, 40, 40, 40, 40], R_XS:[100, 95, 95, 90, 90, 0, 0, 0], R_S:[220, 0, 0, 0, 0, 0, 0, 0], T_M:[0, 0, 0, 0, 0, 0, 0, 0]};
     const st = ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb', 'exp'];
+    Object.keys(mv).forEach(id => mv[id].splice(7, 0, mv[id][7])); st.splice(7, 0, 'pret');   /* prêt à expédier = expédié */
     Object.keys(mv).forEach((id, i) => mv[id].forEach((q, k) => { if (q) S.moves.push({id:'M' + i + '_' + k, date:'2026-12-0' + (1 + k), lineId:id, stage:st[k], qty:q, nc:0, note:''}); }));
     S.lots['PK202612-1'] = {ready:'2026-12-01', livraison:'2099-01-31'};
     ui.lot = 'PK202612-1'; ui.client = '*'; ui.tab = 'suivi'; ui.smode = null; ui.pil = null; render();
