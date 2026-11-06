@@ -1094,7 +1094,8 @@ function exportSuivi(){ exportFlux(ui.lot, "Flux", false); }
 function exportSuiviPdf(){ exportFlux(ui.lot, "Flux", true); }
 /* un fichier par centre : kind "c" = PROGES (coupe), "a" = GADH (assemblage) */
 function nomFicheCentre(kind){ return "Consommation_" + ({c:"PROGES", a:"GADH", m:"COMMANDE"}[kind]) + "_" + ui.lot + "_" + today().replace(/-/g,""); }
-function grilleFiche(kind){ return kind === "m" ? ficheCommandeGrid(ui.lot) : ficheGrid(ui.lot, ui.client, kind); }
+/* fiches Excel / PDF : seulement les modèles et les tailles qui ont une quantité */
+function grilleFiche(kind){ return kind === "m" ? ficheCommandeGrid(ui.lot) : ficheGrid(ui.lot, ui.client, kind, true); }
 function exportFiches(kind){
   kind = kind === "a" || kind === "m" ? kind : "c";
   saveFile(nomFicheCentre(kind) + ".xlsx", xlsxBuild([{name:{c:"PROGES", a:"GADH", m:"COMMANDE"}[kind], grid:grilleFiche(kind), first:1}]));
@@ -1136,7 +1137,8 @@ function gmerge(g, r1, c1, r2, c2){ if (r1 === r2 && c1 === c2) return; g.merges
 function roundv(x){ return Math.round(x*100)/100; }
 
 /* fiche de commande pour un centre : kind "c" = coupe (PROGES), "a" = assemblage (GADH) */
-function ficheGrid(lot, client, kind){
+/* compact : sans les modèles ni les tailles à 0 (fiches Excel et PDF) */
+function ficheGrid(lot, client, kind, compact){
   var c = conso(lot, client), by = {}, nom = nomIndex();
   c.rows.forEach(function(r){ var b = by[r.lib] || (by[r.lib] = {sizes:{}, tot:0, ml1:0, ml2:0}); b.sizes[r.size] = (b.sizes[r.size] || 0) + r.cut; b.tot += r.cut; b.ml1 += kind === "c" ? r.needC : r.needA; b.ml2 += kind === "a" ? r.needA2 : 0; });
   var libs = libList(), blocks = [], used = {};
@@ -1155,12 +1157,15 @@ function ficheGrid(lot, client, kind){
   g.rows[2].h = 26.25; g.sticky = 3;
   var r = 3, fab = {}, forder = [], blockTop = [], gsA = {}, gsH = {};
   blocks.forEach(function(b, bi){
-    var m = b.m, li = b.li, d = by[li.lib] || {sizes:{}, tot:0, ml1:0, ml2:0}, n = li.sizes.length, top = r;
+    var m = b.m, li = b.li, d = by[li.lib] || {sizes:{}, tot:0, ml1:0, ml2:0};
+    var tz = compact ? li.sizes.filter(function(z){ return d.sizes[z] > 0; }) : li.sizes;
+    if (!tz.length) return;
+    var n = tz.length, top = r;
     var n1 = nom[refP(li.lib, li.sizes[0])] || {t1:"", t2:"", cc:0, ca:0, ca2:0};
     var t1 = n1.t1, t2 = kind === "a" ? n1.t2 : "";
     var conv = 0;
     if (kind === "c") conv = n1.cc; else if (d.tot) conv = d.ml1 / d.tot;
-    li.sizes.forEach(function(s, i){
+    tz.forEach(function(s, i){
       var rr = r + i;
       gset(g, rr, 2, m[3], {sz:10, fg:m[6], bg:m[5], al:"l", bd:"t"});
       gset(g, rr, 3, m[4], {sz:11, fg:m[8], bg:m[7], al:"c", bd:"t"});
@@ -1231,8 +1236,11 @@ function commandeGrid(lot, year, client){
   ["Model","LIBELLE","Taille","Quantité","Total"].forEach(function(h, i){ gset(g, 3, i, h, {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}); });
   var r = 4, pm = null, tops = {}, all = libs, mtop = null;
   all.forEach(function(li){
+    /* seulement les modèles et les tailles commandés */
+    var tz = li.sizes.filter(function(s){ var ln = findLine(lot, client, li.lib, s); return ln && ln.qty > 0; });
+    if (!tz.length) return;
     var top = r, tot = 0;
-    li.sizes.forEach(function(s, i){
+    tz.forEach(function(s, i){
       var ln = findLine(lot, client, li.lib, s), q = ln ? ln.qty : 0; tot += q;
       gset(g, r, 1, li.lib, {sz:10, al:"l", bd:"t"}); gset(g, r, 2, s, {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 3, q || "", {sz:11, al:"c", bd:"t"});
       gset(g, r, 0, "", {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 4, "", {b:1, sz:11, al:"c", bd:"t"}); r++;
@@ -4427,7 +4435,7 @@ function envoiCoupeCard(lot, ready){
   var iD = el("input", {type:"date", id:"eDate", value:ui.edate || today()}); iD.addEventListener("change", function(){ ui.edate = iD.value; });
   var iN = el("input", {id:"eNote", placeholder:"N° d'envoi, remarque…"});
   var a = el("div", {class:"actions", style:"margin:10px 0 0"});
-  a.appendChild(el("button", {class:"btn sec", text:"Fiche de coupe PROGES (PDF)", onclick:function(){ saveFile("Fiche_coupe_PROGES_" + lot + "_" + today().replace(/-/g, "") + ".pdf", pdfBuild([ficheGrid(lot, "*", "c")])); }}));
+  a.appendChild(el("button", {class:"btn sec", text:"Fiche de coupe PROGES (PDF)", onclick:function(){ saveFile("Fiche_coupe_PROGES_" + lot + "_" + today().replace(/-/g, "") + ".pdf", pdfBuild([ficheGrid(lot, "*", "c", true)])); }}));
   if (!envs.length || compl){
     c.appendChild(el("div", {class:"row"}, el("label", {text:"Date d'envoi"}, iD), el("label", {text:"Référence"}, iN)));
     a.appendChild(el("button", {class:"btn", text:envs.length ? "Valider l'envoi du complément (+" + fmt(compl) + ")" : "Valider l'envoi au centre de coupe", onclick:function(){
