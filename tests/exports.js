@@ -88,6 +88,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['liste total au format de la commande', gt.head === 'Model|LIBELLE|Taille|Quantité|Total' && gt.lot === 'PK202610' && gt.lyneS === 12]);
   r.push(['liste total : seulement les modèles et tailles avec quantité', gt.nRefs === 7 && gt.vides === 0]);
   r.push(['liste total : une par commande, ou sans lot', gt.A[1] === 22 && gt.B[1] === 14 && gt.tout[1] === 36 && /PK202610/.test(html.tot) && /PK202612/.test(html.tot)]);
+  const rc = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e), v = (g, r) => g.rows[r].cells.map(x => x ? x.v : '');
+    const g = pkExports.recapTotalGrid(e, c, false), gs = pkExports.recapTotalGrid(e, c, true), iT = g.rows.findIndex(r => r.cells[0] && r.cells[0].v === 'TOTAL PIÈCES'), iS = gs.rows.findIndex(r => r.cells[0] && r.cells[0].v === 'TOTAL PIÈCES');
+    return {head: v(g, 2).join('|'), tot: v(g, iT).slice(2).join('|'), ct: v(g, iT + 1).slice(2).join('|'), f: g.rows[iT].cells[4].f, headS: v(gs, 2).join('|'), totS: gs.rows[iS].cells[2].v,
+      noms: pkExports.feuillesDoc(e, 'total').map(x => x.name).join('|'), html: /Récapitulatif — Export N°1/.test(pkExports.totalHtml(e, c)) && /TOTAL PIÈCES/.test(pkExports.totalHtml(e, c, true))}; });
+  r.push(['liste total : récapitulatif par commande et total', rc.head === 'Model|LIBELLE|PK202610|PK202612|TOTAL' && rc.tot === '22|14|36' && rc.ct === '2|2|2' && /^SUM\(E\d+:E\d+\)$/.test(rc.f)]);
+  r.push(['récapitulatif sans lot (total seul)', rc.headS === 'Model|LIBELLE|TOTAL' && rc.totS === 36]);
+  r.push(['récapitulatif imprimé, en PDF et en Excel', rc.html && rc.noms === 'Liste total PK202610|Liste total PK202612|Récapitulatif']);
   const etA = html.D.etat.find(x => x.lot === 'PK202610');
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});

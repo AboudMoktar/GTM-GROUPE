@@ -490,6 +490,44 @@ function totalCommandeGrid(e, colis, lot){
   g.sticky = 4;
   return g;
 }
+/* ---------- récapitulatif de la liste total ----------
+   Une ligne par référence (Model, LIBELLE), une colonne par commande (lot) puis le total ;
+   en bas : total des pièces par commande et nombre de cartons. Sans lot : seulement le total.
+   Sommes en formules dans l'Excel. */
+function recapTotalGrid(e, colis, sansLot){
+  var lots = sansLot ? [] : lotsExport(e), q = {}, ordre = [], lo = libOrder(), cartons = {};
+  colis.forEach(function(c){ var vus = {};
+    c.items.forEach(function(x){ if (!q[x.lib]){ q[x.lib] = {}; ordre.push(x.lib); } q[x.lib][x.lot] = (q[x.lib][x.lot] || 0) + x.q; q[x.lib].__t = (q[x.lib].__t || 0) + x.q; vus[x.lot] = 1; });
+    Object.keys(vus).forEach(function(l){ cartons[l] = (cartons[l] || 0) + 1; }); });
+  ordre.sort(function(a, b){ return ((a in lo ? lo[a] : 999) - (b in lo ? lo[b] : 999)) || (a < b ? -1 : 1); });
+  var nL = lots.length, cT = 2 + nL, L = colName;
+  var g = {cols:[20, 34].concat(lots.map(function(){ return 14; })).concat([14]), rows:[], merges:[]};
+  var H = {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}, C = {sz:10, al:"c", bd:"t"}, TT = {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE"};
+  gset(g, 0, 0, "Récapitulatif — Export N°" + e.n + " — " + dmyL(e.d) + " — " + (e.dest || destDefaut(e.cl)).nom, {b:1, sz:12, al:"l"}); gmerge(g, 0, 0, 0, cT); g.rows[0].h = 20;
+  ["Model", "LIBELLE"].concat(lots).concat(["TOTAL"]).forEach(function(h, i){ gset(g, 2, i, h, H); }); g.rows[2].h = 18;
+  var r = 3, deb = 4, pm = null, mtop = 3, fins = {};
+  ordre.forEach(function(lib){
+    var mod = modelOf(lib) || lib, col = couleurLib(lib);
+    gset(g, r, 0, mod !== pm ? mod : "", {b:1, sz:10, al:"c", bd:"t"});
+    if (mod !== pm){ mtop = r; pm = mod; } fins[mtop] = r;
+    gset(g, r, 1, lib, {sz:9, al:"l", bd:"t", bg:col[0], fg:col[1]});
+    lots.forEach(function(l, i){ gset(g, r, 2 + i, q[lib][l] || "", C); });
+    gset(g, r, cT, q[lib].__t, {b:1, sz:11, al:"c", bd:"t"});
+    if (nL) g.rows[r].cells[cT].f = "SUM(" + L(2) + (r + 1) + ":" + L(1 + nL) + (r + 1) + ")";
+    g.rows[r].h = 15; r++;
+  });
+  Object.keys(fins).forEach(function(t){ if (fins[t] > +t) gmerge(g, +t, 0, fins[t], 0); });
+  var fin = r, tot = 0; ordre.forEach(function(lib){ tot += q[lib].__t; });
+  gset(g, r, 0, "TOTAL PIÈCES", {b:1, sz:11, al:"l", bd:"m", bg:"EEEEEE"}); gset(g, r, 1, "", TT); gmerge(g, r, 0, r, 1);
+  lots.forEach(function(l, i){ var s = 0; ordre.forEach(function(lib){ s += q[lib][l] || 0; }); gset(g, r, 2 + i, s, TT); g.rows[r].cells[2 + i].f = "SUM(" + L(2 + i) + deb + ":" + L(2 + i) + fin + ")"; });
+  gset(g, r, cT, tot, {b:1, sz:12, al:"c", bd:"m", bg:"EEEEEE", fg:"C00000"}); g.rows[r].cells[cT].f = "SUM(" + L(cT) + deb + ":" + L(cT) + fin + ")"; g.rows[r].h = 18; r++;
+  gset(g, r, 0, "Nombre de cartons", {b:1, sz:10, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); gmerge(g, r, 0, r, 1);
+  lots.forEach(function(l, i){ gset(g, r, 2 + i, cartons[l] || 0, C); });
+  gset(g, r, cT, colis.length, {b:1, sz:10, al:"c", bd:"t"}); g.rows[r].h = 16;
+  if (nL > 1){ r++; gset(g, r, 0, "Un carton peut contenir plusieurs commandes : le total des cartons est celui de l'export.", {sz:8, fg:"666666", al:"l"}); gmerge(g, r, 0, r, cT); }
+  g.sticky = 3;
+  return g;
+}
 /* grille → tableau HTML pour l'impression (fusions, couleurs, gras) */
 function grilleHtml(g){
   var cov = {}, mAt = {}, tot = 0; g.cols.forEach(function(w){ tot += w; });
@@ -563,8 +601,9 @@ function totalSansLot(colis){
 }
 function totalHtml(e, colis, sansLot){
   var css = GRL_CSS;
-  if (sansLot) return css + grilleHtml(totalCommandeGrid(e, colis, null));
-  return css + lotsExport(e).map(function(lot, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(totalCommandeGrid(e, colis, lot)) + '</div>'; }).join("");
+  var recap = '<div class="grl-recap">' + grilleHtml(recapTotalGrid(e, colis, sansLot)) + '</div>';
+  if (sansLot) return css + grilleHtml(totalCommandeGrid(e, colis, null)) + recap;
+  return css + lotsExport(e).map(function(lot, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(totalCommandeGrid(e, colis, lot)) + '</div>'; }).join("") + recap;
 }
 function totalHtmlAncien(e, colis, sansLot){
   if (sansLot){ var T = totalSansLot(colis);
@@ -654,7 +693,7 @@ function etatGridX(e, colis){
   });
   return g;
 }
-var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}</style>';
+var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}#pk-doc-zone .grl-recap{margin-top:8mm;break-inside:avoid;page-break-inside:avoid}</style>';
 function suffixe(){ return ui.xpSansLot ? "_sans_lot" : ""; }
 function imprimerX(e, quoi){
   var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
@@ -672,7 +711,8 @@ function feuillesDoc(e, quoi){
   if (quoi === "fiches"){ var f = fichesCartonsGrid(libelleLots(e), e.cl, colis, ui.etqPP === 1 || ui.etqPP === 2 ? 2 : "4L"); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
     return [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]; }
   if (quoi === "colis") return [{name:"Liste de colisage", grid:colisageGridX(e, colis, sl)}];
-  if (quoi === "total") return sl ? [{name:"Liste total", grid:totalCommandeGrid(e, colis, null)}] : lotsExport(e).map(function(l){ return {name:"Liste total " + l, grid:totalCommandeGrid(e, colis, l)}; });
+  if (quoi === "total") return (sl ? [{name:"Liste total", grid:totalCommandeGrid(e, colis, null)}] : lotsExport(e).map(function(l){ return {name:"Liste total " + l, grid:totalCommandeGrid(e, colis, l)}; }))
+    .concat([{name:"Récapitulatif", grid:recapTotalGrid(e, colis, sl)}]);
   return [{name:"Etat des commandes", grid:etatGridX(e, colis)}];
 }
 function nomDocX(e, quoi){ return titreFichier(e, DOCS[quoi]) + (quoi === "colis" || quoi === "total" ? suffixe() : ""); }
@@ -719,5 +759,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();
