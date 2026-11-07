@@ -457,6 +457,7 @@ window.vPilotage = function(v){
       bx.appendChild(el("button", {class:"btn small sec", text:"📥 Réimporter un Excel", title:"Reprendre les quantités modifiées dans un fichier exporté d'ici", onclick:function(){ fi.click(); }}));
     }
     zone.appendChild(bx);
+    if (!G && window.etatCommandeBoutons) zone.appendChild(window.etatCommandeBoutons(lot));
     zone.appendChild(tableau(vis, T));
     var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. " : "";
     zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
@@ -570,7 +571,7 @@ window.vPilotage = function(v){
         if (n === null) n = 0;
         if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(v0); return; }
         if (n === v0){ if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } } return; }
-        if (k === "fr" && n === 0 && !confirm("Quantité commandée à 0 : la ligne " + r.lib + " " + r.size + " sera retirée de la commande. Continuer ?")){ inp.value = String(v0); return; }
+        if (k === "fr" && n === 0 && !confirm("Quantité commandée à 0 pour " + r.lib + " " + r.size + " : la taille sort de la commande (elle reste affichée à 0 si elle a déjà été traitée). Continuer ?")){ inp.value = String(v0); return; }
         fait = true; P.focus = cible || null;
         appliquer([{id:r.id, k:k, v:n}], r.lib + " " + r.size + " : " + fmt(n));
       }

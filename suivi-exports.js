@@ -152,9 +152,9 @@ function validerExport(e){
   e.st = "fini"; e.dv = today();
 }
 function rouvrirExport(e){ var anc = anciensDe(e.id); checkMoves([], anc); S.moves = S.moves.filter(function(m){ return !anc[m.id]; }); e.st = "cours"; e.dv = ""; }
+/* supprimer un export, même validé : ses mouvements (contrôle, emballage, prêt, expédié) sont retirés du suivi */
 function supprimerExport(e){
-  if (e.st === "fini") throw new Error("Export validé : rouvrez-le d'abord.");
-  var anc = {}; e.cartons.forEach(function(c){ var a = anciensDe(c.id); Object.keys(a).forEach(function(k){ anc[k] = 1; }); });
+  var anc = anciensDe(e.id); e.cartons.forEach(function(c){ var a = anciensDe(c.id); Object.keys(a).forEach(function(k){ anc[k] = 1; }); });
   checkMoves([], anc); S.moves = S.moves.filter(function(m){ return !anc[m.id]; });
   S.exports = EX().filter(function(x){ return x.id !== e.id; });
 }
@@ -170,26 +170,46 @@ window.vExports = function(v){
   if (e) return ficheExport(v, e);
   listeExports(v);
 };
+function trierExports(L){ return L.slice().sort(function(a, b){ return (b.d || "").localeCompare(a.d || "") || b.n - a.n; }); }
 function listeExports(v){
-  var L = EX().slice().sort(function(a, b){ return (b.d || "").localeCompare(a.d || "") || b.n - a.n; });
-  var enCours = L.filter(function(e){ return e.st !== "fini"; }).length;
+  var tous = EX(), L = trierExports(tous.filter(function(e){ return e.st !== "fini"; })), nFini = tous.length - L.length;
   v.appendChild(el("div", {class:"card"},
-    el("div", {class:"xp-head"}, el("div", null, el("h2", {style:"margin:0", text:"Exports"}), el("div", {class:"mut", text:L.length + " export(s) · " + enCours + " en cours"})),
+    el("div", {class:"xp-head"}, el("div", null, el("h2", {style:"margin:0", text:"Exports en cours"}), el("div", {class:"mut", text:L.length + " en cours" + (nFini ? " · " + nFini + " expédié(s) dans l'Archive" : "")})),
       el("button", {class:"btn", text:"+ Nouvel export", onclick:function(){ ui.xp = {nouveau:true}; render(); }}))));
+  if (nFini) v.appendChild(el("div", {class:"sx-tout", style:"margin-bottom:12px"}, el("div", {style:"font-weight:700", text:"📦 " + nFini + " export(s) validé(s) (expédiés) : ils sont dans l'Archive, avec tous leurs détails et documents."}),
+    el("button", {class:"btn small sec", style:"margin-top:6px", text:"Voir les exports expédiés", onclick:function(){ ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {}; render(); }})));
+  if (!L.length && nFini){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Aucun export en cours. Touchez « + Nouvel export » pour en préparer un."}))); return; }
   if (!L.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Aucun export pour l'instant. Touchez « + Nouvel export » : date, nature (NEOLYS ou ALLOGA), puis les cartons."}))); return; }
+  v.appendChild(grilleExports(L, false));
+}
+/* cartes des exports (Exports en cours, ou Archive) */
+function grilleExports(L, arch){
   var grille = el("div", {class:"xp-list"});
   L.forEach(function(e){
-    var ouvrir = function(){ ui.xp = {id:e.id}; render(); }, fini = e.st === "fini", pds = 0; e.cartons.forEach(function(c){ pds += poidsDe(e, c); });
+    var ouvrir = function(){ if (arch){ ui.xpa = {id:e.id}; } else ui.xp = {id:e.id}; render(); }, fini = e.st === "fini", pds = 0; e.cartons.forEach(function(c){ pds += poidsDe(e, c); });
     grille.appendChild(el("div", {class:"xp-li " + (fini ? "fini" : "cours"), role:"button", tabindex:"0", onclick:ouvrir},
       el("div", {class:"xp-li-h"}, el("span", {class:"xp-li-n", text:"Export N°" + e.n}), el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI" : "EN COURS"})),
-      el("div", {class:"xp-li-d"}, el("b", {text:e.nat || e.cl}), " · " + dmyL(e.d)),
+      el("div", {class:"xp-li-d"}, el("b", {text:e.nat || e.cl}), " · " + dmyL(e.d) + (fini && e.dv ? " · validé le " + dmyL(e.dv) : "")),
       el("div", {class:"xp-li-c", text:"Commandes : " + (lotsExport(e).join(", ") || "—")}),
       el("div", {class:"xp-li-s"}, el("span", null, el("b", {text:String(e.cartons.length)}), " carton(s)"), el("span", null, el("b", {text:fmt(qteExport(e))}), " pièces"), el("span", null, el("b", {text:fmtKg(pds)}), " kg")),
       e.com ? el("div", {class:"xp-li-com", text:"💬 " + e.com}) : null,
       el("button", {class:"btn small sec", text:"Ouvrir", onclick:function(ev){ ev.stopPropagation(); ouvrir(); }})));
   });
-  v.appendChild(grille);
+  return grille;
 }
+/* Archive : exports validés (expédiés), avec tous les détails et documents */
+window.vExportsArchive = function(v){
+  poserCss();
+  ui.xpa = ui.xpa || {};
+  var e = ui.xpa.id ? exportDe(ui.xpa.id) : null;
+  if (e && e.st === "fini") return ficheExport(v, e, true);
+  ui.xpa = {};
+  var L = trierExports(EX().filter(function(x){ return x.st === "fini"; }));
+  if (!L.length){ v.appendChild(el("div", {class:"card"}, el("h2", {text:"Aucun export expédié"}), el("p", {class:"mut", text:"Un export validé (« Valider l'export (Fini) ») arrive ici, avec ses cartons, ses quantités et ses documents."}))); return; }
+  var q = 0; L.forEach(function(x){ q += qteExport(x); });
+  v.appendChild(el("div", {class:"card"}, el("h2", {style:"margin:0", text:"Exports expédiés (" + L.length + ")"}), el("div", {class:"mut", text:fmt(q) + " pièces expédiées au total"})));
+  v.appendChild(grilleExports(L, true));
+};
 function formExport(v, e){
   var cls = clientsPossibles(), cl = e ? e.cl : (cls.indexOf("NEOLYS") >= 0 ? "NEOLYS" : cls[0]);
   var dI = el("input", {type:"date", value:e ? e.d : today()});
@@ -226,11 +246,13 @@ function formExport(v, e){
             var n = 0; EX().forEach(function(x){ if (x.n > n) n = x.n; });
             EX().push({id:id, n:n + 1, d:dI.value, cl:cl, nat:cl, dest:memeDest ? null : d, st:"cours", dv:"", com:com.value.trim(), cartons:[]});
           }
-          ui.xp = e ? {id:id} : {id:id, carton:{nouveau:true}};
+          var ra = e && ui.xp.retourArch && e.st === "fini";
+          ui.xp = e ? (ra ? {} : {id:id}) : {id:id, carton:{nouveau:true}};
+          if (ra){ ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {id:id}; }
         });
         if (ok && !e) toast("Export créé : ajoutez le premier carton.");
       }}),
-      el("button", {class:"btn sec", text:"Annuler", onclick:function(){ ui.xp = e ? {id:e.id} : {}; render(); }}))));
+      el("button", {class:"btn sec", text:"Annuler", onclick:function(){ if (e && ui.xp.retourArch && e.st === "fini"){ ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {id:e.id}; ui.xp = {}; } else ui.xp = e ? {id:e.id} : {}; render(); }}))));
 }
 function resumeCarton(c){
   var par = {}, ordre = [];
@@ -239,17 +261,17 @@ function resumeCarton(c){
     return el("div", {class:"xp-rl"}, el("div", {class:"xp-rl-n"}, el("b", {text:nomDoc(i.lib)}), el("span", {class:"xp-tag" + (!i.l ? " libre" : ""), text:i.lot + (!i.l ? " · non enregistrée" : i.src !== ui.xpCl ? " · surplus " + i.src : "")})),
       el("div", {class:"xp-pills"}, p.t.map(function(t){ return el("span", {class:"xp-pill"}, t[0] + " ", el("b", {text:String(t[1])})); }))); });
 }
-function ficheExport(v, e){
+function ficheExport(v, e, arch){
   var fini = e.st === "fini", q = qteExport(e), pds = 0; e.cartons.forEach(function(c){ pds += poidsDe(e, c); });
   ui.xpCl = e.cl;
   var dest = e.dest || destDefaut(e.cl);
-  v.appendChild(el("button", {class:"btn small sec", style:"margin-bottom:10px", text:"← Tous les exports", onclick:function(){ ui.xp = {}; render(); }}));
+  v.appendChild(el("button", {class:"btn small sec", style:"margin-bottom:10px", text:arch ? "← Exports expédiés" : "← Exports en cours", onclick:function(){ if (arch) ui.xpa = {}; else ui.xp = {}; render(); }}));
   var head = el("div", {class:"card xp-fh"},
     el("div", {class:"xp-head"},
       el("div", null, el("h2", {style:"margin:0", text:"Export N°" + e.n + " · " + (e.nat || e.cl)}),
         el("div", {class:"xp-meta"}, el("span", null, "Date d'export : ", el("b", {text:dmyL(e.d)})), el("span", null, "Destinataire : ", el("b", {text:dest.nom})),
           el("span", null, "Commandes : ", el("b", {text:lotsExport(e).join(", ") || "—"})))),
-      el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI · expédié" : "EN COURS"})),
+      el("span", {class:"xp-et " + (fini ? "fini" : "cours"), text:fini ? "FINI · expédié" + (e.dv ? " (validé le " + dmyL(e.dv) + ")" : "") : "EN COURS"})),
     el("div", {class:"xp-kpi"},
       el("div", null, el("b", {text:String(e.cartons.length)}), el("span", {text:"carton(s)"})),
       el("div", null, el("b", {text:fmt(q)}), el("span", {text:"pièces"})),
@@ -257,7 +279,7 @@ function ficheExport(v, e){
     e.com ? el("div", {class:"xp-com-box", text:"💬 " + e.com}) : null);
   var acts = el("div", {class:"actions", style:"margin:12px 0 0"});
   if (!fini) acts.appendChild(el("button", {class:"btn", text:"+ Ajouter un carton", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true}}; render(); }}));
-  acts.appendChild(el("button", {class:"btn sec", text:"✏️ Modifier les informations", title:"N°, date, nature, destinataire, commentaire", onclick:function(){ ui.xp = {id:e.id, modif:true}; render(); }}));
+  acts.appendChild(el("button", {class:"btn sec", text:"✏️ Modifier les informations", title:"N°, date, nature, destinataire, commentaire", onclick:function(){ ui.tab = "exp"; ui.xp = {id:e.id, modif:true, retourArch:!!arch}; render(); }}));
   head.appendChild(acts);
   v.appendChild(head);
   var ar = aRattacher(e), libres = 0; e.cartons.forEach(function(c){ c.it.forEach(function(x){ if (!(x[0] && lineById(x[0]))) libres += x[1]; }); });
@@ -300,9 +322,11 @@ function ficheExport(v, e){
       el("button", {class:"btn", text:"✔ Valider l'export (Fini)", onclick:function(){ confirmerValidation(e); }}),
       el("button", {class:"btn sec", style:"color:#b42318", text:"Supprimer l'export", onclick:function(){ if (!confirm("Supprimer l'export N°" + e.n + " et ses " + e.cartons.length + " carton(s) ? Les pièces redeviennent à emballer.")) return; var ok = commit(function(){ supprimerExport(e); ui.xp = {}; }); if (ok) toast("Export supprimé"); }})));
   } else {
-    vc.appendChild(el("h2", {text:"Export validé"}));
-    vc.appendChild(el("p", {class:"mut", style:"margin:0 0 10px", text:"Les pièces sont expédiées et affectées à leurs commandes. Pour corriger l'export, rouvrez-le."}));
-    vc.appendChild(el("button", {class:"btn sec", text:"Rouvrir l'export", onclick:function(){ if (!confirm("Rouvrir l'export N°" + e.n + " ? Les pièces ne seront plus comptées comme expédiées.")) return; commit(function(){ rouvrirExport(e); }, "Export rouvert"); }}));
+    vc.appendChild(el("h2", {text:"Export validé (archivé)"}));
+    vc.appendChild(el("p", {class:"mut", style:"margin:0 0 10px", text:"Les pièces sont expédiées et affectées à leurs commandes. Pour corriger les cartons, rouvrez l'export (il revient dans « Exports en cours »)."}));
+    vc.appendChild(el("div", {class:"actions"},
+      el("button", {class:"btn sec", text:"Rouvrir l'export", onclick:function(){ if (!confirm("Rouvrir l'export N°" + e.n + " ? Les pièces ne seront plus comptées comme expédiées.")) return; commit(function(){ rouvrirExport(e); ui.tab = "exp"; ui.xp = {id:e.id}; }, "Export rouvert : il est dans « Exports en cours »"); }}),
+      el("button", {class:"btn sec", style:"color:#b42318", text:"Supprimer l'export", onclick:function(){ if (!confirm("Supprimer l'export N°" + e.n + " (expédié) et ses " + e.cartons.length + " carton(s) ? Les pièces ne seront plus comptées ni expédiées ni emballées.")) return; var ok = commit(function(){ supprimerExport(e); ui.xpa = {}; ui.xp = {}; }); if (ok) toast("Export supprimé"); }})));
   }
   v.appendChild(vc);
 }
@@ -317,7 +341,7 @@ function confirmerValidation(e){
   lots.forEach(function(lot){ rec.appendChild(el("div", null, el("span", {text:"Commande " + lot}), el("b", {text:fmt(par[lot]) + " pièce(s)"}))); });
   rec.appendChild(el("div", {class:"tot"}, el("span", {text:e.cartons.length + " carton(s) · " + dmyL(e.d)}), el("b", {text:fmt(qteExport(e)) + " pièces"})));
   box.appendChild(rec);
-  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, valider (pièces expédiées)", onclick:function(){ sxClose(); commit(function(){ validerExport(e); }, "Export N°" + e.n + " validé : pièces expédiées"); }}));
+  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, valider (pièces expédiées)", onclick:function(){ sxClose(); commit(function(){ validerExport(e); ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {id:e.id}; ui.xp = {}; }, "Export N°" + e.n + " validé : pièces expédiées — il est maintenant dans l'Archive"); }}));
   box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
 }
 
@@ -694,7 +718,7 @@ function etatCommandeGrid(e, lot){
   function ref(lib, z){ var k = cle(lib, z); return R[k] || (R[k] = {lib:lib, size:z, q:{}, tot:0, av:0, ex:{}}); }
   lignes.forEach(function(l){ if (!(l.qty > 0)) return; var x = ref(l.lib, l.size); x.q[l.client] = (x.q[l.client] || 0) + l.qty; x.tot += l.qty; });
   /* exports de cette commande jusqu'à celui-ci (date, puis N°) */
-  var exs = EX().filter(function(x){ return (x.d < e.d || (x.d === e.d && x.n <= e.n)) && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); })
+  var exs = EX().filter(function(x){ return (!e || x.d < e.d || (x.d === e.d && x.n <= e.n)) && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); })
     .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : a.n - b.n; });
   var idsX = {}; EX().forEach(function(x){ idsX[x.id] = 1; x.cartons.forEach(function(c){ idsX[c.id] = 1; }); });
   exs.forEach(function(x){ x.cartons.forEach(function(c){ c.it.forEach(function(y){ var i = infoItem(y); if (i.lot !== lot || !y[1]) return; var r = ref(i.lib, i.size); r.ex[x.id] = (r.ex[x.id] || 0) + y[1]; }); }); });
@@ -708,7 +732,7 @@ function etatCommandeGrid(e, lot){
   var cC = 3, cT = cC + cls.length, cTL = cT + 1, cAv = avant ? cTL + 1 : -1, cE = cTL + 1 + (avant ? 1 : 0), cR = cE + exs.length, L = colName;
   var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(avant ? [11] : []).concat(exs.map(function(){ return 12; })).concat([9]), rows:[], merges:[]};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
-  var lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +e.d.slice(5, 7) - 1], annee = (lignes[0] || {}).year || (lm ? lm.y : e.d.slice(0, 4));
+  var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
   gset(g, 0, 0, "Commande: " + mois, Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
   gset(g, 0, 2, "LOT", {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7", fg:"C00000"}); gset(g, 1, 2, lot, {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7"});
   for (var k = cC; k <= cTL; k++){ gset(g, 0, k, k === cC ? "ANNEE" : "", Tt); gset(g, 1, k, k === cC ? String(annee) : "", Tt); }
@@ -718,7 +742,7 @@ function etatCommandeGrid(e, lot){
   gmerge(g, 0, s0, 1, cR);
   g.rows[0].h = 18; g.rows[1].h = 16;
   ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(avant ? ["Expédié avant"] : [])
-    .concat(exs.map(function(x){ var d = dmyL(x.d).slice(0, 5); return "Exporté " + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); })).concat(["Reste"])
+    .concat(exs.map(function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "En cours " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); })).concat(["Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = 28;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"};
@@ -751,6 +775,21 @@ function etatCommandeGrid(e, lot){
   g.rows[r].h = 18; g.sticky = 3;
   return g;
 }
+/* état de la commande (tout le lot, tous ses exports) : depuis le suivi, la commande ou l'archive */
+window.etatCommande = function(lot, mode){
+  if (!lot){ toast("Choisissez la commande (lot)."); return; }
+  if (!S.lines.some(function(l){ return l.lot === lot; })){ toast("Aucune ligne de commande pour " + lot + "."); return; }
+  var g = etatCommandeGrid(null, lot), nom = nomFichier("Etat_commande_" + lot + "_" + today().replace(/-/g, ""));
+  if (mode === "pdf") return saveFile(nom + ".pdf", pdfBuild([g]));
+  if (mode === "xlsx") return saveFile(nom + ".xlsx", xlsxBuild([{name:"Etat " + lot, grid:g, first:1}]));
+  imprimerDoc(GRL_CSS + grilleHtml(g), "A4 portrait", "10mm", nom);
+};
+window.etatCommandeBoutons = function(lot){
+  return el("div", {class:"actions xp-etat"}, el("span", {class:"mut", style:"align-self:center;font-weight:700", text:"📋 État de commande :"}),
+    el("button", {class:"btn small sec", text:"🖨 Imprimer", onclick:function(){ window.etatCommande(lot, "print"); }}),
+    el("button", {class:"btn small sec", text:"📕 PDF", onclick:function(){ window.etatCommande(lot, "pdf"); }}),
+    el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ window.etatCommande(lot, "xlsx"); }}));
+};
 function etatsCommandes(e){ return lotsExport(e).map(function(lot){ return {lot:lot, grid:etatCommandeGrid(e, lot)}; }); }
 function etatGridX(e, colis){
   var D = totalDonneesExport(e, colis), g = {cols:[40, 13, 15, 13, 17], rows:[], merges:[]}, r = 0, H = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"}, Cc = {sz:10, al:"c", bd:"t"};
@@ -829,5 +868,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();
