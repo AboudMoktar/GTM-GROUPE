@@ -23,7 +23,8 @@
     "fiches-compactes": "node fiches-compactes.js",
     "pilotage": "node pilotage.js",
     "pilotage-excel": "node pilotage-excel.js",
-    "documents": "node documents.js"
+    "documents": "node documents.js",
+    "import-commandes": "node import-commandes.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

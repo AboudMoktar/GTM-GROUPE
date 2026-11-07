@@ -187,6 +187,7 @@ function suiviMouvementsParRef(etape, du, au){
     if(id.indexOf('moves-') !== 0) return;
     (docs[id].moves || []).forEach(m => {
       if(m[3] !== etape || m[1] < du || m[1] > au) return;
+      if(/^Historique/.test(m[5] || '')) return;   // commande importée déjà expédiée : facturée à part (factures déjà émises)
       const l = lignes[m[2]]; if(!l) return;
       const k = suiviCleRef(l.lib);
       const r = parRef[k] || (parRef[k] = {lib:l.lib, model:l.model, qte:0});
