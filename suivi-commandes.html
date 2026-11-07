@@ -567,6 +567,18 @@ function noteModif(lot, client, lib, size, q0, q1){
   if (!L.ready) return;
   (L.modifs = L.modifs || []).push({d:today(), c:client, l:lib, t:size, a:q0, n:q1});
 }
+/* centre de coupe de chaque modèle : PROGES par défaut ; brassières chez MMGT ; exosquelettes coupés chez TEK-TREND (Réglages) */
+var CENTRES_COUPE = ["PROGES", "MMGT", "TEK-TREND"];
+function centreCoupe(model){
+  var c = (S.centres || {})[model]; if (CENTRES_COUPE.indexOf(c) >= 0) return c;
+  if (/BRASSI/i.test(model)) return "MMGT"; if (/EXOSQUELETTE/i.test(model)) return "TEK-TREND";
+  return "PROGES";
+}
+/* pièces à couper (avec marges) de chaque centre pour un lot, dans l'ordre PROGES, MMGT, TEK-TREND */
+function ordreParCentre(lot){
+  var o = {}; S.lines.forEach(function(l){ if (l.lot !== lot) return; var c = centreCoupe(l.model || modelOf(l.lib)); o[c] = (o[c] || 0) + cutQty(l.qty, l.model); });
+  return CENTRES_COUPE.filter(function(c){ return o[c]; }).map(function(c){ return [c, o[c]]; });
+}
 /* ordre de coupe total du lot (quantités + marges), et ce qui a déjà été envoyé au centre de coupe */
 function ordreLot(lot){ var t = 0; S.lines.forEach(function(l){ if (l.lot === lot) t += cutQty(l.qty, l.model); }); return t; }
 function premiereCoupe(lot){ var d = ""; S.moves.forEach(function(m){ if (m.stage !== "cp") return; var l = lineById(m.lineId); if (l && l.lot === lot && (!d || m.date < d)) d = m.date; }); return d; }
@@ -588,7 +600,7 @@ function desiredDocs(){
   var d = {};
   d.cfg = {nomen: S.nomen.map(function(n){ var a = [n.model,n.lib,n.size,n.t1,n.t2,n.cc,n.ca,n.ca2]; if (n.colle) a.push(n.colle); return a; }),
            rules: S.rules.map(function(r){ return [r.model,r.s1,r.m1,r.s2,r.m2,r.m3]; }), stock: S.stock, lots: S.lots, ver: 2,
-           alertes: S.alertes, motifs: S.motifs, colis: S.colis, colleU: S.colleU, refs: S.refs, mat: S.mat, bom: S.bom, bomJ: S.bomJ || [], majNomen: S.majNomen || "", ajouts: S.ajouts || {}};
+           alertes: S.alertes, motifs: S.motifs, colis: S.colis, colleU: S.colleU, centres: S.centres || {}, refs: S.refs, mat: S.mat, bom: S.bom, bomJ: S.bomJ || [], majNomen: S.majNomen || "", ajouts: S.ajouts || {}};
   var lots = sortedUnique(S.lines.map(function(l){ return l.lot; }));
   lots.forEach(function(lot){
     var ls = S.lines.filter(function(l){ return l.lot === lot; });
@@ -680,6 +692,7 @@ function cfgOptions(d){
   S.motifs = (d.motifs && d.motifs.length) ? d.motifs.slice() : DEF_MOTIFS.slice();
   S.colis = d.colis ? JSON.parse(JSON.stringify(d.colis)) : JSON.parse(JSON.stringify(DEF_COLIS));
   S.colleU = d.colleU || "g";
+  S.centres = JSON.parse(JSON.stringify(d.centres || {}));
   S.refs = JSON.parse(JSON.stringify(d.refs || DEF_REFS));
   S.mat = JSON.parse(JSON.stringify(d.mat || DEF_MAT));
   S.bom = JSON.parse(JSON.stringify(d.bom || DEF_BOM));
@@ -1108,6 +1121,10 @@ function exportFichesPdf(kind){
   kind = kind === "a" || kind === "m" ? kind : "c";
   saveFile(nomFicheCentre(kind) + ".pdf", pdfBuild([grilleFiche(kind)]));
 }
+function exportFichesCentre(centre, pdf){
+  var g = ficheGrid(ui.lot, "*", "c", true, centre), nom = "Consommation_" + centre + "_" + ui.lot + "_" + today().replace(/-/g, "");
+  if (pdf) saveFile(nom + ".pdf", pdfBuild([g])); else saveFile(nom + ".xlsx", xlsxBuild([{name:centre, grid:g, first:1}]));
+}
 function exportCommande(client, year){
   saveFile("COMMANDE_" + client + "_" + ui.lot + ".xlsx", xlsxBuild([{name:"COMMANDE " + client, grid:commandeGrid(ui.lot, year, client), first:1}]));
 }
@@ -1142,15 +1159,17 @@ function roundv(x){ return Math.round(x*100)/100; }
 
 /* fiche de commande pour un centre : kind "c" = coupe (PROGES), "a" = assemblage (GADH) */
 /* compact : sans les modèles ni les tailles à 0 (fiches Excel et PDF) */
-function ficheGrid(lot, client, kind, compact){
+function ficheGrid(lot, client, kind, compact, centre){
   var c = conso(lot, client), by = {}, nom = nomIndex();
   c.rows.forEach(function(r){ var b = by[r.lib] || (by[r.lib] = {sizes:{}, tot:0, ml1:0, ml2:0}); b.sizes[r.size] = (b.sizes[r.size] || 0) + r.cut; b.tot += r.cut; b.ml1 += kind === "c" ? r.needC : r.needA; b.ml2 += kind === "a" ? r.needA2 : 0; });
   var libs = libList(), blocks = [], used = {};
+  /* fiche de coupe : seulement les modèles coupés par ce centre (PROGES, MMGT ou TEK-TREND) */
+  if (kind === "c"){ centre = centre || "PROGES"; libs = libs.filter(function(li){ return centreCoupe(li.model) === centre; }); }
   FM.forEach(function(m){ var li = libs.filter(function(l){ return l.lib === m[0]; })[0]; if (li){ blocks.push({m:m, li:li}); used[m[0]] = 1; } });
   var gx = 100;
   libs.forEach(function(li){ if (!used[li.lib]) blocks.push({m:[li.lib, li.model, li.model, li.lib, "", "FFFFFF","000000","FFFFFF","000000", gx, gx++], li:li}); });
   var g = mkGrid(8), RED = "FF0000", GREEN = "00B050"; g.plein = true; g.landscape = true;
-  var name = kind === "c" ? "PROGES" : "GADH";
+  var name = kind === "c" ? centre : "GADH";
   var T = {b:1, sz:11, fg:GREEN, al:"c", bd:"m"};
   gset(g, 0, 0, "Commande", T); gset(g, 0, 1, "", T); gmerge(g, 0, 0, 0, 1);
   gset(g, 0, 2, lot || "", T);
@@ -1218,7 +1237,7 @@ function ficheGrid(lot, client, kind, compact){
   }
   /* matières de la nomenclature consommées à cette étape (ex. colle VIX à l'assemblage GADH), hors tissus */
   g.extra = [];
-  var bm = besoinsMatieres(lot), et = kind === "c" ? "PROGES" : "GADH";
+  var bm = besoinsMatieres(lot), et = kind === "c" ? centre : "GADH";
   Object.keys(bm).sort().forEach(function(ref){
     var a = art(ref); if (!bm[ref][et] || a.fam === "Tissu" || ref === REF_COLLE_LEG) return;
     var e = env.__refs[ref] || 0; g.extra.push([ref, a.des, a.u, bm[ref][et], e]);
@@ -1727,6 +1746,7 @@ function vFiches(v){
   if (VUE === "gadh") ui.fiche = "a";
   var seg = el("div", {class:"seg"});
   var FN = {c:"Coupe (PROGES)", a:"Assemblage (GADH)", m:"Toute la commande", t:"Total & stock"};
+  var autresCentres = ordreParCentre(ui.lot).filter(function(x){ return x[0] !== "PROGES"; });
   ["c","a","m","t"].forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x ? "on" : "", text:FN[x], onclick:function(){ ui.fiche = x; render(); }})); });
   if (VUE !== "gadh"){ v.appendChild(seg);
   v.appendChild(pager(["c","a","m","t"], ui.fiche, function(k){ ui.fiche = k; render(); }, FN[ui.fiche])); }
@@ -1735,6 +1755,10 @@ function vFiches(v){
     if (ui.fiche !== "t" && ui.fiche !== k[0]) return;
     v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"📗 " + k[1] + " (Excel)", onclick:function(){ exportFiches(k[0]); }}), el("button", {class:"btn sec", text:"📕 " + k[1] + " (PDF)", onclick:function(){ exportFichesPdf(k[0]); }})));
   });
+  if (ui.fiche === "c" && autresCentres.length && VUE !== "gadh") v.appendChild(el("div", {class:"card"}, el("h2", {text:"Autres centres de coupe"}),
+    el("p", {class:"mut", text:"La fiche ci-dessous ne contient que les modèles coupés par PROGES. Les autres modèles de cette commande ont leur propre fiche de coupe."}),
+    autresCentres.map(function(x){ return el("div", {class:"actions"}, el("b", {style:"align-self:center;min-width:110px", text:x[0] + " · " + fmt(x[1]) + " pcs"}),
+      el("button", {class:"btn sec small", text:"📗 Fiche " + x[0] + " (Excel)", onclick:function(){ exportFichesCentre(x[0], false); }}), el("button", {class:"btn sec small", text:"📕 Fiche " + x[0] + " (PDF)", onclick:function(){ exportFichesCentre(x[0], true); }})); })));
   if (ui.fiche === "t") return vTotal(v);
   if (ui.fiche === "m") return vFicheCommande(v);
   var g = ficheGrid(ui.lot, ui.client, ui.fiche);
@@ -4474,6 +4498,8 @@ function envoiCoupeCard(lot, ready){
     c.appendChild(el("div", {class:"msg err"}, "Commande non validée : validez-la dans l'onglet Commandes avant de l'envoyer au centre de coupe. ", el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
     return c;
   }
+  var pc = ordreParCentre(lot);
+  if (pc.length > 1 || (pc[0] && pc[0][0] !== "PROGES")) c.appendChild(el("div", {class:"msg", style:"margin-bottom:8px"}, el("b", {text:"Par centre de coupe : "}), pc.map(function(x){ return x[0] + " " + fmt(x[1]) + " pcs" + (x[0] === "TEK-TREND" ? " (coupe interne)" : ""); }).join(" · ")));
   c.appendChild(el("div", {class:"stat"},
     el("div", null, el("b", {text:fmt(ordre)}), el("span", {text:"pièces à couper (ordre de coupe)"})),
     el("div", null, el("b", {text:fmt(deja)}), el("span", {text:"déjà envoyées au centre de coupe"})),
@@ -4481,7 +4507,7 @@ function envoiCoupeCard(lot, ready){
   var iD = el("input", {type:"date", id:"eDate", value:ui.edate || today()}); iD.addEventListener("change", function(){ ui.edate = iD.value; });
   var iN = el("input", {id:"eNote", placeholder:"N° d'envoi, remarque…"});
   var a = el("div", {class:"actions", style:"margin:10px 0 0"});
-  a.appendChild(el("button", {class:"btn sec", text:"Fiche de coupe PROGES (PDF)", onclick:function(){ saveFile("Fiche_coupe_PROGES_" + lot + "_" + today().replace(/-/g, "") + ".pdf", pdfBuild([ficheGrid(lot, "*", "c", true)])); }}));
+  (pc.length ? pc : [["PROGES", 0]]).forEach(function(x){ a.appendChild(el("button", {class:"btn sec", text:"Fiche de coupe " + x[0] + " (PDF)", onclick:function(){ saveFile("Fiche_coupe_" + x[0] + "_" + lot + "_" + today().replace(/-/g, "") + ".pdf", pdfBuild([ficheGrid(lot, "*", "c", true, x[0])])); }})); });
   if (!envs.length || compl){
     c.appendChild(el("div", {class:"row"}, el("label", {text:"Date d'envoi"}, iD), el("label", {text:"Référence"}, iN)));
     a.appendChild(el("button", {class:"btn", text:envs.length ? "Valider l'envoi du complément (+" + fmt(compl) + ")" : "Valider l'envoi au centre de coupe", onclick:function(){
@@ -4546,7 +4572,23 @@ function regBom(v){
   if (j.length) c.appendChild(el("div", {style:"margin-top:10px"}, el("div", {class:"mut", style:"font-weight:600", text:"Dernières modifications"}), j.map(function(e){ return el("div", {class:"enl-d", text:dmy(e.d) + (e.u ? " · " + e.u : "") + " · " + e.t}); })));
   v.appendChild(c);
 }
+function regCentres(v){
+  var mods = sortedUnique(libList().map(function(l){ return l.model; }));
+  var t = el("table"), tb = el("tbody");
+  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Modèle"}), el("th", {text:"Centre de coupe"}))));
+  mods.forEach(function(m){
+    var s = sel(CENTRES_COUPE.map(function(c){ return [c, c + (c === "TEK-TREND" ? " (coupe interne)" : "")]; }), centreCoupe(m));
+    s.addEventListener("change", function(){ commit(function(){ S.centres = S.centres || {}; S.centres[m] = s.value; bomJournal("Centre de coupe de " + m + " : " + s.value); }, m + " : coupé chez " + s.value); });
+    if (lectureSeule()) s.disabled = true;
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:m}), el("td", null, s)));
+  });
+  t.appendChild(tb);
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:"Centres de coupe"}),
+    el("p", {class:"mut", text:"Qui coupe chaque modèle : la fiche de coupe de chaque centre ne contient que ses modèles. Par défaut : PROGES ; brassières chez MMGT ; exosquelettes coupés chez TEK-TREND."}),
+    el("div", {class:"tw"}, t)));
+}
 function regExtras(v){
+  regCentres(v);
   regBom(v);
   var a = S.alertes || {proche:3, bloque:7};
   var iP = el("input", {type:"number", inputmode:"numeric", min:"0", value:a.proche}), iB = el("input", {type:"number", inputmode:"numeric", min:"1", value:a.bloque});
