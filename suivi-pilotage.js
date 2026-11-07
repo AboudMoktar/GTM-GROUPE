@@ -186,7 +186,7 @@ function colsExcel(clients){
 function grilleExcel(lot, rows, portee, grp){
   var clients = sortedUnique(lignesPilotage(lot).map(function(r){ return r.client; })), cx = colsExcel(clients), ci = {};
   cx.forEach(function(c, i){ ci[c.k] = i; });
-  var L = colName, nC = cx.length, g = {cols:cx.map(function(c){ return c.k === "lib" ? 34 : c.k === "model" ? 20 : c.k === "coul" ? 13 : c.k === "size" ? 8 : c.k === "client" ? 11 : c.k === "code" ? 12 : c.k === "av" ? 12 : 13; }), rows:[], merges:[], landscape:true, sticky:X_ENT + 1, hide:[ci.code], printTitles:[X_ENT, X_ENT]};
+  var L = colName, nC = cx.length, g = {cols:cx.map(function(c){ return c.k === "lib" ? 34 : c.k === "model" ? 20 : c.k === "coul" ? 13 : c.k === "size" ? 8 : c.k === "client" ? 11 : c.k === "code" ? 12 : c.k === "av" ? 12 : 13; }), rows:[], merges:[], landscape:true, plein:true, sticky:X_ENT + 1, hide:[ci.code], printTitles:[X_ENT, X_ENT]};
   var info = S.lots[lot] || {}, annee = (S.lines.filter(function(l){ return l.lot === lot; })[0] || {}).year || "", T0 = sommer(rows);
   gset(g, 0, 1, (G ? "GADH — " : "TEK-TREND — ") + "Suivi de commande N° " + lot, {b:1, sz:15, fg:"1D3557", al:"l"}); gmerge(g, 0, 1, 0, Math.min(nC - 2, 5)); g.rows[0].h = 34;
   gset(g, 1, 1, ["Lot : " + lot, "Client(s) : " + clients.join(" + "), "Année : " + (annee || "—"), "Date commande : " + (info.dc ? dmyL(info.dc) : "—"), info.livraison ? "Livraison prévue : " + dmyL(info.livraison) : "", "Export : " + portee, "Édité le " + dmyL(today())].filter(Boolean).join("   ·   "), {sz:10, al:"l"});
@@ -235,7 +235,7 @@ function grilleExcel(lot, rows, portee, grp){
   return g;
 }
 function recapExcel(lot, gS){
-  var g = {cols:[34, 16, 18], rows:[], merges:[]}, ci = gS.ci, tl = gS.totalLigne, ref = function(k){ return "Suivi!" + colName(ci[k]) + tl; };
+  var g = {cols:[34, 16, 18], rows:[], merges:[], plein:true}, ci = gS.ci, tl = gS.totalLigne, ref = function(k){ return "Suivi!" + colName(ci[k]) + tl; };
   gset(g, 0, 0, "Récapitulatif — commande " + lot, {b:1, sz:14, fg:"1D3557", al:"l"}); gmerge(g, 0, 0, 0, 2); g.rows[0].h = 26;
   gset(g, 1, 0, "Chiffres repris du total de la feuille « Suivi » (lignes affichées par les filtres).", {sz:9, fg:"555555", al:"l"}); gmerge(g, 1, 0, 1, 2);
   var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", bd:"t"};
@@ -653,6 +653,16 @@ window.vPilotage = function(v){
     return el("div", {class:"ph-tw"}, t);
   }
 };
+/* onglet Documents : pilotage de toute la commande */
+function docPilotage(lot, mode){
+  configurer();
+  var rows = trier(lignesPilotage(lot)), P = filtres(), portee = "Toute la commande (" + rows.length + " lignes)";
+  if (mode === "pdf") return exporterPdf(lot, rows, portee, P.grp !== false, "", "A4");
+  if (mode === "xlsx") return exporterExcel(lot, rows, portee, P.grp !== false, "");
+  var gS = grilleExcel(lot, rows, portee, P.grp !== false), gR = recapExcel(lot, gS); versPdf(gS); versPdf(gR);
+  var X = window.pkExports;
+  imprimerDoc(X.GRL_CSS + X.grilleHtml(gS) + '<div class="grl-saut">' + X.grilleHtml(gR) + '</div>', "A4 landscape", "8mm", "Pilotage_" + lot);
+}
 /* pour les tests */
-window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel, exporterPdf:exporterPdf};
+window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel, exporterPdf:exporterPdf, docPilotage:docPilotage};
 })();
