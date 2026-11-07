@@ -127,6 +127,17 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const exp = (id) => mv.filter(m => m.ct === E[0].id && m.stage === 'exp' && m.lineId === id).reduce((a, m) => a + m.qty, 0);
   r.push(['export validé : FINI', E[0].st === 'fini']);
   r.push(['pièces expédiées sur leurs commandes', exp('A_S') === 12 && exp('A_M') === 10 && mv.filter(m => m.stage === 'exp').length === 3]);
+  r.push(['export validé : ouvert dans l\'Archive avec ses détails', await p.evaluate(() => ui.tab === 'arch' && ui.amodeX === 'exp') && /Export validé \(archivé\)/.test(await p.locator('#view').textContent()) && await p.locator('.xp-carton').count() === 2 && await p.locator('.xp-doc').count() === 5]);
+  await p.evaluate(() => { ui.tab = 'exp'; ui.xp = {}; render(); }); await p.waitForTimeout(150);
+  r.push(['Exports : seulement les exports en cours', await p.locator('.xp-li').count() === 0 && /1 export\(s\) validé/.test(await p.locator('#view').textContent())]);
+  await p.click('text=Voir les exports expédiés'); await p.waitForTimeout(150);
+  r.push(['Archive : liste des exports expédiés', await p.evaluate(() => ui.tab === 'arch') && await p.locator('.xp-li.fini').count() === 1]);
+  await p.locator('.xp-li.fini').click(); await p.waitForTimeout(150);
+  const ec2 = await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.map(x => x ? x.v : '').join('|'));
+  r.push(['état de commande (tout le lot) depuis le suivi', ec2 === 'Model|LIBELLE|Taille|NEOLYS|Total|Total|Exporté 07/11|Reste']);
+  await p.evaluate(() => { ui.tab = 'suivi'; ui.lot = 'PK202610'; ui.smode = 'q'; render(); }); await p.waitForTimeout(150);
+  r.push(['boutons « État de commande » dans le suivi', await p.locator('.xp-etat').count() === 1 && await p.locator('.xp-etat button', {hasText: 'PDF'}).count() === 1]);
+  await p.evaluate(() => { ui.tab = 'arch'; ui.amodeX = 'exp'; ui.xpa = {id: S.exports[0].id}; render(); }); await p.waitForTimeout(150);
   // la commande PK202612 est enregistrée ensuite : rattachement
   await p.evaluate(() => { S.lines.push({id:'C_G', lot:'PK202612', year:2026, client:'NEOLYS', model:'M', lib:'Gilet homme noir', size:'L', qty:20, cc:0}); ['cp','gadh','asm','ret','conf'].forEach((st, k) => S.moves.push({id:'MC' + k, date:'2026-11-02', lineId:'C_G', stage:st, qty:20, nc:0, note:''})); render(); });
   r.push(['commande enregistrée ensuite : rattachement proposé', await p.locator('text=Rattacher aux commandes').count() === 1]);
@@ -141,10 +152,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.evaluate(() => { ui.xp = {id: S.exports[0].id}; render(); });
   await p.click('text=Rouvrir l\'export'); await p.waitForTimeout(300);
   ({ex: E, mv} = await etat());
-  r.push(['export rouvert : expédition annulée', E[0].st === 'cours' && !mv.some(m => m.stage === 'exp')]);
+  r.push(['export rouvert : expédition annulée, retour dans « Exports en cours »', E[0].st === 'cours' && !mv.some(m => m.stage === 'exp') && await p.evaluate(() => ui.tab === 'exp')]);
+  r.push(['état de commande : export en cours signalé', await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.some(x => x && x.v === 'En cours 07/11'))]);
+  await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
+  await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);
   await p.click('text=Supprimer l\'export'); await p.waitForTimeout(300);
   ({ex: E, mv} = await etat());
-  r.push(['export supprimé : pièces de nouveau à emballer', E.length === 0 && mv.length === 0]);
+  r.push(['export validé supprimé : plus rien d\'expédié ni d\'emballé', E.length === 0 && mv.length === 0]);
+  r.push(['commande modifiable à toute étape (taille déjà traitée mise à 0)', await p.evaluate(() => { try { setLine('PK202611', 2026, 'NEOLYS', 'LYNE PRO homme gris', 'S', 0); } catch (e) { return false; } const l = lineById('B_S'); return !!l && l.qty === 0; })]);
   // 10. ALLOGA : une seule taille, limité à la commande
   const al = await p.evaluate(() => { const e = {id:'X2', n:2, d:'2026-11-08', cl:'ALLOGA', nat:'ALLOGA', dest:null, st:'cours', dv:'', cartons:[]}; S.exports.push(e); const l = lineById('B_AL'); return pkExports.dispoLigne(l, 'ALLOGA', null); });
   r.push(['ALLOGA : disponible indiqué (60 sur 64 revenues)', al === 60]);

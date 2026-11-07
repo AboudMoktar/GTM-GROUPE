@@ -25,14 +25,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     out.push(['famille et sous-famille en tête de bloc', cell(2, 0) === 'Sous-vêtements' && cell(2, 1) === 'Tissu bistrech' && cell(3, 1) === 'Tissu monostrech' && cell(2, 2) === 'TIS-CARESSE-NOIR']);
     // catalogue : sous-vêtements SV
     out.push(['tailles H normalisées', normSize('h1p1') === 'H1.P1' && normSize('H2 P4') === 'H2.P4' && normSize('H1.P3') === 'H1.P3' && sizeIdx('H1.P1') > sizeIdx('XXXL') && sizeIdx('H2.P4') < sizeIdx('TU')]);
-    const n0 = S.nomen.length; ajouterSousVetementsSV(); const ajout = S.nomen.length - n0;
-    out.push(['49 tailles SV ajoutées (7 coloris × 7 tailles)', ajout === 49 && S.nomen.some(x => x.model === 'SV-CR-FEMME' && x.lib === 'Sous-vêtement femme col rond rose poudré' && x.size === 'H2.P4')]);
-    S.nomen = S.nomen.filter(x => !(x.lib === 'Sous-vêtement homme col V gris' && x.size === 'H1.P1'));
-    ajouterSousVetementsSV();
-    out.push(['ajout fait une seule fois (une taille retirée ne revient pas)', !S.nomen.some(x => x.lib === 'Sous-vêtement homme col V gris' && x.size === 'H1.P1')]);
-    const d = desiredDocs(); applyDocs(d);
-    out.push(['ajout mémorisé dans la sauvegarde', !!(S.ajouts && S.ajouts.sv20261106) && S.nomen.some(x => x.lib === 'Sous-vêtement homme col V noir' && x.size === 'H1.P1')]);
-    out.push(['modèles SV proposés dans les exports', libList().some(x => x.lib === 'Sous-vêtement homme col V sable' && x.sizes.indexOf('H2.P3') >= 0)]);
+    // sous-vêtements SV retirés (plus utilisés), sauf une référence déjà commandée
+    SV_MODELES.forEach(m => m[1].forEach(lib => SV_TAILLES.forEach(t => S.nomen.push({model:m[0], lib, size:t, t1:'', t2:'', cc:0, ca:0, ca2:0, colle:0}))));
+    S.lines.push({id:'LSV', lot:'PKSV', year:2026, client:'NEOLYS', model:'SV-CV-FEMME', lib:'Sous-vêtement femme col V noir', size:'H1.P1', qty:5, cc:0});
+    S.ajouts = {sv20261106:'2026-11-06'}; S.bom = S.bom || {}; S.bom['Sous-vêtement homme col V gris'] = [['TIS-CARESSE-NOIR', '*', 1, 'cp']];
+    const retire = retirerSousVetementsSV();
+    out.push(['sous-vêtements SV retirés du catalogue', retire && !S.nomen.some(x => x.lib === 'Sous-vêtement homme col V gris') && !S.bom['Sous-vêtement homme col V gris'] && !libList().some(x => x.lib === 'Sous-vêtement homme col V sable')]);
+    out.push(['référence SV déjà commandée gardée', S.nomen.some(x => x.lib === 'Sous-vêtement femme col V noir')]);
+    out.push(['retrait fait une seule fois et mémorisé', retirerSousVetementsSV() === false && (() => { const d = desiredDocs(); applyDocs(d); return !!(S.ajouts && S.ajouts.svRetire20261107); })()]);
     return out;
   });
   r.push(['aucune erreur', err.length === 0]);
