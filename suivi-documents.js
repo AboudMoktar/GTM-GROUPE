@@ -56,13 +56,15 @@ function groupes(lot){
         grilles:function(){ return X().etatCommandeGrid ? [{name:"Etat " + lot, grid:X().etatCommandeGrid(null, lot)}] : []; }}
     ]});
     out.push({t:"🧵 Fiches de consommation", docs:[
-      {t:"Fiche de coupe (PROGES)", s:"Quantités à couper et consommation de tissu", o:"landscape", nom:nomFichier("Consommation_PROGES_" + lot + "_" + jour()),
-        grilles:function(){ return [{name:"PROGES", grid:ficheGrid(lot, "*", "c", true)}]; }},
+/* une fiche de coupe par centre de coupe présent dans la commande (PROGES, MMGT, TEK-TREND) */
+    ].concat((typeof ordreParCentre === "function" ? ordreParCentre(lot) : [["PROGES", 1]]).map(function(x){ var c = x[0];
+      return {t:"Fiche de coupe (" + c + ")", s:"Quantités à couper et consommation de tissu" + (c === "TEK-TREND" ? " — coupe interne" : ""), o:"landscape", nom:nomFichier("Consommation_" + c + "_" + lot + "_" + jour()),
+        grilles:function(){ return [{name:c, grid:ficheGrid(lot, "*", "c", true, c)}]; }}; })).concat([
       {t:"Fiche d'assemblage (GADH)", s:"Quantités et tissus pour l'assemblage", o:"landscape", nom:nomFichier("Consommation_GADH_" + lot + "_" + jour()),
         grilles:function(){ return [{name:"GADH", grid:ficheGrid(lot, "*", "a", true)}]; }},
       {t:"Consommation de toute la commande", s:"Tissus, colles et accessoires : théorique et réel", o:"landscape", nom:nomFichier("Consommation_COMMANDE_" + lot + "_" + jour()),
         grilles:function(){ return [{name:"COMMANDE", grid:ficheCommandeGrid(lot)}]; }}
-    ]});
+    ])});
   } else {
     out.push({t:"🧵 Fiche", docs:[
       {t:"Fiche d'assemblage (GADH)", s:"Quantités et tissus pour l'assemblage", o:"landscape", nom:nomFichier("Consommation_GADH_" + lot + "_" + jour()),
