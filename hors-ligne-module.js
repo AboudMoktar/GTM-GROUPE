@@ -180,7 +180,7 @@ function hlMemoriserTexte(cle, texte, valeur){
 // (mgt/mgt_crm_clients/<ID> = "__gtm_json_v1:{…}") : seule la fiche modifiée circule.
 // Le reste de l'application et le CRM voient toujours un tableau, comme avant.
 // L'ancien format (un seul bloc) reste lu ; il est converti à la première écriture.
-const HL_PAR_FICHE = {mgt_crm_clients:'ID', mgt_crm_history:'id'};
+const HL_PAR_FICHE = {mgt_crm_clients:'ID', mgt_crm_history:'id', mgt_crm_listing:'id'};   // + Listing (catalogue d'articles)
 const hlFichesServeur = {};    // cle -> {cleFirebase: texte} tel que reçu du serveur ; null = ancien format
 const hlFichesLocales = {};    // cle -> {cleFirebase: texte} de la dernière valeur en mémoire sur cet appareil
 const hlFichesCache = {};      // cle -> {map:{k:{texte,valeur}}, tableau, sig}

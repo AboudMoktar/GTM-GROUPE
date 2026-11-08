@@ -55,13 +55,14 @@
     'mgt.crm_clients':      {societe:'mgt', module:'MGT', libelle:'Clients : fiches, offres, planning, factures et lettrage (CRM)', dossier:'mgt', cles:['mgt_crm_clients']},
     'mgt.crm_suivi':        {societe:'mgt', module:'MGT', libelle:'Historique des actions et étiquettes (CRM)', dossier:'mgt', cles:['mgt_crm_history', 'mgt_crm_history_tags', 'mgt_crm_tags']},
     'mgt.crm_reglages':     {societe:'mgt', module:'MGT', libelle:'Réglages et droits par profil du CRM', dossier:'mgt', cles:['mgt_crm_settings', 'mgt_crm_droits']},
+    'mgt.listing':          {societe:'mgt', module:'MGT', libelle:'Listing : catalogue d\'articles et prix (CRM)', dossier:'mgt', cles:['mgt_crm_listing', 'mgt_crm_listing_meta']},
     'mgt.tout':             {societe:'mgt', module:'MGT', libelle:'Toutes les autres données MGT (SAV, parc, tâches internes…)', dossier:'mgt', tout:true},
     'mgt.fichiers':         {societe:'mgt', module:'MGT', libelle:'Fichiers joints (PDF, photos)', dossier:'fichiers', tout:true}
   };
 
   // Clés dont la suppression entière est réservée aux rôles « complets » (*) :
   // un rôle limité peut modifier ces collections, jamais les effacer d'un coup.
-  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index', 'mgt_crm_clients', 'mgt_crm_history', 'gadh_achat_fournisseurs', 'gadh_achat_articles', 'gadh_achat_bons', 'gadh_achat_mouvements', 'gadh_vente_devis', 'gadh_vente_commandes', 'gadh_vente_livraisons'];
+  const COLLECTIONS_PROTEGEES = ['employees', 'factures', 'fact_clients', 'gadh_employees', 'gadh_factures', 'gadh_fact_clients', 'cmd_commandes', 'suivi_index', 'mgt_crm_clients', 'mgt_crm_history', 'mgt_crm_listing', 'gadh_achat_fournisseurs', 'gadh_achat_articles', 'gadh_achat_bons', 'gadh_achat_mouvements', 'gadh_vente_devis', 'gadh_vente_commandes', 'gadh_vente_livraisons'];
 
   const TOUT = 'lcms';
   // --- Rôles (organisation validée le 31/10/2026 ; Secrétaire MGT le 01/11/2026) ---
@@ -124,7 +125,7 @@
       aide:'Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026)',
       // Dans le CRM : Offres, Facturation et Planning complets ; Clients en consultation (voir mgt-crm-app.html, profil secretaire_mgt).
       interface:{mgt:'*'},
-      droits:{'mgt.crm_clients':'lcm', 'mgt.crm_suivi':'lcm', 'mgt.crm_reglages':'l', 'mgt.fichiers':TOUT}
+      droits:{'mgt.crm_clients':'lcm', 'mgt.crm_suivi':'lcm', 'mgt.crm_reglages':'l', 'mgt.listing':'l', 'mgt.fichiers':TOUT}
     },
     direction: {
       label:'Direction (lecture seule)', role:'viewer', groupe:true, societes:{tek:true, gadh:true, mgt:true},

@@ -9985,6 +9985,931 @@ setTimeout(function(){scruter();repeter();},9000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(function(){scruter();repeter();},1500);});
 })();
 </script>
+<style id="mgt-listing-style">
+/* ===== Listing (repris du CRM de l'associé, V4.6.8B) ===== */
+#listingModule{--lsBrandMorgan:#ef3f08;--lsBrandMacpi:#2f7fd1;--lsBrandAutres:#14a38b;--lsCard:var(--panel,#14181b);--lsInk:var(--ink,#e8edf3);--lsMuted:#aab3bf;--lsLine:var(--line,#242b33);--lsSoft:var(--soft,#20262d);--lsWarnBg:#3a2a0c;--lsWarnInk:#ffd28a;--lsOkBg:#0f3324;--lsOkInk:#8fe3b8;--lsBadBg:#3d1820;--lsBadInk:#ffb3bf;
+  padding:18px 0 40px;color:var(--lsInk);max-width:100%;overflow-x:hidden}
+html[data-mgt-theme="light"] #listingModule{--lsCard:#fff;--lsInk:#18212f;--lsMuted:#4f5b6b;--lsLine:#d7dde5;--lsSoft:#f1f4f7;--lsWarnBg:#fff3d6;--lsWarnInk:#7a4b00;--lsOkBg:#ddf5e8;--lsOkInk:#0d5c39;--lsBadBg:#ffe4e8;--lsBadInk:#8b1f30;--lsBrandMacpi:#1f66b3;--lsBrandAutres:#0b7d6b}
+#listingModule[hidden]{display:none!important}
+#listingModule *{box-sizing:border-box}
+#listingModule svg.lsI{width:22px;height:22px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#listingModule .lsHead{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+#listingModule .lsEyebrow{color:var(--accent,#ef3f08);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+#listingModule h2{margin:4px 0 2px;font-size:24px;color:var(--lsInk)}
+#listingModule .lsSub{color:var(--lsMuted);font-size:14px}
+#listingModule .lsActions{display:flex;flex-wrap:wrap;gap:8px}
+#listingModule .lsBtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--lsLine);background:var(--lsSoft);color:var(--lsInk);font:700 14px/1.2 inherit;font-family:inherit;cursor:pointer}
+#listingModule .lsBtn:hover{border-color:var(--accent,#ef3f08)}
+#listingModule .lsBtn:focus-visible,#listingModule .lsCardBtn:focus-visible,#listingModule input:focus-visible,#listingModule select:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+#listingModule .lsBtn.primary{background:var(--accent,#ef3f08);border-color:var(--accent,#ef3f08);color:#fff}
+#listingModule .lsBtn.danger{background:var(--lsBadBg);color:var(--lsBadInk);border-color:transparent}
+#listingModule .lsBtn svg.lsI{width:18px;height:18px}
+#listingModule .lsCrumb{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 14px;font-size:14px;color:var(--lsMuted)}
+#listingModule .lsCrumb button{background:none;border:0;color:var(--lsInk);font:700 14px inherit;font-family:inherit;cursor:pointer;padding:8px 4px;min-height:40px;text-decoration:underline;text-underline-offset:3px}
+#listingModule .lsCrumb strong{color:var(--lsInk)}
+#listingModule .lsSearchBar{display:flex;gap:8px;margin:0 0 18px;align-items:center;background:var(--lsCard);border:1px solid var(--lsLine);border-radius:12px;padding:6px 6px 6px 14px}
+#listingModule .lsSearchBar svg{color:var(--lsMuted)}
+#listingModule .lsSearchBar input{flex:1;min-width:0;border:0;background:transparent;color:var(--lsInk);font-size:16px;min-height:42px;outline:none}
+#listingModule .lsGrid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+#listingModule .lsCardBtn{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;width:100%;min-height:150px;padding:20px;border-radius:16px;border:1px solid var(--lsLine);background:var(--lsCard);color:var(--lsInk);cursor:pointer;font-family:inherit;box-shadow:var(--shadow,0 8px 20px rgba(0,0,0,.15));transition:transform .12s,border-color .12s}
+#listingModule .lsCardBtn:hover{transform:translateY(-2px);border-color:var(--lsC,var(--accent))}
+#listingModule .lsCardBtn::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 6px 6px 0;background:var(--lsC,var(--accent))}
+#listingModule .lsCardIcon{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;color:var(--lsC);background:color-mix(in srgb,var(--lsC) 16%,transparent);border:1px solid color-mix(in srgb,var(--lsC) 40%,transparent)}
+#listingModule .lsCardIcon svg.lsI{width:30px;height:30px}
+#listingModule .lsCardTitle{font-size:20px;font-weight:800;letter-spacing:.02em}
+#listingModule .lsCardMeta{font-size:14px;color:var(--lsMuted)}
+#listingModule .lsCardCount{font-size:28px;font-weight:800;color:var(--lsInk)}
+#listingModule .lsChips{display:flex;flex-wrap:wrap;gap:6px}
+#listingModule .lsChip{font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--lsSoft);color:var(--lsInk);border:1px solid var(--lsLine)}
+#listingModule .lsCardBtn.empty{opacity:.78;box-shadow:none}
+#listingModule .lsCardBtn.empty .lsCardCount{color:var(--lsMuted);font-size:16px}
+#listingModule .b-MORGAN{--lsC:var(--lsBrandMorgan)} #listingModule .b-MACPI{--lsC:var(--lsBrandMacpi)} #listingModule .b-AUTRES{--lsC:var(--lsBrandAutres)}
+#listingModule .lsFilters{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+#listingModule .lsField{display:flex;flex-direction:column;gap:4px;min-width:0}
+#listingModule .lsField label{font-size:12px;font-weight:700;color:var(--lsMuted)}
+#listingModule .lsField input,#listingModule .lsField select,#listingModule .lsField textarea{width:100%;min-height:44px;padding:8px 10px;border-radius:10px;border:1px solid var(--lsLine);background:var(--lsCard);color:var(--lsInk);font-size:15px;font-family:inherit}
+#listingModule .lsCount{font-size:14px;color:var(--lsMuted);margin:6px 0 10px}
+#listingModule .lsTableWrap{border:1px solid var(--lsLine);border-radius:12px;overflow:auto;background:var(--lsCard)}
+#listingModule table.lsTable{width:100%;border-collapse:collapse;font-size:14px}
+#listingModule .lsTable th{position:sticky;top:0;background:var(--lsSoft);color:var(--lsInk);text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px;border-bottom:1px solid var(--lsLine);white-space:nowrap}
+#listingModule .lsTable td{padding:9px 10px;border-bottom:1px solid var(--lsLine);vertical-align:middle;color:var(--lsInk)}
+#listingModule .lsTable tr:hover td{background:color-mix(in srgb,var(--lsSoft) 60%,transparent)}
+#listingModule .lsTable td.num,#listingModule .lsTable th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#listingModule .lsRef{font-weight:800;font-family:ui-monospace,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+#listingModule .lsTable td.c-ref{min-width:120px;max-width:190px}
+#listingModule .lsTable td.c-des{min-width:220px}
+#listingModule .lsTable td.c-act{white-space:nowrap;width:1%}
+#listingModule .lsFlags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+#listingModule .lsCardBody{display:flex;flex-direction:column;gap:6px;min-width:0}
+#listingModule .lsDesig{font-weight:600}
+#listingModule .lsSmall{font-size:12px;color:var(--lsMuted)}
+#listingModule .lsNa{color:var(--lsMuted);font-style:italic}
+#listingModule .lsFlag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:3px 7px;border-radius:999px;background:var(--lsWarnBg);color:var(--lsWarnInk);white-space:nowrap}
+#listingModule .lsFlag.bad{background:var(--lsBadBg);color:var(--lsBadInk)}
+#listingModule .lsFlag.ok{background:var(--lsOkBg);color:var(--lsOkInk)}
+#listingModule .lsFlag svg.lsI{width:13px;height:13px}
+#listingModule .lsRowActions{display:flex;gap:6px;justify-content:flex-end}
+#listingModule .lsIconBtn{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;border:1px solid var(--lsLine);background:var(--lsSoft);color:var(--lsInk);cursor:pointer}
+#listingModule .lsIconBtn:hover{border-color:var(--accent,#ef3f08)}
+#listingModule .lsIconBtn.danger{color:var(--lsBadInk)}
+#listingModule .lsIconBtn svg.lsI{width:18px;height:18px}
+#listingModule .lsPager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+#listingModule .lsEmpty{padding:28px;text-align:center;color:var(--lsMuted);border:1px dashed var(--lsLine);border-radius:12px}
+#listingModule .lsNotice{padding:10px 14px;border-radius:10px;background:var(--lsWarnBg);color:var(--lsWarnInk);font-size:14px;margin-bottom:14px}
+/* fenetre article */
+#listingDialog{position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;background:rgba(5,8,12,.62);overflow:auto}
+#listingDialog[hidden]{display:none!important}
+#listingDialog .lsBox{width:min(980px,100%);background:var(--lsCard);color:var(--lsInk);border:1px solid var(--lsLine);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.4);padding:18px}
+#listingDialog .lsBoxHead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+#listingDialog h3{margin:0;font-size:20px;color:var(--lsInk)}
+#listingDialog .lsKv{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0 14px}
+#listingDialog .lsKv div{background:var(--lsSoft);border:1px solid var(--lsLine);border-radius:10px;padding:8px 10px;min-width:0}
+#listingDialog .lsKv span{display:block;font-size:11px;font-weight:800;color:var(--lsMuted);text-transform:uppercase;letter-spacing:.04em}
+#listingDialog .lsKv b{display:block;font-size:15px;word-break:break-word}
+#listingDialog h4{margin:16px 0 8px;font-size:15px}
+#listingDialog .lsForm{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+#listingDialog .lsForm .wide{grid-column:1/-1}
+#listingDialog .lsPropose{border:1px dashed var(--lsLine);border-radius:12px;padding:10px 12px;margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+#listingDialog .lsErr{color:var(--lsBadInk);background:var(--lsBadBg);padding:8px 12px;border-radius:10px;margin-top:10px}
+#listingDialog .lsFoot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
+#listingDialog .lsAnoList{display:flex;flex-direction:column;gap:6px}
+#listingDialog .lsAno{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;background:var(--lsSoft);border:1px solid var(--lsLine);font-size:14px}
+@media (max-width:900px){
+  #listingModule .lsFilters{grid-template-columns:1fr 1fr}
+  #listingModule .lsFilters .lsField:first-child{grid-column:1/-1}
+}
+@media (max-width:760px){
+  #listingModule{padding:10px 0 96px}
+  #listingModule h2{font-size:21px}
+  #listingModule .lsGrid{grid-template-columns:1fr;gap:12px}
+  #listingModule .lsCardBtn{min-height:0;flex-direction:row;align-items:center;padding:16px 16px 16px 20px;gap:14px}
+  #listingModule .lsCardCount{font-size:22px}
+  #listingModule .lsActions{width:100%}
+  #listingModule .lsActions .lsBtn{flex:1 1 calc(50% - 8px);justify-content:center}
+  #listingModule .lsTableWrap{border:0;background:transparent;overflow:visible}
+  #listingModule table.lsTable,#listingModule .lsTable tbody{display:block}
+  #listingModule .lsTable thead{display:none}
+  #listingModule .lsTable tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;padding:12px;margin-bottom:10px;border:1px solid var(--lsLine);border-radius:12px;background:var(--lsCard)}
+  #listingModule .lsTable td{display:block;border:0;padding:2px 0;min-width:0}
+  #listingModule .lsTable td[data-l]::before{content:attr(data-l);display:block;font-size:11px;font-weight:800;color:var(--lsMuted);text-transform:uppercase}
+  #listingModule .lsTable td.num{text-align:left}
+  #listingModule .lsTable td.c-ref,#listingModule .lsTable td.c-des,#listingModule .lsTable td.c-act{grid-column:1/-1;max-width:none;min-width:0;width:auto}
+  #listingModule .lsRowActions{justify-content:flex-start}
+  #listingModule .lsIconBtn{width:48px;height:48px}
+  #listingDialog{padding:0}
+  #listingDialog .lsBox{border-radius:0;min-height:100%;padding:14px 14px 90px}
+  #listingDialog .lsFoot{position:sticky;bottom:0;background:var(--lsCard);padding:10px 0;border-top:1px solid var(--lsLine)}
+  #listingDialog .lsFoot .lsBtn{flex:1 1 auto;justify-content:center}
+}
+/* Protection contre les regles globales des boutons (theme clair : color:#fff!important ; mobile : width:100%) */
+html[data-mgt-theme] #listingModule .lsCardBtn,html #listingModule .lsCardBtn{color:var(--lsInk)!important;background:var(--lsCard)!important;width:100%}
+html[data-mgt-theme] #listingModule .lsBtn,html #listingModule .lsBtn{color:var(--lsInk)!important;background:var(--lsSoft)!important;width:auto}
+html[data-mgt-theme] #listingModule .lsBtn.primary,html #listingModule .lsBtn.primary{color:#fff!important;background:var(--accentDark,#c93104)!important;border-color:var(--accentDark,#c93104)}
+html[data-mgt-theme] #listingModule .lsBtn.danger,html #listingModule .lsBtn.danger{color:var(--lsBadInk)!important;background:var(--lsBadBg)!important}
+html[data-mgt-theme] #listingModule .lsIconBtn,html #listingModule .lsIconBtn{color:var(--lsInk)!important;background:var(--lsSoft)!important;width:42px;padding:0}
+html[data-mgt-theme] #listingModule .lsIconBtn.danger,html #listingModule .lsIconBtn.danger{color:var(--lsBadInk)!important}
+html[data-mgt-theme] #listingModule .lsCrumb button:not(.lsIconBtn),html #listingModule .lsCrumb button:not(.lsIconBtn){color:var(--lsInk)!important;background:transparent!important;width:auto;box-shadow:none}
+#listingModule .lsIconBtn{flex:0 0 auto;min-width:42px}
+#listingModule .lsCrumb .lsIconBtn{margin-right:6px}
+#listingModule .lsSearchBar button{flex:0 0 auto}
+#listingModule .lsBtn:disabled{opacity:.5;cursor:not-allowed}
+html[data-mgt-theme="light"] #listingModule .lsCardBtn{box-shadow:0 6px 18px rgba(16,24,40,.08)}
+@media (max-width:760px){html[data-mgt-theme] #listingModule .lsIconBtn,html #listingModule .lsIconBtn{width:48px}
+  #listingModule .lsSearchBar .lsBtn{padding:9px 12px}}
+/* hauteur fixe globale des boutons (select,button{height:42px}) et largeur minimale globale des tables */
+#listingModule .lsCardBtn,#listingModule .lsBtn{height:auto!important}
+#listingModule table.lsTable{min-width:0!important;table-layout:auto}
+#listingModule .lsTable td,#listingModule .lsTable th{overflow-wrap:anywhere}
+#listingModule .lsTable th{white-space:normal}
+#listingModule .lsTable td.num,#listingModule .lsTable td.c-act{overflow-wrap:normal}
+@media (max-width:760px){
+  #listingModule .lsTable tr{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #listingModule .lsTable td{max-width:100%}
+}
+@media (max-width:760px){
+  #listingDialog .lsKv{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #listingModule .lsTable td{background:transparent!important}
+}
+
+
+.lsVide{margin:0 0 12px}
+</style>
+<script id="mgt-listing-donnees">
+/* =====================================================================
+   LISTING (catalogue d'articles) : DONNÉES — repris du CRM de l'associé (V4.6.8A), adapté à GTM Groupe
+   - Une seule base pour tous les articles (Morgan, Macpi, Autres), enregistrée dans Firebase avec
+     le reste de MGT : clé mgt_crm_listing, article par article (seul l'article modifié circule),
+     partagée entre tous les appareils. Réglages (import, règles de prix) : clé mgt_crm_listing_meta.
+   - Forme compacte : l'historique des prix et le journal ne sont enregistrés qu'à partir d'un
+     changement ; le prix importé reste visible comme première ligne de l'historique.
+   - Remplissage : bouton « Importer » (fichier HTML du CRM de l'associé, ou sauvegarde du Listing),
+     fusion article par article, jamais d'écrasement d'un article plus récent.
+   - Historique des prix daté : un changement de prix ajoute une ligne, les anciennes ne changent jamais.
+   - Toutes les lectures et écritures passent par dm.listing* (même interface que chez l'associé).
+   ===================================================================== */
+(function(){
+'use strict';
+if(typeof dm==='undefined'){console.error('[LISTING] DataManager indisponible');return;}
+var CLE='mgt_crm_listing', CLE_META='mgt_crm_listing_meta', LOCAL='mgtcrm_local_listing', LOCAL_META='mgtcrm_local_listing_meta';
+var GROUPES=['MORGAN','MACPI','AUTRES'];
+var CATEGORIES=['MACHINES','PIECES','LOGICIELS','SERVICES'];
+var FAMILLE_DEFAUT={MACHINES:'MACHINE',PIECES:'PIÈCES DE RECHANGE',LOGICIELS:'LOGICIEL',SERVICES:'SERVICE'};
+var PRICE_FIELDS=['prixCatalogue','remise','prixAchat','prixVente','devise'];
+var TEXT_FIELDS=['groupe','marque','categorie','famille','sousFamille','reference','designation','notes'];
+var cache=null;
+
+function nowIso(){return new Date().toISOString();}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function who(){try{return (typeof syncUser==='function'&&syncUser())||'';}catch(e){return '';}}
+function rid(p){return p+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
+function num(v){if(v===''||v===null||v===undefined)return null;var n=typeof v==='number'?v:Number(String(v).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:null;}
+function clone(o){return o==null?o:JSON.parse(JSON.stringify(o));}
+function str(v){return v==null?'':String(v).trim();}
+
+/* ---------- stockage : GTM Groupe (Firebase), sinon cet appareil ---------- */
+function hote(){try{var h=window.parent;return(h&&h!==window&&typeof h.getJSON==='function'&&typeof h.setJSON==='function')?h:null;}catch(e){return null;}}
+function lireBrut(){var h=hote(),v;
+  if(h){try{v=h.getJSON(CLE,[]);}catch(e){v=[];}}
+  else{try{v=JSON.parse(localStorage.getItem(LOCAL)||'[]');}catch(e){v=[];}}
+  return Array.isArray(v)?v.filter(function(a){return a&&a.id;}):[];}
+function tous(){ if(!cache) cache=lireBrut(); return cache; }
+function invalidate(){cache=null;try{document.dispatchEvent(new CustomEvent('mgt-listing-changed'));}catch(e){}}
+async function ecrire(liste){
+  var h=hote();
+  if(h){
+    if(typeof attendreSyncPrete==='function'){var pret=await attendreSyncPrete(h,'crm_listing',25000);if(!pret)throw new Error('Synchronisation pas encore prête : réessayez dans quelques secondes.');}
+    var ok;try{ok=h.setJSON(CLE,liste);}catch(e){ok=false;}
+    if(ok===false) throw new Error('Enregistrement refusé (données pas encore chargées ou droits insuffisants).');
+  } else { try{localStorage.setItem(LOCAL,JSON.stringify(liste));}catch(e){throw new Error('Enregistrement impossible sur cet appareil.');} }
+  cache=liste; try{document.dispatchEvent(new CustomEvent('mgt-listing-changed'));}catch(e){}
+}
+function lireMeta(){var h=hote(),v=null;
+  if(h){try{v=h.getJSON(CLE_META,null);}catch(e){v=null;}}
+  else{try{v=JSON.parse(localStorage.getItem(LOCAL_META)||'null');}catch(e){v=null;}}
+  return v&&typeof v==='object'?v:{};}
+async function ecrireMeta(m){var h=hote();
+  if(h){if(typeof attendreSyncPrete==='function')await attendreSyncPrete(h,'crm_listing_meta',25000);var ok;try{ok=h.setJSON(CLE_META,m);}catch(e){ok=false;}if(ok===false)throw new Error('Enregistrement refusé (droits insuffisants).');}
+  else localStorage.setItem(LOCAL_META,JSON.stringify(m));}
+async function settingGet(k){return clone(lireMeta()[k]);}
+async function settingSet(k,v){var m=clone(lireMeta())||{};m[k]=v;await ecrireMeta(m);}
+/* autre appareil : données reçues de Firebase */
+window.addEventListener('message',function(ev){if(ev&&ev.data&&ev.data.type==='gtm-mgt-data-updated'){cache=null;}});
+
+/* ---------- forme complète d'un article (lecture) / forme compacte (enregistrement) ---------- */
+function complet(s){
+  var a=Object.assign({notes:'',devise:'EUR',dateMajPrecision:'jour',famille:'',sousFamille:''},clone(s));
+  ['prixCatalogue','remise','prixAchat','prixVente'].forEach(function(f){if(a[f]===undefined)a[f]=null;});
+  a.anomalies=(a.anomalies||[]).map(function(x){return Object.assign({traitee:false},x);});
+  if(!a.excel&&a.xl) a.excel={fichier:'Listing_Machines_et_Pieces.xlsx',ligne:a.xl,regleCalcul:a.xlRegle||null,remiseFormule:a.xlRemise==null?null:a.xlRemise};
+  if(!Array.isArray(a.historiquePrix)||!a.historiquePrix.length){
+    a.historiquePrix=[{id:'px_init_'+a.id,dateChangement:a._created_at||a.dateMaj||'',dateEffet:a.dateMaj||'',dateEffetPrecision:a.dateMajPrecision,prixCatalogue:a.prixCatalogue,remise:a.remise,prixAchat:a.prixAchat,prixVente:a.prixVente,devise:a.devise,source:a.xl?'IMPORT_EXCEL':'MANUEL',user:a.xl?'Import du Listing':(a._updated_by||''),note:a.xl?'Import initial — ligne Excel '+a.xl:'Création',implicite:true}];
+  }
+  if(!Array.isArray(a.journal)) a.journal=[];
+  if(!a.journal.length&&a.xl) a.journal=[{ts:a._created_at||'',user:'Import du Listing',action:'IMPORT',detail:'Importé depuis le Listing Excel (ligne '+a.xl+')'}];
+  return a;
+}
+function compact(a){
+  var o={};
+  ['id','groupe','marque','categorie','famille','sousFamille','reference','designation','notes','prixCatalogue','remise','prixAchat','prixVente','devise','dateMaj','dateMajPrecision','xl','xlRegle','xlRemise','_created_at','_updated_at','_updated_by','_origin','_deleted_at','_deleted_by'].forEach(function(k){var v=a[k];if(v===undefined||v===null||v==='')return;if(k==='devise'&&v==='EUR')return;if(k==='dateMajPrecision'&&v==='jour')return;o[k]=v;});
+  if(a.excel&&!o.xl&&a.excel.ligne){o.xl=a.excel.ligne;if(a.excel.regleCalcul)o.xlRegle=a.excel.regleCalcul;if(a.excel.remiseFormule!=null)o.xlRemise=a.excel.remiseFormule;}
+  if(Array.isArray(a.anomalies)&&a.anomalies.length) o.anomalies=a.anomalies.map(function(x){var y={code:x.code,detail:x.detail};if(x.traitee){y.traitee=true;y.traiteeLe=x.traiteeLe||null;y.traiteePar=x.traiteePar||null;}return y;});
+  var h=(a.historiquePrix||[]).filter(function(e){return e&&!e.implicite;});
+  if(h.length){ /* premier changement : la ligne implicite (prix importé) devient réelle */
+    var imp=(a.historiquePrix||[]).filter(function(e){return e&&e.implicite;})[0];
+    if(imp){imp=Object.assign({},imp);delete imp.implicite;h=[imp].concat(h);}
+    o.historiquePrix=h;}
+  var j=(a.journal||[]).filter(function(e){return e&&e.action!=='IMPORT';});
+  if(j.length) o.journal=j;
+  return o;
+}
+function getArtBrut(id){var l=tous();for(var i=0;i<l.length;i++)if(l[i].id===String(id))return l[i];return null;}
+async function getArt(id){var s=getArtBrut(id);return s?complet(s):null;}
+async function putArt(a){var c=compact(a),l=tous().slice(),k=l.findIndex(function(x){return x.id===c.id;});if(k>=0)l[k]=c;else l.push(c);await ecrire(l);}
+async function delArt(id){await ecrire(tous().filter(function(x){return x.id!==String(id);}));}
+
+/* ---------- import : fichier du CRM de l'associé (Listing intégré) ou sauvegarde du Listing ---------- */
+function depuisLigneExcel(cols,row,ts){
+  var r={};cols.forEach(function(c,i){r[c]=row[i];});
+  var a={id:r.id,groupe:r.groupe,marque:r.marque,categorie:r.categorie,famille:r.famille,sousFamille:r.sousFamille,reference:r.reference,designation:r.designation,
+    prixCatalogue:r.prixCatalogue,remise:r.remise,prixAchat:r.prixAchat,prixVente:r.prixVente,dateMaj:r.dateMaj,dateMajPrecision:r.dateMajPrecision,
+    xl:r.ligneExcel,xlRegle:r.regleCalculExcel||null,xlRemise:r.remiseFormuleExcel==null?null:r.remiseFormuleExcel,
+    anomalies:(r.anomalies||[]).map(function(x){return {code:x[0],detail:x[1]};}),_created_at:ts,_updated_at:ts,_updated_by:'Import du Listing',_origin:'IMPORT_EXCEL'};
+  return compact(a);
+}
+/* texte d'un fichier → {articles (forme compacte), source} */
+dm.listingLireFichier=function(texte){
+  var t=String(texte||''), seed=null;
+  var m=/<script[^>]*id=["']mgt-v468-listing-seed["'][^>]*>([\s\S]*?)<\/script>/i.exec(t);
+  if(m){try{seed=JSON.parse(m[1]);}catch(e){throw new Error('Listing illisible dans le fichier du CRM.');}}
+  else { try{var o=JSON.parse(t);if(o&&o.format==='mgt-listing-seed')seed=o;else if(o&&o.type==='listing'&&Array.isArray(o.articles))return {articles:o.articles.filter(function(a){return a&&a.id;}).map(function(a){return compact(complet(a));}),source:'sauvegarde du Listing'+(o.exportedAt?' du '+String(o.exportedAt).slice(0,10):''),regles:Array.isArray(o.rules)?o.rules:null};}catch(e){} }
+  if(!seed||!Array.isArray(seed.rows)||!Array.isArray(seed.cols)) throw new Error('Fichier non reconnu : choisissez le fichier HTML du CRM (V4.6.8 ou plus récent) ou une sauvegarde du Listing (.json).');
+  var ts=nowIso(), arts=seed.rows.map(function(r){return depuisLigneExcel(seed.cols,r,ts);});
+  var ids={};arts.forEach(function(a){ids[a.id]=1;});
+  if(Object.keys(ids).length!==arts.length) throw new Error('Identifiants en double dans le fichier.');
+  return {articles:arts,source:(seed.meta&&seed.meta.fichier)||'Listing Excel',info:seed.meta||null};
+};
+/* fusion article par article : ajout des nouveaux, remplacement seulement si le fichier est plus récent */
+dm.listingFusionner=async function(lu){
+  var cur=tous().slice(), byId={}, add=0, upd=0, kept=0;
+  cur.forEach(function(a,i){byId[a.id]=i;});
+  lu.articles.forEach(function(a){
+    if(!(a.id in byId)){cur.push(a);byId[a.id]=cur.length-1;add++;return;}
+    var c=cur[byId[a.id]];
+    if(String(a._updated_at||'')>String(c._updated_at||'')&&a._origin!=='IMPORT_EXCEL'){
+      var cc=complet(c),aa=complet(a),seen={},h=[];
+      cc.historiquePrix.concat(aa.historiquePrix).forEach(function(e){if(e&&!e.implicite&&!seen[e.id]){seen[e.id]=1;h.push(e);}});
+      h.sort(function(x,y){return String(x.dateChangement).localeCompare(String(y.dateChangement));});
+      var sj={},j=[];cc.journal.concat(aa.journal).forEach(function(e){var k=e.ts+'|'+e.action+'|'+e.detail;if(!sj[k]){sj[k]=1;j.push(e);}});
+      cur[byId[a.id]]=compact(Object.assign({},aa,{historiquePrix:h.length?h:aa.historiquePrix,journal:j}));upd++;
+    } else kept++;
+  });
+  if(add||upd) await ecrire(cur);
+  var meta=clone(lireMeta())||{};
+  if(!meta.seed&&lu.info) meta.seed={date:nowIso(),nb:lu.articles.length,fichier:lu.source,user:who()};
+  meta.dernierImport={date:nowIso(),source:lu.source,ajoutes:add,misAJour:upd,conserves:kept,user:who()};
+  if(lu.regles&&!meta.price_rules) meta.price_rules=lu.regles;
+  await ecrireMeta(meta);
+  invalidate();
+  return {ajoutes:add,misAJour:upd,conserves:kept};
+};
+dm.listingSeedIfNeeded=async function(){return {status:tous().length?'deja_importe':'vide'};};
+dm.listingSeedInfo=async function(){var m=lireMeta();return m.seed||null;};
+
+/* ---------- lecture ---------- */
+dm.listingGetAll=async function(opts){
+  opts=opts||{};
+  var l=tous().filter(function(a){return opts.deleted?!!a._deleted_at:!a._deleted_at;});
+  return opts.raw?l.map(function(a){return Object.assign({notes:'',devise:'EUR',dateMajPrecision:'jour'},a);}):l.map(complet);
+};
+dm.listingGetArticle=async function(id){return getArt(id);};
+dm.listingFindByReference=async function(ref,exceptId){
+  var k=str(ref).toLowerCase(); if(!k) return [];
+  return tous().filter(function(a){return String(a.reference||'').trim().toLowerCase()===k&&a.id!==exceptId&&!a._deleted_at;}).map(complet);
+};
+/* recherche texte : référence, désignation, sous-famille, marque, famille */
+var nrm=function(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();};
+dm.listingSearch=async function(q,filters){
+  filters=filters||{};
+  var terms=nrm(q).split(/\s+/).filter(Boolean);
+  return tous().filter(function(a){
+    if(a._deleted_at) return false;
+    if(filters.groupe&&a.groupe!==filters.groupe) return false;
+    if(filters.categorie&&a.categorie!==filters.categorie) return false;
+    if(!terms.length) return true;
+    var hay=nrm([a.reference,a.designation,a.sousFamille,a.marque,a.famille,a.id].join(' | '));
+    return terms.every(function(t){return hay.indexOf(t)>=0;});
+  }).map(complet);
+};
+/* prix en vigueur à une date donnée (documents futurs : jamais de recalcul rétroactif) */
+dm.listingPriceAt=async function(id,dateIso){
+  var a=await getArt(id); if(!a) return null;
+  var h=(a.historiquePrix||[]).slice();
+  if(!dateIso) return clone(h[h.length-1]||null);
+  var t=String(dateIso), best=null;
+  h.forEach(function(e){var d=String(e.dateEffet||e.dateChangement||'').slice(0,10); if(d<=t.slice(0,10)) best=e;});
+  return clone(best||h[0]||null);
+};
+/* instantané figé pour une ligne de facture / d'offre */
+dm.listingSnapshot=async function(id){
+  var a=await getArt(id); if(!a) return null;
+  var h=a.historiquePrix||[], last=h[h.length-1]||{};
+  return {articleId:a.id,reference:a.reference,designation:a.designation,marque:a.marque,groupe:a.groupe,categorie:a.categorie,
+    prixCatalogue:a.prixCatalogue,prixAchat:a.prixAchat,prixVente:a.prixVente,devise:a.devise||'EUR',prixHistoriqueId:last.id||null,figeLe:nowIso()};
+};
+
+/* ---------- validation ---------- */
+function validate(a){
+  var e=[];
+  if(GROUPES.indexOf(a.groupe)<0) e.push('Fenêtre (Morgan / Macpi / Autres) invalide');
+  if(CATEGORIES.indexOf(a.categorie)<0) e.push('Catégorie invalide');
+  if(!str(a.marque)) e.push('Marque obligatoire');
+  if(!str(a.reference)) e.push('Référence obligatoire');
+  if(!str(a.designation)) e.push('Désignation obligatoire');
+  ['prixCatalogue','prixAchat','prixVente'].forEach(function(f){ if(a[f]!=null&&(!Number.isFinite(a[f])||a[f]<0)) e.push('Prix invalide : '+f); });
+  if(a.remise!=null&&(!Number.isFinite(a.remise)||a.remise<0||a.remise>1)) e.push('Remise invalide (0 à 100 %)');
+  return e;
+}
+function cleanPatch(p){
+  var o={};
+  TEXT_FIELDS.forEach(function(f){ if(p[f]!==undefined) o[f]=str(p[f]); });
+  if(o.marque) o.marque=o.marque.toUpperCase();
+  ['prixCatalogue','prixAchat','prixVente'].forEach(function(f){ if(p[f]!==undefined) o[f]=num(p[f]); });
+  if(p.remise!==undefined){ o.remise=num(p.remise); }
+  if(p.devise!==undefined) o.devise=str(p.devise)||'EUR';
+  return o;
+}
+
+/* ---------- création ---------- */
+dm.listingCreateArticle=async function(data,opts){
+  opts=opts||{};
+  var p=cleanPatch(data||{}), ts=nowIso(), u=who();
+  var id='ART-'+today().replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  while(getArtBrut(id)) id='ART-'+today().replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  var a=Object.assign({id:id,groupe:'MORGAN',marque:'',categorie:'MACHINES',famille:'',sousFamille:'',reference:'',designation:'',notes:'',
+    prixCatalogue:null,remise:null,prixAchat:null,prixVente:null,devise:'EUR'},p);
+  if(!a.famille) a.famille=FAMILLE_DEFAUT[a.categorie]||'';
+  var err=validate(a); if(err.length) throw new Error(err.join(' · '));
+  var eff=opts.dateEffet||today();
+  a.dateMaj=eff; a.dateMajPrecision='jour'; a.anomalies=[];
+  a.historiquePrix=[{id:rid('px'),dateChangement:ts,dateEffet:eff,dateEffetPrecision:'jour',prixCatalogue:a.prixCatalogue,remise:a.remise,prixAchat:a.prixAchat,prixVente:a.prixVente,devise:a.devise,source:opts.source||'MANUEL',user:u,note:str(opts.note)||'Création'}];
+  a.journal=[{ts:ts,user:u,action:'CREATION',detail:'Article créé'}];
+  a._created_at=ts; a._updated_at=ts; a._updated_by=u; a._origin='MANUEL';
+  await putArt(a); return complet(compact(a));
+};
+
+/* ---------- modification (prix => nouvelle ligne d'historique datée) ---------- */
+dm.listingUpdateArticle=async function(id,patch,opts){
+  opts=opts||{};
+  var a=await getArt(id); if(!a) throw new Error('Article introuvable : '+id);
+  if(a._deleted_at) throw new Error('Article supprimé : restaurez-le avant de le modifier');
+  var p=cleanPatch(patch||{}), ts=nowIso(), u=who();
+  var next=Object.assign({},a,p);
+  var err=validate(next); if(err.length) throw new Error(err.join(' · '));
+  var changes={};
+  TEXT_FIELDS.forEach(function(f){ if(p[f]!==undefined&&str(a[f])!==p[f]) changes[f]=[a[f]==null?'':a[f],p[f]]; });
+  var priceChanged=PRICE_FIELDS.some(function(f){return p[f]!==undefined&&(a[f]==null?null:a[f])!==(p[f]==null?null:p[f]);});
+  if(!Object.keys(changes).length&&!priceChanged) return a;
+  if(priceChanged){
+    var eff=opts.dateEffet||today(), prev={};
+    PRICE_FIELDS.forEach(function(f){prev[f]=a[f]==null?null:a[f];});
+    next.historiquePrix=(a.historiquePrix||[]).concat([{id:rid('px'),dateChangement:ts,dateEffet:eff,dateEffetPrecision:'jour',
+      prixCatalogue:next.prixCatalogue,remise:next.remise,prixAchat:next.prixAchat,prixVente:next.prixVente,devise:next.devise||'EUR',
+      precedent:prev,source:opts.source||'MANUEL',user:u,note:str(opts.note)}]);
+    next.dateMaj=eff; next.dateMajPrecision='jour';
+    PRICE_FIELDS.forEach(function(f){ if(p[f]!==undefined&&prev[f]!==p[f]) changes[f]=[prev[f],p[f]]; });
+  }
+  next.journal=(a.journal||[]).concat([{ts:ts,user:u,action:'MODIFICATION',detail:Object.keys(changes).join(', '),champs:changes,note:str(opts.note)}]);
+  next._updated_at=ts; next._updated_by=u;
+  await putArt(next); return complet(compact(next));
+};
+/* anomalie marquée traitée / non traitée (la trace est conservée) */
+dm.listingSetAnomalyStatus=async function(id,code,traitee){
+  var a=await getArt(id); if(!a) throw new Error('Article introuvable');
+  var ts=nowIso(),u=who(),hit=false;
+  (a.anomalies||[]).forEach(function(x){ if(x.code===code){x.traitee=!!traitee; x.traiteeLe=traitee?ts:null; x.traiteePar=traitee?u:null; hit=true;} });
+  if(!hit) return a;
+  a.journal=(a.journal||[]).concat([{ts:ts,user:u,action:traitee?'ANOMALIE_TRAITEE':'ANOMALIE_ROUVERTE',detail:code}]);
+  a._updated_at=ts; a._updated_by=u; await putArt(a); return a;
+};
+
+/* ---------- corbeille / restauration / suppression définitive ---------- */
+dm.listingSoftDelete=async function(id,reason){
+  var a=await getArt(id); if(!a) throw new Error('Article introuvable');
+  var ts=nowIso(),u=who();
+  a._deleted_at=ts; a._deleted_by=u; a._updated_at=ts; a._updated_by=u;
+  a.journal=(a.journal||[]).concat([{ts:ts,user:u,action:'SUPPRESSION',detail:str(reason)||'Placé dans la corbeille'}]);
+  await putArt(a); return true;
+};
+dm.listingRestore=async function(id){
+  var a=await getArt(id); if(!a) throw new Error('Article introuvable');
+  var ts=nowIso(),u=who();
+  delete a._deleted_at; delete a._deleted_by; a._updated_at=ts; a._updated_by=u;
+  a.journal=(a.journal||[]).concat([{ts:ts,user:u,action:'RESTAURATION',detail:'Restauré depuis la corbeille'}]);
+  await putArt(a); return true;
+};
+dm.listingPermanentDelete=async function(id){
+  var a=getArtBrut(id); if(!a) return false;
+  if(!a._deleted_at) throw new Error('Placez d\'abord l\'article dans la corbeille');
+  await delArt(id); return true;
+};
+
+/* ---------- règles de prix : PROPOSITIONS uniquement, jamais appliquées automatiquement ---------- */
+var DEFAULT_RULES=[
+  {id:'R_MORGAN_MACH',label:'Morgan – Machines (et logiciels, services)',groupe:'MORGAN',categories:['MACHINES','LOGICIELS','SERVICES'],achat:{mode:'pct_catalogue',valeur:0.65},vente:{mode:'pct_catalogue',valeur:1.25},actif:true,origine:'Excel'},
+  {id:'R_MORGAN_PIECES',label:'Morgan – Pièces / Maintenance',groupe:'MORGAN',categories:['PIECES'],achat:{mode:'pct_catalogue',valeur:0.75},vente:{mode:'pct_catalogue',valeur:1.25},actif:true,origine:'Excel'},
+  {id:'R_MACPI',label:'Macpi – Machines et pièces',groupe:'MACPI',categories:['MACHINES','PIECES','LOGICIELS','SERVICES'],achat:{mode:'remise_catalogue',valeur:0.40},vente:{mode:'coef_achat',valeur:2},actif:true,origine:'Excel'},
+  {id:'R_AUTRES',label:'Autres marques',groupe:'AUTRES',categories:['MACHINES','PIECES','LOGICIELS','SERVICES'],achat:{mode:'remise_catalogue',valeur:0.40},vente:{mode:'coef_achat',valeur:2},actif:true,origine:'Proposition'}
+];
+dm.listingDefaultRules=function(){return clone(DEFAULT_RULES);};
+dm.listingGetRules=async function(){var r=await settingGet('price_rules');return Array.isArray(r)?r:clone(DEFAULT_RULES);};
+dm.listingSaveRules=async function(rules){
+  if(!Array.isArray(rules)) throw new Error('Règles invalides');
+  rules.forEach(function(r){ if(!r.id) r.id=rid('R'); if(!Number.isFinite(Number(r.achat&&r.achat.valeur))||!Number.isFinite(Number(r.vente&&r.vente.valeur))) throw new Error('Valeur de règle invalide : '+(r.label||r.id)); });
+  await settingSet('price_rules',clone(rules)); return true;
+};
+function round2(n){return n==null?null:Math.round(n*100)/100;}
+dm.listingPropose=function(a,rules){
+  var r=(rules||DEFAULT_RULES).find(function(x){return x.actif!==false&&x.groupe===a.groupe&&(x.categories||[]).indexOf(a.categorie)>=0;});
+  if(!r) return {regle:null,prixAchat:null,prixVente:null,explication:'Aucune règle active pour cette fenêtre / catégorie'};
+  var cat=num(a.prixCatalogue), ach=null, ven=null, ex=[];
+  if(cat==null) return {regle:r,prixAchat:null,prixVente:null,explication:'Prix catalogue absent : aucune proposition possible'};
+  if(r.achat.mode==='pct_catalogue'){ach=cat*r.achat.valeur; ex.push('Achat = catalogue × '+round2(r.achat.valeur*100)+' %');}
+  else { var rem=num(a.remise); if(rem==null&&a.excel&&a.excel.remiseFormule!=null) rem=a.excel.remiseFormule; if(rem==null) rem=r.achat.valeur; ach=cat*(1-rem); ex.push('Achat = catalogue × (1 − '+round2(rem*100)+' %)'); }
+  if(r.vente.mode==='pct_catalogue'){ven=cat*r.vente.valeur; ex.push('Vente = catalogue × '+round2(r.vente.valeur*100)+' %');}
+  else {ven=ach*r.vente.valeur; ex.push('Vente = achat × '+r.vente.valeur);}
+  return {regle:r,prixAchat:round2(ach),prixVente:round2(ven),explication:ex.join(' · ')};
+};
+
+/* ---------- anomalies calculées (non enregistrées) ---------- */
+dm.listingLiveFlags=function(a){
+  var f=[];
+  if(a.prixAchat==null) f.push({code:(a.anomalies||[]).some(function(x){return x.code==='LIEN_EXTERNE_ROMPU';})?'PRIX_ACHAT_A_SAISIR':'SANS_PRIX_ACHAT',detail:'Prix d\'achat non renseigné'});
+  if(a.prixVente==null) f.push({code:'SANS_PRIX_VENTE',detail:'Prix de vente non renseigné'});
+  if(a.prixCatalogue==null) f.push({code:'SANS_PRIX_CATALOGUE',detail:'Prix catalogue non renseigné'});
+  if(a.prixAchat!=null&&a.prixVente!=null&&a.prixVente<a.prixAchat) f.push({code:'VENTE_INFERIEURE_ACHAT',detail:'Prix de vente inférieur au prix d\'achat'});
+  return f;
+};
+
+/* ---------- sauvegarde du Listing (même format que chez l'associé) ---------- */
+dm.listingExportData=async function(){
+  return {app:'MGT SARL CRM',type:'listing',version:'GTM',exportedAt:nowIso(),exportedBy:who(),seed:lireMeta().seed||null,rules:await dm.listingGetRules(),articles:tous().map(complet)};
+};
+dm.listingImportData=async function(data){
+  if(!data||data.type!=='listing'||!Array.isArray(data.articles)) throw new Error('Fichier non reconnu (sauvegarde Listing attendue)');
+  return dm.listingFusionner({articles:data.articles.filter(function(a){return a&&a.id;}).map(function(a){return compact(complet(a));}),source:'sauvegarde du Listing',regles:Array.isArray(data.rules)?data.rules:null});
+};
+
+dm.listingStats=async function(){
+  var l=tous(), s={total:0,groupes:{},supprimes:0};
+  GROUPES.forEach(function(g){s.groupes[g]={total:0,categories:{MACHINES:0,PIECES:0,LOGICIELS:0,SERVICES:0},marques:{}};});
+  l.forEach(function(a){if(a._deleted_at){s.supprimes++;return;}s.total++;var g=s.groupes[a.groupe]; if(!g) return; g.total++; if(g.categories[a.categorie]!=null) g.categories[a.categorie]++; g.marques[a.marque]=(g.marques[a.marque]||0)+1;});
+  return s;
+};
+
+window.MGT_LISTING={version:'GTM',CLE:CLE,GROUPES:GROUPES,CATEGORIES:CATEGORIES,FAMILLE_DEFAUT:FAMILLE_DEFAUT};
+})();
+</script>
+<script id="mgt-listing">
+/* =====================================================================
+   LISTING : INTERFACE — repris du CRM de l'associé (V4.6.8B), données dans la base GTM
+   Niveau 1 : trois fenetres (Morgan / Macpi / Autres) reliees a la meme base.
+   Niveau 2 : categories (Machines / Pieces detachees / Logiciels / Services).
+   Niveau 3 : liste filtree + fiche article (consulter / modifier / supprimer).
+   Donnees : uniquement via dm.listing* (V4.6.8A).
+   ===================================================================== */
+(function(){
+'use strict';
+if(typeof dm==='undefined'||typeof dm.listingGetAll!=='function'){console.error('[LISTING UI] couche de donnees absente');return;}
+var L=window.MGT_LISTING;
+function lu(paths){return '<svg class="lsI" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+paths+'</svg>';}
+/* Icones Lucide (lucide-static 0.460.0, licence ISC) */
+var IC={
+  factory:lu('<path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/>'),
+  layers:lu('<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'),
+  cog:lu('<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/>'),
+  wrench:lu('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
+  monitor:lu('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'),
+  headset:lu('<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>'),
+  search:lu('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+  plus:lu('<path d="M5 12h14"/><path d="M12 5v14"/>'),
+  pencil:lu('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
+  trash:lu('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'),
+  history:lu('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>'),
+  back:lu('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
+  x:lu('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+  alert:lu('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  restore:lu('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+  download:lu('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>'),
+  eye:lu('<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>')
+};
+var GROUPES=[{id:'MORGAN',label:'MORGAN',icon:'factory',meta:'Fabricant'},{id:'MACPI',label:'MACPI',icon:'factory',meta:'Fabricant'},{id:'AUTRES',label:'AUTRES',icon:'layers',meta:'Autres marques'}];
+var CATS=[{id:'MACHINES',label:'Machines',icon:'cog',meta:'Catalogue machines'},{id:'PIECES',label:'Pièces détachées',icon:'wrench',meta:'Catalogue pièces'},{id:'LOGICIELS',label:'Logiciels',icon:'monitor',meta:'Catalogue logiciels'},{id:'SERVICES',label:'Services',icon:'headset',meta:'Catalogue services'}];
+var ANO_LABEL={LIEN_EXTERNE_ROMPU:'Lien Excel rompu',PRIX_ACHAT_A_SAISIR:'Prix d\'achat à saisir',SANS_PRIX_ACHAT:'Sans prix d\'achat',SANS_PRIX_VENTE:'Sans prix de vente',SANS_PRIX_CATALOGUE:'Sans prix catalogue',
+  REGLE_INCREMENTEE:'Libellé de règle douteux',SANS_REGLE:'Sans règle',REMISE_NON_UTILISEE:'Remise non utilisée',DATE_ANNEE_SEULE:'Date : année seule',REFERENCE_EN_DOUBLE:'Référence en double',ESPACES_PARASITES:'Espaces parasites',VENTE_INFERIEURE_ACHAT:'Vente < achat'};
+var PAGE=50;
+var st={level:'home',groupe:'',categorie:'',q:'',sf:'',ano:'',sort:'ref',page:0,globalQ:''};
+var root=null, dlg=null, rules=null;
+
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function can(act){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('stock',act);}catch(e){return true;}}
+function note(msg){try{if(typeof toast==='function')toast(msg);else alert(msg);}catch(e){}}
+function fmt(n,dev){if(n==null||n==='')return '<span class="lsNa">—</span>';var v=Number(n);if(!Number.isFinite(v))return '<span class="lsNa">—</span>';return esc(v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}))+' '+esc(dev==='EUR'||!dev?'€':dev);}
+function fmtPct(r){return r==null?'<span class="lsNa">—</span>':esc((Math.round(r*10000)/100).toLocaleString('fr-FR'))+' %';}
+function fmtDate(d,prec){if(!d)return '<span class="lsNa">—</span>';if(prec==='annee')return esc(d)+' <span class="lsSmall">(année)</span>';var s=String(d);if(/^\d{4}-\d{2}-\d{2}/.test(s)){return esc(s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4));}return esc(s);}
+function fmtTs(t){if(!t)return '';var d=new Date(t);if(isNaN(d))return esc(t);return esc(d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));}
+function n(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function gLabel(id){var g=GROUPES.find(function(x){return x.id===id;});return g?g.label:id;}
+function cLabel(id){var c=CATS.find(function(x){return x.id===id;});return c?c.label:id;}
+function flagsOf(a){
+  var live=dm.listingLiveFlags(a), open=(a.anomalies||[]).filter(function(x){return !x.traitee;});
+  return live.map(function(x){return {code:x.code,bad:true};}).concat(open.map(function(x){return {code:x.code,bad:false};}));
+}
+function flagHtml(f){return '<span class="lsFlag'+(f.bad?' bad':'')+'" title="'+esc(ANO_LABEL[f.code]||f.code)+'">'+IC.alert+esc(ANO_LABEL[f.code]||f.code)+'</span>';}
+
+/* ---------------- squelette ---------------- */
+function ensureRoot(){
+  if(root) return root;
+  root=document.createElement('section'); root.id='listingModule'; root.hidden=true; root.setAttribute('aria-label','Listing');
+  var host=document.querySelector('main.wrap')||document.querySelector('.app-body')||document.body;
+  host.appendChild(root);
+  root.addEventListener('click',onClick);
+  root.addEventListener('input',onInput);
+  root.addEventListener('change',onChange);
+  root.addEventListener('submit',onSubmit);
+  root.addEventListener('keydown',function(e){ if(e.key==='Escape'&&dlg&&!dlg.hidden){closeDialog();} });
+  return root;
+}
+function headHtml(title,sub){
+  var acts='';
+  if(can('create')) acts+='<button type="button" class="lsBtn primary" data-ls="new">'+IC.plus+'Nouvel article</button>';
+  if(can('edit')) acts+='<button type="button" class="lsBtn" data-ls="rules">'+IC.cog+'Règles de prix</button>';
+  acts+='<button type="button" class="lsBtn" data-ls="trash">'+IC.trash+'Corbeille</button>';
+  if(can('export')) acts+='<button type="button" class="lsBtn" data-ls="export">'+IC.download+'Exporter</button>';
+  if(can('edit')) acts+='<button type="button" class="lsBtn" data-ls="import" title="Fichier HTML du CRM (V4.6.8 ou plus récent) ou sauvegarde du Listing (.json)">'+IC.restore+'Importer</button><input type="file" id="lsImportFile" accept=".json,.html,.htm,application/json,text/html" hidden/>';
+  return '<div class="lsHead"><div><div class="lsEyebrow">Catalogue centralisé</div><h2>'+esc(title)+'</h2><div class="lsSub">'+esc(sub)+'</div></div><div class="lsActions">'+acts+'</div></div>';
+}
+function crumbHtml(){
+  var p=['<button type="button" data-ls="home">Listing</button>'];
+  if(st.level==='brand'||st.level==='list'){p.push('›'); p.push(st.level==='list'?'<button type="button" data-ls="brand" data-g="'+esc(st.groupe)+'">'+esc(gLabel(st.groupe))+'</button>':'<strong>'+esc(gLabel(st.groupe))+'</strong>');}
+  if(st.level==='list'){p.push('›'); p.push('<strong>'+esc(cLabel(st.categorie))+'</strong>');}
+  if(st.level==='search'){p.push('›'); p.push('<strong>Recherche</strong>');}
+  if(st.level==='trash'){p.push('›'); p.push('<strong>Corbeille</strong>');}
+  if(st.level==='rules'){p.push('›'); p.push('<strong>Règles de prix</strong>');}
+  var back=st.level==='home'?'':'<button type="button" class="lsIconBtn" data-ls="up" aria-label="Retour" title="Retour">'+IC.back+'</button>';
+  return '<nav class="lsCrumb" aria-label="Fil d\'Ariane">'+back+p.join(' ')+'</nav>';
+}
+function searchBarHtml(){return '<form class="lsSearchBar" data-ls-form="global" role="search">'+IC.search+'<input type="search" id="lsGlobalQ" placeholder="Rechercher dans tout le Listing : référence, désignation, sous-famille…" aria-label="Rechercher dans le Listing" value="'+esc(st.globalQ)+'"/><button type="submit" class="lsBtn primary">Rechercher</button></form>';}
+
+/* ---------------- rendus ---------------- */
+async function render(){
+  ensureRoot();
+  try{
+    if(st.level==='home') return await renderHome();
+    if(st.level==='brand') return await renderBrand();
+    if(st.level==='list'||st.level==='search'||st.level==='trash') return await renderList();
+    if(st.level==='rules') return await renderRules();
+  }catch(e){console.error('[LISTING UI]',e); root.innerHTML='<div class="lsNotice">Erreur d\'affichage du Listing : '+esc(e.message)+'</div>';}
+}
+async function renderHome(){
+  var s=await dm.listingStats(), info=await dm.listingSeedInfo();
+  var cards=GROUPES.map(function(g){
+    var x=s.groupes[g.id], chips=CATS.filter(function(c){return x.categories[c.id]>0;}).map(function(c){return '<span class="lsChip">'+esc(c.label)+' · '+x.categories[c.id]+'</span>';}).join('');
+    var marques=Object.keys(x.marques).filter(function(m){return m!==g.id;});
+    return '<button type="button" class="lsCardBtn b-'+g.id+'" data-ls="brand" data-g="'+g.id+'" aria-label="Ouvrir le listing '+esc(g.label)+' ('+x.total+' articles)">'
+      +'<span class="lsCardIcon">'+IC[g.icon]+'</span><span class="lsCardBody"><span class="lsCardTitle">'+esc(g.label)+'</span>'
+      +'<span class="lsCardMeta">'+esc(g.meta)+(marques.length?' : '+esc(marques.join(', ')):'')+'</span>'
+      +'<span class="lsCardCount">'+x.total.toLocaleString('fr-FR')+' <span class="lsSmall">articles</span></span><span class="lsChips">'+chips+'</span></span></button>';
+  }).join('');
+  var vide=!s.total&&!s.supprimes?'<div class="lsNotice lsVide">Le Listing est vide.'+(can('edit')?' Touchez <b>Importer</b> et choisissez le fichier HTML du CRM (V4.6.8 ou plus récent) : ses articles, avec leurs prix, sont ajoutés à la base GTM.':' Il sera rempli par un compte autorisé.')+'</div>':'';
+  root.innerHTML=headHtml('Listing','Base unique de tous les articles : '+s.total.toLocaleString('fr-FR')+' articles actifs'+(s.supprimes?' · '+s.supprimes+' dans la corbeille':''))
+    +vide+searchBarHtml()+'<div class="lsGrid">'+cards+'</div>'
+    +(info&&info.date?'<p class="lsSmall" style="margin-top:14px">Import initial : '+esc(info.nb)+' articles depuis '+esc(info.fichier||'Excel')+' le '+fmtTs(info.date)+'. Le Listing est enregistré dans la base GTM, partagée par tous les appareils.</p>':'');
+}
+async function renderBrand(){
+  var s=await dm.listingStats(), x=s.groupes[st.groupe], g=GROUPES.find(function(v){return v.id===st.groupe;});
+  var cards=CATS.map(function(c){
+    var k=x.categories[c.id]||0;
+    return '<button type="button" class="lsCardBtn b-'+st.groupe+(k?'':' empty')+'" data-ls="list" data-c="'+c.id+'" aria-label="'+esc(c.label)+' : '+k+' articles">'
+      +'<span class="lsCardIcon">'+IC[c.icon]+'</span><span class="lsCardBody"><span class="lsCardTitle">'+esc(c.label)+'</span><span class="lsCardMeta">'+esc(c.meta)+'</span>'
+      +'<span class="lsCardCount">'+(k?k.toLocaleString('fr-FR')+' <span class="lsSmall">articles</span>':'Aucun article')+'</span></span></button>';
+  }).join('');
+  root.innerHTML=headHtml(g.label+' – Catégories',x.total.toLocaleString('fr-FR')+' articles · '+g.meta)+crumbHtml()+searchBarHtml()+'<div class="lsGrid">'+cards+'</div>';
+}
+async function dataset(){
+  if(st.level==='trash') return dm.listingGetAll({deleted:true,raw:true});
+  var all=await dm.listingGetAll({raw:true});
+  if(st.level==='list') all=all.filter(function(a){return a.groupe===st.groupe&&a.categorie===st.categorie;});
+  return all;
+}
+function applyFilters(list){
+  var terms=n(st.level==='search'?st.globalQ:st.q).split(/\s+/).filter(Boolean);
+  var out=list.filter(function(a){
+    if(st.sf&&a.sousFamille!==st.sf) return false;
+    if(st.ano){ var f=flagsOf(a); if(st.ano==='avec'&&!f.length) return false; if(st.ano==='sans'&&f.length) return false; if(st.ano!=='avec'&&st.ano!=='sans'&&!f.some(function(x){return x.code===st.ano;})) return false; }
+    if(!terms.length) return true;
+    var hay=n([a.reference,a.designation,a.sousFamille,a.marque,a.famille,a.id].join(' | '));
+    return terms.every(function(t){return hay.indexOf(t)>=0;});
+  });
+  var cmp={ref:function(a,b){return String(a.reference).localeCompare(String(b.reference),'fr',{numeric:true});},
+    des:function(a,b){return String(a.designation).localeCompare(String(b.designation),'fr');},
+    pvd:function(a,b){return (b.prixVente==null?-1:b.prixVente)-(a.prixVente==null?-1:a.prixVente);},
+    pva:function(a,b){return (a.prixVente==null?Infinity:a.prixVente)-(b.prixVente==null?Infinity:b.prixVente);},
+    date:function(a,b){return String(b.dateMaj||'').localeCompare(String(a.dateMaj||''));},
+    id:function(a,b){return String(a.id).localeCompare(String(b.id),'fr',{numeric:true});}}[st.sort]||null;
+  if(cmp) out.sort(cmp);
+  return out;
+}
+async function renderList(){
+  var base=await dataset(), rows=applyFilters(base);
+  var sfs=Array.from(new Set(base.map(function(a){return a.sousFamille;}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'fr');});
+  var anoCodes={}; base.forEach(function(a){flagsOf(a).forEach(function(f){anoCodes[f.code]=(anoCodes[f.code]||0)+1;});});
+  var pages=Math.max(1,Math.ceil(rows.length/PAGE)); if(st.page>=pages) st.page=pages-1;
+  var slice=rows.slice(st.page*PAGE,st.page*PAGE+PAGE);
+  var title=st.level==='trash'?'Corbeille du Listing':st.level==='search'?'Résultats de recherche':gLabel(st.groupe)+' – '+cLabel(st.categorie);
+  var sub=st.level==='trash'?'Articles supprimés : restaurables ou supprimables définitivement.':st.level==='search'?'Recherche dans les trois fenêtres':'Liste filtrée automatiquement par marque et catégorie';
+  var filters='<form class="lsFilters" data-ls-form="filters" onsubmit="return false">'
+    +'<div class="lsField"><label for="lsQ">Recherche (référence, désignation, sous-famille)</label><input type="search" id="lsQ" value="'+esc(st.level==='search'?st.globalQ:st.q)+'" placeholder="Ex. B-75-631, ENCODER, CAD…"/></div>'
+    +'<div class="lsField"><label for="lsSf">Sous-famille</label><select id="lsSf"><option value="">Toutes</option>'+sfs.map(function(s){return '<option'+(s===st.sf?' selected':'')+' value="'+esc(s)+'">'+esc(s)+'</option>';}).join('')+'</select></div>'
+    +'<div class="lsField"><label for="lsAno">Anomalies</label><select id="lsAno"><option value="">Tous les articles</option><option value="avec"'+(st.ano==='avec'?' selected':'')+'>Avec anomalie</option><option value="sans"'+(st.ano==='sans'?' selected':'')+'>Sans anomalie</option>'
+      +Object.keys(anoCodes).sort().map(function(c){return '<option value="'+esc(c)+'"'+(st.ano===c?' selected':'')+'>'+esc(ANO_LABEL[c]||c)+' ('+anoCodes[c]+')</option>';}).join('')+'</select></div>'
+    +'<div class="lsField"><label for="lsSort">Tri</label><select id="lsSort">'+[['ref','Référence'],['des','Désignation'],['pvd','Prix de vente décroissant'],['pva','Prix de vente croissant'],['date','Date de mise à jour récente'],['id','Ordre du fichier Excel']].map(function(o){return '<option value="'+o[0]+'"'+(st.sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div></form>';
+  var showGroup=st.level!=='list';
+  var trs=slice.map(function(a){
+    var fl=flagsOf(a), dev=a.devise;
+    var act='<button type="button" class="lsIconBtn" data-ls="view" data-id="'+esc(a.id)+'" aria-label="Voir '+esc(a.reference)+'" title="Voir la fiche">'+IC.eye+'</button>';
+    if(st.level==='trash'){
+      if(can('edit')) act+='<button type="button" class="lsIconBtn" data-ls="restore" data-id="'+esc(a.id)+'" aria-label="Restaurer '+esc(a.reference)+'" title="Restaurer">'+IC.restore+'</button>';
+      if(can('delete')) act+='<button type="button" class="lsIconBtn danger" data-ls="purge" data-id="'+esc(a.id)+'" aria-label="Supprimer définitivement '+esc(a.reference)+'" title="Supprimer définitivement">'+IC.x+'</button>';
+    } else {
+      if(can('edit')) act+='<button type="button" class="lsIconBtn" data-ls="edit" data-id="'+esc(a.id)+'" aria-label="Modifier '+esc(a.reference)+'" title="Modifier">'+IC.pencil+'</button>';
+      if(can('delete')) act+='<button type="button" class="lsIconBtn danger" data-ls="del" data-id="'+esc(a.id)+'" aria-label="Supprimer '+esc(a.reference)+'" title="Supprimer">'+IC.trash+'</button>';
+    }
+    return '<tr data-id="'+esc(a.id)+'">'
+      +'<td class="c-ref" data-l="Référence"><span class="lsRef">'+esc(a.reference)+'</span><div class="lsSmall">'+esc(a.id)+(showGroup?' · '+esc(a.marque)+' · '+esc(cLabel(a.categorie)):'')+'</div></td>'
+      +'<td class="c-des" data-l="Désignation"><span class="lsDesig">'+esc(a.designation)+'</span>'+(fl.length?'<div class="lsFlags">'+fl.slice(0,3).map(flagHtml).join(' ')+(fl.length>3?' <span class="lsSmall">+'+(fl.length-3)+'</span>':'')+'</div>':'')+'</td>'
+      +'<td data-l="Sous-famille">'+(a.sousFamille?esc(a.sousFamille):'<span class="lsNa">—</span>')+'</td>'
+      +'<td class="num" data-l="Prix catalogue">'+fmt(a.prixCatalogue,dev)+'</td>'
+      +'<td class="num" data-l="Prix d\'achat">'+fmt(a.prixAchat,dev)+'</td>'
+      +'<td class="num" data-l="Prix de vente">'+fmt(a.prixVente,dev)+'</td>'
+      +'<td data-l="Mise à jour">'+fmtDate(a.dateMaj,a.dateMajPrecision)+'</td>'
+      +'<td class="c-act"><div class="lsRowActions">'+act+'</div></td></tr>';
+  }).join('');
+  var table=rows.length?'<div class="lsTableWrap"><table class="lsTable"><thead><tr><th>Référence</th><th>Désignation</th><th>Sous-famille</th><th class="num">Prix catalogue</th><th class="num">Prix d\'achat</th><th class="num">Prix de vente</th><th>Mise à jour</th><th class="num">Actions</th></tr></thead><tbody>'+trs+'</tbody></table></div>'
+    :'<div class="lsEmpty">'+(base.length?'Aucun article ne correspond aux filtres.':(st.level==='trash'?'La corbeille est vide.':'Aucun article dans cette catégorie.'))+'</div>';
+  var pager=rows.length>PAGE?'<div class="lsPager"><button type="button" class="lsBtn" data-ls="page" data-p="'+(st.page-1)+'"'+(st.page<=0?' disabled':'')+'>Précédent</button><span class="lsSmall">Page '+(st.page+1)+' / '+pages+'</span><button type="button" class="lsBtn" data-ls="page" data-p="'+(st.page+1)+'"'+(st.page>=pages-1?' disabled':'')+'>Suivant</button></div>':'';
+  root.innerHTML=headHtml(title,sub)+crumbHtml()+filters
+    +'<div class="lsCount" id="lsCount" aria-live="polite">'+rows.length.toLocaleString('fr-FR')+' article'+(rows.length>1?'s':'')+(rows.length!==base.length?' sur '+base.length.toLocaleString('fr-FR'):'')+'</div>'+table+pager+dialogHtml();
+  dlg=root.querySelector('#listingDialog');
+}
+function dialogHtml(){return '<div id="listingDialog" hidden role="dialog" aria-modal="true" aria-labelledby="lsDlgTitle"><div class="lsBox" id="lsDlgBox"></div></div>';}
+
+/* ---------------- fiche article ---------------- */
+async function openView(id){
+  var a=await dm.listingGetArticle(id); if(!a) return note('Article introuvable');
+  ensureDialog();
+  var fl=flagsOf(a), ex=a.excel;
+  var hist=(a.historiquePrix||[]).slice().reverse().map(function(h,i){
+    return '<tr><td data-l="Date d\'effet">'+fmtDate(h.dateEffet,h.dateEffetPrecision)+(i===0?' <span class="lsFlag ok">En vigueur</span>':'')+'</td><td data-l="Enregistré le">'+fmtTs(h.dateChangement)+'</td><td class="num" data-l="Catalogue">'+fmt(h.prixCatalogue,h.devise)+'</td><td class="num" data-l="Remise">'+fmtPct(h.remise)+'</td><td class="num" data-l="Achat">'+fmt(h.prixAchat,h.devise)+'</td><td class="num" data-l="Vente">'+fmt(h.prixVente,h.devise)+'</td><td data-l="Source">'+esc(h.source)+'</td><td data-l="Par">'+esc(h.user||'')+(h.note?'<div class="lsSmall">'+esc(h.note)+'</div>':'')+'</td></tr>';
+  }).join('');
+  var anos=(a.anomalies||[]).map(function(x){
+    return '<div class="lsAno"><span>'+flagHtml({code:x.code,bad:false})+' '+esc(x.detail)+(x.traitee?' <span class="lsFlag ok">Traitée'+(x.traiteePar?' par '+esc(x.traiteePar):'')+'</span>':'')+'</span>'
+      +(can('edit')&&!a._deleted_at?'<button type="button" class="lsBtn" data-ls="ano" data-id="'+esc(a.id)+'" data-code="'+esc(x.code)+'" data-v="'+(x.traitee?'0':'1')+'">'+(x.traitee?'Rouvrir':'Marquer traitée')+'</button>':'')+'</div>';
+  }).join('')+dm.listingLiveFlags(a).map(function(x){return '<div class="lsAno"><span>'+flagHtml({code:x.code,bad:true})+' '+esc(x.detail)+'</span><span class="lsSmall">Disparaît dès que la donnée est renseignée</span></div>';}).join('');
+  var jr=(a.journal||[]).slice().reverse().slice(0,30).map(function(j){return '<tr><td data-l="Date">'+fmtTs(j.ts)+'</td><td data-l="Action">'+esc(j.action)+'</td><td data-l="Détail">'+esc(j.detail||'')+(j.champs?'<div class="lsSmall">'+Object.keys(j.champs).map(function(k){return esc(k)+' : '+esc(j.champs[k][0]==null?'—':j.champs[k][0])+' → '+esc(j.champs[k][1]==null?'—':j.champs[k][1]);}).join('<br>')+'</div>':'')+'</td><td data-l="Par">'+esc(j.user||'')+'</td></tr>';}).join('');
+  var foot='';
+  if(!a._deleted_at){ if(can('edit')) foot+='<button type="button" class="lsBtn primary" data-ls="edit" data-id="'+esc(a.id)+'">'+IC.pencil+'Modifier</button>'; if(can('delete')) foot+='<button type="button" class="lsBtn danger" data-ls="del" data-id="'+esc(a.id)+'">'+IC.trash+'Supprimer</button>'; }
+  else if(can('edit')) foot+='<button type="button" class="lsBtn primary" data-ls="restore" data-id="'+esc(a.id)+'">'+IC.restore+'Restaurer</button>';
+  foot+='<button type="button" class="lsBtn" data-ls="close">Fermer</button>';
+  box().innerHTML='<div class="lsBoxHead"><div><div class="lsEyebrow">'+esc(gLabel(a.groupe))+' · '+esc(cLabel(a.categorie))+(a._deleted_at?' · Dans la corbeille':'')+'</div><h3 id="lsDlgTitle">'+esc(a.reference)+' — '+esc(a.designation)+'</h3><div class="lsSmall">'+esc(a.id)+'</div></div><button type="button" class="lsIconBtn" data-ls="close" aria-label="Fermer">'+IC.x+'</button></div>'
+    +'<div class="lsKv">'+[['Marque',esc(a.marque)],['Famille',esc(a.famille)],['Sous-famille',esc(a.sousFamille)||'—'],['Devise',esc(a.devise||'EUR')],['Prix catalogue',fmt(a.prixCatalogue,a.devise)],['Remise',fmtPct(a.remise)],['Prix d\'achat (interne)',fmt(a.prixAchat,a.devise)],['Prix de vente',fmt(a.prixVente,a.devise)],['Date de mise à jour',fmtDate(a.dateMaj,a.dateMajPrecision)]].map(function(k){return '<div><span>'+k[0]+'</span><b>'+k[1]+'</b></div>';}).join('')+'</div>'
+    +(a.notes?'<p>'+esc(a.notes)+'</p>':'')
+    +(fl.length||(a.anomalies||[]).length?'<h4>Anomalies</h4><div class="lsAnoList">'+anos+'</div>':'')
+    +'<h4>'+IC.history+' Historique des prix</h4><div class="lsTableWrap"><table class="lsTable"><thead><tr><th>Date d\'effet</th><th>Enregistré le</th><th class="num">Catalogue</th><th class="num">Remise</th><th class="num">Achat</th><th class="num">Vente</th><th>Source</th><th>Par</th></tr></thead><tbody>'+hist+'</tbody></table></div>'
+    +(ex?'<h4>Origine Excel</h4><div class="lsKv">'+[['Fichier / ligne',esc(ex.fichier)+' · ligne '+esc(ex.ligne)],['Règle de calcul Excel',esc(ex.regleCalcul||'—')]].map(function(k){return '<div><span>'+k[0]+'</span><b>'+k[1]+'</b></div>';}).join('')+'</div><p class="lsSmall">Information sur l\'import : la règle Excel n\'est jamais appliquée automatiquement.</p>':'')
+    +'<h4>Journal des modifications</h4><div class="lsTableWrap"><table class="lsTable"><thead><tr><th>Date</th><th>Action</th><th>Détail</th><th>Par</th></tr></thead><tbody>'+jr+'</tbody></table></div>'
+    +'<div class="lsFoot">'+foot+'</div>';
+  showDialog();
+}
+async function openEdit(id){
+  if(!can(id?'edit':'create')) return note('Droit insuffisant');
+  var a=id?await dm.listingGetArticle(id):{groupe:st.groupe||'MORGAN',categorie:st.categorie||'MACHINES',marque:st.groupe&&st.groupe!=='AUTRES'?st.groupe:'',devise:'EUR'};
+  if(id&&!a) return note('Article introuvable');
+  if(!rules) rules=await dm.listingGetRules();
+  editExcel=id&&a.excel?a.excel:null;
+  ensureDialog();
+  var all=await dm.listingGetAll({raw:true});
+  var sfs=Array.from(new Set(all.map(function(x){return x.sousFamille;}).filter(Boolean))).sort();
+  var marques=Array.from(new Set(all.map(function(x){return x.marque;}).filter(Boolean))).sort();
+  function inp(name,label,val,type,extra){return '<div class="lsField'+(extra&&extra.wide?' wide':'')+'"><label for="lsF_'+name+'">'+label+'</label><input id="lsF_'+name+'" name="'+name+'" type="'+(type||'text')+'" value="'+esc(val==null?'':val)+'"'+(extra&&extra.attrs?' '+extra.attrs:'')+'/></div>';}
+  function sel(name,label,val,opts){return '<div class="lsField"><label for="lsF_'+name+'">'+label+'</label><select id="lsF_'+name+'" name="'+name+'">'+opts.map(function(o){return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(val)?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></div>';}
+  var d=new Date(), todayIso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  box().innerHTML='<form data-ls-form="article" data-id="'+esc(id||'')+'" novalidate><div class="lsBoxHead"><div><div class="lsEyebrow">'+(id?'Modifier l\'article':'Nouvel article')+'</div><h3 id="lsDlgTitle">'+(id?esc(a.reference)+' — '+esc(a.designation):'Ajouter un article au Listing')+'</h3>'+(id?'<div class="lsSmall">'+esc(a.id)+'</div>':'')+'</div><button type="button" class="lsIconBtn" data-ls="close" aria-label="Fermer">'+IC.x+'</button></div>'
+    +'<div class="lsForm">'
+    +sel('groupe','Fenêtre *',a.groupe,GROUPES.map(function(g){return [g.id,g.label];}))
+    +sel('categorie','Catégorie *',a.categorie,CATS.map(function(c){return [c.id,c.label];}))
+    +inp('marque','Marque *',a.marque,'text',{attrs:'list="lsMarques" autocomplete="off" required'})
+    +inp('famille','Famille',a.famille||'','text')
+    +inp('sousFamille','Sous-famille',a.sousFamille,'text',{attrs:'list="lsSfs" autocomplete="off"'})
+    +inp('reference','Référence *',a.reference,'text',{attrs:'required autocomplete="off"'})
+    +inp('designation','Désignation *',a.designation,'text',{wide:true,attrs:'required'})
+    +'</div><h4>Prix</h4><div class="lsForm">'
+    +inp('prixCatalogue','Prix catalogue',a.prixCatalogue,'text',{attrs:'inputmode="decimal"'})
+    +inp('remise','Remise (%)',a.remise==null?'':Math.round(a.remise*10000)/100,'text',{attrs:'inputmode="decimal"'})
+    +inp('prixAchat','Prix d\'achat (interne)',a.prixAchat,'text',{attrs:'inputmode="decimal"'})
+    +inp('prixVente','Prix de vente',a.prixVente,'text',{attrs:'inputmode="decimal"'})
+    +sel('devise','Devise',a.devise||'EUR',[['EUR','EUR'],['USD','USD'],['TND','TND']])
+    +inp('dateEffet','Date d\'effet du prix',todayIso,'date')
+    +inp('note','Motif du changement (historique)','', 'text',{wide:true,attrs:'placeholder="Ex. hausse fournisseur, nouveau tarif 2027…"'})
+    +'<div class="lsField wide"><label for="lsF_notes">Notes internes</label><textarea id="lsF_notes" name="notes" rows="2">'+esc(a.notes||'')+'</textarea></div>'
+    +'</div><div class="lsPropose" id="lsPropose"></div>'
+    +'<p class="lsSmall">Un changement de prix crée une nouvelle ligne datée dans l\'historique. Les anciens prix sont conservés et les factures ou offres déjà enregistrées ne sont jamais recalculées.</p>'
+    +'<div id="lsDupWarn"></div><div id="lsFormErr" role="alert"></div>'
+    +'<datalist id="lsMarques">'+marques.map(function(m){return '<option value="'+esc(m)+'">';}).join('')+'</datalist><datalist id="lsSfs">'+sfs.map(function(m){return '<option value="'+esc(m)+'">';}).join('')+'</datalist>'
+    +'<div class="lsFoot"><button type="button" class="lsBtn" data-ls="close">Annuler</button><button type="submit" class="lsBtn primary">Enregistrer</button></div></form>';
+  showDialog(); updateProposal(); checkDup();
+}
+function formVals(f){
+  var g=function(k){var el=f.elements[k];return el?el.value:'';};
+  var rem=g('remise').trim(), remN=rem===''?null:Number(rem.replace(',','.'))/100;
+  return {groupe:g('groupe'),categorie:g('categorie'),marque:g('marque'),famille:g('famille'),sousFamille:g('sousFamille'),reference:g('reference'),designation:g('designation'),
+    prixCatalogue:g('prixCatalogue'),remise:remN==null?'':(Number.isFinite(remN)?remN:'x'),prixAchat:g('prixAchat'),prixVente:g('prixVente'),devise:g('devise'),notes:g('notes')};
+}
+function updateProposal(){
+  var f=box().querySelector('form[data-ls-form="article"]'), host=box().querySelector('#lsPropose'); if(!f||!host) return;
+  var v=formVals(f), p=dm.listingPropose({groupe:v.groupe,categorie:v.categorie,prixCatalogue:v.prixCatalogue,remise:v.remise===''?null:v.remise,excel:editExcel},rules);
+  var html;
+  if(p.prixAchat==null){html='<span class="lsSmall"><b>Proposition de prix :</b> '+esc(p.explication)+'</span>';}
+  else html='<span><b>Proposition</b> ('+esc(p.regle.label)+') : achat '+fmt(p.prixAchat,v.devise)+' · vente '+fmt(p.prixVente,v.devise)+'<br><span class="lsSmall">'+esc(p.explication)+' — simple proposition, non appliquée automatiquement.</span></span><button type="button" class="lsBtn" data-ls="apply" data-a="'+p.prixAchat+'" data-v="'+p.prixVente+'">Utiliser la proposition</button>';
+  /* ne pas reconstruire si rien n'a change : sinon le bouton disparait pendant le clic (evenement change au blur) */
+  if(host.innerHTML!==html&&host.getAttribute('data-h')!==html){host.innerHTML=html;host.setAttribute('data-h',html);}
+}
+var dupTimer=null, editExcel=null;
+function checkDup(){
+  clearTimeout(dupTimer);
+  dupTimer=setTimeout(async function(){
+    var f=box().querySelector('form[data-ls-form="article"]'), host=box().querySelector('#lsDupWarn'); if(!f||!host) return;
+    var d=await dm.listingFindByReference(f.elements.reference.value,f.getAttribute('data-id')||null);
+    host.innerHTML=d.length?'<div class="lsNotice">Cette référence existe déjà sur '+d.length+' autre(s) article(s) ('+d.slice(0,4).map(function(x){return esc(x.id)+' · '+esc(x.marque)+' · '+fmt(x.prixVente,x.devise);}).join(' ; ')+'). L\'enregistrement reste possible (variante ou historique).</div>':'';
+  },250);
+}
+async function saveForm(f){
+  var errBox=box().querySelector('#lsFormErr'), id=f.getAttribute('data-id'), v=formVals(f);
+  var bad=[]; ['prixCatalogue','prixAchat','prixVente'].forEach(function(k){ if(String(v[k]).trim()!==''&&!Number.isFinite(Number(String(v[k]).replace(/\s/g,'').replace(',','.')))) bad.push(k); });
+  if(v.remise==='x') bad.push('remise');
+  if(bad.length){errBox.innerHTML='<div class="lsErr">Valeur numérique invalide : '+bad.join(', ')+'</div>';return;}
+  var opts={dateEffet:f.elements.dateEffet.value||undefined,note:f.elements.note.value,source:f.getAttribute('data-src')||'MANUEL'};
+  try{
+    var a=id?await dm.listingUpdateArticle(id,v,opts):await dm.listingCreateArticle(v,opts);
+    note(id?'Article enregistré':'Article ajouté au Listing');
+    await render(); openView(a.id);
+  }catch(e){errBox.innerHTML='<div class="lsErr">'+esc(e.message)+'</div>';}
+}
+async function renderRules(){
+  rules=await dm.listingGetRules();
+  var modeA=[['pct_catalogue','Catalogue × %'],['remise_catalogue','Catalogue × (1 − remise)']], modeV=[['pct_catalogue','Catalogue × %'],['coef_achat','Achat × coefficient']];
+  var rows=rules.map(function(r,i){
+    var o=function(list,v){return list.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===v?' selected':'')+'>'+x[1]+'</option>';}).join('');};
+    var av=r.achat.mode==='coef_achat'?r.achat.valeur:Math.round(r.achat.valeur*10000)/100, vv=r.vente.mode==='coef_achat'?r.vente.valeur:Math.round(r.vente.valeur*10000)/100;
+    return '<tr data-i="'+i+'"><td data-l="Règle"><input class="lsRuleIn" name="label" value="'+esc(r.label)+'" aria-label="Libellé"/><div class="lsSmall">'+esc(gLabel(r.groupe))+' · '+esc(r.categories.map(cLabel).join(', '))+'</div></td>'
+      +'<td data-l="Prix d\'achat"><select name="achatMode" aria-label="Mode achat">'+o(modeA,r.achat.mode)+'</select><input name="achatVal" inputmode="decimal" value="'+esc(av)+'" aria-label="Valeur achat (% ou remise par défaut en %)"/></td>'
+      +'<td data-l="Prix de vente"><select name="venteMode" aria-label="Mode vente">'+o(modeV,r.vente.mode)+'</select><input name="venteVal" inputmode="decimal" value="'+esc(vv)+'" aria-label="Valeur vente"/></td>'
+      +'<td data-l="Active"><label><input type="checkbox" name="actif"'+(r.actif!==false?' checked':'')+'/> Active</label></td></tr>';
+  }).join('');
+  root.innerHTML=headHtml('Règles de prix','Propositions de calcul modifiables — jamais appliquées automatiquement')+crumbHtml()
+    +'<div class="lsNotice">Ces règles servent uniquement à <b>proposer</b> des prix dans la fiche article (bouton « Utiliser la proposition »). Elles ne modifient aucun article existant. Valeurs en % (ex. 65 = 65 %, remise 40 = 40 %), coefficient en nombre (ex. 2).</div>'
+    +'<form data-ls-form="rules" onsubmit="return false"><div class="lsTableWrap"><table class="lsTable lsRules"><thead><tr><th>Règle</th><th>Prix d\'achat</th><th>Prix de vente</th><th>État</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="lsFoot" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px"><button type="button" class="lsBtn" data-ls="rulesReset">Revenir aux propositions Excel</button><button type="button" class="lsBtn primary" data-ls="rulesSave">Enregistrer les règles</button></div></form>';
+}
+async function saveRules(reset){
+  try{
+    var list;
+    if(reset){ if(!confirm('Revenir aux règles proposées dans le fichier Excel ?')) return; list=dm.listingDefaultRules(); }
+    else {
+      list=rules.map(function(r,i){
+        var tr=root.querySelector('tr[data-i="'+i+'"]'); var q=function(n){return tr.querySelector('[name="'+n+'"]');};
+        var am=q('achatMode').value, vm=q('venteMode').value, av=Number(q('achatVal').value.replace(',','.')), vv=Number(q('venteVal').value.replace(',','.'));
+        return Object.assign({},r,{label:q('label').value.trim()||r.label,actif:q('actif').checked,achat:{mode:am,valeur:am==='coef_achat'?av:av/100},vente:{mode:vm,valeur:vm==='coef_achat'?vv:vv/100}});
+      });
+    }
+    await dm.listingSaveRules(list); rules=list; note('Règles de prix enregistrées'); renderRules();
+  }catch(e){note('Erreur : '+e.message);}
+}
+async function exportListing(){
+  if(!can('export')) return note('Droit insuffisant');
+  var data=await dm.listingExportData();
+  var stamp=new Date().toISOString().slice(0,10);
+  var cols=[['id','ID'],['groupe','Fenêtre'],['marque','Marque'],['famille','Famille'],['sousFamille','Sous-famille'],['reference','Référence'],['designation','Désignation'],['prixCatalogue','Prix catalogue'],['remise','Remise'],['prixAchat','Prix achat'],['prixVente','Prix vente'],['devise','Devise'],['dateMaj','Date MAJ']];
+  var csv='﻿'+cols.map(function(c){return c[1];}).join(';')+';Statut;Nb prix historiques\n'+data.articles.map(function(a){
+    return cols.map(function(c){var v=a[c[0]]; if(typeof v==='number') v=String(v).replace('.',','); return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';')+';"'+(a._deleted_at?'Corbeille':'Actif')+'";'+((a.historiquePrix||[]).length);
+  }).join('\n');
+  dl(csv,'Listing_MGT_'+stamp+'.csv','text/csv;charset=utf-8');
+  dl(JSON.stringify(data),'Listing_MGT_sauvegarde_'+stamp+'.json','application/json;charset=utf-8');
+  note('Listing exporté (Excel CSV + sauvegarde JSON complète avec historiques)');
+}
+async function importListing(file){
+  if(!file) return;
+  try{
+    var lu=dm.listingLireFichier(await file.text());
+    var n=lu.articles.length, deja=(await dm.listingStats());
+    if(!confirm('Importer le Listing depuis « '+file.name+' » ?\n'+n.toLocaleString('fr-FR')+' article(s) trouvé(s) ('+lu.source+').\n\n'+((deja.total+deja.supprimes)?'Fusion article par article : les articles absents sont ajoutés ; un article déjà présent n\'est remplacé que si le fichier est plus récent ; les historiques de prix sont réunis ; rien n\'est supprimé.':'Les articles et leurs prix sont ajoutés à la base GTM, partagée par tous les appareils.'))) return;
+    note('Import du Listing en cours…');
+    var r=await dm.listingFusionner(lu);
+    note('Import : '+r.ajoutes+' ajouté(s), '+r.misAJour+' mis à jour, '+r.conserves+' déjà à jour');
+    render();
+  }catch(e){note('Import impossible : '+e.message);}
+}
+function dl(content,name,type){var b=new Blob([content],{type:type}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},500);}
+
+/* ---------------- fenetre ---------------- */
+function ensureDialog(){ if(!root.querySelector('#listingDialog')) root.insertAdjacentHTML('beforeend',dialogHtml()); dlg=root.querySelector('#listingDialog'); }
+function box(){return root.querySelector('#lsDlgBox');}
+var lastFocus=null;
+function showDialog(){lastFocus=document.activeElement; dlg.hidden=false; document.documentElement.style.overflow='hidden'; var f=dlg.querySelector('input,select,button'); if(f) setTimeout(function(){try{f.focus();}catch(e){}},30);}
+function closeDialog(){ if(!dlg) return; dlg.hidden=true; document.documentElement.style.overflow=''; if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} }
+
+/* ---------------- evenements ---------------- */
+async function onClick(e){
+  var b=e.target.closest('[data-ls]'); if(!b||!root.contains(b)) { if(dlg&&e.target===dlg) closeDialog(); return; }
+  var k=b.getAttribute('data-ls'), id=b.getAttribute('data-id');
+  switch(k){
+    case 'home': closeDialog(); st={level:'home',groupe:'',categorie:'',q:'',sf:'',ano:'',sort:'ref',page:0,globalQ:''}; return render();
+    case 'brand': closeDialog(); st.level='brand'; st.groupe=b.getAttribute('data-g')||st.groupe; st.categorie=''; return render();
+    case 'list': st.level='list'; st.categorie=b.getAttribute('data-c'); st.q='';st.sf='';st.ano='';st.page=0; return render();
+    case 'up': closeDialog(); if(st.level==='list'){st.level='brand';} else if(st.level==='brand'||st.level==='search'||st.level==='trash'||st.level==='rules'){st.level=st.groupe&&st.level!=='brand'?'brand':'home'; if(st.level==='home') st.groupe='';} return render();
+    case 'trash': st.level='trash'; st.q='';st.sf='';st.ano='';st.page=0; return render();
+    case 'rules': if(!can('edit')) return note('Droit insuffisant'); st.level='rules'; return render();
+    case 'rulesSave': return saveRules(false);
+    case 'rulesReset': return saveRules(true);
+    case 'export': return exportListing();
+    case 'import': { if(!can('edit')) return note('Droit insuffisant'); var fi=root.querySelector('#lsImportFile'); if(fi){fi.value='';fi.click();} return; }
+    case 'page': st.page=Math.max(0,Number(b.getAttribute('data-p'))||0); await render(); try{root.scrollIntoView({block:'start'});}catch(_){} return;
+    case 'new': if(st.level==='home'||st.level==='search'||st.level==='trash'||st.level==='rules'){ if(!root.querySelector('#listingDialog')) root.insertAdjacentHTML('beforeend',dialogHtml()); } return openEdit(null);
+    case 'view': return openView(id);
+    case 'edit': return openEdit(id);
+    case 'close': return closeDialog();
+    case 'apply': { var f=box().querySelector('form[data-ls-form="article"]'); if(f){ f.elements.prixAchat.value=b.getAttribute('data-a'); f.elements.prixVente.value=b.getAttribute('data-v'); f.setAttribute('data-src','REGLE'); if(!f.elements.note.value) f.elements.note.value='Proposition de règle appliquée'; } return; }
+    case 'ano': await dm.listingSetAnomalyStatus(id,b.getAttribute('data-code'),b.getAttribute('data-v')==='1'); await render(); return openView(id);
+    case 'del': {
+      if(!can('delete')) return note('Droit insuffisant');
+      var a=await dm.listingGetArticle(id); if(!a) return;
+      if(!confirm('Placer l\'article « '+a.reference+' — '+a.designation+' » dans la corbeille ?\nIl pourra être restauré.')) return;
+      await dm.listingSoftDelete(id); closeDialog(); note('Article placé dans la corbeille'); return render();
+    }
+    case 'restore': if(!can('edit')) return note('Droit insuffisant'); await dm.listingRestore(id); closeDialog(); note('Article restauré'); return render();
+    case 'purge': {
+      if(!can('delete')) return note('Droit insuffisant');
+      var p=await dm.listingGetArticle(id); if(!p) return;
+      if(!confirm('Supprimer DÉFINITIVEMENT « '+p.reference+' » ?\nSon historique de prix sera perdu. Cette action est irréversible.')) return;
+      await dm.listingPermanentDelete(id); note('Article supprimé définitivement'); return render();
+    }
+  }
+}
+var qTimer=null;
+function onInput(e){
+  var t=e.target;
+  if(t.id==='lsQ'){ clearTimeout(qTimer); qTimer=setTimeout(function(){ if(st.level==='search') st.globalQ=t.value; else st.q=t.value; st.page=0; rerenderKeepFocus('lsQ'); },220); return; }
+  if(t.form&&t.form.getAttribute('data-ls-form')==='article'){ if(['prixCatalogue','remise','groupe','categorie','devise'].indexOf(t.name)>=0) updateProposal(); if(t.name==='reference') checkDup(); if(t.name==='prixAchat'||t.name==='prixVente') t.form.setAttribute('data-src','MANUEL'); }
+}
+function onChange(e){
+  var t=e.target;
+  if(t.id==='lsImportFile'){ return importListing(t.files&&t.files[0]); }
+  if(t.id==='lsSf'){st.sf=t.value;st.page=0;return rerenderKeepFocus('lsSf');}
+  if(t.id==='lsAno'){st.ano=t.value;st.page=0;return rerenderKeepFocus('lsAno');}
+  if(t.id==='lsSort'){st.sort=t.value;st.page=0;return rerenderKeepFocus('lsSort');}
+  if(t.form&&t.form.getAttribute('data-ls-form')==='article'&&t.tagName==='SELECT'){ if(t.name==='categorie'){ var fam=t.form.elements.famille; if(fam&&!fam.value) fam.value=L.FAMILLE_DEFAUT[t.value]||''; } updateProposal(); }
+}
+async function rerenderKeepFocus(id){
+  var el=document.getElementById(id), pos=el&&el.selectionStart;
+  await render();
+  var n2=document.getElementById(id); if(n2){ n2.focus(); try{ if(pos!=null&&n2.setSelectionRange) n2.setSelectionRange(pos,pos);}catch(_){} }
+}
+function onSubmit(e){
+  var f=e.target, k=f.getAttribute('data-ls-form');
+  if(k==='global'){ e.preventDefault(); var q=f.querySelector('#lsGlobalQ').value.trim(); st.globalQ=q; st.level='search'; st.sf='';st.ano='';st.page=0; return render(); }
+  if(k==='article'){ e.preventDefault(); return saveForm(f); }
+}
+
+/* ---------------- branchement dans la navigation existante ---------------- */
+function open(){ ensureRoot(); if(st.level==='rules'&&!can('edit')) st.level='home'; render(); }
+try{
+  if(typeof MODULES!=='undefined'&&MODULES.stock){ delete MODULES.stock.placeholder; MODULES.stock.view='listing'; MODULES.stock.open=open; MODULES.stock.crumbs=['Listing']; }
+}catch(e){console.warn('[LISTING UI] MODULES',e);}
+(function(){
+  var base=window.setContentView;
+  if(typeof base!=='function') return;
+  var w=function(view){
+    var r=base.apply(this,arguments);
+    ensureRoot(); root.hidden=(view!=='listing');
+    if(view!=='listing') closeDialog();
+    return r;
+  };
+  w.__mgtListing=true; window.setContentView=w;
+})();
+document.addEventListener('mgt-listing-changed',function(){ /* rafraichissement leger si le module est affiche et aucune fenetre ouverte */ });
+window.MGT_LISTING_UI={open:open,render:render,state:function(){return JSON.parse(JSON.stringify(st));},openView:openView,openEdit:openEdit,closeDialog:closeDialog};
+})();
+
+</script>
 <style id="mgt-droits-style"></style>
 <style id="mgt-droits-ui">
 #mgtDroitsSection{--drb:#ffffff;--drf:#1b2433;--drm:#566377;--drl:#d3dae4;--drs:#eef2f7}
@@ -10040,7 +10965,8 @@ var TOUT=function(){return grille(function(){return true;});};
 var LECTURE=function(){return grille(function(m,a){return a==='view'||a==='export';});};
 /* Secrétaire MGT (validé le 01/11/2026) : factures, offres et planning en lecture et écriture ; clients en consultation (pour lier au client) ; rien d'autre. */
 var SECRETAIRE=function(){var plein={offres:1,billing:1,calendar:1};
-  return grille(function(m,a){if(plein[m])return true;if(m==='clients'||m==='dashboard')return a==='view';return false;});};
+  /* Listing (catalogue, prix d'achat compris) : consultation, pour ajouter des articles aux offres et factures (08/11/2026) */
+  return grille(function(m,a){if(plein[m])return true;if(m==='clients'||m==='dashboard'||m==='stock')return a==='view';return false;});};
 /* Direction : consultation (comme les règles Firebase) ; Administrateur système : accès complet (il assure la maintenance, les règles Firebase l'autorisent). */
 var DEFAUT={technico_mgt:TOUT,secretaire_mgt:SECRETAIRE,direction:LECTURE,sysadmin:TOUT};
 function hote(){try{var h=window.parent;return(h&&h!==window&&typeof h.getJSON==='function')?h:null;}catch(e){return null;}}
