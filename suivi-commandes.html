@@ -356,6 +356,17 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 /* chiffres des tableaux de saisie : noir gras, toujours lisibles */
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
+/* commande : consultation, saisie (brouillon) et confirmation */
+table.entry td input.lu{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+table.entry td input.chg,.xlwrap input.chg{background:#ffd8a8!important;border-color:#e8590c!important;box-shadow:0 0 0 2px #e8590c inset}
+.cm-barre{position:sticky;top:0;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border:2px solid #e8590c;background:#fff4e6}
+.cm-barre .cm-n{flex:1 1 180px;font-weight:700;color:#5c2b00}
+.cm-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.cm-chg{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:8px 0}
+.cm-chg>div{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px}
+.cm-chg>div:last-child{border-bottom:0}.cm-chg b{white-space:nowrap}.cm-chg .plus{color:var(--ok)}.cm-chg .moins{color:var(--bad)}
+.cm-av{margin:6px 0;padding:8px 10px;border-radius:10px;background:#fff3cd;color:#5c3b00;font-size:13.5px}
+.cm-eff{width:100%;box-sizing:border-box;margin:8px 0 4px;padding:12px;font-size:20px;font-weight:800;letter-spacing:2px;text-align:center;text-transform:uppercase;border:2px solid var(--bad);border-radius:12px}
 </style><style>
 /* ===== Charte GTM Groupe (alignée sur charte.css de l'application) ===== */
 :root{
@@ -1612,7 +1623,9 @@ function vCmd(v){
 var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat(["NEOLYS","ALLOGA"]));
   if (!ui.cmdClient) ui.cmdClient = (ui.client !== "*" && ui.client) ? ui.client : "NEOLYS";
   var cli = ui.cmdClient, libs = clientLibs(ui.lot, cli);
-
+  vCmdSaisie(v, clients, cli, libs);
+  if (ui.cmdEd) return;
+  /* importer une commande (fichier PERCKO, ou modèle avec historique) */
   var res = el("div", {class:"importres"});
   var file = el("input", {type:"file", accept:".xlsx,.xlsm", id:"fImport"});
   v.appendChild(el("details", {class:"card"}, el("summary", {text:"Importer un fichier de commande PERCKO (Excel)"}),
@@ -1630,39 +1643,73 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     }})), res));
 
   if (window.carteImportCommandes && !lectureSeule()) v.appendChild(window.carteImportCommandes());
-  var yr = (S.lines.filter(function(l){ return l.lot === ui.lot; })[0] || {}).year || (lotMonth(ui.lot) ? lotMonth(ui.lot).y : new Date().getFullYear());
-  var iLot = el("input", {id:"mLot", value:ui.lot, placeholder:"PK202610-1"});
-  iLot.addEventListener("change", function(){
-    ui.lot = cleanTxt(iLot.value);
-    if (ui.lot && ui.qteAtt){ try { Object.keys(ui.qteAtt).forEach(function(k){ var a = k.split("|"); setLine(ui.lot, num(iYear.value), a[0], a[1], a[2], ui.qteAtt[k]); }); ui.qteAtt = {}; persist(); } catch (e) { toast(e.message); } }
-    render();
-  });
-  var iYear = el("input", {id:"mYear", type:"number", inputmode:"numeric", value:yr});
-  iYear.addEventListener("change", function(){ S.lines.forEach(function(l){ if (l.lot === ui.lot) l.year = num(iYear.value); }); persist(); });
-  var seg = el("div", {class:"seg"});
-  clients.forEach(function(c){ seg.appendChild(el("button", {class:c === cli ? "on" : "", text:c, onclick:function(){ ui.cmdClient = c; render(); }})); });
-  var lm = lotMonth(ui.lot);
-  var iLiv = el("input", {id:"mLiv", type:"date", value:(S.lots[ui.lot] || {}).livraison || ""});
-  if (!ui.lot) iLiv.disabled = true;
-  iLiv.addEventListener("change", function(){ if (!ui.lot) return; ensureLot(ui.lot); S.lots[ui.lot].livraison = iLiv.value || ""; persist(); toast(iLiv.value ? "Livraison prévue le " + dmy(iLiv.value) : "Date de livraison retirée"); });
-  v.appendChild(el("div", {class:"card"}, el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)),
-    el("div", {class:"mut", style:"margin-top:6px", text:lm ? "Commande : " + MOIS[lm.m - 1] + " " + lm.y + " (mois n° " + lm.m + " lu dans le lot)" : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202610-1 = octobre 2026)."}),
-    el("div", {style:"margin-top:10px"}, el("div", {class:"mut", text:"COMMANDE :"}), seg),
-    el("div", {class:"actions", style:"margin-top:8px"}, el("span", {class:"mut", style:"align-self:center;font-weight:700", text:"📄 Fiche de commande :"}),
-      el("button", {class:"btn sec small", text:"📕 PDF", onclick:function(){ exportCommande(num(iYear.value), true); }}),
-      el("button", {class:"btn sec small", text:"📗 Excel", onclick:function(){ exportCommande(num(iYear.value), false); }})),
-    (ui.lot && window.etatCommandeBoutons && S.lines.some(function(l){ return l.lot === ui.lot; })) ? window.etatCommandeBoutons(ui.lot) : null));
+}
+/* commande choisie : consultation (Modifier, Supprimer, Nouvelle) ou saisie en brouillon,
+   enregistrée seulement après « Valider » et confirmation du message récapitulatif */
+function vCmdSaisie(v, clients, cli, libs){
+  var E = ui.cmdEd;
+  /* une saisie en cours sur une autre commande (changée en haut de l'écran) est abandonnée */
+  if (E && !E.nouveau && E.lot !== ui.lot){ ui.cmdEd = E = null; toast("Modification non enregistrée abandonnée."); }
+  var existe = !!ui.lot && S.lines.some(function(l){ return l.lot === ui.lot; }), RO = lectureSeule();
+  var lotV = E ? (E.nouveau ? E.lot : ui.lot) : ui.lot;
+  var yr0 = (S.lines.filter(function(l){ return l.lot === ui.lot; })[0] || {}).year || (lotMonth(ui.lot) ? lotMonth(ui.lot).y : new Date().getFullYear());
+  var yr = E && E.year !== undefined ? E.year : (E && E.nouveau ? (lotMonth(E.lot) ? lotMonth(E.lot).y : new Date().getFullYear()) : yr0);
+  var liv = E && E.liv !== undefined ? E.liv : (E && E.nouveau ? "" : (S.lots[ui.lot] || {}).livraison || "");
+  function cle(c, lib, z){ return c + "|" + lib + "|" + z; }
+  function qEnr(c, lib, z){ if (E && E.nouveau) return 0; var ln = findLine(ui.lot, c, lib, z); return ln ? ln.qty : 0; }
+  function qVue(c, lib, z){ var k = cle(c, lib, z); return E && k in E.q ? E.q[k] : qEnr(c, lib, z); }
 
+  /* ---- en-tête : commande affichée, boutons Modifier / Supprimer / Nouvelle ---- */
+  var head = el("div", {class:"card"});
+  if (E){
+    head.appendChild(el("h2", {style:"margin:0 0 8px", text:E.nouveau ? "➕ Nouvelle commande" : "✏️ Modification de la commande " + ui.lot}));
+    var iLot = el("input", {id:"mLot", value:lotV, placeholder:"PK202610-1"});
+    if (!E.nouveau) iLot.disabled = true;
+    iLot.addEventListener("change", function(){ E.lot = cleanTxt(iLot.value).toUpperCase(); iLot.value = E.lot; render(true); });
+    var iYear = el("input", {id:"mYear", type:"number", inputmode:"numeric", value:yr});
+    iYear.addEventListener("change", function(){ E.year = num(iYear.value); compter(); });
+    var iLiv = el("input", {id:"mLiv", type:"date", value:liv});
+    iLiv.addEventListener("change", function(){ E.liv = iLiv.value || ""; compter(); });
+    var lm = lotMonth(lotV);
+    head.appendChild(el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)));
+    head.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:lm ? "Commande : " + MOIS[lm.m - 1] + " " + lm.y + " (mois n° " + lm.m + " lu dans le lot)" : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202610-1 = octobre 2026)."}));
+  } else if (existe){
+    var lmx = lotMonth(ui.lot), totx = 0; S.lines.forEach(function(l){ if (l.lot === ui.lot) totx += l.qty; });
+    head.appendChild(el("h2", {style:"margin:0 0 4px", text:"📋 Commande " + ui.lot}));
+    head.appendChild(el("div", {class:"mut", text:(lmx ? MOIS[lmx.m - 1] + " " + lmx.y + " · " : "") + "Année " + yr0 + " · " + fmt(totx) + " pièces" + ((S.lots[ui.lot] || {}).livraison ? " · livraison prévue le " + dmy(S.lots[ui.lot].livraison) : "") + (lotReady(ui.lot) ? " · validée" : " · à valider")}));
+    if (!RO) head.appendChild(el("div", {class:"cm-act"},
+      el("button", {class:"btn", text:"✏️ Modifier", onclick:function(){ ui.cmdEd = {lot:ui.lot, q:{}}; render(); }}),
+      el("button", {class:"btn bad", text:"🗑 Supprimer", onclick:function(){ supprimerCommande(ui.lot); }}),
+      el("button", {class:"btn sec", text:"➕ Nouvelle commande", onclick:function(){ ui.cmdEd = {nouveau:true, lot:"", q:{}}; render(); }})));
+    head.appendChild(el("div", {class:"actions", style:"margin-top:8px"}, el("span", {class:"mut", style:"align-self:center;font-weight:700", text:"📄 Fiche de commande :"}),
+      el("button", {class:"btn sec small", text:"📕 PDF", onclick:function(){ exportCommande(yr0, true); }}),
+      el("button", {class:"btn sec small", text:"📗 Excel", onclick:function(){ exportCommande(yr0, false); }})));
+    if (window.etatCommandeBoutons) head.appendChild(window.etatCommandeBoutons(ui.lot));
+  } else {
+    head.appendChild(el("h2", {style:"margin:0 0 4px", text:"📋 Commandes"}));
+    head.appendChild(el("p", {class:"mut", text:"Aucune commande choisie. Choisissez une commande en haut de l'écran, ou créez-en une."}));
+    if (!RO) head.appendChild(el("button", {class:"btn", text:"➕ Nouvelle commande", onclick:function(){ ui.cmdEd = {nouveau:true, lot:"", q:{}}; render(); }}));
+  }
+  v.appendChild(head);
+  if (!E && !existe) return;
+
+  /* ---- barre de saisie : nombre de modifications, Valider, Annuler ---- */
+  var nbTxt = el("div", {class:"cm-n"});
+  if (E){
+    v.appendChild(el("div", {class:"card cm-barre"}, nbTxt,
+      el("button", {class:"btn", text:"✔ Valider", onclick:function(){ confirmerSaisie(); }}),
+      el("button", {class:"btn sec", text:"Annuler", onclick:function(){ var n = changements().length; if (n && !confirm("Abandonner " + n + " modification(s) non enregistrée(s) ?")) return; ui.cmdEd = null; render(); }})));
+  }
+  var seg = el("div", {class:"seg"});
+  clients.forEach(function(c){ seg.appendChild(el("button", {class:c === cli ? "on" : "", text:c, onclick:function(){ ui.cmdClient = c; render(true); }})); });
+  v.appendChild(el("div", {class:"card", style:"padding:10px 12px"}, el("div", {class:"mut", text:"CLIENT :"}), seg));
   var stat = el("div", {class:"stat"});
   v.appendChild(stat);
-  var okLot = ui.lot && lotReady(ui.lot);
-  v.appendChild(el("div", {class:"card", style:"position:sticky;top:0;z-index:5;padding:10px 12px"},
-    okLot ? el("div", {class:"mut", text:"✔ Commande validée : consommations calculées."}) :
-    el("button", {class:"btn", style:"width:100%", text:"✔ Vérification faite : valider et calculer les consommations", onclick:function(){
-      if (!ui.lot){ toast("Saisissez d'abord le lot."); return; }
-      if (!filtered(ui.lot, "*").length){ toast("Aucune quantité saisie pour ce lot."); return; }
-      validateLot(ui.lot);
-    }})));
+  if (!E && !lotReady(ui.lot) && !RO){
+    v.appendChild(el("div", {class:"card", style:"padding:10px 12px"},
+      el("button", {class:"btn", style:"width:100%", text:"✔ Vérification faite : valider la commande et calculer les consommations", onclick:function(){ validateLot(ui.lot); }})));
+  }
+  if (E && E.nouveau) libs = clientLibs("", cli);
   var t = el("table", {class:"xl entry"}), tb = el("tbody"), groups = [], inputs = [];
   var cg = el("colgroup"); (PC ? [90,300,60,90,70] : [52,172,36,54,40]).forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
   t.appendChild(el("thead", null, el("tr", null, ["Model","LIBELLE","Taille","Quantité","Total"].map(function(h){ return el("th", {text:h}); }))));
@@ -1673,8 +1720,9 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     var g = {li:li, cells:[], tot:null};
     g.tot = el("td", {class:"tot b", rowspan:String(li.sizes.length)});
     li.sizes.forEach(function(s, i){
-      var ln = findLine(ui.lot, cli, li.lib, s);
-      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", value:ln ? ln.qty : ((ui.qteAtt || {})[cli + "|" + li.lib + "|" + s] || ""), enterkeyhint:"next"});
+      var k = cle(cli, li.lib, s), q = qVue(cli, li.lib, s);
+      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:E ? "ed" + (k in E.q ? " chg" : "") : "lu", value:q ? q : "", enterkeyhint:"next"});
+      if (!E){ inp.readOnly = true; inp.tabIndex = -1; }
       var tr = el("tr", {class:i === 0 ? "gstart" : ""});
       if (i === 0 && mstart[gi]) tr.appendChild(el("td", {class:"mdl b", rowspan:String(span[gi]), text:li.model}));
       tr.appendChild(el("td", {class:"lib", text:li.lib}));
@@ -1683,16 +1731,16 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
       if (i === 0) tr.appendChild(g.tot);
       tb.appendChild(tr);
       g.cells.push({inp:inp, size:s}); inputs.push(inp);
-      inp.addEventListener("change", function(){
-        if (!ui.lot){ (ui.qteAtt = ui.qteAtt || {})[cli + "|" + li.lib + "|" + s] = num(inp.value); toast("Quantité notée : saisissez le lot pour l'enregistrer."); upd(); return; }
-        var l0 = findLine(ui.lot, cli, li.lib, s), q0 = l0 ? l0.qty : 0, qn = num(inp.value);
-        try { setLine(ui.lot, num(iYear.value), cli, li.lib, s, qn); }
-        catch (e) { toast(e.message); var l2 = findLine(ui.lot, cli, li.lib, s); inp.value = l2 ? l2.qty : ""; return; }
-        persist(); upd();
-        if (lotReady(ui.lot) && qn > q0) toast("+" + fmt(qn - q0) + " pièce(s) ajoutée(s) à la commande " + ui.lot + " (" + li.lib + " " + s + ")");
-      });
-      inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var k = inputs.indexOf(inp); if (inputs[k+1]) inputs[k+1].focus(); else inp.blur(); } });
-      inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+      if (E){
+        inp.addEventListener("change", function(){
+          var n = String(inp.value).trim() === "" ? 0 : Number(inp.value);
+          if (!(n >= 0) || Math.floor(n) !== n){ toast("Tapez un nombre entier (0 ou plus)."); inp.value = qVue(cli, li.lib, s) || ""; return; }
+          if (n === qEnr(cli, li.lib, s)) delete E.q[k]; else E.q[k] = n;
+          inp.classList.toggle("chg", k in E.q); upd();
+        });
+        inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var x = inputs.indexOf(inp); if (inputs[x+1]) inputs[x+1].focus(); else inp.blur(); } });
+        inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+      }
     });
     groups.push(g);
   });
@@ -1701,14 +1749,66 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
     var gf = 0, gc = 0;
     groups.forEach(function(g){
       var tf = 0, tc = 0;
-      g.cells.forEach(function(c){ var ln = findLine(ui.lot, cli, g.li.lib, c.size), q = ln ? ln.qty : (!ui.lot ? num(c.inp.value) || 0 : 0); tf += q; if (q) tc += cutQty(q, g.li.model); });
+      g.cells.forEach(function(c){ var q = qVue(cli, g.li.lib, c.size); tf += q; if (q) tc += cutQty(q, g.li.model); });
       g.tot.textContent = tf ? fmt(tf) : "0"; gf += tf; gc += tc;
     });
     stat.innerHTML = "";
     stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées · " + cli})));
     stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));
+    compter();
+  }
+  function compter(){ if (!E) return; var n = changements().length; nbTxt.textContent = n ? "✏️ Saisie en cours : " + n + " modification(s) non enregistrée(s)" : "✏️ Saisie en cours : modifiez les quantités puis appuyez sur Valider"; }
+  /* liste des changements du brouillon (quantités, année, livraison) */
+  function changements(){
+    var out = [];
+    Object.keys(E.q).forEach(function(k){ var a = k.split("|"), av = E.nouveau ? 0 : qEnr(a[0], a[1], a[2]); if (E.q[k] !== av) out.push({c:a[0], lib:a[1], z:a[2], a:av, n:E.q[k]}); });
+    var lo = libOrder();
+    out.sort(function(x, y){ return x.c < y.c ? -1 : x.c > y.c ? 1 : ((lo[x.lib] || 999) - (lo[y.lib] || 999)) || (x.lib < y.lib ? -1 : x.lib > y.lib ? 1 : sizeIdx(x.z) - sizeIdx(y.z)); });
+    if (!E.nouveau && E.year !== undefined && E.year !== yr0) out.push({info:"Année : " + yr0 + " → " + E.year});
+    if (!E.nouveau && E.liv !== undefined && E.liv !== ((S.lots[ui.lot] || {}).livraison || "")) out.push({info:"Livraison prévue : " + (((S.lots[ui.lot] || {}).livraison) ? dmy(S.lots[ui.lot].livraison) : "—") + " → " + (E.liv ? dmy(E.liv) : "—")});
+    return out;
+  }
+  /* message de confirmation : toutes les modifications (ou la création), puis enregistrement */
+  function confirmerSaisie(){
+    var ch = changements(), lot = E.nouveau ? cleanTxt(E.lot).toUpperCase() : ui.lot, q = ch.filter(function(c){ return !c.info; });
+    if (E.nouveau){
+      if (!lot){ toast("Saisissez le N° de la commande (LOT / REF)."); var f = document.getElementById("mLot"); if (f) f.focus(); return; }
+      if (S.lines.some(function(l){ return l.lot === lot; })){ toast("La commande " + lot + " existe déjà : choisissez-la et utilisez « Modifier »."); return; }
+      if (!q.some(function(c){ return c.n > 0; })){ toast("Aucune quantité saisie."); return; }
+    } else if (!ch.length){ toast("Aucune modification à valider."); return; }
+    var tot = stageTotals(), ready = lotReady(lot), avance = !E.nouveau && S.moves.some(function(m){ var l = lineById(m.lineId); return l && l.lot === lot; });
+    var nom = {}; STAGES.forEach(function(x){ nom[x[0]] = x[1]; });
+    var box = sxModal(), av0 = 0, ap0 = 0;
+    if (!E.nouveau) S.lines.forEach(function(l){ if (l.lot === lot) av0 += l.qty; });
+    ap0 = av0; q.forEach(function(c){ ap0 += c.n - c.a; });
+    box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:E.nouveau ? "➕ Créer la commande " + lot + " ?" : "✏️ Enregistrer les modifications de " + lot + " ?"}));
+    box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:E.nouveau ? q.length + " taille(s) · " + fmt(ap0) + " pièces" : ch.length + " modification(s) · total " + fmt(av0) + " → " + fmt(ap0) + " pièces"}));
+    if (ready) box.appendChild(el("div", {class:"cm-av", text:"Commande déjà validée : l'ordre de coupe et les consommations seront recalculés" + (avance ? " ; une pièce ajoutée rouvre la coupe pour le complément." : ".")}));
+    else if (!E.nouveau) box.appendChild(el("div", {class:"cm-av", text:"Commande pas encore validée : pensez à la valider ensuite pour calculer les consommations."}));
+    var lst = el("div", {class:"cm-chg"});
+    ch.forEach(function(c){
+      if (c.info){ lst.appendChild(el("div", null, el("span", {text:c.info}))); return; }
+      var d = c.n - c.a, ln = E.nouveau ? null : findLine(lot, c.c, c.lib, c.z), fait = 0, et = "";
+      if (ln) STG_KEYS.forEach(function(sk){ var x = (tot[ln.id] || {})[sk] || 0; if (x > fait){ fait = x; et = nom[sk] || sk; } });
+      var row = el("div", null, el("span", {text:c.c + " · " + c.lib + " " + c.z}), el("b", {class:d > 0 ? "plus" : "moins", text:E.nouveau ? fmt(c.n) : fmt(c.a) + " → " + fmt(c.n) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}));
+      lst.appendChild(row);
+      if (fait > c.n) lst.appendChild(el("div", {class:"cm-av", text:"⚠ " + c.lib + " " + c.z + " : " + fmt(fait) + " pièce(s) déjà passées à « " + et + " » — plus que la nouvelle quantité (" + fmt(c.n) + ")."}));
+    });
+    box.appendChild(lst);
+    box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:E.nouveau ? "✔ Confirmer et créer la commande" : "✔ Confirmer et enregistrer", onclick:function(){
+      sxClose();
+      var Ed = E, ok = commit(function(){
+        var year = Ed.year !== undefined ? Ed.year : yr;
+        q.forEach(function(c){ setLine(lot, year, c.c, c.lib, c.z, c.n); });
+        if (Ed.year !== undefined) S.lines.forEach(function(l){ if (l.lot === lot) l.year = Ed.year; });
+        if (Ed.liv !== undefined){ ensureLot(lot); S.lots[lot].livraison = Ed.liv || ""; }
+      }, null);
+      if (ok){ ui.cmdEd = null; ui.lot = lot; render(); toast(Ed.nouveau ? "Commande " + lot + " créée" : ch.length + " modification(s) enregistrée(s) sur " + lot); }
+    }}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Revenir à la saisie", onclick:sxClose}));
   }
   upd();
+  if (E) return;
   if (ui.lot && filtered(ui.lot, "*").length){
     var ready = lotReady(ui.lot), info = S.lots[ui.lot] || {}, vc = el("div", {class:"card" + (ready ? "" : " confirm")});
     var cc = conso(ui.lot, "*"), perCli = {}, unk = {};
@@ -1730,19 +1830,44 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
         vc.appendChild(jm);
       }
       vc.appendChild(el("div", {class:"actions"}, el("button", {class:"btn", text:"Voir les fiches de consommation", onclick:function(){ ui.tab = "fiche"; ui.fiche = "c"; render(); }}),
-        confirmBtn("Rouvrir pour modifier", "sec", function(){ commit(function(){ if (S.moves.some(function(m){ var l = lineById(m.lineId); return l && l.lot === ui.lot; })) throw new Error("Des étapes sont déjà enregistrées : impossible de rouvrir."); ensureLot(ui.lot); S.lots[ui.lot].ready = ""; }, "Commande rouverte"); })));
+        confirmBtn("Annuler la validation", "sec", function(){ commit(function(){ if (S.moves.some(function(m){ var l = lineById(m.lineId); return l && l.lot === ui.lot; })) throw new Error("Des étapes sont déjà enregistrées : impossible de rouvrir."); ensureLot(ui.lot); S.lots[ui.lot].ready = ""; }, "Commande rouverte"); })));
     } else {
       vc.appendChild(el("p", {class:"mut", text:"Relisez les quantités ci-dessus (tous les clients du lot). Quand tout est correct, validez pour calculer les consommations de coupe et d'assemblage."}));
       vc.appendChild(el("button", {class:"btn", text:"✔ Valider la commande et calculer les consommations", onclick:function(){ validateLot(ui.lot); }}));
     }
     v.appendChild(vc);
   }
-  if (ui.lot) v.appendChild(el("p", {style:"text-align:right"}, confirmBtn("Supprimer la commande " + cli + " du lot", "bad", function(){
-    commit(function(){ var ids = {}; S.lines.forEach(function(l){ if (l.lot === ui.lot && l.client === cli) ids[l.id] = 1; });
-      S.lines = S.lines.filter(function(l){ return !ids[l.id]; }); S.moves = S.moves.filter(function(m){ return !ids[m.lineId]; }); }, "Commande supprimée");
-  })));
 }
-
+/* supprimer toute une commande (tous les clients, étapes, cartons) : confirmation en tapant EFFACER */
+function supprimerCommande(lot){
+  if (lectureSeule()){ toast("Lecture seule : votre profil permet de consulter, pas de modifier."); return; }
+  var ids = {}, n = 0, pcs = 0; S.lines.forEach(function(l){ if (l.lot === lot){ ids[l.id] = 1; n++; pcs += l.qty; } });
+  if (!n){ toast("Aucune commande " + lot + "."); return; }
+  var mv = S.moves.filter(function(m){ return ids[m.lineId]; }).length;
+  var exs = (S.exports || []).filter(function(e){ return e.cartons.some(function(c){ return c.it.some(function(y){ return ids[y[0]] || y[2] === lot; }); }); });
+  var box = sxModal();
+  box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center;color:var(--bad)", text:"🗑 Supprimer la commande " + lot + " ?"}));
+  box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:n + " ligne(s) · " + fmt(pcs) + " pièces · " + sortedUnique(S.lines.filter(function(l){ return ids[l.id]; }).map(function(l){ return l.client; })).join(", ")}));
+  if (exs.length){
+    box.appendChild(el("div", {class:"msg err", text:"Impossible : des pièces de cette commande sont dans " + (exs.length > 1 ? "les exports" : "l'export") + " " + exs.map(function(e){ return "N°" + e.n + " du " + dmy(e.d); }).join(", ") + ". Retirez-les d'abord de l'export (onglet Exports)."}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Fermer", onclick:sxClose}));
+    return;
+  }
+  box.appendChild(el("div", {class:"cm-av", text:"Tout sera effacé : les quantités, " + (mv ? mv + " saisie(s) d'étapes (coupe, GADH, confection…), " : "") + "les cartons et le journal de la commande. Les mouvements de stock ne sont pas touchés. Cette action ne peut pas être annulée."}));
+  box.appendChild(el("div", {style:"margin-top:10px;font-weight:700", text:"Pour confirmer, tapez EFFACER :"}));
+  var inp = el("input", {class:"cm-eff", autocomplete:"off", autocapitalize:"characters", spellcheck:"false", placeholder:"EFFACER"});
+  var go = el("button", {class:"sx-go", style:"width:100%;background:var(--bad)", text:"🗑 Supprimer définitivement", disabled:"disabled", onclick:function(){
+    if (cleanTxt(inp.value).toUpperCase() !== "EFFACER") return;
+    sxClose();
+    if (commit(function(){ S.lines = S.lines.filter(function(l){ return !ids[l.id]; }); S.moves = S.moves.filter(function(m){ return !ids[m.lineId]; }); delete S.lots[lot]; delete S.cartons[lot]; }, null)){
+      ui.cmdEd = null; ui.lot = ""; render(); toast("Commande " + lot + " supprimée");
+    }
+  }});
+  inp.addEventListener("input", function(){ go.disabled = cleanTxt(inp.value).toUpperCase() !== "EFFACER"; });
+  box.appendChild(inp); box.appendChild(go);
+  box.appendChild(el("button", {class:"sx-annul", text:"Annuler", onclick:sxClose}));
+  setTimeout(function(){ try { inp.focus(); } catch (e) {} }, 50);
+}
 /* --- 2. Fiches de commande : coupe (PROGES) et assemblage (GADH), même présentation que les feuilles de votre tableau --- */
 function gateCard(){
   var l = filtered(ui.lot, "*");

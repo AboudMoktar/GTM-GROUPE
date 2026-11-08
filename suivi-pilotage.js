@@ -50,6 +50,12 @@ var CSS = [
   '.ph-t td.e{padding:0;background:var(--edit)}.ph-t tr.cochee td.e{background:#fff0b3}',
   '.ph-in{width:100%;height:30px;border:0!important;border-radius:0;background:transparent!important;text-align:center;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;padding:0 4px;min-height:0;box-shadow:none;color:inherit}',
   '.ph-in:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#fff!important}.ph-t td.e.bad{background:#fde2e1}',
+  /* saisie en attente de validation */
+  '.ph-t td.e.chg{background:#ffd8a8!important;box-shadow:inset 0 0 0 2px #e8590c}',
+  '.ph-attente{position:sticky;top:0;z-index:7;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 8px;padding:10px 12px;border:2px solid #e8590c;border-radius:12px;background:#fff4e6}',
+  '.ph-attente b{flex:1 1 200px;color:#5c2b00}',
+  '.ph-chg{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:8px 0}.ph-chg>div{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px}.ph-chg>div:last-child{border-bottom:0}.ph-chg b{white-space:nowrap}',
+  '.ph-av{margin:6px 0;padding:8px 10px;border-radius:10px;background:#fff3cd;color:#5c3b00;font-size:13.5px}',
   '.ph-t td .v{display:block}.ph-tout{display:block;margin:3px auto 0;border:1px solid #2563eb;background:#fff;color:#1d4f91;border-radius:7px;font-size:11px;font-weight:800;padding:2px 6px;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
   '.ph-t tr.tg .ph-tout{border-color:#fff}.ph-tout:hover{background:#e7f1ff}',
   '.ph-exp{background:var(--sub);border-radius:12px;padding:8px 10px}',
@@ -362,7 +368,8 @@ window.vPilotage = function(v){
   var toutes = lignesPilotage(lot);
   if (!toutes.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"ph-vide", text:"Aucune ligne pour ce lot. Ajoutez la commande dans l'onglet Commandes."}))); return; }
   var P = filtres();
-  if (P.lot !== lot){ P.lot = lot; P.f = {}; P.q = ""; P.sel = {}; }
+  if (P.lot !== lot){ P.lot = lot; P.f = {}; P.q = ""; P.sel = {}; P.br = {}; }
+  P.br = P.br || {};
   if (!P.init && ui.client && ui.client !== "*"){ P.f.client = ui.client; } P.init = true;
   var Tall = sommer(toutes), L = S.lots[lot] || {};
   var annee = (S.lines.filter(function(l){ return l.lot === lot; })[0] || {}).year || "";
@@ -383,11 +390,46 @@ window.vPilotage = function(v){
     L.livraison ? el("div", {class:"ph-info"}, el("small", {text:"Livraison prévue"}), el("b", {text:dmyL(L.livraison)})) : null,
     el("div", {class:"ph-info"}, el("small", {text:"Dernière mise à jour"}), el("b", {text:maj ? dmyL(maj) : "—"})),
     el("span", {class:"ph-etat " + E.c, text:E.t})));
-  var zone = el("div");
+  var zone = el("div"), barre = el("div", {class:"ph-attente"});
   v.appendChild(zone);
   dessiner();
   if (window.matchMedia){ var mq = window.matchMedia("(max-width:700px)"), sur = function(){ if (!document.body.contains(zone)){ if (mq.removeEventListener) mq.removeEventListener("change", sur); return; } dessiner(); };
     if (mq.addEventListener) mq.addEventListener("change", sur); }
+
+  /* ---- saisies en attente : rien n'est enregistré avant « Valider » et la confirmation du message ---- */
+  function nbAttente(){ return Object.keys(P.br).length; }
+  function majBarre(){
+    var n = nbAttente(); barre.innerHTML = ""; barre.style.display = n ? "" : "none"; if (!n) return;
+    barre.appendChild(el("b", {text:"✏️ " + n + " modification(s) en attente, pas encore enregistrée(s)"}));
+    barre.appendChild(el("button", {class:"btn small", text:"✔ Valider", onclick:confirmerAttente}));
+    barre.appendChild(el("button", {class:"btn small sec", text:"Annuler", onclick:function(){ if (!confirm("Abandonner " + nbAttente() + " modification(s) ?")) return; P.br = {}; dessiner(); }}));
+  }
+  function noter(id, k, v){
+    var l = lineById(id); if (!l) return;
+    var cur = k === "fr" ? l.qty : ((stageTotals()[id] || {})[k] || 0), cle = id + "|" + k;
+    if (v === cur) delete P.br[cle]; else P.br[cle] = {id:id, k:k, v:v, avant:cur};
+  }
+  function confirmerAttente(){
+    var ch = Object.keys(P.br).map(function(c){ return P.br[c]; }), noms = {}; COLS.forEach(function(c){ noms[c.k] = c.t; });
+    if (!ch.length) return;
+    var ordre = {fr:-1}; ETAPES.forEach(function(e, i){ ordre[e[0]] = i; });
+    ch.sort(function(a, b){ var la = lineById(a.id) || {}, lb = lineById(b.id) || {}; return (la.lib < lb.lib ? -1 : la.lib > lb.lib ? 1 : sizeIdx(la.size) - sizeIdx(lb.size)) || (la.client < lb.client ? -1 : la.client > lb.client ? 1 : 0) || ordre[a.k] - ordre[b.k]; });
+    ui.pend = {modal:true};
+    var box = sxModal();
+    box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"✏️ Enregistrer " + ch.length + " modification(s) ?"}));
+    box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:"Commande " + lot + " · date de saisie " + dmy(P.date || today())}));
+    if (ch.some(function(c){ return c.k === "fr"; })) box.appendChild(el("div", {class:"ph-av", text:"Les quantités commandées changent : l'ordre de coupe et les consommations seront recalculés" + (ch.some(function(c){ return c.k === "fr" && c.v === 0; }) ? " ; une taille à 0 sort de la commande (elle reste affichée à 0 si elle a déjà été traitée)." : ".")}));
+    var lst = el("div", {class:"ph-chg"});
+    ch.forEach(function(c){ var l = lineById(c.id) || {}, d = c.v - c.avant;
+      lst.appendChild(el("div", null, el("span", {text:l.lib + " " + l.size + (clients.length > 1 ? " · " + l.client : "") + " — " + (noms[c.k] || c.k)}), el("b", {style:"color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(c.avant) + " → " + fmt(c.v) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
+    box.appendChild(lst);
+    box.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-bottom:8px", text:"Tout ou rien : si une quantité ne suit pas l'étape précédente, rien n'est enregistré et vos saisies restent en attente pour être corrigées."}));
+    box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Confirmer et enregistrer", onclick:function(){
+      sxClose(); var garde = P.br; P.br = {};
+      if (!appliquer(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), ch.length + " modification(s) enregistrée(s)")){ P.br = garde; render(true); }
+    }}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Revenir à la saisie", onclick:sxClose}));
+  }
 
   function dessiner(){
     zone.innerHTML = "";
@@ -458,8 +500,10 @@ window.vPilotage = function(v){
     }
     zone.appendChild(bx);
     if (!G && window.etatCommandeBoutons) zone.appendChild(window.etatCommandeBoutons(lot));
+    zone.appendChild(barre);
     zone.appendChild(tableau(vis, T));
-    var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. " : "";
+    majBarre();
+    var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. Les cases modifiées passent en orange : rien n'est enregistré avant « ✔ Valider » et la confirmation. " : "";
     zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
     /* après un enregistrement : retour à la case suivante et à la même position dans le tableau */
     var tw = zone.querySelector(".ph-tw");
@@ -518,8 +562,8 @@ window.vPilotage = function(v){
   function toutPasser(k, rows, nom){
     var D = dispoTout(k, rows), et = ETAPES.filter(function(e){ return e[0] === k; })[0];
     if (!D.n){ toast("Rien à passer : l'étape précédente est déjà entièrement passée."); return; }
-    if (!confirm("Passer " + fmt(D.n) + " pièce(s) de " + nom + " à « " + et[1] + " » ?")) return;
-    appliquer(Object.keys(D.vals).map(function(id){ return {id:id, k:k, v:D.vals[id]}; }), fmt(D.n) + " pièce(s) de " + nom + " passées à « " + et[1] + " »");
+    Object.keys(D.vals).forEach(function(id){ noter(id, k, D.vals[id]); });
+    dessiner(); toast(fmt(D.n) + " pièce(s) de " + nom + " à « " + et[1] + " » : en attente, appuyez sur Valider pour enregistrer.");
   }
 
   function tableau(vis, T){
@@ -563,17 +607,16 @@ window.vPilotage = function(v){
     if (!vis.length){ var tr0 = el("tr"); tr0.appendChild(el("td", {colspan:String(cols.length), class:"ph-vide", text:"Aucune ligne ne correspond à la recherche ou aux filtres."})); tb.appendChild(tr0); }
     var SA = saisissables(), ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
     function cellSaisie(r, k, ri){
-      var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "")}), v0 = r[k];
-      var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(v0), "data-r":String(ri), "data-c":String(ecols.indexOf(k)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
-      var fait = false;
+      var att = P.br[r.id + "|" + k], v0 = r[k], vu = att ? att.v : v0;
+      var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "") + (att ? " chg" : "")});
+      var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(vu), "data-r":String(ri), "data-c":String(ecols.indexOf(k)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
+      /* la saisie est notée « en attente » (case orange) : enregistrée seulement après Valider et confirmation */
       function valider(cible){
-        if (fait) return; var n = lireNombre(inp.value);
+        var n = lireNombre(inp.value);
         if (n === null) n = 0;
-        if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(v0); return; }
-        if (n === v0){ if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } } return; }
-        if (k === "fr" && n === 0 && !confirm("Quantité commandée à 0 pour " + r.lib + " " + r.size + " : la taille sort de la commande (elle reste affichée à 0 si elle a déjà été traitée). Continuer ?")){ inp.value = String(v0); return; }
-        fait = true; P.focus = cible || null;
-        appliquer([{id:r.id, k:k, v:n}], r.lib + " " + r.size + " : " + fmt(n));
+        if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(vu); return; }
+        if (n !== vu){ noter(r.id, k, n); vu = n; td.classList.toggle("chg", !!P.br[r.id + "|" + k]); majBarre(); }
+        if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } }
       }
       inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
       inp.addEventListener("change", function(){ valider(null); });
@@ -584,7 +627,7 @@ window.vPilotage = function(v){
         else if (ev.key === "Tab") to = ev.shiftKey ? (c > 0 ? [ri, c - 1] : [ri - 1, ecols.length - 1]) : (c < ecols.length - 1 ? [ri, c + 1] : [ri + 1, 0]);
         else if (ev.key === "ArrowRight" && inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length) to = [ri, c + 1];
         else if (ev.key === "ArrowLeft" && inp.selectionStart === 0 && inp.selectionEnd === 0) to = [ri, c - 1];
-        else if (ev.key === "Escape"){ inp.value = String(v0); inp.blur(); return; }
+        else if (ev.key === "Escape"){ inp.value = String(vu); inp.blur(); return; }
         if (!to) return;
         ev.preventDefault(); valider(to);
       });
@@ -603,8 +646,8 @@ window.vPilotage = function(v){
         if (err){ toast(err + " case(s) collée(s) ne sont pas des nombres entiers : rien n'est collé."); return; }
         if (!ch.length){ toast("Rien à coller ici."); return; }
         if (ch.some(function(c){ return c.k === "fr" && c.v === 0; })){ toast("Une quantité commandée collée vaut 0 : retirez la ligne à part."); return; }
-        if (!confirm("Coller " + ch.length + " quantité(s) dans le tableau ?")) return;
-        fait = true; appliquer(ch, ch.length + " quantité(s) collée(s)");
+        ch.forEach(function(c){ noter(c.id, c.k, c.v); });
+        dessiner(); toast(ch.length + " quantité(s) collée(s) : en attente, appuyez sur Valider pour enregistrer.");
       });
       inp.setAttribute("data-id", r.id); inp.setAttribute("data-k", k);
       td.appendChild(inp);
