@@ -20,8 +20,11 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     let nom = null; const sv = window.saveFile; window.saveFile = (n) => { nom = n; };
     exportFichesPdf('c'); const pdfOk = /^Consommation_PROGES_PK209912_\d{8}\.pdf$/.test(nom); exportFiches('a'); const xOk = /^Consommation_GADH_PK209912_\d{8}\.xlsx$/.test(nom); window.saveFile = sv;
     out.push(['fiches en PDF et en Excel', pdfOk && xOk]);
-    const cg = commandeGrid('PK209912', 2026, 'ALLOGA'), lcg = cg.rows.slice(4).map(x => x.cells[1].v + ' ' + x.cells[2].v + ' ' + x.cells[3].v);
-    out.push(['commande Excel : seulement les modèles et tailles commandés', JSON.stringify(lcg) === JSON.stringify(['PHARMA_HOMME COL V SABLE XS 45', 'PHARMA_HOMME COL V SABLE S 90', 'PHARMA_HOMME COL V GRIS L 25'])]);
+    const cg = commandeGrid('PK209912', 2026, 'ALLOGA'), lcg = cg.rows.slice(3, -1).map(x => x.cells[1].v + ' ' + x.cells[2].v + ' ' + x.cells[3].v);
+    out.push(['commande Excel : seulement les modèles et tailles commandés', JSON.stringify(lcg) === JSON.stringify(['PHARMA_HOMME COL V GRIS L 25', 'PHARMA_HOMME COL V SABLE XS 45', 'PHARMA_HOMME COL V SABLE S 90'])]);
+    const ct = commandeGrid('PK209912', 2026, '*'), tete = ct.rows[2].cells.map(x => x ? x.v : '').join('|'), t0 = ct.rows[0].cells.map(x => x ? x.v : '').filter(Boolean).join('|');
+    out.push(['fiche de commande au format initial (Commande: MOIS | LOT | ANNEE ; Model | LIBELLE | Taille | clients | Total | Total)', /^Commande: \S+\|LOT\|ANNEE$/.test(t0) && /^Model\|LIBELLE\|Taille\|(NEOLYS\|)?ALLOGA\|Total\|Total$/.test(tete) && ct.rows[1].cells[3].v === '2026']);
+    out.push(['fiche de commande : ligne TOTAL et une seule page', ct.rows[ct.rows.length - 1].cells[0].v === 'TOTAL' && ct.onePage === true]);
     return out;
   });
   r.push(['aucune erreur', err.length === 0]);
