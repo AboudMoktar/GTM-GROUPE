@@ -48,6 +48,19 @@ async function page(b, url){
   const o = await p.evaluate(() => window.__f.map(x => /MediaBox \[0 0 595\.28 841\.89\]/.test(x.d) ? 'portrait' : /MediaBox \[0 0 841\.89 595\.28\]/.test(x.d) ? 'paysage' : '?'));
   r.push(['A4 portrait ou paysage selon le document', o[0] === 'portrait' && o[1] === 'paysage']);
   r.push(['pleine page : le tableau prend toute la largeur', await p.evaluate(() => { const g = commandeGrid('PK202612-1', 2026, 'NEOLYS'); return !!g.plein; })]);
+  // une seule page : commande de ~100 lignes (15 références × 7 tailles, 2 clients)
+  const une = await p.evaluate(() => {
+    const SZ = ['XS','S','M','L','XL','XXL','XXXL']; let n = 0;
+    FM.forEach((m, i) => SZ.forEach((z, j) => ['NEOLYS','ALLOGA'].forEach(cl => { if (cl === 'ALLOGA' && i % 3) return; S.lines.push({id:'G' + (n++), lot:'PK202611', year:2026, client:cl, model:modelOf(m[0]) || 'M', lib:m[0], size:z, qty:50 + 10 * j, cc:0}); })));
+    const pages = (gs) => { const d = Array.from(pdfBuild(gs)).map(c => String.fromCharCode(c)).join(''); return +(/\/Count (\d+)/.exec(d) || [])[1]; };
+    const gc = commandeGrid('PK202611', 2026, '*'), ge = pkExports.etatCommandeGrid(null, 'PK202611'), gf = ficheGrid('PK202611', '*', 'c', true, 'PROGES');
+    const x = new TextDecoder().decode(xlsxBuild([{name:'C', grid:commandeGrid('PK202611', 2026, '*'), first:1}]));
+    const html = pkExports.grilleHtml(commandeGrid('PK202611', 2026, '*'));
+    return {n:gc.rows.length, c:pages([gc]), e:pages([ge]), f:pages([gf]), fOri:gf.landscape, x:/fitToHeight="1"/.test(x), h:/grl-1p/.test(html) && /white-space:nowrap/.test(html)};
+  });
+  r.push(['une seule page : fiche de commande (' + une.n + ' lignes), état de commande, fiche de coupe', une.n > 100 && une.c === 1 && une.e === 1 && une.f === 1]);
+  r.push(['fiche de coupe très longue : passe en portrait pour rester lisible', une.fOri === false]);
+  r.push(['Excel : une page en hauteur ; aperçu : lignes resserrées', une.x && une.h]);
   // vue GADH
   const g = await page(b, 'http://localhost:8790/suivi-commandes.html?vue=gadh');
   const tg = await g.p.$$eval('.dc-d', ds => ds.map(d => d.getAttribute('data-doc')));

@@ -930,7 +930,7 @@ function fluxGrid(lot, mode){
   var heads = mode === "q" ? ["Commande Coupe"].concat(SG_HEAD) : mode === "s" ? STATE_NAMES : mode === "n" ? SG_HEAD.map(function(h){ return "NC — " + h; }) : SG_HEAD.map(function(h){ return "Dates — " + h; });
   var KEEP = (VUE === "gadh") ? ((mode === "q" || mode === "s") ? [2,4] : [1,3]) : null;
   var allHeads = heads; if (KEEP) heads = KEEP.map(function(i){ return allHeads[i]; });
-  var nv = heads.length, NC = 5 + nv + 1, g = {cols:[22,34,8,10,10], rows:[], merges:[], landscape:true};
+  var nv = heads.length, NC = 5 + nv + 1, g = {cols:[22,34,8,10,10], rows:[], merges:[], landscape:true, onePage:true};
   for (var k = 0; k < nv; k++) g.cols.push(mode === "d" ? 15 : 12.5); g.cols.push(12);
   var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
   var title = mode === "q" ? "Flux d'une commande" : mode === "s" ? "Situation des pièces (état actuel)" : mode === "n" ? "Pièces non conformes (NC) par étape" : "Dates des étapes";
@@ -1125,8 +1125,9 @@ function exportFichesCentre(centre, pdf){
   var g = ficheGrid(ui.lot, "*", "c", true, centre), nom = "Consommation_" + centre + "_" + ui.lot + "_" + today().replace(/-/g, "");
   if (pdf) saveFile(nom + ".pdf", pdfBuild([g])); else saveFile(nom + ".xlsx", xlsxBuild([{name:centre, grid:g, first:1}]));
 }
-function exportCommande(client, year){
-  saveFile("COMMANDE_" + client + "_" + ui.lot + ".xlsx", xlsxBuild([{name:"COMMANDE " + client, grid:commandeGrid(ui.lot, year, client), first:1}]));
+function exportCommande(year, pdf){
+  var g = commandeGrid(ui.lot, year, "*"), nom = nomFichier("Commande_" + ui.lot);
+  if (pdf) saveFile(nom + ".pdf", pdfBuild([g])); else saveFile(nom + ".xlsx", xlsxBuild([{name:"COMMANDE " + ui.lot, grid:g, first:1}]));
 }
 
 /* ---------- Mise en forme « tableau Excel » : une grille (cellules, fusions, styles) servant à l'écran ET à l'export .xlsx ---------- */
@@ -1168,7 +1169,7 @@ function ficheGrid(lot, client, kind, compact, centre){
   FM.forEach(function(m){ var li = libs.filter(function(l){ return l.lib === m[0]; })[0]; if (li){ blocks.push({m:m, li:li}); used[m[0]] = 1; } });
   var gx = 100;
   libs.forEach(function(li){ if (!used[li.lib]) blocks.push({m:[li.lib, li.model, li.model, li.lib, "", "FFFFFF","000000","FFFFFF","000000", gx, gx++], li:li}); });
-  var g = mkGrid(8), RED = "FF0000", GREEN = "00B050"; g.plein = true; g.landscape = true;
+  var g = mkGrid(8), RED = "FF0000", GREEN = "00B050"; g.plein = true; g.landscape = true; g.onePage = true;
   var name = kind === "c" ? centre : "GADH";
   var T = {b:1, sz:11, fg:GREEN, al:"c", bd:"m"};
   gset(g, 0, 0, "Commande", T); gset(g, 0, 1, "", T); gmerge(g, 0, 0, 0, 1);
@@ -1250,30 +1251,13 @@ function ficheGrid(lot, client, kind, compact, centre){
   return g;
 }
 
-/* feuille « COMMANDE <CLIENT> » au format du fichier PERCKO */
+/* fiche de commande au format de la commande initiale PERCKO :
+   « Commande: MOIS » | LOT | ANNEE, puis Model | LIBELLE | Taille | NEOLYS | ALLOGA | Total | Total du libellé,
+   seulement les modèles et les tailles commandés, ligne TOTAL ; sur une seule page.
+   client = "*" (ou vide) : tous les clients de la commande ; sinon une seule colonne client. */
 var MOIS = ["JANVIER","FÉVRIER","MARS","AVRIL","MAI","JUIN","JUILLET","AOÛT","SEPTEMBRE","OCTOBRE","NOVEMBRE","DÉCEMBRE"];
 function commandeGrid(lot, year, client){
-  var g = {cols:[24,34,8,12,10], rows:[], merges:[], plein:true}, B = {b:1, sz:11, al:"c", bd:"t"}, libs = clientLibs(lot, client);
-  gset(g, 0, 0, "Commande: " + MOIS[(lotMonth(lot) ? lotMonth(lot).m - 1 : new Date().getMonth())], {b:1, sz:11}); gset(g, 0, 3, "LOT", B); gset(g, 0, 4, "ANNEE", B);
-  gset(g, 1, 3, lot || "", B); gset(g, 1, 4, year ? String(year) : "", B);
-  ["Model","LIBELLE","Taille","Quantité","Total"].forEach(function(h, i){ gset(g, 3, i, h, {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}); });
-  var r = 4, pm = null, tops = {}, all = libs, mtop = null;
-  all.forEach(function(li){
-    /* seulement les modèles et les tailles commandés */
-    var tz = li.sizes.filter(function(s){ var ln = findLine(lot, client, li.lib, s); return ln && ln.qty > 0; });
-    if (!tz.length) return;
-    var top = r, tot = 0;
-    tz.forEach(function(s, i){
-      var ln = findLine(lot, client, li.lib, s), q = ln ? ln.qty : 0; tot += q;
-      gset(g, r, 1, li.lib, {sz:10, al:"l", bd:"t"}); gset(g, r, 2, s, {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 3, q || "", {sz:11, al:"c", bd:"t"});
-      gset(g, r, 0, "", {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 4, "", {b:1, sz:11, al:"c", bd:"t"}); r++;
-    });
-    g.rows[top].cells[4].v = tot || 0; gmerge(g, top, 4, r - 1, 4);
-    if (li.model !== pm){ mtop = top; g.rows[top].cells[0].v = li.model; pm = li.model; tops[top] = r - 1; }
-    else { tops[mtop] = r - 1; }
-  });
-  Object.keys(tops).forEach(function(t){ gmerge(g, +t, 0, tops[t], 0); });
-  return g;
+  return window.pkExports.etatCommandeGrid(null, lot, {commande:true, client:client && client !== "*" ? client : "", annee:year});
 }
 
 /* ---------- rendu écran ---------- */
@@ -1322,19 +1306,34 @@ function pdfW(t, size, bold){ var w = 0, tb = bold ? HB : HN; t = String(t).norm
 var PDF_WIN = {"\u2014":"\x97", "\u2013":"\x96", "\u2019":"\x92", "\u2018":"\x91", "\u201C":"\x93", "\u201D":"\x94", "\u2026":"\x85", "\u20AC":"\x80", "\u0153":"\x9C", "\u0152":"\x8C", "\u2022":"\x95", "\u2192":"->", "\u2190":"<-", "\u202F":" ", "\u2009":" "};
 function pdfTxt(t){ return String(t).replace(/[\u2014\u2013\u2019\u2018\u201C\u201D\u2026\u20AC\u0153\u0152\u2022\u2192\u2190\u202F\u2009]/g, function(c){ return PDF_WIN[c]; }).replace(/[^\x20-\xFF]/g, "?").replace(/[\\()]/g, "\\$&"); }
 function pdfRGB(h){ h = h || "000000"; return (parseInt(h.slice(0,2),16)/255).toFixed(3) + " " + (parseInt(h.slice(2,4),16)/255).toFixed(3) + " " + (parseInt(h.slice(4,6),16)/255).toFixed(3); }
+/* fiche sur une seule page (g.onePage) : choisit portrait ou paysage, celui où le texte est le plus grand
+   (une fiche longue passe en portrait, une fiche large et courte en paysage). Renvoie "portrait" ou "landscape". */
+function oriUnePage(g){
+  if (!g || !g.onePage) return g && g.landscape ? "landscape" : "portrait";
+  var tot = 0, hT = 0; g.cols.forEach(function(w){ tot += w * 5.35; }); g.rows.forEach(function(r){ hT += r.h; });
+  function note(pays){ var W = (pays ? 841.89 : 595.28) - 56, H = (pays ? 595.28 : 841.89) - 58, sc = Math.min(g.plein ? 1.8 : 1.15, W / tot), kv = Math.min(1, H / (hT * sc * 1.05)); return {n:sc * Math.min(1, kv * 1.3), serre:kv * 1.3 < 1}; }
+  /* on ne change l'orientation prévue que si la fiche y serait trop serrée */
+  var ici = note(!!g.landscape), autre = note(!g.landscape);
+  if (ici.serre && autre.n > ici.n * 1.1) g.landscape = !g.landscape;
+  return g.landscape ? "landscape" : "portrait";
+}
 function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à la suite */
   var PW0 = 595.28, PH0 = 841.89, M = 28, pages = [], PW = PW0, PH = PH0;
   function range(a, b){ var o = []; for (var i = a; i < b; i++) o.push(i); return o; }
   grids.forEach(function(g){
     /* g.format = "A3" (sinon A4) ; g.pied = texte de bas de page, avec « Page x / y » */
+    oriUnePage(g);
     var W0 = g.format === "A3" ? 841.89 : PW0, H0 = g.format === "A3" ? 1190.55 : PH0, bas = g.pied ? 16 : 0;
     PW = g.landscape ? H0 : W0; PH = g.landscape ? W0 : H0;
     var colPt = g.cols.map(function(w){ return w * 5.35; }), total = 0; colPt.forEach(function(w){ total += w; });
     var sc = Math.min(g.plein ? 1.8 : 1.15, (PW - 2 * M) / total);   /* g.plein : le tableau occupe toute la largeur de la page A4 */
-    if (g.onePage){ var hTot = 0; g.rows.forEach(function(r){ hTot += r.h; }); sc = Math.min(sc, (PH - 2 * M) / (hTot * 1.05)); }
+    /* g.onePage : toute la fiche sur une seule page — la largeur reste pleine, les lignes sont resserrées
+       (hauteur minimale lisible ; au-delà, la suite passe sur une autre page) */
+    var kv = 1;
+    if (g.onePage){ var hTot = 0; g.rows.forEach(function(r){ hTot += r.h; }); kv = Math.min(1, (PH - 2 * M - bas - 2) / (hTot * sc * 1.05)); }
     var x0 = M + ((PW - 2 * M) - total * sc) / 2;
     var cx = [0]; colPt.forEach(function(w, i){ cx.push(cx[i] + w * sc); });
-    var rh = g.rows.map(function(r){ return r.h * sc * 1.05; }), nh = g.sticky || 0;
+    var rh = g.rows.map(function(r){ var v = r.h * sc * 1.05; return kv < 1 ? Math.max(v * kv, Math.min(v, 5)) : v; }), nh = g.sticky || 0;
     var hdrH = 0; for (var i = 0; i < nh; i++) hdrH += rh[i];
     function legal(r){ for (var k = 0; k < g.merges.length; k++){ var m = g.merges[k]; if (m[0] < r && r <= m[2]) return false; } if (g.keep && g.keep[0] < r && r <= g.keep[1]) return false; return true; }
     var start = nh, sauts = (g.breaks || []).slice().sort(function(a, b){ return a - b; });
@@ -1343,7 +1342,7 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
       for (var sb = 0; sb < sauts.length; sb++) if (sauts[sb] > start){ lim = sauts[sb]; break; }
       while (end < lim && used + rh[end] <= avail){ used += rh[end]; end++; if (end >= g.rows.length || legal(end)) lastLegal = end; }
       if (end < lim) end = lastLegal > start ? lastLegal : Math.max(end, start + 1);
-      pages.push({g:g, rows:range(0, nh).concat(range(start, end)), cx:cx, x0:x0, sc:sc, rh:rh, PW:PW, PH:PH});
+      pages.push({g:g, rows:range(0, nh).concat(range(start, end)), cx:cx, x0:x0, sc:sc, rh:rh, PW:PW, PH:PH, serre:kv < 1});
       start = end;
     }
   });
@@ -1364,11 +1363,14 @@ function pdfBuild(grids){   /* grids : [grid, ...] ; une ou plusieurs fiches à 
         var v = cell.v; if (v === "" || v === null || v === undefined) continue;
         var txt = typeof v === "number" ? fmt(v, v % 1 ? 2 : 0).replace(/[  ]/g, " ") : String(v);
         var size = (st.sz || 10) * p.sc * 0.92, bold = !!st.b, lines = txt.split("\n");
+        if (p.serre) size = Math.min(size, h * 0.78);   /* lignes resserrées : police à la hauteur de la ligne */
         if (lines.length === 1 && pdfW(txt, size, bold) > w - 4 && (st.wrap || ci < 2)){
           lines = []; var cur = "";
           txt.split(/(?<=[ _-])/).forEach(function(wd){ if (cur && pdfW(cur + wd, size, bold) > w - 4){ lines.push(cur.trim()); cur = wd; } else cur += wd; });
           if (cur) lines.push(cur.trim());
         }
+        /* sur une seule page : si le texte coupé ne tient pas en hauteur, une seule ligne en police réduite */
+        if (p.serre && lines.length * size * 1.12 > h - 1){ lines = [lines.join(" ")]; size = Math.max(3, Math.min(size, (w - 4) / pdfW(lines[0], 1, bold))); }
         var lh = size * 1.12, block = lines.length * lh, ty = top - h / 2 + block / 2 - size * 0.82;
         c += "q " + x.toFixed(2) + " " + (top - h).toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re W n BT /" + (bold ? "F2" : "F1") + " " + size.toFixed(2) + " Tf " + pdfRGB(st.fg) + " rg\n";
         lines.forEach(function(ln, k){
@@ -1470,8 +1472,13 @@ function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
     var g = sh.grid, x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"' + (sh.first ? ' tabSelected="1"' : '') + '>' + (g.sticky ? '<pane ySplit="' + g.sticky + '" topLeftCell="A' + (g.sticky + 1) + '" activePane="bottomLeft" state="frozen"/>' : '') + '</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>';
     g.cols.forEach(function(w, i){ x += '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"' + (g.hide && g.hide.indexOf(i) >= 0 ? ' hidden="1"' : '') + '/>'; });
     x += '</cols><sheetData>';
+    /* g.onePage : une seule page à l'impression (Excel réduit l'échelle) ; lignes un peu resserrées pour rester lisible */
+    oriUnePage(g);
+    var kx = 1; if (g.onePage){ var hx0 = 0; g.rows.forEach(function(r0){ hx0 += r0.h; }); kx = Math.min(1, (g.landscape ? 520 : 770) / hx0); }
     g.rows.forEach(function(row, ri){
-      x += '<row r="' + (ri + 1) + '" ht="' + row.h + '" customHeight="1">';
+      var szMax = 0; row.cells.forEach(function(c0){ if (c0 && c0.v !== "" && c0.v !== null && c0.v !== undefined) szMax = Math.max(szMax, (c0.st && c0.st.sz) || 10); });
+      var ht = kx < 1 ? Math.round(Math.max(row.h * kx, Math.min(row.h, szMax * 1.3 + 1)) * 4) / 4 : row.h;
+      x += '<row r="' + (ri + 1) + '" ht="' + ht + '" customHeight="1">';
       for (var c = 0; c < g.cols.length; c++){
         var cell = row.cells[c]; if (!cell) continue;
         var ref = colName(c) + (ri + 1), s = xf(cell.st), v = cell.v;
@@ -1486,7 +1493,7 @@ function xlsxBuild(sheets){   /* sheets : [{name, grid}] */
     x += '</sheetData>';
     if (g.filter) x += '<autoFilter ref="' + g.filter + '"/>';
     if (g.merges.length){ x += '<mergeCells count="' + g.merges.length + '">'; g.merges.forEach(function(m){ x += '<mergeCell ref="' + colName(m[1]) + (m[0] + 1) + ':' + colName(m[3]) + (m[2] + 1) + '"/>'; }); x += '</mergeCells>'; }
-    x += '<pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="' + (g.landscape ? "landscape" : "portrait") + '" fitToWidth="1" fitToHeight="0"/>';
+    x += '<pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="' + (g.landscape ? "landscape" : "portrait") + '" fitToWidth="1" fitToHeight="' + (g.onePage ? 1 : 0) + '"/>';
     if (g.breaks && g.breaks.length) x += '<rowBreaks count="' + g.breaks.length + '" manualBreakCount="' + g.breaks.length + '">' + g.breaks.map(function(r){ return '<brk id="' + r + '" max="16383" man="1"/>'; }).join("") + '</rowBreaks>';
     if (sh.image && sh.anchors && sh.anchors.length) x += '<drawing r:id="rId1"/>';
     return x + '</worksheet>';
@@ -1641,7 +1648,9 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
   v.appendChild(el("div", {class:"card"}, el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)),
     el("div", {class:"mut", style:"margin-top:6px", text:lm ? "Commande : " + MOIS[lm.m - 1] + " " + lm.y + " (mois n° " + lm.m + " lu dans le lot)" : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202610-1 = octobre 2026)."}),
     el("div", {style:"margin-top:10px"}, el("div", {class:"mut", text:"COMMANDE :"}), seg),
-    el("div", {style:"margin-top:8px"}, el("button", {class:"btn sec small", text:"Exporter la commande " + cli + " en Excel", onclick:function(){ exportCommande(cli, num(iYear.value)); }})),
+    el("div", {class:"actions", style:"margin-top:8px"}, el("span", {class:"mut", style:"align-self:center;font-weight:700", text:"📄 Fiche de commande :"}),
+      el("button", {class:"btn sec small", text:"📕 PDF", onclick:function(){ exportCommande(num(iYear.value), true); }}),
+      el("button", {class:"btn sec small", text:"📗 Excel", onclick:function(){ exportCommande(num(iYear.value), false); }})),
     (ui.lot && window.etatCommandeBoutons && S.lines.some(function(l){ return l.lot === ui.lot; })) ? window.etatCommandeBoutons(ui.lot) : null));
 
   var stat = el("div", {class:"stat"});
@@ -2904,7 +2913,7 @@ function stkMouvements(v, E){
 }
 /* fiche stock d'une famille (Excel / PDF) : bandeau et entêtes aux couleurs de la famille */
 function ficheStockGrid(f, arts){
-  var c = famCoul(f), g = {cols:[31, 38, 7, 10, 10, 10, 10, 10, 8, 16, 12], rows:[], merges:[], landscape:true}, n = 11;
+  var c = famCoul(f), g = {cols:[31, 38, 7, 10, 10, 10, 10, 10, 8, 16, 12], rows:[], merges:[], landscape:true, onePage:true}, n = 11;
   var T = {b:1, sz:13, fg:"FFFFFF", bg:c[0], al:"l", bd:"t"}, H = {b:1, sz:10, fg:c[0], bg:c[1], al:"c", wrap:1, bd:"m"};
   gset(g, 0, 0, "FICHE STOCK — " + (FAM_PLUR[f] || f).toUpperCase(), T); for (var k = 1; k < n; k++) gset(g, 0, k, "", T); gmerge(g, 0, 0, 0, 7);
   gset(g, 0, 8, "au " + dmy(today()) + "/" + today().slice(0, 4).slice(2), {b:1, sz:10, fg:"FFFFFF", bg:c[0], al:"r", bd:"t"}); gmerge(g, 0, 8, 0, 10); g.rows[0].h = 24;
@@ -2973,7 +2982,7 @@ function ficheClientGridUnique(E, repeterFamille){
   var groupes = fichesClientGroupes(E);
   if (!groupes.length) return null;
   var cols = [15, 17, 22, 34, 7, 16, 8, 9, 11, 11], n = cols.length;
-  var g = {cols:cols, rows:[], merges:[], landscape:true};
+  var g = {cols:cols, rows:[], merges:[], landscape:true, onePage:true};
   var TBG = "0B2C4D";
   var T = {b:1, sz:13, fg:"FFFFFF", bg:TBG, al:"l", bd:"t"};
   for (var k = 0; k < n - 2; k++) gset(g, 0, k, k === 0 ? "ÉTAT DE STOCK PERCKO" : "", T); gmerge(g, 0, 0, 0, n - 3);
@@ -3026,7 +3035,7 @@ function consoCommande(lot){
 }
 function ficheCommandeGrid(lot){
   var rows = consoCommande(lot), reel = stockDispo();
-  var g = {cols:[11, 20, 32, 7, 11, 11, 11, 11, 11, 11, 11, 11], rows:[], merges:[], landscape:true, plein:true};
+  var g = {cols:[11, 20, 32, 7, 11, 11, 11, 11, 11, 11, 11, 11], rows:[], merges:[], landscape:true, plein:true, onePage:true};
   var T = {b:1, sz:12, fg:"00B050", al:"c", bd:"m"}, H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"}, C = {sz:10, al:"c", bd:"t"}, L = {sz:10, al:"l", bd:"t"};
   gset(g, 0, 0, "Commande", T); gset(g, 0, 1, lot || "", T); gset(g, 0, 2, "Consommation de toute la commande (théorique et réel)", T);
   for (var k = 3; k < 12; k++) gset(g, 0, k, "", T); gmerge(g, 0, 2, 0, 11); g.rows[0].h = 20;
@@ -3504,7 +3513,7 @@ function bonGrid(lot, stage, date){
   var rows = filtered(lot, "*").filter(function(l){ var a = agg[l.id]; if (a && a.nc) anyNc = true; return a && (a.q || a.nc); });
   var heads = ["Model", "Libellé", "Taille", "Client", envoi ? "Quantité envoyée" : "Quantité retournée"].concat(anyNc ? ["NC", "Motif NC"] : []);
   var nc = heads.length, last = nc - 1;
-  var g = {cols:anyNc ? [17, 30, 7, 10, 11, 6, 16] : [20, 36, 8, 12, 14], rows:[], merges:[]};
+  var g = {cols:anyNc ? [17, 30, 7, 10, 11, 6, 16] : [20, 36, 8, 12, 14], rows:[], merges:[], onePage:true};
   var T = {b:1, sz:14, al:"l"}, I = {sz:10, al:"l"}, IB = {b:1, sz:10, al:"l"};
   gset(g, 0, 0, envoi ? "BON D'ENVOI — TEK-TREND → GADH" : "BON DE RETOUR — GADH → TEK-TREND", T); gmerge(g, 0, 0, 0, last); g.rows[0].h = 24;
   gset(g, 1, 0, "N° " + bonNumero(lot, stage, date), IB); gmerge(g, 1, 0, 1, 1);
@@ -3589,7 +3598,7 @@ function ncMotifCard(lot){
   return c;
 }
 function ncMotifGrid(lot){
-  var d = ncParMotif(lot), n = d.stages.length, g = {cols:[28], rows:[], merges:[], landscape:false};
+  var d = ncParMotif(lot), n = d.stages.length, g = {cols:[28], rows:[], merges:[], landscape:false, onePage:true};
   d.stages.forEach(function(){ g.cols.push(11); }); g.cols.push(10, 8);
   var last = n + 2, H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"}, C = {sz:11, al:"c", bd:"t"};
   gset(g, 0, 0, "Non-conformités par motif — lot " + lot, {b:1, sz:11, al:"l"}); gmerge(g, 0, 0, 0, last); g.rows[0].h = 18;
@@ -4371,7 +4380,7 @@ function totalHtmlColis(lot, client, colis){
 function colisageGrid(lot, client, colis){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var nc = 4 + tailles.length, last = nc - 1, e = PK_EXPEDITEUR, d = PK_DESTINATAIRES[client] || {nom:client, lignes:[], tel:""}, de = dernierExp(lot, client);
-  var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:ori("col") === "landscape"}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
+  var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:ori("col") === "landscape", onePage:true}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
   var gauche = ["Expéditeur : " + e.nom].concat(e.lignes).concat([e.pays]).concat(de ? ["Date d'export : le " + dmyL(de)] : []);
   var droite = ["Destinataire :", d.nom].concat(d.lignes).concat(d.tel ? ["TÉLÉPHONE : " + d.tel] : []);
   for (var i = 0; i < Math.max(gauche.length, droite.length); i++){
@@ -4402,7 +4411,7 @@ function colisageGrid(lot, client, colis){
   return g;
 }
 function totalGrid(lot, client, colis){
-  var d = totalDonnees(lot, client, colis), g = {cols:[46, 16], rows:[], merges:[], landscape:ori("tot") === "landscape"}, r = 0;
+  var d = totalDonnees(lot, client, colis), g = {cols:[46, 16], rows:[], merges:[], landscape:ori("tot") === "landscape", onePage:true}, r = 0;
   gset(g, r, 0, "Commande " + lot + " " + ((PK_DESTINATAIRES[client] || {}).nom || client), {b:1, sz:12, al:"l"}); gmerge(g, r, 0, r, 1); r += 2;
   gset(g, r, 0, "MODELE", {sz:11, al:"c", bd:"t"}); gset(g, r, 1, "QUANTITE", {sz:11, al:"c", bd:"t"}); r++;
   d.grp.forEach(function(gr){

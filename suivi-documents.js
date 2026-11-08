@@ -29,8 +29,11 @@ function jour(){ return today().replace(/-/g, ""); }
 function apercu(d){
   if (d.apercu) return d.apercu();
   var gs = d.grilles(); if (!gs.length){ toast(d.vide || "Rien à afficher."); return; }
+  /* chaque fiche sur une page A4 : orientation du document, ou celle où une fiche longue reste lisible */
+  gs.forEach(function(x){ x.grid.landscape = d.o === "landscape"; });
+  var o = oriUnePage(gs[0].grid); gs.forEach(function(x){ x.grid.landscape = o === "landscape"; });
   var h = X().GRL_CSS + gs.map(function(x, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + X().grilleHtml(x.grid) + '</div>'; }).join("");
-  imprimerDoc(h, "A4 " + d.o, "8mm", d.nom);
+  imprimerDoc(h, "A4 " + o, "10mm", d.nom);
 }
 function pdf(d){
   if (d.pdf) return d.pdf();
@@ -50,9 +53,9 @@ function groupes(lot){
   var clients = sortedUnique(lignes.map(function(l){ return l.client; }));
   if (!G){
     out.push({t:"📋 Commande", docs:[
-      {t:"Fiche de commande", s:"Model, LIBELLE, Taille, Quantité, Total" + (clients.length > 1 ? " — une page par client (" + clients.join(", ") + ")" : ""), o:"portrait", nom:nomFichier("Commande_" + lot),
-        grilles:function(){ return clients.map(function(c){ return {name:"COMMANDE " + c, grid:commandeGrid(lot, annee, c)}; }); }},
-      {t:"État de commande", s:"Par client, total, exporté (une colonne par export), reste", o:"portrait", nom:nomFichier("Etat_commande_" + lot + "_" + jour()),
+      {t:"Fiche de commande", s:"Comme la commande initiale : Model, LIBELLE, Taille, " + (clients.length ? clients.join(", ") + ", " : "") + "Total — une seule page", o:"portrait", nom:nomFichier("Commande_" + lot),
+        grilles:function(){ return [{name:"COMMANDE " + lot, grid:commandeGrid(lot, annee, "*")}]; }},
+      {t:"État de commande", s:"Au format de la commande : par client, total, exporté (une colonne par export), reste — une seule page", o:"portrait", nom:nomFichier("Etat_commande_" + lot + "_" + jour()),
         grilles:function(){ return X().etatCommandeGrid ? [{name:"Etat " + lot, grid:X().etatCommandeGrid(null, lot)}] : []; }}
     ]});
     out.push({t:"🧵 Fiches de consommation", docs:[
@@ -112,7 +115,7 @@ window.vDocuments = function(v){
   var lot = ui.lot;
   v.appendChild(el("div", {class:"card"}, el("div", {class:"dc-head"},
     el("div", null, el("h2", {style:"margin:0", text:"📄 Documents" + (lot ? " — commande " + lot : "")}),
-      el("div", {class:"mut", text:"Tous les documents au même endroit : 👁 Aperçu (pour imprimer), 📕 PDF ou 📗 Excel. Format A4, pleine page, portrait ou paysage selon le document."})))));
+      el("div", {class:"mut", text:"Tous les documents au même endroit : 👁 Aperçu (pour imprimer), 📕 PDF ou 📗 Excel. Format A4, chaque fiche sur une seule page (une fiche très longue passe en portrait pour rester lisible)."})))));
   var avecLot = !!lot && S.lines.some(function(l){ return l.lot === lot; });
   if (!avecLot) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Choisissez une commande (lot) en haut de l'écran pour ses documents."})));
   groupes(lot).filter(function(g){ return avecLot || g.stock; }).forEach(function(g){
