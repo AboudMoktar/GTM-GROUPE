@@ -11968,6 +11968,1191 @@ window.MGT_CONVERSION={version:'V4.6.8E',open:open,eligibility:eligibility,linke
 })();
 
 </script>
+<style id="mgt-finance-style">
+/* ===== MGT CRM V4.6.8H — Dashboard financier ===== */
+#billingCaDashboard.fdReady{display:block!important}
+#billingStats #billMarginStat{display:none!important}            /* carte V4.6.8C remplacee (taux fausse par les marges incompletes) */
+.fdWrap{--fdBenef:#34d27b;--fdBenefBg:rgba(34,160,107,.14);--fdBenefLine:#1f9d5c;--fdNeg:#ff8a9a;--fdWarn:#f4b72a;--fdNa:#8c95a3;
+  --fdM:var(--accent,#ef3f08);--fdP:#f4b72a;--fdS:#9eb8d8;--fdC:#a78bfa;--fdF:#2dd4bf;--fdA:#8c95a3;display:flex;flex-direction:column;gap:14px;color:var(--ink)}
+html[data-mgt-theme="light"] .fdWrap{--fdBenef:#0d7a4a;--fdBenefBg:#e3f6ec;--fdBenefLine:#15803d;--fdNeg:#b4233a;--fdWarn:#8a5a00;--fdNa:#5c6878;--fdC:#7c5cd6;--fdF:#0f9488;--fdA:#7a8594}
+.fdWrap svg.fdI{width:20px;height:20px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px}
+.fdKpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.fdKpi{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--deep,rgba(255,255,255,.03));min-width:0}
+.fdKpiIcon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:var(--soft);color:var(--ink);flex:0 0 auto}
+.fdKpi.ca .fdKpiIcon,.fdKpi.mps .fdKpiIcon{color:var(--accent,#ef3f08);background:color-mix(in srgb,var(--accent,#ef3f08) 14%,transparent)}
+.fdKpi.benef{border-color:color-mix(in srgb,var(--fdBenef) 55%,transparent);background:var(--fdBenefBg)}
+.fdKpi.benef .fdKpiIcon,.fdKpi.taux .fdKpiIcon{color:var(--fdBenef);background:color-mix(in srgb,var(--fdBenef) 16%,transparent)}
+.fdKpi.benef .fdKpiValue{color:var(--fdBenef)}
+.fdKpi.benef.neg .fdKpiValue{color:var(--fdNeg)}
+.fdKpi.empty .fdKpiValue{color:var(--muted);font-size:17px}
+.fdKpi.benef.empty{background:var(--deep,transparent);border-color:var(--line)}
+.fdKpiBody{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fdKpiLabel{font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.fdKpiValue{font-size:21px;line-height:1.2;font-weight:800;overflow-wrap:anywhere}
+.fdKpi small{font-size:12px;color:var(--muted)}
+.fdGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px}
+.fdPanel .caPanelHead strong{display:inline-flex;align-items:center;gap:6px}
+.fdReliabBar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--soft);margin:12px}
+.fdReliabBar span{display:block;height:100%}.fdReliabBar .ok{background:var(--fdBenef)}.fdReliabBar .inc{background:var(--fdWarn)}.fdReliabBar .na{background:var(--fdNa)}
+.fdReliabGrid{display:flex;flex-direction:column;gap:8px;padding:0 12px 12px}
+.fdRel{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.fdRel b{font-size:16px}.fdRel small{display:block;color:var(--muted);font-size:12px}
+.fdRel.ok svg{color:var(--fdBenef)}.fdRel.inc svg{color:var(--fdWarn)}.fdRel.na svg{color:var(--fdNa)}
+.fdRepRow{display:grid;grid-template-columns:minmax(110px,1fr) minmax(70px,1.4fr) minmax(90px,auto) minmax(110px,auto);gap:10px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line)}
+.fdRepLabel{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px}.fdRepLabel small{color:var(--muted);font-weight:600;font-size:11px}
+.fdRepBar{height:9px;background:var(--soft);border-radius:99px;overflow:hidden}.fdRepBar span{display:block;height:100%;border-radius:99px}
+.fdRepVal,.fdRepBenef{text-align:right;font-variant-numeric:tabular-nums}.fdRepVal small,.fdRepBenef small{display:block;font-size:11px;color:var(--muted)}
+.fdRepBenef{color:var(--fdBenef);font-weight:800}.fdRepBenef.neg{color:var(--fdNeg)}.fdRepBenef.none{color:var(--muted);font-weight:600}
+.fdSw{display:inline-block;width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.fdSw.m,.fdRepBar .m{background:var(--fdM)}.fdSw.p,.fdRepBar .p{background:var(--fdP)}.fdSw.s,.fdRepBar .s{background:var(--fdS)}.fdSw.c,.fdRepBar .c{background:var(--fdC)}.fdSw.f,.fdRepBar .f{background:var(--fdF)}.fdSw.a,.fdRepBar .a{background:var(--fdA)}
+.fdChart .fdBar.m{fill:var(--fdM)}.fdChart .fdBar.p{fill:var(--fdP)}.fdChart .fdBar.s{fill:var(--fdS)}.fdChart .fdBar.c{fill:var(--fdC)}.fdChart .fdBar.f{fill:var(--fdF)}.fdChart .fdBar.a{fill:var(--fdA)}
+.fdChart .fdZero{stroke-width:1.5;opacity:.9}
+.fdChart .fdBenefLine{fill:none;stroke:var(--fdBenefLine);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.fdChart .fdBenefDot{fill:var(--fdBenef);stroke:var(--panel,#14181b);stroke-width:2}.fdChart .fdBenefDot.neg{fill:var(--fdNeg)}
+.fdChart .fdValBenef{font-size:11px;font-weight:800;fill:var(--fdBenef)}.fdChart .fdValBenef.neg{fill:var(--fdNeg)}
+.fdLegend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 12px 0;font-size:12px;color:var(--muted)}
+.fdLeg{display:inline-flex;align-items:center;gap:5px}
+.fdSwLine{display:inline-block;width:18px;height:3px;border-radius:2px;background:var(--fdBenefLine)}
+.fdSummary .fdSumBenef{color:var(--fdBenef);font-weight:800}
+.fdMonthTable{margin:6px 12px 0}.fdMonthTable summary{cursor:pointer;font-weight:700;font-size:13px;padding:8px 0;min-height:24px}
+.fdTableWrap{overflow:auto}.fdMonthTable table{width:100%;border-collapse:collapse;font-size:13px;min-width:0!important}
+.fdMonthTable th,.fdMonthTable td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}.fdMonthTable .n{text-align:right;font-variant-numeric:tabular-nums}
+.fdMonthTable tfoot td{font-weight:800}
+.fdSource{padding:0 2px}
+#billingStats .billProfitStat{padding:13px;border:1px solid color-mix(in srgb,#22a06b 55%,transparent);border-radius:10px;background:rgba(34,160,107,.12)}
+#billingStats .billProfitStat small{color:var(--muted)}
+#billingStats .billProfitVal{font-size:20px;font-weight:700;margin:5px 0;color:#34d27b}
+#billingStats .billProfitStat.neg .billProfitVal{color:#ff8a9a}
+#billingStats .billProfitStat.empty{border-color:var(--line);background:var(--deep)}
+#billingStats .billProfitStat.empty .billProfitVal{color:var(--muted);font-size:17px}
+html[data-mgt-theme="light"] #billingStats .billProfitStat{background:#e3f6ec;border-color:#7cc7a0}
+html[data-mgt-theme="light"] #billingStats .billProfitVal{color:#0d7a4a}
+html[data-mgt-theme="light"] #billingStats .billProfitStat.neg .billProfitVal{color:#b4233a}
+html[data-mgt-theme="light"] #billingStats .billProfitStat.empty{background:#f6f8fa;border-color:#d7dde5}
+html[data-mgt-theme="light"] #billingStats .billProfitStat.empty .billProfitVal{color:#4f5b6b}
+@media (max-width:900px){.fdGrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:600px){
+  .fdKpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .fdKpi{flex-direction:column;gap:6px;padding:10px}
+  .fdKpi:first-child{grid-column:1/-1;flex-direction:row}
+  .fdKpiIcon{width:34px;height:34px}
+  .fdKpiValue{font-size:18px}
+  .fdRepRow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l v" "b b" "e e";gap:4px 10px}
+  .fdRepLabel{grid-area:l}.fdRepVal{grid-area:v}.fdRepBar{grid-area:b}.fdRepBenef{grid-area:e;text-align:left;display:flex;gap:8px;align-items:baseline}
+  .fdChartScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .fdChartScroll .fdChart{min-width:640px;width:640px;height:auto}
+  .fdSwipeHint{display:block}
+  .fdMonthTable{margin:6px 8px 0}
+}
+/* chiffres lisibles sur les colonnes : contour de la couleur du fond */
+.fdChart text.caChartValue,.fdChart text.fdValBenef{paint-order:stroke;stroke:var(--panel,#14181b);stroke-width:4px;stroke-linejoin:round}
+html[data-mgt-theme="light"] .fdChart text.caChartValue,html[data-mgt-theme="light"] .fdChart text.fdValBenef{stroke:#fff}
+.fdSwipeHint{display:none;text-align:center;font-size:12px;color:var(--muted);padding:2px 0 4px}
+.fdChartScroll:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+@media (max-width:600px){.fdSwipeHint{display:block}}
+
+</style>
+<script id="mgt-finance">
+/* =====================================================================
+   MGT CRM V4.6.8H — DASHBOARD FINANCIER (module Facturation & Lettrage)
+   - Statistiques existantes conservees : CA total, CA Machines+Pieces+Services,
+     repartition par activite, evolution mensuelle (graphique empile), CA du mois.
+   - Q2 : les statistiques suivent le filtre d'annee (« Toutes les annees » = cumul).
+   - Q3 : repartition complete (Machines, Pieces, Services, Commissions, Formations, Autres) = 100 %.
+   - Rentabilite : benefice, cout d'achat et taux de marge calcules UNIQUEMENT sur les
+     factures completes (toutes les lignes ont un prix d'achat). Les factures incompletes
+     et non calculables (sans lignes) sont comptees a part et ne faussent pas le taux (A5).
+   - Calculs de marge : exclusivement MGT_LINES (meme composant que factures et offres).
+   - Lecture seule : aucune donnee n'est modifiee.
+   - Le rendu du tableau de bord d'accueil (#caClientsDashboard) reste celui d'origine.
+   ===================================================================== */
+(function(){
+'use strict';
+if(!window.MGT_LINES||typeof window.renderDashboardCA!=='function'){console.error('[DASHBOARD V4.6.8H] dependances absentes');return;}
+var LN=window.MGT_LINES;
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function eur(n,dec){var d=dec==null?2:dec;return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d})+' €';}
+function pct(n){return n==null?'—':(Math.round(n*10)/10).toLocaleString('fr-FR')+' %';}
+function lu(p){return '<svg class="fdI" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+p+'</svg>';}
+var IC={
+  ca:lu('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'),
+  receipt:lu('<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>'),
+  benef:lu('<path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/>'),
+  cout:lu('<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>'),
+  taux:lu('<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'),
+  ok:lu('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+  warn:lu('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  na:lu('<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>'),
+  bars:lu('<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'),
+  pie:lu('<path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>'),
+  layers:lu('<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>')
+};
+/* categories : ordre et libelles (Q3) */
+var CATS=[
+  {k:'MACHINE',label:'Machines',cls:'m'},{k:'PIECE',label:'Pièces',cls:'p'},{k:'INTERVENTION',label:'Services',cls:'s'},
+  {k:'COMMISSION',label:'Commissions',cls:'c'},{k:'FORMATION',label:'Formations',cls:'f'},{k:'AUTRE',label:'Autres',cls:'a'}];
+function catOf(f){var t=String(f.type||'AUTRE').trim().toUpperCase();return CATS.some(function(c){return c.k===t;})?t:'AUTRE';}
+var MONTHS=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+
+/* ---------- classement d'une facture pour la rentabilite ---------- */
+function profitOf(f){
+  var lines=Array.isArray(f.lignes)?f.lignes:[];
+  if(!lines.length) return {etat:'na',ca:Number(f.amount)||0};
+  var t=LN.calcTotals(lines);
+  return {etat:t.sansPrixAchat?'inc':'ok',ca:t.totalHT,cout:t.cout,marge:t.marge,sans:t.sansPrixAchat};
+}
+/* ---------- agregats pour une annee (ou toutes) ---------- */
+function compute(year){
+  var inv=[];
+  ((typeof CLIENTS!=='undefined'&&CLIENTS)||[]).forEach(function(c){(Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){
+    if(year==='all'||String(f.date||'').slice(0,4)===String(year)) inv.push({c:c,f:f});
+  });});
+  var r={year:year,n:inv.length,total:0,cats:{},months:[],ok:{n:0,ca:0,cout:0,marge:0},inc:{n:0,ca:0,margePartielle:0},na:{n:0,ca:0}};
+  CATS.forEach(function(c){r.cats[c.k]={ca:0,n:0,benef:0,caOk:0};});
+  for(var i=0;i<12;i++) r.months.push({ca:0,cats:{},benef:0,caOk:0,nOk:0});
+  inv.forEach(function(x){
+    var f=x.f, a=Number(f.amount)||0, k=catOf(f), m=Number(String(f.date||'').slice(5,7)), pr=profitOf(f);
+    r.total+=a; r.cats[k].ca+=a; r.cats[k].n++;
+    var mo=(m>=1&&m<=12)?r.months[m-1]:null;
+    if(mo){mo.ca+=a; mo.cats[k]=(mo.cats[k]||0)+a;}
+    if(pr.etat==='ok'){r.ok.n++; r.ok.ca+=pr.ca; r.ok.cout+=pr.cout; r.ok.marge+=pr.marge; r.cats[k].benef+=pr.marge; r.cats[k].caOk+=pr.ca; if(mo){mo.benef+=pr.marge; mo.caOk+=pr.ca; mo.nOk++;}}
+    else if(pr.etat==='inc'){r.inc.n++; r.inc.ca+=a; r.inc.margePartielle+=pr.marge;}
+    else {r.na.n++; r.na.ca+=a;}
+  });
+  r.taux=r.ok.ca>0?r.ok.marge/r.ok.ca*100:null;
+  return r;
+}
+
+/* ---------- rendu ---------- */
+function kpi(cls,icon,label,value,sub,title){return '<div class="fdKpi '+cls+'"'+(title?' title="'+esc(title)+'"':'')+'><span class="fdKpiIcon">'+icon+'</span><div class="fdKpiBody"><span class="fdKpiLabel">'+esc(label)+'</span><strong class="fdKpiValue">'+value+'</strong>'+(sub?'<small>'+sub+'</small>':'')+'</div></div>';}
+function render(targetId){
+  var el=$(targetId); if(!el) return;
+  var year=($('billingYear')||{}).value||'2026', r=compute(year), yl=year==='all'?'toutes années':year;
+  var badge=document.querySelector('#billingModule .billingAnalyticsBadge'); if(badge) badge.textContent=year==='all'?'Toutes':year;
+  var head=document.querySelector('#billingModule .billingAnalyticsHead p'); if(head) head.textContent='CA facturé, rentabilité, répartition par activité et évolution mensuelle — '+yl+'.';
+  var mps=r.cats.MACHINE.ca+r.cats.PIECE.ca+r.cats.INTERVENTION.ca, autres=r.total-mps;
+  var noProfit=r.ok.n===0;
+  /* 1) indicateurs */
+  var kpis='<div class="fdKpis">'
+    +kpi('ca',IC.ca,'Chiffre d\'affaires '+yl,eur(r.total),r.n+' facture'+(r.n>1?'s':''))
+    +kpi('mps',IC.layers,'CA Machines + Pièces + Services',eur(mps),eur(autres)+' en commissions, formations et autres')
+    +kpi('benef'+(noProfit?' empty':(r.ok.marge<0?' neg':'')),IC.benef,'Bénéfice calculable',noProfit?'Non calculable':eur(r.ok.marge),noProfit?'Aucune facture avec marge complète':'Sur '+r.ok.n+' facture'+(r.ok.n>1?'s':'')+' complète'+(r.ok.n>1?'s':''),'Somme des marges des factures dont toutes les lignes ont un prix d\'achat')
+    +kpi('cout'+(noProfit?' empty':''),IC.cout,'Coût d\'achat total',noProfit?'—':eur(r.ok.cout),noProfit?'':'Factures complètes')
+    +kpi('taux'+(noProfit?' empty':''),IC.taux,'Taux de marge global',noProfit?'—':pct(r.taux),noProfit?'':'Bénéfice ÷ CA HT des factures complètes','Les factures incomplètes et sans lignes ne sont pas incluses')
+    +'</div>';
+  /* 2) fiabilite des marges */
+  var tot=r.n||1, w=function(n){return (n/tot*100).toFixed(2)+'%';};
+  var rel='<div class="caPanel fdPanel fdReliab"><div class="caPanelHead"><strong>'+IC.ok+' Fiabilité des marges</strong><span>'+r.n+' facture'+(r.n>1?'s':'')+' — '+esc(yl)+'</span></div>'
+    +'<div class="fdReliabBar" role="img" aria-label="'+r.ok.n+' complètes, '+r.inc.n+' incomplètes, '+r.na.n+' sans lignes"><span class="ok" style="width:'+w(r.ok.n)+'"></span><span class="inc" style="width:'+w(r.inc.n)+'"></span><span class="na" style="width:'+w(r.na.n)+'"></span></div>'
+    +'<div class="fdReliabGrid">'
+    +'<div class="fdRel ok">'+IC.ok+'<div><b>'+r.ok.n+'</b> avec marge complète<small>CA '+eur(r.ok.ca)+' · bénéfice '+(noProfit?'—':eur(r.ok.marge))+'</small></div></div>'
+    +'<div class="fdRel inc">'+IC.warn+'<div><b>'+r.inc.n+'</b> avec marge incomplète<small>CA '+eur(r.inc.ca)+(r.inc.n?' · marge partielle connue '+eur(r.inc.margePartielle):'')+' — non incluse dans le taux</small></div></div>'
+    +'<div class="fdRel na">'+IC.na+'<div><b>'+r.na.n+'</b> sans lignes d\'articles<small>CA '+eur(r.na.ca)+' — bénéfice non calculable</small></div></div>'
+    +'</div></div>';
+  /* 3) repartition par activite */
+  var maxCa=Math.max.apply(null,CATS.map(function(c){return r.cats[c.k].ca;}).concat([1]));
+  var rep='<div class="caPanel fdPanel fdRep"><div class="caPanelHead"><strong>'+IC.pie+' Répartition par activité</strong><span>CA facturé et bénéfice — '+esc(yl)+'</span></div>'
+    +CATS.map(function(c){var x=r.cats[c.k], share=r.total?x.ca/r.total*100:0;
+      return '<div class="fdRepRow"><div class="fdRepLabel"><i class="fdSw '+c.cls+'"></i>'+esc(c.label)+'<small>'+x.n+' fact.</small></div>'
+        +'<div class="fdRepBar"><span class="'+c.cls+'" style="width:'+(x.ca/maxCa*100).toFixed(1)+'%"></span></div>'
+        +'<div class="fdRepVal"><b>'+eur(x.ca,0)+'</b><small>'+pct(share)+' du CA</small></div>'
+        +'<div class="fdRepBenef'+(x.caOk?'':' none')+(x.benef<0?' neg':'')+'">'+(x.caOk?eur(x.benef,0)+'<small>bénéfice · '+pct(x.benef/x.caOk*100)+'</small>':'—<small>bénéfice non calculable</small>')+'</div></div>';}).join('')
+    +'<div class="caFoot">Total des parts : '+pct(r.total?100:0)+'. Le bénéfice par activité ne porte que sur les factures complètes.</div></div>';
+  /* 4) evolution mensuelle : CA empile par activite + benefice (ligne verte) */
+  var W=760,H=300,pL=62,pR=16,pT=26,pB=46,pw=W-pL-pR,ph=H-pT-pB;
+  var maxV=Math.max.apply(null,r.months.map(function(m){return Math.max(m.ca,m.benef);}).concat([0]));
+  var minV=Math.min.apply(null,r.months.map(function(m){return m.benef;}).concat([0]));
+  var step=maxV>50000?10000:maxV>10000?5000:maxV>2000?1000:maxV>500?250:100;
+  var yMax=Math.max(step,Math.ceil(maxV/step)*step), yMin=minV<0?-Math.ceil(-minV/step)*step:0, span=yMax-yMin;
+  var gW=pw/12, bW=Math.min(36,gW*0.56), X=function(i){return pL+gW*i+gW/2;}, Y=function(v){return pT+ph-((v-yMin)/span)*ph;};
+  var grid='',ticks=4;for(var t=0;t<=ticks;t++){var v=yMin+span*t/ticks,y=Y(v);grid+='<line x1="'+pL+'" y1="'+y.toFixed(1)+'" x2="'+(pL+pw)+'" y2="'+y.toFixed(1)+'" class="caChartGridLine'+(v===0?' fdZero':'')+'"/><text x="'+(pL-8)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" class="caChartAxis">'+esc(Math.round(v).toLocaleString('fr-FR'))+'</text>';}
+  var bars=r.months.map(function(m,i){var cum=0,h='',x=X(i)-bW/2;
+    CATS.forEach(function(c){var v=m.cats[c.k]||0; if(v<=0) return; var y1=Y(cum+v), y0=Y(cum); h+='<rect x="'+x.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+bW.toFixed(1)+'" height="'+Math.max(0.6,y0-y1).toFixed(1)+'" rx="2" class="fdBar '+c.cls+'"><title>'+MONTHS[i]+' — '+c.label+' : '+eur(v)+'</title></rect>'; cum+=v;});
+    if(m.ca>0) h+='<text x="'+X(i).toFixed(1)+'" y="'+Math.max(pT+9,Y(m.ca)-6).toFixed(1)+'" text-anchor="middle" class="caChartValue fdValCa">'+esc(Math.round(m.ca).toLocaleString('fr-FR'))+'</text>';
+    return h;}).join('');
+  var pts=r.months.map(function(m,i){return m.nOk?{i:i,v:m.benef}:null;}).filter(Boolean);
+  var line=pts.length>1?'<polyline class="fdBenefLine" points="'+pts.map(function(p){return X(p.i).toFixed(1)+','+Y(p.v).toFixed(1);}).join(' ')+'"/>':'';
+  var dots=pts.map(function(p){return '<circle class="fdBenefDot'+(p.v<0?' neg':'')+'" cx="'+X(p.i).toFixed(1)+'" cy="'+Y(p.v).toFixed(1)+'" r="4.5"><title>'+MONTHS[p.i]+' — bénéfice (factures complètes) : '+eur(p.v)+'</title></circle><text class="fdValBenef'+(p.v<0?' neg':'')+'" x="'+X(p.i).toFixed(1)+'" y="'+(Y(p.v)+(p.v<0?16:-9)).toFixed(1)+'" text-anchor="middle">'+esc(Math.round(p.v).toLocaleString('fr-FR'))+'</text>';}).join('');
+  var labels=MONTHS.map(function(n,i){return '<text x="'+X(i).toFixed(1)+'" y="'+(H-16)+'" text-anchor="middle" class="caChartAxis">'+n+'</text>';}).join('');
+  var now=new Date(), curYear=String(now.getFullYear()), cm=now.getMonth(), summary;
+  if(year===curYear) summary='<strong>'+eur(r.months[cm].ca,0)+'</strong><span>CA du mois en cours</span>'+(r.months[cm].nOk?'<span class="fdSumBenef">bénéfice '+eur(r.months[cm].benef,0)+'</span>':'');
+  else { var best=-1,bi=-1; r.months.forEach(function(m,i){if(m.ca>best){best=m.ca;bi=i;}}); summary=best>0?'<strong>'+eur(best,0)+'</strong><span>meilleur mois : '+MONTHS[bi]+(year==='all'?' (toutes années cumulées)':'')+'</span>':'<strong>0 €</strong><span>aucune facture</span>'; }
+  var legend=CATS.map(function(c){return '<span class="fdLeg"><i class="fdSw '+c.cls+'"></i>'+esc(c.label)+'</span>';}).join('')+'<span class="fdLeg"><i class="fdSwLine"></i>Bénéfice (factures complètes)</span>';
+  var table='<details class="fdMonthTable"><summary>Détail mensuel (CA et bénéfice)</summary><div class="fdTableWrap"><table><thead><tr><th>Mois</th><th class="n">CA</th><th class="n">Bénéfice</th><th class="n">Taux</th></tr></thead><tbody>'
+    +r.months.map(function(m,i){return '<tr><td>'+MONTHS[i]+'</td><td class="n">'+eur(m.ca)+'</td><td class="n">'+(m.nOk?eur(m.benef):'—')+'</td><td class="n">'+(m.caOk?pct(m.benef/m.caOk*100):'—')+'</td></tr>';}).join('')
+    +'</tbody><tfoot><tr><td>Total</td><td class="n">'+eur(r.total)+'</td><td class="n">'+(noProfit?'—':eur(r.ok.marge))+'</td><td class="n">'+pct(r.taux)+'</td></tr></tfoot></table></div></details>';
+  var chart='<div class="caPanel caMonthlyPanel fdPanel"><div class="caPanelHead"><strong>'+IC.bars+' Évolution du CA mensuel</strong><span>CA facturé et bénéfice — '+esc(yl)+'</span></div>'
+    +'<div class="caChartSummary fdSummary">'+summary+'</div><div class="fdLegend">'+legend+'</div>'
+    +'<div class="caChartWrap fdChartScroll" tabindex="0" aria-label="Graphique mensuel (faites glisser horizontalement sur mobile)"><svg class="caChart fdChart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Évolution mensuelle du chiffre d\'affaires par activité et du bénéfice, '+esc(yl)+'">'+grid+bars+line+dots+labels+'</svg></div>'
+    +'<div class="fdSwipeHint" aria-hidden="true">← Faites glisser le graphique →</div>'+table+'<div class="caChartFoot">Colonnes : CA mensuel par activité (toutes catégories). Ligne verte : bénéfice des factures à marge complète du mois. Survolez ou touchez un élément pour le détail.</div></div>';
+  el.innerHTML='<div class="fdWrap">'+kpis+'<div class="fdGrid">'+rel+rep+'</div>'+chart+'<div class="caFoot fdSource">Source : factures présentes dans les fiches clients ('+esc(yl)+'). Marges calculées avec le composant commun MGT_LINES à partir des prix figés dans chaque ligne. Données internes : elles ne figurent sur aucun document client.</div></div>';
+  el.classList.add('fdReady');
+}
+
+/* le module d'origine appelle renderDashboardCA('billingCaDashboard') : seule cette cible change */
+var baseCA=window.renderDashboardCA;
+window.renderDashboardCA=function(targetId){
+  if(targetId==='billingCaDashboard'){ try{ return render(targetId); }catch(e){ console.error('[DASHBOARD V4.6.8H]',e); } }
+  return baseCA.apply(this,arguments);
+};
+
+/* ---------- carte des statistiques (filtres annee + client + recherche) : remplace la carte V4.6.8C (A5) ---------- */
+function selectedInvoices(){
+  var yr=($('billingYear')||{}).value||'2026', cl=($('billingClient')||{}).value||'', q=(($('billingSearch')||{}).value||'').toLowerCase(), out=[];
+  ((typeof CLIENTS!=='undefined'&&CLIENTS)||[]).forEach(function(c){(Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){
+    if((yr==='all'||String(f.date||'').slice(0,4)===yr)&&(!cl||String(c[fields.id])===cl)&&(!q||[f.number,String(c[fields.name]||''),f.type,f.status].join(' ').toLowerCase().indexOf(q)>=0)) out.push(f);});});
+  return out;
+}
+function profitCard(){
+  var stats=$('billingStats'); if(!stats) return;
+  var sel=selectedInvoices(), ok={n:0,ca:0,m:0}, inc=0, na=0;
+  sel.forEach(function(f){var p=profitOf(f); if(p.etat==='ok'){ok.n++;ok.ca+=p.ca;ok.m+=p.marge;} else if(p.etat==='inc') inc++; else na++;});
+  var html='<small>Bénéfice (factures complètes)</small><div class="billProfitVal">'+(ok.n?eur(ok.m):'Non calculable')+'</div><small>'+(ok.n?'Taux '+pct(ok.ca?ok.m/ok.ca*100:null)+' · ':'')+ok.n+' complète'+(ok.n>1?'s':'')+' · '+inc+' incomplète'+(inc>1?'s':'')+' · '+na+' sans lignes</small>';
+  var d=$('billProfitStat');
+  if(!d){ d=document.createElement('div'); d.id='billProfitStat'; d.className='billProfitStat'; stats.appendChild(d); }
+  if(d.innerHTML!==html) d.innerHTML=html;
+  d.classList.toggle('empty',!ok.n); d.classList.toggle('neg',ok.n>0&&ok.m<0);
+}
+var statsEl=$('billingStats');
+if(statsEl) new MutationObserver(function(){ if(!$('billProfitStat')) profitCard(); }).observe(statsEl,{childList:true});
+var baseRB=window.renderBillingModule;
+if(typeof baseRB==='function'){ window.renderBillingModule=function(){ var r=baseRB.apply(this,arguments); try{profitCard();}catch(e){} return r; }; }
+['billingSearch','billingYear','billingClient'].forEach(function(id){var e=$(id); if(e) e.addEventListener(id==='billingSearch'?'input':'change',function(){setTimeout(profitCard,0);});});
+
+window.MGT_FINANCE={version:'V4.6.8H',compute:compute,profitOf:profitOf,render:render,profitCard:profitCard,CATS:CATS};
+})();
+
+</script>
+<style id="mgt-facturation-nav-style">
+/* ===== MGT CRM V4.6.8I — Navigation Facturation : deux espaces ===== */
+#billingModule .billingTabs.bnHiddenTabs{display:none!important}
+#billingModule .bnSpaces{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0 14px}
+html[data-mgt-theme] #billingModule .bnSpace,html #billingModule .bnSpace{
+  position:relative;display:flex;align-items:center;gap:14px;width:100%;height:auto!important;min-height:120px;padding:18px 18px 18px 22px;text-align:left;cursor:pointer;
+  border:1px solid var(--line)!important;border-radius:16px;background:var(--deep,var(--panel))!important;color:var(--ink)!important;font:inherit;box-shadow:none;transition:border-color .15s,transform .12s,box-shadow .15s}
+#billingModule .bnSpace::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:5px;border-radius:0 6px 6px 0;background:var(--bnC)}
+#billingModule .bnSpace[data-bn="situation"]{--bnC:#2f7fd1}
+#billingModule .bnSpace[data-bn="registre"]{--bnC:var(--accent,#ef3f08)}
+#billingModule .bnSpace:hover{transform:translateY(-2px);border-color:var(--bnC)!important}
+#billingModule .bnSpace:focus-visible,#billingModule .bnSwitch:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+html[data-mgt-theme] #billingModule .bnSpace.active,html #billingModule .bnSpace.active{border-color:var(--bnC)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--bnC) 55%,transparent),var(--shadow,0 8px 20px rgba(0,0,0,.2));background:color-mix(in srgb,var(--bnC) 9%,var(--deep,var(--panel)))!important}
+#billingModule .bnIcon{display:inline-flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:14px;flex:0 0 auto;color:var(--bnC);background:color-mix(in srgb,var(--bnC) 15%,transparent);border:1px solid color-mix(in srgb,var(--bnC) 40%,transparent)}
+#billingModule svg.bnI{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+#billingModule .bnBody{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
+#billingModule .bnTitle{font-size:18px;font-weight:800;line-height:1.25;color:var(--ink)}
+#billingModule .bnDesc{font-size:13px;color:var(--muted)}
+#billingModule .bnStats{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:13px;color:var(--ink)}
+#billingModule .bnStats b{font-variant-numeric:tabular-nums}
+#billingModule .bnGo{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;min-height:44px;padding:8px 14px;border-radius:999px;font-weight:800;font-size:14px;color:#fff;background:var(--bnC)}
+#billingModule .bnSpace[data-bn="registre"] .bnGo{background:var(--accentDark,#c93104)}
+#billingModule .bnSpace[data-bn="situation"] .bnGo{background:#1f66b3}
+#billingModule .bnSpace.active .bnGo{background:transparent;color:var(--ink);border:1px solid var(--bnC)}
+#billingModule .bnGo svg.bnI{width:18px;height:18px}
+html[data-mgt-theme] #billingModule .bnSwitch,html #billingModule .bnSwitch{display:inline-flex;align-items:center;gap:6px;width:auto;height:auto!important;min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid var(--line)!important;background:var(--deep,transparent)!important;color:var(--ink)!important;font:700 14px inherit;font-family:inherit;cursor:pointer;margin-left:auto}
+#billingModule .bnSwitch svg.bnI{width:18px;height:18px}
+html[data-mgt-theme="light"] #billingModule .bnSpace{background:#fff!important;border-color:#d7dde5!important}
+html[data-mgt-theme="light"] #billingModule .bnSpace.active{background:color-mix(in srgb,var(--bnC) 7%,#fff)!important}
+html[data-mgt-theme="light"] #billingModule .bnSpace[data-bn="situation"]{--bnC:#1f66b3}
+html[data-mgt-theme="light"] #billingModule .bnTitle,html[data-mgt-theme="light"] #billingModule .bnStats{color:#18212f}
+html[data-mgt-theme="light"] #billingModule .bnDesc{color:#4f5b6b}
+html[data-mgt-theme="light"] #billingModule .bnSpace.active .bnGo{color:#18212f}
+html[data-mgt-theme="light"] #billingModule .bnSwitch{background:#fff!important;color:#18212f!important}
+@media (max-width:760px){
+  #billingModule .bnSpaces{grid-template-columns:minmax(0,1fr);gap:10px}
+  html[data-mgt-theme] #billingModule .bnSpace,html #billingModule .bnSpace{min-height:0;padding:14px 14px 14px 18px;flex-wrap:wrap;gap:10px}
+  #billingModule .bnIcon{width:46px;height:46px}
+  #billingModule svg.bnI{width:24px;height:24px}
+  #billingModule .bnTitle{font-size:16px}
+  #billingModule .bnBody{flex:1 1 calc(100% - 60px)}
+  #billingModule .bnGo{flex:1 1 100%;justify-content:center}
+  #billingModule .bnSwitch{margin-left:0;width:100%!important;justify-content:center}
+}
+
+</style>
+<script id="mgt-facturation-nav">
+/* =====================================================================
+   MGT CRM V4.6.8I — NAVIGATION FACTURATION : DEUX ESPACES DISTINCTS
+   - Les 2 onglets d'origine sont remplaces VISUELLEMENT par 2 grandes cartes :
+       💳 Situation de paiement clients   /   🧾 Registre detaille des factures
+   - Les onglets d'origine restent dans la page (masques) : les cartes les actionnent,
+     le fonctionnement d'origine (setBillingTab) n'est pas reecrit.
+   - Mini-resume sur chaque carte, selon les filtres actifs (annee, client, recherche).
+   - Lien de passage d'un espace a l'autre en tete de chaque tableau.
+   - Filtre d'annee : ajout automatique des annees presentes dans les factures (A13) ;
+     les options existantes (2026, 2027, Toutes) et la valeur choisie sont conservees.
+   - Lecture seule : aucune donnee n'est modifiee.
+   ===================================================================== */
+(function(){
+'use strict';
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function lu(p){return '<svg class="bnI" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+p+'</svg>';}
+var IC={
+  card:lu('<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>'),
+  receipt:lu('<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/>'),
+  right:lu('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
+  left:lu('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>')
+};
+var mod=$('billingModule'), tabs=mod&&mod.querySelector('.billingTabs');
+if(!mod||!tabs){console.error('[NAVIGATION V4.6.8I] onglets introuvables');return;}
+function tabBtn(k){return tabs.querySelector('[data-billing-tab="'+k+'"]');}
+function current(){var v=$('billingRegisterView');return v&&!v.hidden?'registre':'situation';}
+/* GTM : montants en euros, 2 décimales */
+function amount3(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+function frDate(s){s=String(s||'');return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):s;}
+
+/* ---------- les deux cartes ---------- */
+var nav=document.createElement('nav'); nav.className='bnSpaces'; nav.setAttribute('aria-label','Espaces de la facturation');
+nav.innerHTML=
+  '<button type="button" class="bnSpace" data-bn="situation" aria-controls="billingSituationView"><span class="bnIcon bnPay">'+IC.card+'</span><span class="bnBody"><span class="bnTitle">Situation de paiement clients</span><span class="bnDesc">Suivi des règlements, des soldes et des créances clients.</span><span class="bnStats" data-bn-stats="situation"></span></span><span class="bnGo"><span class="bnGoTxt">Ouvrir</span>'+IC.right+'</span></button>'
+ +'<button type="button" class="bnSpace" data-bn="registre" aria-controls="billingRegisterView"><span class="bnIcon bnReg">'+IC.receipt+'</span><span class="bnBody"><span class="bnTitle">Registre détaillé des factures</span><span class="bnDesc">Consultation, gestion, modification et suppression des factures.</span><span class="bnStats" data-bn-stats="registre"></span></span><span class="bnGo"><span class="bnGoTxt">Ouvrir</span>'+IC.right+'</span></button>';
+tabs.parentNode.insertBefore(nav,tabs);
+tabs.classList.add('bnHiddenTabs'); tabs.setAttribute('aria-hidden','true');
+tabs.querySelectorAll('button').forEach(function(b){b.tabIndex=-1;});
+
+/* ---------- lien de passage en tete de chaque tableau ---------- */
+function addSwitch(viewId,target,label,icon,before){
+  var v=$(viewId); if(!v) return;
+  var head=v.querySelector('h3'); var host=head?head.parentNode.parentNode:v;
+  var a=document.createElement('button'); a.type='button'; a.className='bnSwitch'; a.setAttribute('data-bn',target);
+  a.innerHTML=before?icon+'<span>'+esc(label)+'</span>':'<span>'+esc(label)+'</span>'+icon;
+  host.appendChild(a);
+}
+addSwitch('billingSituationView','registre','Aller au registre des factures',IC.right,false);
+addSwitch('billingRegisterView','situation','Aller à la situation de paiement',IC.left,true);
+
+function show(k,scroll){
+  var b=tabBtn(k); if(b) b.click();          /* fonctionnement d'origine */
+  sync();
+  if(scroll){ var v=$(k==='registre'?'billingRegisterView':'billingSituationView'); if(v) setTimeout(function(){ try{v.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){v.scrollIntoView();} },30); }
+}
+function sync(){
+  var cur=current();
+  nav.querySelectorAll('.bnSpace').forEach(function(c){
+    var on=c.getAttribute('data-bn')===cur; c.classList.toggle('active',on); c.setAttribute('aria-pressed',on?'true':'false');
+    c.querySelector('.bnGoTxt').textContent=on?'Affiché':'Ouvrir';
+  });
+}
+mod.addEventListener('click',function(e){
+  var b=e.target.closest('[data-bn]'); if(!b||!mod.contains(b)) return;
+  var k=b.getAttribute('data-bn'); show(k,b.classList.contains('bnSwitch')||window.innerWidth<=760);
+});
+tabs.querySelectorAll('[data-billing-tab]').forEach(function(b){b.addEventListener('click',function(){setTimeout(sync,0);});});
+
+/* ---------- mini-resumes selon les filtres ---------- */
+function filtered(){
+  var yr=($('billingYear')||{}).value||'2026', cl=($('billingClient')||{}).value||'', q=(($('billingSearch')||{}).value||'').toLowerCase(), out=[];
+  ((typeof CLIENTS!=='undefined'&&CLIENTS)||[]).forEach(function(c){(Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){
+    if((yr==='all'||String(f.date||'').slice(0,4)===yr)&&(!cl||String(c[fields.id])===cl)&&(!q||[f.number,String(c[fields.name]||''),f.type,f.status].join(' ').toLowerCase().indexOf(q)>=0)) out.push({c:c,f:f});});});
+  return out;
+}
+function stats(){
+  var list=filtered(), clients={}, billed=0, paid=0, last=null;
+  list.forEach(function(x){var id=String(x.c[fields.id]),a=Number(x.f.amount)||0,p=Number(x.f.paid)||0; clients[id]=(clients[id]||0)+a; billed+=a; paid+=p;
+    if(!last||String(x.f.date||'')>String(last.f.date||'')||(String(x.f.date||'')===String(last.f.date||'')&&String(x.f.number||'')>String(last.f.number||''))) last=x;});
+  var nCli=Object.keys(clients).filter(function(k){return clients[k]>0.0005;}).length;
+  var s=nav.querySelector('[data-bn-stats="situation"]'), r=nav.querySelector('[data-bn-stats="registre"]');
+  if(s) s.innerHTML='<span><b>'+nCli+'</b> client'+(nCli>1?'s':'')+' facturé'+(nCli>1?'s':'')+'</span><span>Reste à encaisser <b>'+esc(amount3(billed-paid))+'</b></span>';
+  if(r) r.innerHTML='<span><b>'+list.length+'</b> facture'+(list.length>1?'s':'')+'</span>'+(last?'<span>Dernière : <b>'+esc(last.f.number||'—')+'</b> du '+esc(frDate(last.f.date))+'</span>':'<span>Aucune facture pour ces filtres</span>');
+}
+
+/* ---------- filtre d'annee : annees presentes dans les factures (A13) ---------- */
+function years(){
+  var sel=$('billingYear'); if(!sel) return;
+  var have={}; [].slice.call(sel.options).forEach(function(o){have[o.value]=1;});
+  var ys={}; ys[String(new Date().getFullYear())]=1;
+  ((typeof CLIENTS!=='undefined'&&CLIENTS)||[]).forEach(function(c){(Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){var y=String(f.date||'').slice(0,4); if(/^\d{4}$/.test(y)) ys[y]=1;});});
+  var add=Object.keys(ys).filter(function(y){return !have[y];});
+  if(!add.length) return;
+  var cur=sel.value, all=sel.querySelector('option[value="all"]');
+  add.forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y;o.setAttribute('data-bn-auto','1');sel.insertBefore(o,all||null);});
+  /* tri decroissant des annees, « Toutes les annees » en dernier */
+  var opts=[].slice.call(sel.options).filter(function(o){return o.value!=='all';}).sort(function(a,b){return b.value.localeCompare(a.value);});
+  opts.forEach(function(o){sel.insertBefore(o,all||null);});
+  sel.value=cur;
+}
+
+function refresh(){ try{years();stats();sync();}catch(e){console.warn('[NAVIGATION V4.6.8I]',e);} }
+var baseRB=window.renderBillingModule;
+if(typeof baseRB==='function'){ window.renderBillingModule=function(){ var r=baseRB.apply(this,arguments); refresh(); return r; }; }
+['billingSearch','billingYear','billingClient'].forEach(function(id){var e=$(id); if(e) e.addEventListener(id==='billingSearch'?'input':'change',function(){setTimeout(refresh,0);});});
+var rows=$('billingRows'); if(rows) new MutationObserver(function(){clearTimeout(refresh._t);refresh._t=setTimeout(refresh,40);}).observe(rows,{childList:true});
+refresh();
+
+window.MGT_BILLING_NAV={version:'V4.6.8I',show:show,current:current,refresh:refresh};
+})();
+
+</script>
+<style id="mgt-situation-style">
+/* ===== MGT CRM V4.6.8J — Situation de paiement responsive ===== */
+#billingSituationView .sitOrigHidden{display:none!important}
+.sitHost{--sitDue:#ff9f6e;--sitDueBg:rgba(239,63,8,.13);--sitUnpaid:rgba(244,183,42,.16);--sitUnpaidLine:#c99120;--sitBen:#34d27b;--sitNeg:#ff8a9a;color:var(--ink);margin-top:8px}
+html[data-mgt-theme="light"] .sitHost{--sitDue:#b4380c;--sitDueBg:#fff0e9;--sitUnpaid:#fff3d6;--sitUnpaidLine:#d8a33a;--sitBen:#0d7a4a;--sitNeg:#b4233a}
+.sitKpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.sitKpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--deep,transparent);min-width:0}
+.sitKpi span{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.sitKpi b{display:block;font-size:19px;margin:3px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.sitKpi small{font-size:12px;color:var(--muted)}
+.sitKpi.due{border-color:color-mix(in srgb,var(--sitDue) 55%,transparent);background:var(--sitDueBg)}.sitKpi.due b{color:var(--sitDue)}
+.sitKpi.benef b{color:var(--sitBen)}.sitKpi.benef.empty b{color:var(--muted);font-size:16px}
+html[data-mgt-theme="light"] .sitKpi{background:#fff}
+html[data-mgt-theme="light"] .sitKpi.due{background:#fff0e9}
+.sitTools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:4px 0 8px}
+.sitNote{font-size:12px;color:var(--muted)}
+.sitToggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;min-height:44px}
+.sitToggle input{width:20px;height:20px;accent-color:var(--accent,#ef3f08)}
+.sitTableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:70vh}
+.sitTableWrap:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+.sitTable{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1180px!important}
+.sitTable th,.sitTable td{padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink);background:var(--panel)}
+.sitTable thead th{position:sticky;top:0;z-index:2;background:var(--soft);font-size:11px;letter-spacing:.03em;text-transform:uppercase}
+.sitTable .n{text-align:right;font-variant-numeric:tabular-nums}
+.sitTable .sitCli{position:sticky;left:0;z-index:1;text-align:left;min-width:180px;max-width:240px;white-space:normal;border-right:1px solid var(--line)}
+.sitTable thead .sitCli{z-index:3}
+.sitTable tbody .sitCli small{display:block;font-weight:600;font-size:11px;color:var(--muted)}
+html[data-mgt-theme] .sitHost .sitCliBtn,html .sitHost .sitCliBtn{background:none!important;border:0;padding:0;margin:0;color:var(--ink)!important;font:800 13px inherit;font-family:inherit;text-align:left;cursor:pointer;width:auto;height:auto!important;min-height:0;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 35%,transparent);text-underline-offset:3px;box-shadow:none}
+.sitTable td.has-unpaid{background:var(--sitUnpaid);box-shadow:inset 0 0 0 1px var(--sitUnpaidLine)}
+.sitTable .sitEmptyCell{color:var(--muted)}
+.sitTable .sitAmt{display:block}
+.sitTable .sitMB{display:block;font-size:11px;font-weight:700;color:var(--sitBen)}.sitTable .sitMB.neg{color:var(--sitNeg)}.sitTable .sitMB.none{color:var(--muted);font-weight:600}
+.sitTable .sitTot{border-left:2px solid var(--line)}
+.sitTable td.sitSolde.due b{color:var(--sitDue)}.sitTable td.sitSolde.due{background:var(--sitDueBg)}
+.sitTable td.sitSolde.zero b{color:var(--muted)}
+.sitBenef{display:inline-flex;flex-direction:column;align-items:flex-end;font-weight:800;color:var(--sitBen)}
+.sitBenef small{font-size:11px;font-weight:600;color:var(--muted)}
+.sitBenef.neg{color:var(--sitNeg)}.sitBenef.none{color:var(--muted);font-weight:600}
+.sitTable tfoot th,.sitTable tfoot td{background:var(--soft);font-weight:800;position:sticky}
+.sitTable tfoot .sitFootTot th,.sitTable tfoot .sitFootTot td{bottom:37px;border-top:2px solid var(--line)}
+.sitTable tfoot .sitFootBen th,.sitTable tfoot .sitFootBen td{bottom:0}
+.sitTable tfoot .sitCli{z-index:3}
+.sitTable tfoot small{display:block;font-size:10px;font-weight:600;color:var(--muted)}
+.sitTable tfoot .pos{color:var(--sitBen)}.sitTable tfoot .neg{color:var(--sitNeg)}.sitTable tfoot .nc{color:var(--muted);font-weight:600}
+.sitLegend{font-size:12px;color:var(--muted);margin:8px 2px}
+.sitLegUnpaid{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--sitUnpaid);box-shadow:inset 0 0 0 1px var(--sitUnpaidLine);vertical-align:-2px}
+.sitEmpty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+.sitCards{display:none}
+@media (max-width:1100px){.sitKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .sitTableWrap,.sitLegend{display:none}
+  .sitCards{display:flex;flex-direction:column;gap:10px}
+  .sitKpi b{font-size:16px}
+  .sitCard{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--deep,var(--panel))}
+  html[data-mgt-theme="light"] .sitCard{background:#fff}
+  .sitCard.due{border-left:5px solid var(--sitDue)}
+  .sitCard .sitCardHead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:8px}
+  html[data-mgt-theme] .sitHost .sitCard .sitCliBtn,html .sitHost .sitCard .sitCliBtn{font-size:16px;min-height:44px;display:inline-flex;align-items:center}
+  .sitCard .sitCardHead small{color:var(--muted);font-size:12px}
+  .sitCardKv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .sitCardKv>div{border:1px solid var(--line);border-radius:10px;padding:7px 8px;min-width:0}
+  .sitCardKv>div>span:first-child{display:block;font-size:10px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+  .sitCardKv b{display:block;font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  .sitCardKv .sitSolde.due{background:var(--sitDueBg);border-color:color-mix(in srgb,var(--sitDue) 50%,transparent)}.sitCardKv .sitSolde.due b{color:var(--sitDue)}
+  .sitCardKv .sitSolde.zero b{color:var(--muted)}
+  .sitCardBen .sitBenef{align-items:flex-start;font-size:14px}
+  .sitCardBen .sitBenef small{display:block;text-transform:none}
+  .sitCardBen .sitBenef.none{font-size:13px;text-transform:none}
+  .sitCard details{margin-top:8px}
+  .sitCard summary{cursor:pointer;font-weight:800;font-size:14px;min-height:44px;display:flex;align-items:center;list-style-position:inside}
+  .sitMonths{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .sitMonths li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+  .sitMonths li.has-unpaid{background:var(--sitUnpaid);border-color:var(--sitUnpaidLine)}
+  .sitMonths li em{font-style:normal;font-size:11px;font-weight:800;color:var(--sitDue)}
+  .sitMonths li b{font-variant-numeric:tabular-nums}
+  .sitMonths li small{grid-column:1/-1;font-size:12px}
+  .sitMonths .pos{color:var(--sitBen)}.sitMonths .neg{color:var(--sitNeg)}.sitMonths .nc{color:var(--muted)}
+  .sitCardTotal{border-style:dashed}
+}
+@media (max-width:380px){.sitCardKv{grid-template-columns:repeat(2,minmax(0,1fr))}.sitCardKv .sitCardBen{grid-column:1/-1}}
+/* nom du client : priorite sur la regle globale des boutons du theme clair (color:#fff!important) */
+#billingSituationView .sitHost .sitCliBtn{color:var(--ink)!important;background:none!important}
+html[data-mgt-theme="light"] #billingSituationView .sitHost .sitCliBtn{color:#18212f!important}
+.sitToggle{padding:0 4px}
+@media (max-width:760px){
+  .sitCard summary{list-style:none}
+  .sitCard summary::-webkit-details-marker{display:none}
+  .sitCard summary::after{content:"";width:8px;height:8px;margin-left:10px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+  .sitCard details[open] summary::after{transform:rotate(-135deg) translateY(-2px)}
+}
+
+</style>
+<script id="mgt-situation">
+/* =====================================================================
+   MGT CRM V4.6.8J — SITUATION DE PAIEMENT CLIENTS (responsive)
+   - Memes regles que le tableau d'origine (renderBilling) : memes clients (filtres annee,
+     client, recherche), meme tri, memes montants mensuels (montants FACTURES du mois),
+     meme surlignage des mois contenant une facture impayee.
+   - Q1 : la colonne d'origine « SOLDE TOTAL » affichait le total facture : elle est
+     renommee « Total facture » (meme valeur) ; ajout de « Solde restant » (facture - paye).
+   - Benefice par client et par mois : factures a marge COMPLETE uniquement (MGT_LINES) ;
+     « partiel » si des factures de la periode ne sont pas calculables.
+   - Bandeau d'indicateurs selon les filtres : facture, encaisse, solde restant, benefice.
+   - Mobile : fiches clients avec detail mensuel a la demande (pas de tableau de 14 colonnes).
+   - Le tableau d'origine reste dans la page (masque) : aucune fonction historique reecrite.
+   - Lecture seule : aucune donnee n'est modifiee.
+   ===================================================================== */
+(function(){
+'use strict';
+if(!window.MGT_LINES){console.error('[SITUATION V4.6.8J] MGT_LINES absent');return;}
+var LN=window.MGT_LINES;
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function nrm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function amt(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function eur(n){return amt(n)+' €';}
+function pct(n){return n==null?'—':(Math.round(n*10)/10).toLocaleString('fr-FR')+' %';}
+var MONTHS=['JANV','FÉVR','MARS','AVRIL','MAI','JUIN','JUIL.','AOÛT','SEPT','OCT.','NOV.','DÉC.'];
+var MONTHS_L=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+var view=$('billingSituationView'); if(!view){console.error('[SITUATION V4.6.8J] vue introuvable');return;}
+var LS='mgt_situation_benef_mois';
+function lsGet(){try{return localStorage.getItem(LS)==='1';}catch(e){return false;}}
+function lsSet(v){try{localStorage.setItem(LS,v?'1':'0');}catch(e){}}
+var MQ=window.matchMedia?window.matchMedia('(max-width:760px)'):null;
+function isMobile(){return MQ?MQ.matches:window.innerWidth<=760;}
+
+/* ---------- conteneur ---------- */
+var origWrap=$('billingMonthlyRows')&&$('billingMonthlyRows').closest('div[style*="overflow"]');
+if(origWrap) origWrap.classList.add('sitOrigHidden');
+var help=view.querySelector('.muted'); if(help) help.textContent='Une ligne par client ayant au moins une facture sur la période. Les mois contenant une facture impayée sont mis en évidence ; le solde restant = total facturé − montants payés.';
+var host=document.createElement('div'); host.id='sitHost'; host.className='sitHost';
+if(origWrap) origWrap.parentNode.insertBefore(host,origWrap); else view.appendChild(host);
+
+/* ---------- calcul (memes regles que l'origine) ---------- */
+function profit(f){var l=Array.isArray(f.lignes)?f.lignes:[];if(!l.length)return {etat:'na'};var t=LN.calcTotals(l);return t.sansPrixAchat?{etat:'inc'}:{etat:'ok',ca:t.totalHT,marge:t.marge};}
+function compute(){
+  var yr=($('billingYear')||{}).value||'2026', cl=($('billingClient')||{}).value||'', q=(($('billingSearch')||{}).value||'').toLowerCase();
+  var cname=function(c){return String(c[fields.name]||'Sans nom');};
+  var clients=((typeof CLIENTS!=='undefined'&&CLIENTS)||[]).slice().sort(function(a,b){return cname(a).localeCompare(cname(b),'fr');})
+    .filter(function(c){return (!cl||String(c[fields.id])===cl)&&(!q||cname(c).toLowerCase().indexOf(q)>=0||(c.Factures||[]).some(function(f){return [f.number,f.type,f.status].join(' ').toLowerCase().indexOf(q)>=0;}));});
+  var rows=[];
+  clients.forEach(function(c){
+    var fs=(c.Factures||[]).filter(function(f){return yr==='all'||String(f.date||'').slice(0,4)===yr;});
+    var r={c:c,id:String(c[fields.id]),name:cname(c),n:fs.length,billed:0,paid:0,months:[],benef:{ok:0,ca:0,marge:0,inc:0,na:0}};
+    for(var i=0;i<12;i++) r.months.push({total:0,paid:0,unpaid:false,n:0,ok:0,marge:0,ca:0,partial:false});
+    fs.forEach(function(f){
+      var a=Number(f.amount||0)||0, p=Number(f.paid||0)||0, m=Number(String(f.date||'').slice(5,7)), pr=profit(f);
+      r.billed+=a; r.paid+=p;
+      if(pr.etat==='ok'){r.benef.ok++;r.benef.ca+=pr.ca;r.benef.marge+=pr.marge;} else if(pr.etat==='inc') r.benef.inc++; else r.benef.na++;
+      if(m>=1&&m<=12){var mo=r.months[m-1]; mo.total+=a; mo.paid+=p; mo.n++;
+        if(Math.max(0,a-p)>0.0005||nrm(f.status||'').indexOf('impay')>=0) mo.unpaid=true;
+        if(pr.etat==='ok'){mo.ok++;mo.marge+=pr.marge;mo.ca+=pr.ca;} else mo.partial=true;}
+    });
+    r.solde=r.billed-r.paid; rows.push(r);
+  });
+  rows=rows.filter(function(r){return r.billed>0.0005;});
+  rows.sort(function(a,b){return b.billed-a.billed||a.name.localeCompare(b.name,'fr');});
+  var T={billed:0,paid:0,solde:0,months:[],benef:{ok:0,ca:0,marge:0,inc:0,na:0},nCli:rows.length,nSolde:0};
+  for(var i=0;i<12;i++) T.months.push({total:0,ok:0,marge:0,partial:false});
+  rows.forEach(function(r){T.billed+=r.billed;T.paid+=r.paid;T.solde+=r.solde;if(r.solde>0.0005)T.nSolde++;
+    ['ok','ca','marge','inc','na'].forEach(function(k){T.benef[k]+=r.benef[k];});
+    r.months.forEach(function(m,i){var t=T.months[i];t.total+=m.total;t.ok+=m.ok;t.marge+=m.marge;if(m.partial&&m.n)t.partial=true;});});
+  return {yr:yr,rows:rows,T:T};
+}
+
+/* ---------- rendu ---------- */
+function benefCell(b,cls){
+  if(!b.ok) return '<span class="sitBenef none"'+(cls?' data-l="Bénéfice"':'')+'>'+(b.inc||b.na?'Non calculable':'—')+'</span>';
+  return '<span class="sitBenef'+(b.marge<0?' neg':'')+'">'+eur(b.marge)+'<small>'+(b.ca?pct(b.marge/b.ca*100):'')+((b.inc||b.na)?' · partiel':'')+'</small></span>';
+}
+function render(){
+  var d=compute(), T=d.T, showB=lsGet(), yl=d.yr==='all'?'toutes années':d.yr;
+  var kp=function(c,l,v,s){return '<div class="sitKpi '+c+'"><span>'+l+'</span><b>'+v+'</b>'+(s?'<small>'+s+'</small>':'')+'</div>';};
+  var kpis='<div class="sitKpis" aria-label="Indicateurs de la situation ('+esc(yl)+')">'
+    +kp('','Total facturé',eur(T.billed),T.nCli+' client'+(T.nCli>1?'s':''))
+    +kp('','Total encaissé',eur(T.paid),T.billed?pct(T.paid/T.billed*100)+' du facturé':'')
+    +kp(T.solde>0.0005?'due':'','Solde restant',eur(T.solde),T.nSolde+' client'+(T.nSolde>1?'s':'')+' avec un solde')
+    +kp('benef'+(T.benef.ok?'':' empty'),'Bénéfice calculable',T.benef.ok?eur(T.benef.marge):'Non calculable',(T.benef.ok?pct(T.benef.ca?T.benef.marge/T.benef.ca*100:null)+' · ':'')+T.benef.ok+' complète'+(T.benef.ok>1?'s':'')+' · '+(T.benef.inc+T.benef.na)+' non calculable'+((T.benef.inc+T.benef.na)>1?'s':''))
+    +'</div>';
+  var tools='<div class="sitTools"><span class="sitNote">Montants en euros · '+esc(yl)+'</span><label class="sitToggle"><input type="checkbox" id="sitBenefToggle"'+(showB?' checked':'')+'/> Bénéfice par mois</label></div>';
+  if(!d.rows.length){ host.innerHTML=kpis+tools+'<div class="sitEmpty">Aucun client facturé pour cette sélection.</div>'; bind(); return; }
+  var mobile=isMobile(), table='', cards='';
+  if(!mobile){
+  /* tableau (PC / tablette) */
+  var head='<tr><th class="sitCli" scope="col">Client</th>'+MONTHS.map(function(m){return '<th class="n" scope="col">'+m+'</th>';}).join('')+'<th class="n sitTot" scope="col">Total facturé</th><th class="n sitSolde" scope="col">Solde restant</th><th class="n sitBen" scope="col">Bénéfice</th></tr>';
+  var body=d.rows.map(function(r){
+    return '<tr><th class="sitCli" scope="row"><button type="button" class="sitCliBtn" data-sit-client="'+esc(r.id)+'">'+esc(r.name)+'</button><small>'+r.n+' facture'+(r.n>1?'s':'')+'</small></th>'
+      +r.months.map(function(m,i){
+        if(!m.total) return '<td class="n sitEmptyCell">—</td>';
+        return '<td class="n'+(m.unpaid?' has-unpaid':'')+'" title="'+esc(MONTHS_L[i]+' : '+eur(m.total)+(m.unpaid?' — facture impayée':''))+'"><span class="sitAmt">'+amt(m.total)+'</span>'
+          +(showB?'<span class="sitMB'+(m.ok?(m.marge<0?' neg':''):' none')+'">'+(m.ok?amt(m.marge)+(m.partial?'*':''):'n.c.')+'</span>':'')+'</td>';
+      }).join('')
+      +'<td class="n sitTot"><b>'+amt(r.billed)+'</b></td>'
+      +'<td class="n sitSolde'+(r.solde>0.0005?' due':' zero')+'"><b>'+amt(r.solde)+'</b></td>'
+      +'<td class="n sitBen">'+benefCell(r.benef)+'</td></tr>';
+  }).join('');
+  var foot='<tr class="sitFootTot"><th class="sitCli" scope="row">TOTAL MOIS</th>'+T.months.map(function(m){return '<td class="n">'+(m.total?amt(m.total):'—')+'</td>';}).join('')
+    +'<td class="n sitTot"><b>'+amt(T.billed)+'</b></td><td class="n sitSolde'+(T.solde>0.0005?' due':' zero')+'"><b>'+amt(T.solde)+'</b></td><td class="n sitBen">'+benefCell(T.benef)+'</td></tr>'
+    +'<tr class="sitFootBen"><th class="sitCli" scope="row">BÉNÉFICE MOIS<small>factures complètes</small></th>'+T.months.map(function(m){return '<td class="n">'+(m.ok?'<span class="'+(m.marge<0?'neg':'pos')+'">'+amt(m.marge)+(m.partial?'*':'')+'</span>':(m.total?'<span class="nc">n.c.</span>':'—'))+'</td>';}).join('')+'<td class="n" colspan="3"></td></tr>';
+  table='<div class="sitTableWrap" role="region" aria-label="Situation de paiement par client et par mois" tabindex="0"><table class="sitTable"><thead>'+head+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>'
+    +'<p class="sitLegend"><span class="sitLegUnpaid"></span> mois avec facture impayée · <b>Solde restant</b> = facturé − payé · * bénéfice partiel (des factures du mois ne sont pas calculables) · n.c. = non calculable</p>';
+  } else {
+  /* fiches (mobile) */
+  cards='<div class="sitCards">'+d.rows.map(function(r){
+    var mlist=r.months.map(function(m,i){if(!m.total) return ''; return '<li class="'+(m.unpaid?'has-unpaid':'')+'"><span>'+MONTHS_L[i]+(m.unpaid?' <em>impayée</em>':'')+'</span><b>'+eur(m.total)+'</b>'+(m.ok?'<small class="'+(m.marge<0?'neg':'pos')+'">bénéfice '+eur(m.marge)+(m.partial?' (partiel)':'')+'</small>':'<small class="nc">bénéfice non calculable</small>')+'</li>';}).join('');
+    return '<article class="sitCard'+(r.solde>0.0005?' due':'')+'"><div class="sitCardHead"><button type="button" class="sitCliBtn" data-sit-client="'+esc(r.id)+'">'+esc(r.name)+'</button><small>'+r.n+' facture'+(r.n>1?'s':'')+'</small></div>'
+      +'<div class="sitCardKv"><div><span>Total facturé</span><b>'+eur(r.billed)+'</b></div><div class="sitSolde'+(r.solde>0.0005?' due':' zero')+'"><span>Solde restant</span><b>'+eur(r.solde)+'</b></div><div class="sitCardBen"><span>Bénéfice</span>'+benefCell(r.benef)+'</div></div>'
+      +'<details><summary>Détail mensuel</summary><ul class="sitMonths">'+mlist+'</ul></details></article>';
+  }).join('')
+    +'<article class="sitCard sitCardTotal"><div class="sitCardHead"><strong>Total ('+d.rows.length+' client'+(d.rows.length>1?'s':'')+')</strong></div><div class="sitCardKv"><div><span>Total facturé</span><b>'+eur(T.billed)+'</b></div><div class="sitSolde'+(T.solde>0.0005?' due':' zero')+'"><span>Solde restant</span><b>'+eur(T.solde)+'</b></div><div class="sitCardBen"><span>Bénéfice</span>'+benefCell(T.benef)+'</div></div>'
+    +'<details><summary>Total par mois</summary><ul class="sitMonths">'+T.months.map(function(m,i){if(!m.total)return '';return '<li><span>'+MONTHS_L[i]+'</span><b>'+eur(m.total)+'</b>'+(m.ok?'<small class="'+(m.marge<0?'neg':'pos')+'">bénéfice '+eur(m.marge)+(m.partial?' (partiel)':'')+'</small>':'<small class="nc">bénéfice non calculable</small>')+'</li>';}).join('')+'</ul></details></article></div>';
+  }
+  host.innerHTML=kpis+tools+(isMobile()?cards:table);
+  bind();
+}
+function bind(){
+  var t=$('sitBenefToggle'); if(t) t.onchange=function(){lsSet(t.checked);render();};
+  host.querySelectorAll('[data-sit-client]').forEach(function(b){b.onclick=function(){if(typeof window.openBillingClient==='function')window.openBillingClient(b.getAttribute('data-sit-client'));};});
+}
+
+/* un seul rendu par action, meme si plusieurs declencheurs arrivent ensemble */
+var pending=null;
+function schedule(){ if(pending) return; pending=setTimeout(function(){ pending=null; try{render();}catch(e){console.error('[SITUATION V4.6.8J]',e);} },0); }
+var baseRB=window.renderBillingModule;
+if(typeof baseRB==='function'){ window.renderBillingModule=function(){ var r=baseRB.apply(this,arguments); schedule(); return r; }; }
+var rows=$('billingMonthlyRows'); if(rows) new MutationObserver(schedule).observe(rows,{childList:true});
+['billingSearch','billingYear','billingClient'].forEach(function(id){var e=$(id); if(e) e.addEventListener(id==='billingSearch'?'input':'change',schedule);});
+if(MQ&&MQ.addEventListener) MQ.addEventListener('change',schedule); else if(MQ&&MQ.addListener) MQ.addListener(schedule);
+schedule();
+
+window.MGT_SITUATION={version:'V4.6.8J',compute:compute,render:render};
+})();
+
+</script>
+<style id="mgt-registre-style">
+/* ===== MGT CRM V4.6.8K — Registre des factures et rentabilité ===== */
+#billingRegisterView .rgOrigHidden{display:none!important}
+.rgHost{--rgDue:#ff9f6e;--rgDueBg:rgba(239,63,8,.12);--rgBen:#34d27b;--rgNeg:#ff8a9a;--rgWarn:#f4b72a;--rgWarnBg:rgba(244,183,42,.16);--rgOk:#34d27b;--rgOkBg:rgba(34,160,107,.16);--rgBad:#ff8a9a;--rgBadBg:rgba(139,38,53,.22);color:var(--ink);margin-top:8px}
+html[data-mgt-theme="light"] .rgHost{--rgDue:#b4380c;--rgDueBg:#fff0e9;--rgBen:#0d7a4a;--rgNeg:#b4233a;--rgWarn:#7a4b00;--rgWarnBg:#fff3d6;--rgOk:#0d5c39;--rgOkBg:#ddf5e8;--rgBad:#8b1f30;--rgBadBg:#ffe4e8}
+.rgHost svg.rgI{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rgSummary{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;font-size:14px;background:var(--deep,transparent)}
+html[data-mgt-theme="light"] .rgSummary{background:#fff}
+.rgSummary b{font-variant-numeric:tabular-nums}.rgSummary b.due{color:var(--rgDue)}.rgSummary b.pos{color:var(--rgBen)}
+.rgTableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:72vh}
+.rgTableWrap:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+.rgTable{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1120px!important}
+.rgTable th,.rgTable td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--ink);background:var(--panel);text-align:left}
+.rgTable thead th{position:sticky;top:0;z-index:2;background:var(--soft);font-size:11px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.rgTable .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.rgTable .c{text-align:center}
+.rgTable tbody tr:hover td{background:color-mix(in srgb,var(--soft) 70%,var(--panel))}
+.rgTable tbody tr.rgUnpaid td:first-child{box-shadow:inset 4px 0 0 var(--rgDue)}
+.rgNum b{white-space:nowrap}.rgSub{display:block;font-size:11px;color:var(--muted)}.rgDate{white-space:nowrap}
+html[data-mgt-theme] .rgHost .rgCli,html .rgHost .rgCli{background:none!important;border:0;padding:0;margin:0;color:var(--ink)!important;font:700 13px inherit;font-family:inherit;text-align:left;cursor:pointer;width:auto;height:auto!important;min-height:0;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 35%,transparent);text-underline-offset:3px;box-shadow:none}
+#billingRegisterView .rgHost .rgCli{color:var(--ink)!important}
+html[data-mgt-theme="light"] #billingRegisterView .rgHost .rgCli{color:#18212f!important}
+.rgSolde.due{color:var(--rgDue);font-weight:800}.rgSolde.zero{color:var(--muted)}
+.rgTable td.rgSolde.due{background:var(--rgDueBg)}
+.rgBen{display:inline-flex;flex-direction:column;align-items:flex-end;gap:1px;font-weight:800}
+.rgBen.pos{color:var(--rgBen)}.rgBen.neg{color:var(--rgNeg)}.rgBen.na{color:var(--muted);font-weight:600}
+.rgBen.inc{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:3px;color:var(--rgWarn)}
+.rgBen.inc small{flex-basis:100%;text-align:right;font-weight:600;font-size:11px;color:var(--muted)}
+.rgBen svg.rgI{width:14px;height:14px}
+.rgTaux{font-weight:700}.rgTaux.neg{color:var(--rgNeg)}.rgTaux.na{color:var(--muted);font-weight:600}
+.rgStatus{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+.rgStatus.ok{background:var(--rgOkBg);color:var(--rgOk)}.rgStatus.bad{background:var(--rgBadBg);color:var(--rgBad)}.rgStatus.mid{background:var(--rgWarnBg);color:var(--rgWarn)}
+.rgAlert{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--rgWarnBg);color:var(--rgWarn);border:1px solid color-mix(in srgb,var(--rgWarn) 45%,transparent);white-space:nowrap}
+.rgAlert svg.rgI{width:13px;height:13px}
+.rgActions{display:inline-flex;gap:6px;justify-content:center}
+html[data-mgt-theme] .rgHost .rgIcon,html .rgHost .rgIcon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px!important;padding:0;border-radius:10px;border:1px solid var(--line)!important;background:var(--soft)!important;color:var(--ink)!important;cursor:pointer;box-shadow:none}
+html[data-mgt-theme] .rgHost .rgIcon.danger,html .rgHost .rgIcon.danger{color:var(--rgNeg)!important}
+.rgHost .rgIcon:hover{border-color:var(--accent,#ef3f08)!important}
+.rgHost .rgIcon:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+html[data-mgt-theme="light"] .rgHost .rgIcon{background:#f1f4f7!important}
+.rgNoAct{font-size:11px;color:var(--muted)}
+.rgTable tfoot th,.rgTable tfoot td{position:sticky;bottom:0;background:var(--soft);font-weight:800;border-top:2px solid var(--line)}
+.rgTable tfoot small{font-weight:600;color:var(--muted)}
+.rgLegend{font-size:12px;color:var(--muted);margin:8px 2px}
+.rgEmpty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+.rgCards{display:flex;flex-direction:column;gap:10px}
+.rgCard{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--deep,var(--panel))}
+html[data-mgt-theme="light"] .rgCard{background:#fff}
+.rgCard.due{border-left:5px solid var(--rgDue)}
+.rgCardHead{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.rgCardNum{font-size:17px;margin-right:8px}.rgCardDate{font-size:13px;color:var(--muted)}
+.rgCard .rgCli{font-size:15px!important;margin:8px 0 2px;min-height:32px}
+.rgCardType{font-size:12px;color:var(--muted)}
+.rgCardKv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.rgCardKv>div{border:1px solid var(--line);border-radius:10px;padding:7px 8px;min-width:0}
+.rgCardKv>div>span:first-child{display:block;font-size:10px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+.rgCardKv b{display:block;font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.rgCardKv .rgSolde.due{background:var(--rgDueBg);border-color:color-mix(in srgb,var(--rgDue) 50%,transparent)}
+.rgCardKv .rgBen{align-items:flex-start;font-size:14px}.rgCardKv .rgBen.inc{justify-content:flex-start}.rgCardKv .rgBen.inc small{text-align:left}
+.rgCard .rgActions{display:flex;gap:8px}
+html[data-mgt-theme] .rgHost .rgCard .rgIcon,html .rgHost .rgCard .rgIcon{flex:1 1 0;width:auto}
+.rgCard .rgAlert{margin:6px 0 0}
+@media (max-width:380px){.rgCardKv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* icones d'action : priorite sur la regle globale des boutons du theme clair (color:#fff!important) */
+#billingRegisterView .rgHost .rgIcon{color:var(--ink)!important}
+#billingRegisterView .rgHost .rgIcon.danger{color:var(--rgNeg)!important}
+html[data-mgt-theme="light"] #billingRegisterView .rgHost .rgIcon{color:#18212f!important;background:#f1f4f7!important;border-color:#c9d1db!important}
+html[data-mgt-theme="light"] #billingRegisterView .rgHost .rgIcon.danger{color:#b4233a!important}
+.rgSummary b.na{color:var(--muted)}.rgSummary b.neg{color:var(--rgNeg)}
+.rgMore{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:12px 0;font-size:13px;color:var(--muted)}
+html[data-mgt-theme] #billingRegisterView .rgMoreBtn,html #billingRegisterView .rgMoreBtn{min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--line)!important;background:var(--soft)!important;color:var(--ink)!important;font:700 14px inherit;font-family:inherit;cursor:pointer;width:auto;height:auto!important}
+html[data-mgt-theme="light"] #billingRegisterView .rgMoreBtn{background:#fff!important;color:#18212f!important}
+
+</style>
+<script id="mgt-registre">
+/* =====================================================================
+   MGT CRM V4.6.8K — REGISTRE DES FACTURES ET RENTABILITE
+   - Memes factures que le registre d'origine (filtres annee, client, recherche sur
+     numero / client / type / statut) ; tri par DATE DECROISSANTE (puis numero).
+   - Colonnes : N°, Date, Client, Type, Montant HT, Paye, Solde restant, Benefice, Taux,
+     Situation, Actions. Benefice / taux : composant commun MGT_LINES uniquement ;
+     marge negative distinguee, marge incomplete et « non calculable » signalees.
+   - Actions ✏️ / 🗑️ : appellent les fonctions existantes (editBillingInvoice,
+     mgtDeleteInvoice) : memes droits, meme confirmation, meme enregistrement.
+   - Q4 : numero de facture deja utilise -> avertissement + confirmation (pas de blocage).
+   - Q5 : chaque suppression est tracee dans l'historique du CRM (dmh, synchronise).
+   - Q6 : alerte visuelle « Payee » alors que le paye est inferieur au total.
+   - Mobile : fiches factures. Le tableau d'origine reste dans la page (masque).
+   ===================================================================== */
+(function(){
+'use strict';
+if(!window.MGT_LINES){console.error('[REGISTRE V4.6.8K] MGT_LINES absent');return;}
+var LN=window.MGT_LINES;
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function nrm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function amt(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function eur(n){return amt(n)+' €';}
+function pct(n){return n==null?'—':(Math.round(n*10)/10).toLocaleString('fr-FR')+' %';}
+function frDate(s){s=String(s||'');return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):(s||'—');}
+function who(){try{return (typeof syncUser==='function'&&syncUser())||'';}catch(e){return '';}}
+function can(a){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('billing',a);}catch(e){return true;}}
+function cl(){return (typeof CLIENTS!=='undefined'&&CLIENTS)||[];}
+function lu(p){return '<svg class="rgI" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+p+'</svg>';}
+var IC={
+  edit:lu('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
+  del:lu('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'),
+  warn:lu('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>')
+};
+var TYPES={MACHINE:'Machines',PIECE:'Pièces',INTERVENTION:'Services',COMMISSION:'Commission',FORMATION:'Formation',AUTRE:'Autre'};
+var view=$('billingRegisterView'); if(!view){console.error('[REGISTRE V4.6.8K] vue introuvable');return;}
+var origWrap=$('billingRows')&&$('billingRows').closest('div[style*="overflow"]');
+if(origWrap) origWrap.classList.add('rgOrigHidden');
+var help=view.querySelector('.muted'); if(help) help.textContent='Toutes les factures de la période, de la plus récente à la plus ancienne. Bénéfice et taux de marge : données internes, calculées sur les lignes d\'articles.';
+var host=document.createElement('div'); host.id='rgHost'; host.className='rgHost';
+if(origWrap) origWrap.parentNode.insertBefore(host,origWrap); else view.appendChild(host);
+var STEP=200, limit=STEP, lastKey='';
+var MQ=window.matchMedia?window.matchMedia('(max-width:760px)'):null;
+function isMobile(){return MQ?MQ.matches:window.innerWidth<=760;}
+
+/* ---------- donnees (memes filtres que l'origine) ---------- */
+function profit(f){var l=Array.isArray(f.lignes)?f.lignes:[];if(!l.length)return {etat:'na'};var t=LN.calcTotals(l);return {etat:t.sansPrixAchat?'inc':'ok',marge:t.marge,taux:t.tauxMarge,ca:t.totalHT,sans:t.sansPrixAchat,n:l.length};}
+function statusAlert(f){var a=Number(f.amount||0),p=Number(f.paid||0),s=nrm(f.status);return (s==='payee'||s==='paye')&&a-p>0.0005;}
+function compute(){
+  var yr=($('billingYear')||{}).value||'2026', c0=($('billingClient')||{}).value||'', q=(($('billingSearch')||{}).value||'').toLowerCase(), list=[];
+  cl().forEach(function(c){var name=String(c[fields.name]||'Sans nom'),id=String(c[fields.id]);(Array.isArray(c.Factures)?c.Factures:[]).forEach(function(f){
+    if((yr==='all'||String(f.date||'').slice(0,4)===yr)&&(!c0||id===c0)&&(!q||[f.number,name,f.type,f.status].join(' ').toLowerCase().indexOf(q)>=0)) list.push({c:c,cid:id,name:name,f:f,pr:profit(f)});});});
+  list.sort(function(a,b){var d=String(b.f.date||'').localeCompare(String(a.f.date||''));if(d)return d;return String(b.f.number||'').localeCompare(String(a.f.number||''),'fr',{numeric:true});});
+  var T={n:list.length,ht:0,paid:0,solde:0,ok:0,ca:0,marge:0,inc:0,na:0,alerts:0};
+  list.forEach(function(x){var a=Number(x.f.amount||0),p=Number(x.f.paid||0);T.ht+=a;T.paid+=p;T.solde+=a-p;if(x.pr.etat==='ok'){T.ok++;T.ca+=x.pr.ca;T.marge+=x.pr.marge;}else if(x.pr.etat==='inc')T.inc++;else T.na++;if(statusAlert(x.f))T.alerts++;});
+  return {yr:yr,list:list,T:T};
+}
+
+/* ---------- rendu ---------- */
+function benefHtml(pr){
+  if(pr.etat==='na') return '<span class="rgBen na" title="Facture sans lignes d\'articles : bénéfice non calculable">Non calculable</span>';
+  if(pr.etat==='inc') return '<span class="rgBen inc" title="'+pr.sans+' ligne(s) sans prix d\'achat : marge incomplète">'+IC.warn+'Incomplète<small>marge connue '+eur(pr.marge)+'</small></span>';
+  return '<span class="rgBen'+(pr.marge<0?' neg':' pos')+'">'+eur(pr.marge)+'</span>';
+}
+function tauxHtml(pr){return pr.etat==='ok'?'<span class="rgTaux'+(pr.marge<0?' neg':'')+'">'+pct(pr.taux)+'</span>':'<span class="rgTaux na">—</span>';}
+function statusHtml(f){
+  var s=nrm(f.status),cls=s.indexOf('impay')>=0?'bad':(s==='payee'||s==='paye')?'ok':'mid';
+  var al=statusAlert(f)?'<span class="rgAlert" title="Statut « Payée » mais montant payé inférieur au total">'+IC.warn+'Solde '+eur(Number(f.amount||0)-Number(f.paid||0))+'</span>':'';
+  return '<span class="rgStatus '+cls+'">'+esc(f.status||'Impayée')+'</span>'+al;
+}
+function actionsHtml(x){
+  var e=can('edit'), d=can('delete');
+  return '<div class="rgActions">'
+    +(e?'<button type="button" class="rgIcon" data-rg="edit" data-cid="'+esc(x.cid)+'" data-fid="'+esc(x.f.id)+'" title="Modifier la facture '+esc(x.f.number)+'" aria-label="Modifier la facture '+esc(x.f.number)+'">'+IC.edit+'</button>':'')
+    +(d?'<button type="button" class="rgIcon danger" data-rg="del" data-cid="'+esc(x.cid)+'" data-fid="'+esc(x.f.id)+'" title="Supprimer la facture '+esc(x.f.number)+'" aria-label="Supprimer la facture '+esc(x.f.number)+'">'+IC.del+'</button>':'')
+    +(!e&&!d?'<span class="rgNoAct">Lecture seule</span>':'')+'</div>';
+}
+function subHtml(x){
+  var s=[]; if(x.pr.etat!=='na') s.push(x.pr.n+' article'+(x.pr.n>1?'s':''));
+  if(x.f.offreOrigine&&x.f.offreOrigine.offerId) s.push('offre '+esc(x.f.offreOrigine.offerId));
+  return s.length?'<small class="rgSub">'+s.join(' · ')+'</small>':'';
+}
+function render(){
+  var d=compute(), T=d.T, yl=d.yr==='all'?'toutes années':d.yr;
+  var key=d.yr+'|'+(($('billingClient')||{}).value||'')+'|'+(($('billingSearch')||{}).value||''); if(key!==lastKey){limit=STEP;lastKey=key;}
+  var shown=d.list.slice(0,limit), rest=d.list.length-shown.length;
+  var more=rest>0?'<div class="rgMore"><span>'+shown.length+' factures affichées sur '+d.list.length+'</span><button type="button" class="rgMoreBtn" data-rg="more">Afficher les '+Math.min(STEP,rest)+' suivantes</button><button type="button" class="rgMoreBtn" data-rg="all">Tout afficher</button></div>':'';
+  var sum='<div class="rgSummary"><span><b>'+T.n+'</b> facture'+(T.n>1?'s':'')+' · '+esc(yl)+'</span><span>Montant HT <b>'+eur(T.ht)+'</b></span><span>Payé <b>'+eur(T.paid)+'</b></span><span>Solde <b class="'+(T.solde>0.0005?'due':'')+'">'+eur(T.solde)+'</b></span><span>Bénéfice <b class="'+(T.ok?(T.marge<0?'neg':'pos'):'na')+'">'+(T.ok?eur(T.marge)+' · '+pct(T.ca?T.marge/T.ca*100:null):'non calculable')+'</b></span>'+(T.alerts?'<span class="rgAlert">'+IC.warn+T.alerts+' statut'+(T.alerts>1?'s':'')+' « Payée » à vérifier</span>':'')+'</div>';
+  if(!d.list.length){host.innerHTML=sum+'<div class="rgEmpty">Aucune facture pour cette sélection.</div>';return;}
+  var html;
+  if(!isMobile()){
+    var head='<tr><th scope="col">N° facture</th><th scope="col">Date</th><th scope="col">Client</th><th scope="col">Type</th><th class="n" scope="col">Montant HT</th><th class="n" scope="col">Payé</th><th class="n" scope="col">Solde restant</th><th class="n" scope="col">Bénéfice</th><th class="n" scope="col">Taux</th><th scope="col">Situation</th><th class="c" scope="col">Actions</th></tr>';
+    var body=shown.map(function(x){var f=x.f,a=Number(f.amount||0),p=Number(f.paid||0),s=a-p;
+      return '<tr class="'+(s>0.0005?'rgUnpaid':'')+(statusAlert(f)?' rgHasAlert':'')+'" data-fid="'+esc(f.id)+'"><td class="rgNum"><b>'+esc(f.number||'—')+'</b>'+subHtml(x)+'</td><td class="rgDate">'+esc(frDate(f.date))+'</td>'
+        +'<td><button type="button" class="rgCli" data-rg="client" data-cid="'+esc(x.cid)+'">'+esc(x.name)+'</button></td><td>'+esc(TYPES[String(f.type||'').toUpperCase()]||f.type||'—')+'</td>'
+        +'<td class="n"><b>'+amt(a)+'</b></td><td class="n">'+amt(p)+'</td><td class="n rgSolde'+(s>0.0005?' due':' zero')+'">'+amt(s)+'</td>'
+        +'<td class="n">'+benefHtml(x.pr)+'</td><td class="n">'+tauxHtml(x.pr)+'</td><td>'+statusHtml(f)+'</td><td class="c">'+actionsHtml(x)+'</td></tr>';}).join('');
+    var foot='<tr><th colspan="4" scope="row">TOTAL ('+T.n+' facture'+(T.n>1?'s':'')+(rest>0?', toutes incluses':'')+')</th><td class="n"><b>'+amt(T.ht)+'</b></td><td class="n"><b>'+amt(T.paid)+'</b></td><td class="n rgSolde'+(T.solde>0.0005?' due':' zero')+'"><b>'+amt(T.solde)+'</b></td><td class="n">'+(T.ok?'<span class="rgBen'+(T.marge<0?' neg':' pos')+'">'+eur(T.marge)+'</span>':'<span class="rgBen na">Non calculable</span>')+'</td><td class="n">'+(T.ok?pct(T.ca?T.marge/T.ca*100:null):'—')+'</td><td colspan="2"><small>'+T.ok+' complète'+(T.ok>1?'s':'')+' · '+T.inc+' incomplète'+(T.inc>1?'s':'')+' · '+T.na+' sans lignes</small></td></tr>';
+    html='<div class="rgTableWrap" role="region" aria-label="Registre des factures" tabindex="0"><table class="rgTable"><thead>'+head+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>'
+      +'<p class="rgLegend">Bénéfice et taux calculés sur les factures à marge complète · « Incomplète » : au moins une ligne sans prix d\'achat · Données internes, jamais sur les documents client.</p>';
+  } else {
+    html='<div class="rgCards">'+shown.map(function(x){var f=x.f,a=Number(f.amount||0),p=Number(f.paid||0),s=a-p;
+      return '<article class="rgCard'+(s>0.0005?' due':'')+'" data-fid="'+esc(f.id)+'"><div class="rgCardHead"><div><b class="rgCardNum">'+esc(f.number||'—')+'</b><span class="rgCardDate">'+esc(frDate(f.date))+'</span></div>'+statusHtml(f)+'</div>'
+        +'<button type="button" class="rgCli" data-rg="client" data-cid="'+esc(x.cid)+'">'+esc(x.name)+'</button><div class="rgCardType">'+esc(TYPES[String(f.type||'').toUpperCase()]||f.type||'—')+subHtml(x).replace('<small class="rgSub">',' · <small class="rgSub">')+'</div>'
+        +'<div class="rgCardKv"><div><span>Montant HT</span><b>'+eur(a)+'</b></div><div><span>Payé</span><b>'+eur(p)+'</b></div><div class="rgSolde'+(s>0.0005?' due':' zero')+'"><span>Solde restant</span><b>'+eur(s)+'</b></div>'
+        +'<div><span>Bénéfice</span>'+benefHtml(x.pr)+'</div><div><span>Taux</span>'+tauxHtml(x.pr)+'</div></div>'
+        +actionsHtml(x)+'</article>';}).join('')+'</div>';
+  }
+  host.innerHTML=sum+html+more;
+}
+host.addEventListener('click',function(e){
+  var b=e.target.closest('[data-rg]'); if(!b) return;
+  var k=b.getAttribute('data-rg'), cid=b.getAttribute('data-cid'), fid=b.getAttribute('data-fid');
+  if(k==='edit'&&typeof window.editBillingInvoice==='function') window.editBillingInvoice(cid,fid);
+  else if(k==='del'&&typeof window.mgtDeleteInvoice==='function') window.mgtDeleteInvoice(cid,fid);
+  else if(k==='client'&&typeof window.openBillingClient==='function') window.openBillingClient(cid);
+  else if(k==='more'){limit+=STEP;render();}
+  else if(k==='all'){limit=Infinity;render();}
+});
+
+/* ---------- Q5 : trace des suppressions dans l'historique du CRM ---------- */
+async function trace(cid,inv,mode){
+  try{
+    var c=cl().find(function(x){return String(x[fields.id])===String(cid);});
+    var info={facture:inv.number||'',id:inv.id||'',client:c?String(c[fields.name]||''):'',clientId:String(cid),montant:Number(inv.amount||0),paye:Number(inv.paid||0),date:inv.date||'',type:inv.type||'',statut:inv.status||'',lignes:(inv.lignes||[]).length,offre:inv.offreOrigine&&inv.offreOrigine.offerId||'',supprimePar:who(),supprimeLe:new Date().toISOString(),mode:mode};
+    if(typeof dmh!=='undefined'&&dmh.create){
+      var h=await dmh.create({id:'HFDEL'+Date.now()+Math.random().toString(36).slice(2,6),entity_type:'CLIENT',entity_id:String(cid),event_type:'NOTE',subject:'Suppression de la facture '+(inv.number||''),description:JSON.stringify(info),source:'billing-delete'});
+      if(h&&dmh.queueEvent) await dmh.queueEvent('CREATE',h.id,{source:'billing-delete',client_id:String(cid)});
+    }
+    if(typeof dbSet==='function') await dbSet('sync_logs',null,{timestamp:info.supprimeLe,level:'warn',message:'Facture supprimée : '+info.facture,details:JSON.stringify(info),category:'billing',device_id:(typeof DEVICE_ID!=='undefined'?DEVICE_ID:'')});
+  }catch(e){console.warn('[REGISTRE V4.6.8K] trace suppression',e);}
+}
+var baseDel=window.mgtDeleteInvoice;
+if(typeof baseDel==='function'){
+  window.mgtDeleteInvoice=async function(cid,fid,silent){
+    var fresh=null; try{fresh=await dbGet('crm_clients',String(cid));}catch(e){}
+    var inv=fresh&&(fresh.Factures||[]).find(function(x){return String(x.id)===String(fid);});
+    var ok=await baseDel.apply(this,arguments);
+    if(ok&&inv) await trace(cid,inv,'unitaire');
+    return ok;
+  };
+}
+var baseClean=window.mgtCleanAutoInvoices;
+if(typeof baseClean==='function'){
+  window.mgtCleanAutoInvoices=async function(){
+    var snap={}; cl().forEach(function(c){snap[String(c[fields.id])]=(c.Factures||[]).slice();});
+    var r=await baseClean.apply(this,arguments);
+    try{ for(var cid in snap){ var fresh=await dbGet('crm_clients',cid); var ids=new Set(((fresh&&fresh.Factures)||[]).map(function(f){return String(f.id);})); for(var i=0;i<snap[cid].length;i++){ var f=snap[cid][i]; if(!ids.has(String(f.id))) await trace(cid,f,'nettoyage import 2026'); } } }catch(e){}
+    return r;
+  };
+}
+
+/* ---------- Q4 : numero deja utilise -> avertissement + confirmation ---------- */
+var form=$('billingForm');
+if(form){
+  window.addEventListener('submit',function(e){
+    if(e.target!==form) return;
+    var num=nrm(($('billNumber')||{}).value), fid=form.dataset.invoice||'';
+    if(!num) return;
+    var dup=null; cl().some(function(c){return (c.Factures||[]).some(function(f){if(nrm(f.number)===num&&String(f.id)!==String(fid)){dup={c:c,f:f};return true;}return false;});});
+    if(!dup) return;
+    if(!confirm('Le numéro de facture « '+$('billNumber').value.trim()+' » est déjà utilisé :\n'+String(dup.c[fields.name]||'')+' — '+frDate(dup.f.date)+' — '+amt(dup.f.amount)+' €.\n\nEnregistrer quand même avec ce numéro ?')){
+      e.preventDefault(); e.stopImmediatePropagation(); try{$('billNumber').focus();}catch(_){}
+    }
+  },true);
+}
+
+/* ---------- rendus : un seul par action ---------- */
+var pending=null;
+var dirty=true;
+function visible(){return !view.hidden&&!!view.offsetParent;}
+/* le registre n'est calcule que lorsqu'il est affiche ; sinon il est marque « a recalculer » */
+function schedule(){dirty=true;if(pending)return;pending=setTimeout(function(){pending=null;if(!visible())return;dirty=false;try{render();}catch(e){console.error('[REGISTRE V4.6.8K]',e);}},0);}
+new MutationObserver(function(){if(visible()&&dirty)schedule();}).observe(view,{attributes:true,attributeFilter:['hidden']});
+var bm=document.getElementById('billingModule'); if(bm) new MutationObserver(function(){if(visible()&&dirty)schedule();}).observe(bm,{attributes:true,attributeFilter:['hidden']});
+var baseRB=window.renderBillingModule;
+if(typeof baseRB==='function'){window.renderBillingModule=function(){var r=baseRB.apply(this,arguments);schedule();return r;};}
+var rows=$('billingRows'); if(rows) new MutationObserver(schedule).observe(rows,{childList:true});
+['billingSearch','billingYear','billingClient'].forEach(function(id){var e=$(id);if(e)e.addEventListener(id==='billingSearch'?'input':'change',schedule);});
+if(MQ&&MQ.addEventListener) MQ.addEventListener('change',schedule); else if(MQ&&MQ.addListener) MQ.addListener(schedule);
+document.addEventListener('mgt-crm-user-ready',schedule);
+schedule();
+
+window.MGT_REGISTER={version:'V4.6.8K',compute:compute,render:render,statusAlert:statusAlert};
+})();
+
+</script>
+<style id="mgt-exports-facturation-style">
+/* ===== MGT CRM V4.6.8L — Impression / PDF / Excel ===== */
+#billingModule .exBar{display:inline-flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+#billingModule .exBar[hidden]{display:none!important}
+html[data-mgt-theme] #billingModule .exBtn,html #billingModule .exBtn{display:inline-flex;align-items:center;gap:6px;width:auto;height:auto!important;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line)!important;background:var(--deep,transparent)!important;color:var(--ink)!important;font:700 13px inherit;font-family:inherit;cursor:pointer;box-shadow:none}
+#billingModule .exBtn:hover{border-color:var(--accent,#ef3f08)!important}
+#billingModule .exBtn:focus-visible{outline:3px solid var(--accent,#ef3f08);outline-offset:2px}
+#billingModule svg.exI{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#billingModule .exBtn[data-ex="pdf"] svg{color:#d9534f}#billingModule .exBtn[data-ex="xlsx"] svg{color:#1f9d5c}
+html[data-mgt-theme="light"] #billingModule .exBtn{background:#fff!important;color:#18212f!important;border-color:#c9d1db!important}
+html[data-mgt-theme="light"] #billingModule .exBtn[data-ex="pdf"] svg{color:#b4233a}html[data-mgt-theme="light"] #billingModule .exBtn[data-ex="xlsx"] svg{color:#0d7a4a}
+@media (max-width:760px){#billingModule .exBar{width:100%;margin-left:0}html[data-mgt-theme] #billingModule .exBtn,html #billingModule .exBtn{flex:1 1 0;justify-content:center}}
+
+</style>
+<script id="mgt-exports-facturation">
+/* =====================================================================
+   MGT CRM V4.6.8L — IMPRESSION, PDF ET EXCEL (Situation de paiement / Registre)
+   - Donnees : exactement celles affichees (MGT_SITUATION.compute / MGT_REGISTER.compute),
+     donc filtres actifs respectes ; le registre exporte TOUTES les factures filtrees
+     (pas seulement les 200 premieres affichees).
+   - Documents INTERNES (benefices et marges) : mention « Document interne » et noms de
+     fichiers distincts ; jamais melanges avec les documents client.
+   - PDF : jsPDF 2.5.1 + jspdf-autotable 3.8.2 (MIT) integres au fichier (hors ligne),
+     A4 paysage, en-tetes repetes, totaux en fin de tableau, « Page X / Y ».
+   - Excel : vrai fichier .xlsx genere sans bibliotheque (zip « stocke » + SpreadsheetML),
+     montants numeriques, en-tete fige, mise en page A4 paysage, titres repetes a l'impression.
+   - Impression : document A4 paysage ouvert puis impression lancee.
+   - Droit requis : billing / exporter.
+   ===================================================================== */
+(function(){
+'use strict';
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function can(a){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('billing',a);}catch(e){return true;}}
+function who(){try{return (typeof syncUser==='function'&&syncUser())||'';}catch(e){return '';}}
+function num2(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');}
+function pct(n){return n==null?'—':(Math.round(n*10)/10).toLocaleString('fr-FR')+' %';}
+function frDate(s){s=String(s||'');return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):(s||'');}
+function stamp(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowFr(){var d=new Date();return d.toLocaleDateString('fr-FR')+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+var MONTHS=['Janv','Févr','Mars','Avril','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'];
+var TYPES={MACHINE:'Machines',PIECE:'Pièces',INTERVENTION:'Services',COMMISSION:'Commission',FORMATION:'Formation',AUTRE:'Autre'};
+
+/* ---------- contexte commun : filtres, logo ---------- */
+function context(){
+  var y=($('billingYear')||{}).value||'2026', cs=$('billingClient'), q=(($('billingSearch')||{}).value||'').trim();
+  var cl=cs&&cs.value?(cs.options[cs.selectedIndex]||{}).text:'';
+  var f=['Période : '+(y==='all'?'toutes les années':y), 'Client : '+(cl||'tous')]; if(q) f.push('Recherche : « '+q+' »');
+  return {year:y,yearLabel:y==='all'?'toutes-annees':y,filters:f,generated:nowFr(),user:who()};
+}
+function logo(){var i=document.querySelector('header .logoBox img, .logoBox img');return i&&/^data:image\/(png|jpe?g)/.test(i.getAttribute('src')||'')?{src:i.getAttribute('src'),w:i.naturalWidth||1,h:i.naturalHeight||1}:null;}
+
+/* ---------- modeles de document ---------- */
+function situationModel(){
+  if(!window.MGT_SITUATION) throw new Error('Situation indisponible');
+  var d=MGT_SITUATION.compute(), T=d.T, cx=context();
+  var cols=[{h:'Client',w:34,align:'left'}].concat(MONTHS.map(function(m){return {h:m,w:15,align:'right',num:true};})).concat([{h:'Total facturé',w:19,align:'right',num:true},{h:'Solde restant',w:19,align:'right',num:true},{h:'Bénéfice',w:18,align:'right',num:true},{h:'Taux',w:11,align:'right',pct:true}]);
+  var benef=function(b){return b.ok?{v:b.marge,t:num2(b.marge)+((b.inc||b.na)?' *':''),neg:b.marge<0}:{v:null,t:(b.inc||b.na)?'n.c.':'—'};};
+  var taux=function(b){return b.ok&&b.ca?{v:b.marge/b.ca,t:pct(b.marge/b.ca*100)}:{v:null,t:'—'};};
+  var rows=d.rows.map(function(r){
+    return [{t:r.name}].concat(r.months.map(function(m){return m.total?{v:m.total,t:num2(m.total),hl:m.unpaid}:{v:null,t:'—'};}))
+      .concat([{v:r.billed,t:num2(r.billed),b:true},{v:r.solde,t:num2(r.solde),due:r.solde>0.0005,b:true},benef(r.benef),taux(r.benef)]);
+  });
+  var foot=[
+    [{t:'TOTAL MOIS',b:true}].concat(T.months.map(function(m){return m.total?{v:m.total,t:num2(m.total),b:true}:{v:null,t:'—'};})).concat([{v:T.billed,t:num2(T.billed),b:true},{v:T.solde,t:num2(T.solde),b:true,due:T.solde>0.0005},Object.assign(benef(T.benef),{b:true}),taux(T.benef)]),
+    [{t:'BÉNÉFICE MOIS',b:true}].concat(T.months.map(function(m){return m.ok?{v:m.marge,t:num2(m.marge)+(m.partial?' *':''),b:true,neg:m.marge<0}:{v:null,t:m.total?'n.c.':'—'};})).concat([{t:''},{t:''},{t:''},{t:''}])
+  ];
+  return {key:'situation',title:'Situation de paiement clients',file:'INTERNE_Situation_paiement_'+cx.yearLabel+'_'+stamp(),cx:cx,cols:cols,rows:rows,foot:foot,
+    summary:['Total facturé : '+num2(T.billed)+' €','Encaissé : '+num2(T.paid)+' €','Solde restant : '+num2(T.solde)+' €','Bénéfice calculable : '+(T.benef.ok?num2(T.benef.marge)+' € ('+pct(T.benef.ca?T.benef.marge/T.benef.ca*100:null)+')':'non calculable'),d.rows.length+' client(s)'],
+    notes:'Montants HT en euros. Mois surlignés : au moins une facture impayée. Solde restant = total facturé − montants payés. Bénéfice : factures à marge complète uniquement ; * = partiel ; n.c. = non calculable.'};
+}
+function registerModel(){
+  if(!window.MGT_REGISTER) throw new Error('Registre indisponible');
+  var d=MGT_REGISTER.compute(), T=d.T, cx=context();
+  var cols=[{h:'N° facture',w:26,align:'left'},{h:'Date',w:20,align:'left'},{h:'Client',w:52,align:'left'},{h:'Type',w:22,align:'left'},{h:'Montant HT',w:24,align:'right',num:true},{h:'Payé',w:22,align:'right',num:true},{h:'Solde restant',w:24,align:'right',num:true},{h:'Bénéfice',w:24,align:'right',num:true},{h:'Taux',w:14,align:'right',pct:true},{h:'Situation',w:49,align:'left'}];
+  var rows=d.list.map(function(x){var f=x.f,a=Number(f.amount||0),p=Number(f.paid||0),pr=x.pr;
+    var ben=pr.etat==='ok'?{v:pr.marge,t:num2(pr.marge),neg:pr.marge<0}:pr.etat==='inc'?{v:null,t:'Incomplète ('+num2(pr.marge)+')'}:{v:null,t:'n.c.'};
+    var al=MGT_REGISTER.statusAlert(f)?' — à vérifier (solde '+num2(a-p)+')':'';
+    return [{t:f.number||''},{t:frDate(f.date),d:f.date},{t:x.name},{t:TYPES[String(f.type||'').toUpperCase()]||f.type||''},{v:a,t:num2(a)},{v:p,t:num2(p)},{v:a-p,t:num2(a-p),due:a-p>0.0005},ben,pr.etat==='ok'&&pr.ca?{v:pr.marge/pr.ca,t:pct(pr.taux)}:{v:null,t:'—'},{t:(f.status||'Impayée')+al,hl:!!al}];});
+  var foot=[[{t:'TOTAL ('+T.n+' facture'+(T.n>1?'s':'')+')',b:true,span:4},{t:'',skip:true},{t:'',skip:true},{t:'',skip:true},{v:T.ht,t:num2(T.ht),b:true},{v:T.paid,t:num2(T.paid),b:true},{v:T.solde,t:num2(T.solde),b:true,due:T.solde>0.0005},T.ok?{v:T.marge,t:num2(T.marge),b:true,neg:T.marge<0}:{v:null,t:'n.c.'},T.ok&&T.ca?{v:T.marge/T.ca,t:pct(T.marge/T.ca*100),b:true}:{v:null,t:'—'},{t:T.ok+' complète(s) · '+T.inc+' incomplète(s) · '+T.na+' sans lignes'}]];
+  return {key:'registre',title:'Registre détaillé des factures',file:'INTERNE_Registre_factures_'+cx.yearLabel+'_'+stamp(),cx:cx,cols:cols,rows:rows,foot:foot,
+    summary:[T.n+' facture(s)','Montant HT : '+num2(T.ht)+' €','Payé : '+num2(T.paid)+' €','Solde : '+num2(T.solde)+' €','Bénéfice : '+(T.ok?num2(T.marge)+' € ('+pct(T.ca?T.marge/T.ca*100:null)+')':'non calculable')],
+    notes:'Factures triées de la plus récente à la plus ancienne. Montants HT en euros. Bénéfice et taux : factures à marge complète (composant MGT_LINES) ; « Incomplète » = au moins une ligne sans prix d\'achat ; n.c. = facture sans lignes.'};
+}
+
+/* ---------- 1) impression (A4 paysage) ---------- */
+function printDoc(m){
+  var lg=logo();
+  var th=m.cols.map(function(c){return '<th class="'+(c.align==='right'?'n':'')+'">'+esc(c.h)+'</th>';}).join('');
+  var cell=function(c,i,tag){var col=m.cols[i]||{};return '<'+tag+' class="'+[col.align==='right'?'n':'',c.hl?'hl':'',c.due?'due':'',c.neg?'neg':'',c.b?'b':''].join(' ').trim()+'">'+esc(c.t)+'</'+tag+'>';};
+  var body=m.rows.map(function(r){return '<tr>'+r.map(function(c,i){return cell(c,i,'td');}).join('')+'</tr>';}).join('');
+  var foot=m.foot.map(function(r){return '<tr class="tot">'+r.map(function(c,i){if(c.skip)return '';var h=cell(c,i,'td');return c.span?h.replace('<td','<td colspan="'+c.span+'"'):h;}).join('')+'</tr>';}).join('');
+  var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>'+esc(m.file)+'</title><style>'
+    +'@page{size:A4 landscape;margin:12mm 9mm 14mm}@page{@bottom-right{content:"Page " counter(page) " / " counter(pages);font:8pt Arial,sans-serif;color:#444}@bottom-left{content:"MGT SARL — '+esc(m.title)+' — document interne";font:8pt Arial,sans-serif;color:#444}}'
+    +'body{font:8.5pt/1.3 Arial,"Segoe UI",sans-serif;color:#111;margin:0}.hd{display:flex;gap:14px;align-items:center;margin-bottom:6px}.hd img{height:34px}.hd h1{font-size:15pt;margin:0}.int{display:inline-block;margin-left:8px;padding:1px 6px;border:1px solid #b4233a;color:#b4233a;font-size:8pt;font-weight:700;border-radius:3px;vertical-align:middle}'
+    +'.meta{font-size:8pt;color:#333;margin:2px 0 6px}.sum{font-size:8.5pt;margin:0 0 6px;font-weight:700}'
+    +'table{width:100%;border-collapse:collapse;table-layout:auto}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
+    +'th,td{border:1px solid #9aa3ad;padding:3px 4px;vertical-align:top}th{background:#e6e9ee;font-weight:700;font-size:8pt}.n{text-align:right;white-space:nowrap}'
+    +'.hl{background:#fff3d6}.due{color:#a3320a;font-weight:700}.neg{color:#b4233a}.b{font-weight:700}tr.tot td{background:#eef1f4;font-weight:700}'
+    +'.notes{font-size:7.5pt;color:#333;margin-top:6px}@media screen{body{margin:14px}.bar{margin-bottom:10px}.bar button{font:14px Arial;padding:8px 14px}}@media print{.bar{display:none}}'
+    +'</style></head><body><div class="bar"><button onclick="window.print()">Imprimer</button> <span>Format A4 paysage · choisissez « Enregistrer au format PDF » pour obtenir un fichier.</span></div>'
+    +'<div class="hd">'+(lg?'<img src="'+lg.src+'" alt="MGT SARL">':'<b>MGT SARL</b>')+'<div><h1>'+esc(m.title)+'<span class="int">DOCUMENT INTERNE</span></h1></div></div>'
+    +'<div class="meta">Généré le '+esc(m.cx.generated)+(m.cx.user?' par '+esc(m.cx.user):'')+' · '+esc(m.cx.filters.join(' · '))+'</div>'
+    +'<div class="sum">'+esc(m.summary.join('   ·   '))+'</div>'
+    +'<table><thead><tr>'+th+'</tr></thead><tbody>'+body+foot+'</tbody></table><div class="notes">'+esc(m.notes)+'</div></body></html>';
+  var w=window.open('','_blank'); if(!w){alert('Fenêtre bloquée par le navigateur : autorisez les fenêtres pour imprimer.');return null;}
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function(){try{w.focus();w.print();}catch(e){}},400);
+  return w;
+}
+
+/* ---------- 2) PDF (jsPDF + autotable) ---------- */
+function pdfDoc(m,opts){
+  opts=opts||{};
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J) throw new Error('Moteur PDF indisponible');
+  var doc=new J({orientation:'landscape',unit:'mm',format:'a4'}); if(typeof doc.autoTable!=='function') throw new Error('Extension de tableau PDF indisponible');
+  var W=297, lg=logo(), clean=function(s){return String(s==null?'':s).replace(/[  ]/g,' ').replace(/[«»]/g,'"').replace(/[—–]/g,'-').replace(/…/g,'...');};
+  var top=10;
+  if(lg){var h=10,w=Math.min(40,h*lg.w/lg.h);try{doc.addImage(lg.src,lg.src.indexOf('image/png')>0?'PNG':'JPEG',9,top,w,h);}catch(e){}}
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(clean(m.title),lg?55:9,top+5);
+  doc.setFontSize(8);doc.setTextColor(180,35,58);doc.text('DOCUMENT INTERNE',lg?55:9,top+10);doc.setTextColor(0,0,0);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(clean('Généré le '+m.cx.generated+(m.cx.user?' par '+m.cx.user:'')+' · '+m.cx.filters.join(' · ')),9,top+16);
+  doc.setFont('helvetica','bold');doc.text(clean(m.summary.join('   ·   ')),9,top+21);
+  var head=[m.cols.map(function(c){return clean(c.h);})];
+  var body=m.rows.map(function(r){return r.map(function(c){return clean(c.t);});});
+  var foot=m.foot.map(function(r){return r.filter(function(c){return !c.skip;}).map(function(c){return c.span?{content:clean(c.t),colSpan:c.span}:clean(c.t);});});
+  var colStyles={}; var tw=m.cols.reduce(function(s,c){return s+c.w;},0), k=(W-18)/tw;
+  m.cols.forEach(function(c,i){colStyles[i]={halign:c.align==='right'?'right':'left',cellWidth:c.w*k};});
+  var marks={}; m.rows.forEach(function(r,ri){r.forEach(function(c,ci){if(c.hl||c.due||c.neg||c.b)marks[ri+'|'+ci]=c;});});
+  doc.autoTable({head:head,body:body.concat(foot),startY:top+24,margin:{left:9,right:9,top:12,bottom:12},theme:'grid',showHead:'everyPage',
+    styles:{font:'helvetica',fontSize:m.cols.length>12?6.6:7.6,cellPadding:1.2,lineColor:[154,163,173],lineWidth:0.1,textColor:[17,17,17],overflow:'linebreak'},
+    headStyles:{fillColor:[230,233,238],textColor:[17,17,17],fontStyle:'bold',halign:'center'},columnStyles:colStyles,
+    didParseCell:function(h){if(h.section!=='body')return;var ri=h.row.index,ci=h.column.index;
+      if(ri>=m.rows.length){h.cell.styles.fontStyle='bold';h.cell.styles.fillColor=[238,241,244];var fc=m.foot[ri-m.rows.length][ci];if(fc&&fc.skip)return;if(fc&&fc.due)h.cell.styles.textColor=[163,50,10];if(fc&&fc.neg)h.cell.styles.textColor=[180,35,58];return;}
+      var c=marks[ri+'|'+ci]; if(!c) return; if(c.hl)h.cell.styles.fillColor=[255,243,214]; if(c.due){h.cell.styles.textColor=[163,50,10];h.cell.styles.fontStyle='bold';} if(c.neg)h.cell.styles.textColor=[180,35,58]; if(c.b)h.cell.styles.fontStyle='bold';},
+    didDrawPage:function(){var p=doc.internal.getNumberOfPages();doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+      doc.text(clean('MGT SARL - '+m.title+' - document interne'),9,205);doc.text('Page '+p+' / {total}',W-9,205,{align:'right'});doc.setTextColor(0,0,0);}});
+  var y=doc.lastAutoTable.finalY+5; if(y>195){doc.addPage();y=16;}
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.text(doc.splitTextToSize(clean(m.notes),W-18),9,y);
+  if(typeof doc.putTotalPages==='function') doc.putTotalPages('{total}');
+  if(opts.returnDoc) return doc;
+  doc.save(m.file+'.pdf'); return doc;
+}
+
+/* ---------- 3) Excel .xlsx (sans bibliotheque) ---------- */
+var CRC=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){var c=0xFFFFFFFF;for(var i=0;i<u.length;i++)c=CRC[(c^u[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zip(files){ /* files: [{name, data:Uint8Array}] — methode « stocke » */
+  var enc=new TextEncoder(), parts=[], central=[], off=0;
+  var d=new Date(), dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(), tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1);
+  files.forEach(function(f){var nm=enc.encode(f.name),crc=crc32(f.data),sz=f.data.length;
+    var lh=new DataView(new ArrayBuffer(30));lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(8,0,true);lh.setUint16(10,tm,true);lh.setUint16(12,dt,true);lh.setUint32(14,crc,true);lh.setUint32(18,sz,true);lh.setUint32(22,sz,true);lh.setUint16(26,nm.length,true);lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer),nm,f.data);
+    var ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(10,0,true);ch.setUint16(12,tm,true);ch.setUint16(14,dt,true);ch.setUint32(16,crc,true);ch.setUint32(20,sz,true);ch.setUint32(24,sz,true);ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer),nm); off+=30+nm.length+sz;});
+  var cs=central.reduce(function(s,a){return s+a.length;},0), end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cs,true);end.setUint32(16,off,true);
+  return new Blob(parts.concat(central,[new Uint8Array(end.buffer)]),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function xe(s){return String(s==null?'':s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];}).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');}
+function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+/* styles : 0 normal | 1 en-tete | 2 montant | 3 montant gras | 4 montant surligne (impaye) | 5 pourcentage | 6 texte gras | 7 titre | 8 montant rouge (solde) | 9 note */
+var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+ +'<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="0.0%"/></numFmts>'
+ +'<fonts count="5"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="14"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFA3320A"/><name val="Arial"/></font><font><i/><sz val="9"/><color rgb="FF444444"/><name val="Arial"/></font></fonts>'
+ +'<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE6E9EE"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF3D6"/></patternFill></fill></fills>'
+ +'<borders count="2"><border/><border><left style="thin"><color rgb="FF9AA3AD"/></left><right style="thin"><color rgb="FF9AA3AD"/></right><top style="thin"><color rgb="FF9AA3AD"/></top><bottom style="thin"><color rgb="FF9AA3AD"/></bottom></border></borders>'
+ +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10">'
+ +'<xf xfId="0" fillId="0" numFmtId="0" fontId="0" borderId="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment wrapText="1" vertical="center"/></xf>'
+ +'<xf xfId="0" fillId="0" numFmtId="164" fontId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="164" fontId="1" fillId="2" borderId="1" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="164" fontId="0" fillId="3" borderId="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" fillId="0" numFmtId="165" fontId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" borderId="0" fillId="0" numFmtId="0" fontId="2" applyFont="1"/>'
+ +'<xf xfId="0" fillId="0" numFmtId="164" fontId="3" borderId="1" applyNumberFormat="1" applyFont="1" applyBorder="1"/>'
+ +'<xf xfId="0" borderId="0" fillId="0" numFmtId="0" fontId="4" applyFont="1"/>'
+ +'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0"/></styleSheet>';
+function xlsxBlob(m){
+  var rowsXml=[], r=0, pre=[];
+  function row(cells,ht){r++;rowsXml.push('<row r="'+r+'"'+(ht?' ht="'+ht+'" customHeight="1"':'')+'>'+cells.map(function(c,i){
+    var ref=colL(i)+r; if(c==null) return '';
+    if(typeof c.v==='number'&&isFinite(c.v)) return '<c r="'+ref+'" s="'+(c.s!=null?c.s:2)+'"><v>'+c.v+'</v></c>';
+    return '<c r="'+ref+'" s="'+(c.s||0)+'" t="inlineStr"><is><t xml:space="preserve">'+xe(c.t)+'</t></is></c>';}).join('')+'</row>');}
+  row([{t:'MGT SARL — '+m.title+' — DOCUMENT INTERNE',s:7}],22);
+  row([{t:'Généré le '+m.cx.generated+(m.cx.user?' par '+m.cx.user:''),s:9}]);
+  row([{t:m.cx.filters.join(' · '),s:9}]);
+  row([{t:m.summary.join('   ·   '),s:6}]);
+  r++; /* ligne vide */
+  var headRow=r+1;
+  row(m.cols.map(function(c){return {t:c.h,s:1};}),28);
+  m.rows.forEach(function(rw){row(rw.map(function(c,i){var col=m.cols[i];
+    if(col.pct) return typeof c.v==='number'?{v:Math.round(c.v*10000)/10000,s:5}:{t:c.t,s:0};
+    if(col.num&&typeof c.v==='number') return {v:Math.round(c.v*100)/100,s:c.hl?4:(c.due?8:(c.b?3:2))};
+    if(c.d) return {t:c.t,s:0};
+    return {t:c.t,s:c.b?6:0};}));});
+  m.foot.forEach(function(rw){row(rw.map(function(c,i){var col=m.cols[i];
+    if(col.pct) return typeof c.v==='number'?{v:Math.round(c.v*10000)/10000,s:5}:{t:c.t,s:6};
+    if(col.num&&typeof c.v==='number') return {v:Math.round(c.v*100)/100,s:3};
+    return {t:c.t,s:6};}));});
+  r++; row([{t:m.notes,s:9}]);
+  var last=colL(m.cols.length-1);
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    +'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:'+last+r+'"/>'
+    +'<sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="'+headRow+'" topLeftCell="B'+(headRow+1)+'" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>'
+    +'<sheetFormatPr defaultRowHeight="15"/><cols>'+m.cols.map(function(c,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+Math.max(8,Math.round(c.w*(m.key==='situation'?0.75:0.55)*10)/10+ (i===0?6:2))+'" customWidth="1"/>';}).join('')+'</cols>'
+    +'<sheetData>'+rowsXml.join('')+'</sheetData>'
+    +'<autoFilter ref="A'+headRow+':'+last+(headRow+m.rows.length)+'"/>'
+    +'<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
+    +'<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'
+    +'<headerFooter><oddFooter>&amp;L'+xe('MGT SARL — '+m.title+' — document interne')+'&amp;RPage &amp;P / &amp;N</oddFooter></headerFooter></worksheet>';
+  var sheetName=m.key==='situation'?'Situation paiement':'Registre factures';
+  var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'+sheetName+'" sheetId="1" r:id="rId1"/></sheets>'
+    +'<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">\''+sheetName+'\'!$A$'+headRow+':$'+last+'$'+(headRow+m.rows.length)+'</definedName><definedName name="_xlnm.Print_Titles" localSheetId="0">\''+sheetName+'\'!$'+headRow+':$'+headRow+'</definedName></definedNames></workbook>';
+  var enc=new TextEncoder(), F=function(n,s){return {name:n,data:enc.encode(s)};};
+  return zip([
+    F('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>'),
+    F('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>'),
+    F('docProps/core.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>'+xe(m.title)+'</dc:title><dc:creator>'+xe(m.cx.user||'CRM MGT SARL')+'</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">'+new Date().toISOString().slice(0,19)+'Z</dcterms:created></cp:coreProperties>'),
+    F('xl/workbook.xml',wb),
+    F('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'),
+    F('xl/styles.xml',STYLES),
+    F('xl/worksheets/sheet1.xml',sheet)
+  ]);
+}
+function download(blob,name){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},1500);}
+
+/* ---------- boutons ---------- */
+function lu(p){return '<svg class="exI" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+p+'</svg>';}
+var IC={print:lu('<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>'),
+  pdf:lu('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
+  xls:lu('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 9v12"/><path d="M15 9v12"/>')};
+function bar(key){
+  var d=document.createElement('div'); d.className='exBar'; d.setAttribute('data-ex-view',key); d.setAttribute('role','group'); d.setAttribute('aria-label','Imprimer ou exporter');
+  d.innerHTML='<button type="button" class="exBtn" data-ex="print" title="Imprimer (A4 paysage)">'+IC.print+'<span>Imprimer</span></button>'
+    +'<button type="button" class="exBtn" data-ex="pdf" title="Exporter en PDF (A4 paysage)">'+IC.pdf+'<span>PDF</span></button>'
+    +'<button type="button" class="exBtn" data-ex="xlsx" title="Exporter en Excel (.xlsx)">'+IC.xls+'<span>Excel</span></button>';
+  return d;
+}
+function install(viewId,key){
+  var v=$(viewId); if(!v) return; var h=v.querySelector('h3'); var hostRow=h?h.parentNode.parentNode:v;
+  var b=bar(key); var sw=hostRow.querySelector('.bnSwitch'); if(sw) hostRow.insertBefore(b,sw); else hostRow.appendChild(b);
+}
+install('billingSituationView','situation'); install('billingRegisterView','registre');
+function applyRights(){document.querySelectorAll('.exBar').forEach(function(b){b.hidden=!can('export');});}
+applyRights(); document.addEventListener('mgt-crm-user-ready',applyRights);
+var baseRB=window.renderBillingModule; if(typeof baseRB==='function'){window.renderBillingModule=function(){var r=baseRB.apply(this,arguments);applyRights();return r;};}
+function say(t){try{if(typeof toast==='function')toast(t);}catch(e){}}
+/* GTM : moteur PDF (jsPDF + jspdf-autotable, licence MIT) chargé au premier export PDF seulement,
+   depuis les fichiers de l'application (gardés hors ligne), pour que l'écran reste léger. */
+var pdfPret=null;
+function script(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=function(){ok();};s.onerror=function(){ko(new Error('moteur PDF non chargé (connexion ?)'));};document.head.appendChild(s);});}
+function chargerPdf(){
+  if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+  if(!pdfPret) pdfPret=script('./mgt-pdf-jspdf.js').then(function(){return script('./mgt-pdf-autotable.js');}).catch(function(e){pdfPret=null;throw e;});
+  return pdfPret;
+}
+async function run(kind,key){
+  if(!can('export')){alert('Droit insuffisant : vous ne pouvez pas exporter dans « Facturation ».');return;}
+  try{
+    var m=key==='situation'?situationModel():registerModel();
+    if(!m.rows.length){alert('Aucune donnée à exporter pour ces filtres.');return;}
+    if(kind==='print'){printDoc(m);return;}
+    if(kind==='pdf'){await chargerPdf();pdfDoc(m);say('PDF exporté : '+m.file+'.pdf');return;}
+    if(kind==='xlsx'){download(xlsxBlob(m),m.file+'.xlsx');say('Excel exporté : '+m.file+'.xlsx');return;}
+  }catch(e){console.error('[EXPORT V4.6.8L]',e);alert('Export impossible : '+e.message);}
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.exBar [data-ex]');if(!b)return;run(b.getAttribute('data-ex'),b.closest('.exBar').getAttribute('data-ex-view'));});
+
+window.MGT_EXPORTS={version:'V4.6.8L',situationModel:situationModel,registerModel:registerModel,pdfDoc:pdfDoc,xlsxBlob:xlsxBlob,printDoc:printDoc,run:run};
+})();
+
+</script>
 <style id="mgt-droits-style"></style>
 <style id="mgt-droits-ui">
 #mgtDroitsSection{--drb:#ffffff;--drf:#1b2433;--drm:#566377;--drl:#d3dae4;--drs:#eef2f7}
