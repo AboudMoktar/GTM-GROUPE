@@ -482,7 +482,17 @@ function stateVals(cut, s, n){
 function ncTotals(){ var t = {}; S.moves.forEach(function(m){ if (!m.nc) return; (t[m.lineId] = t[m.lineId] || {})[m.stage] = ((t[m.lineId] || {})[m.stage] || 0) + m.nc; }); return t; }
 function lotReady(lot){ var i = S.lots[lot]; if (i && i.ready) return true; if (i) return false; return S.lines.some(function(l){ return l.lot === lot; }) && S.moves.length > 0; }
 function ensureLot(lot){ if (!S.lots[lot]) S.lots[lot] = {received:today(), ready:""}; }
-function lotMonth(lot){ var m = /(\d{4})(\d{2})/.exec(String(lot || "")); if (m && +m[2] >= 1 && +m[2] <= 12) return {y:+m[1], m:+m[2]}; return null; }
+/* mois de la commande : lu dans le lot (PK202611-1 = novembre 2026), ou choisi dans la commande (S.lots[lot].mois) */
+function lotMonthAuto(lot){ var m = /(\d{4})(\d{2})/.exec(String(lot || "")); if (m && +m[2] >= 1 && +m[2] <= 12) return {y:+m[1], m:+m[2]}; return null; }
+function lotMonth(lot){
+  var a = lotMonthAuto(lot), o = typeof S !== "undefined" && S.lots && S.lots[lot] ? +S.lots[lot].mois : 0;
+  if (o >= 1 && o <= 12){ var y = a ? a.y : ((typeof S !== "undefined" ? S.lines.filter(function(l){ return l.lot === lot; })[0] : null) || {}).year || new Date().getFullYear(); return {y:y, m:o, choisi:true}; }
+  return a;
+}
+/* numéro de la commande dans le mois : PK202611-1 → « 1 » */
+function lotSuffixe(lot){ var m = /\d{6}\s*-\s*([A-Za-z0-9]+)\s*$/.exec(String(lot || "")); return m ? m[1] : ""; }
+/* « NOVEMBRE -1 » : en-tête des fiches de commande */
+function libelleCommande(lot){ var lm = lotMonth(lot); if (!lm) return ""; var x = lotSuffixe(lot); return MOIS[lm.m - 1] + (x ? " -" + x : ""); }
 var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{proche:3, bloque:7}, motifs:[], colis:{}, colleU:"g", cartons:{}, stk:[], exports:[]};
 /* ---------- application groupe (cadre) ---------- */
 function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
@@ -1320,7 +1330,7 @@ function pdfRGB(h){ h = h || "000000"; return (parseInt(h.slice(0,2),16)/255).to
 /* fiche sur une seule page (g.onePage) : choisit portrait ou paysage, celui où le texte est le plus grand
    (une fiche longue passe en portrait, une fiche large et courte en paysage). Renvoie "portrait" ou "landscape". */
 function oriUnePage(g){
-  if (!g || !g.onePage) return g && g.landscape ? "landscape" : "portrait";
+  if (!g || !g.onePage || g.fixeOri) return g && g.landscape ? "landscape" : "portrait";   /* g.fixeOri : orientation choisie par l'utilisateur */
   var tot = 0, hT = 0; g.cols.forEach(function(w){ tot += w * 5.35; }); g.rows.forEach(function(r){ hT += r.h; });
   function note(pays){ var W = (pays ? 841.89 : 595.28) - 56, H = (pays ? 595.28 : 841.89) - 58, sc = Math.min(g.plein ? 1.8 : 1.15, W / tot), kv = Math.min(1, H / (hT * sc * 1.05)); return {n:sc * Math.min(1, kv * 1.3), serre:kv * 1.3 < 1}; }
   /* on ne change l'orientation prévue que si la fiche y serait trop serrée */
@@ -1670,13 +1680,20 @@ function vCmdSaisie(v, clients, cli, libs){
     iYear.addEventListener("change", function(){ E.year = num(iYear.value); compter(); });
     var iLiv = el("input", {id:"mLiv", type:"date", value:liv});
     iLiv.addEventListener("change", function(){ E.liv = iLiv.value || ""; compter(); });
-    var lm = lotMonth(lotV);
-    head.appendChild(el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)));
-    head.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:lm ? "Commande : " + MOIS[lm.m - 1] + " " + lm.y + " (mois n° " + lm.m + " lu dans le lot)" : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202610-1 = octobre 2026)."}));
+    /* mois de la commande : automatique (lu dans le lot) ou choisi */
+    var moisCur = E.mois !== undefined ? E.mois : (E.nouveau ? "" : String((S.lots[ui.lot] || {}).mois || "")), auto = lotMonthAuto(lotV);
+    var iMois = el("select", {id:"mMois"});
+    iMois.appendChild(el("option", {value:"", text:auto ? "Automatique : " + MOIS[auto.m - 1] : "— choisir —"}));
+    MOIS.forEach(function(m, i){ iMois.appendChild(el("option", {value:String(i + 1), text:m})); });
+    iMois.value = moisCur;
+    iMois.addEventListener("change", function(){ E.mois = iMois.value; render(true); });
+    var mEff = moisCur ? +moisCur : (auto ? auto.m : 0), suf = lotSuffixe(lotV);
+    head.appendChild(el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"MOIS"}, iMois), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)));
+    head.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:mEff ? "En-tête de la commande : COMMANDE : " + MOIS[mEff - 1] + (suf ? " -" + suf : "") + (moisCur ? " (mois choisi)" : " (mois lu dans le lot)") : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202611-1 = novembre 2026, commande n° 1). Sinon, choisissez le mois."}));
   } else if (existe){
     var lmx = lotMonth(ui.lot), totx = 0; S.lines.forEach(function(l){ if (l.lot === ui.lot) totx += l.qty; });
     head.appendChild(el("h2", {style:"margin:0 0 4px", text:"📋 Commande " + ui.lot}));
-    head.appendChild(el("div", {class:"mut", text:(lmx ? MOIS[lmx.m - 1] + " " + lmx.y + " · " : "") + "Année " + yr0 + " · " + fmt(totx) + " pièces" + ((S.lots[ui.lot] || {}).livraison ? " · livraison prévue le " + dmy(S.lots[ui.lot].livraison) : "") + (lotReady(ui.lot) ? " · validée" : " · à valider")}));
+    head.appendChild(el("div", {class:"mut", text:(lmx ? "Commande : " + libelleCommande(ui.lot) + " · " : "") + "Année " + yr0 + " · " + fmt(totx) + " pièces" + ((S.lots[ui.lot] || {}).livraison ? " · livraison prévue le " + dmy(S.lots[ui.lot].livraison) : "") + (lotReady(ui.lot) ? " · validée" : " · à valider")}));
     if (!RO) head.appendChild(el("div", {class:"cm-act"},
       el("button", {class:"btn", text:"✏️ Modifier", onclick:function(){ ui.cmdEd = {lot:ui.lot, q:{}}; render(); }}),
       el("button", {class:"btn bad", text:"🗑 Supprimer", onclick:function(){ supprimerCommande(ui.lot); }}),
@@ -1765,6 +1782,7 @@ function vCmdSaisie(v, clients, cli, libs){
     var lo = libOrder();
     out.sort(function(x, y){ return x.c < y.c ? -1 : x.c > y.c ? 1 : ((lo[x.lib] || 999) - (lo[y.lib] || 999)) || (x.lib < y.lib ? -1 : x.lib > y.lib ? 1 : sizeIdx(x.z) - sizeIdx(y.z)); });
     if (!E.nouveau && E.year !== undefined && E.year !== yr0) out.push({info:"Année : " + yr0 + " → " + E.year});
+    if (E.mois !== undefined && String(E.mois || "") !== (E.nouveau ? "" : String((S.lots[ui.lot] || {}).mois || ""))){ var am = lotMonthAuto(E.nouveau ? E.lot : ui.lot), nomM = function(v){ return v ? MOIS[+v - 1] + " (choisi)" : (am ? MOIS[am.m - 1] + " (lu dans le lot)" : "—"); }; out.push({info:"Mois : " + nomM(E.nouveau ? "" : (S.lots[ui.lot] || {}).mois) + " → " + nomM(E.mois)}); }
     if (!E.nouveau && E.liv !== undefined && E.liv !== ((S.lots[ui.lot] || {}).livraison || "")) out.push({info:"Livraison prévue : " + (((S.lots[ui.lot] || {}).livraison) ? dmy(S.lots[ui.lot].livraison) : "—") + " → " + (E.liv ? dmy(E.liv) : "—")});
     return out;
   }
@@ -1802,6 +1820,7 @@ function vCmdSaisie(v, clients, cli, libs){
         q.forEach(function(c){ setLine(lot, year, c.c, c.lib, c.z, c.n); });
         if (Ed.year !== undefined) S.lines.forEach(function(l){ if (l.lot === lot) l.year = Ed.year; });
         if (Ed.liv !== undefined){ ensureLot(lot); S.lots[lot].livraison = Ed.liv || ""; }
+        if (Ed.mois !== undefined){ ensureLot(lot); if (Ed.mois) S.lots[lot].mois = +Ed.mois; else delete S.lots[lot].mois; }
       }, null);
       if (ok){ ui.cmdEd = null; ui.lot = lot; render(); toast(Ed.nouveau ? "Commande " + lot + " créée" : ch.length + " modification(s) enregistrée(s) sur " + lot); }
     }}));

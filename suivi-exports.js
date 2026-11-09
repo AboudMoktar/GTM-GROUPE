@@ -761,7 +761,7 @@ function etatCommandeGrid(e, lot, opt){
   var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(avant ? [11] : []).concat(exs.map(function(){ return 12; })).concat(CM ? [] : [9]), rows:[], merges:[], plein:true, onePage:true};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
   var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = opt.annee || (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
-  gset(g, 0, 0, "Commande: " + mois, Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
+  gset(g, 0, 0, "Commande: " + (typeof libelleCommande === "function" && libelleCommande(lot) ? libelleCommande(lot) : mois), Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
   gset(g, 0, 2, "LOT", {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7", fg:"C00000"}); gset(g, 1, 2, lot, {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7"});
   for (var k = cC; k <= cTL; k++){ gset(g, 0, k, k === cC ? "ANNEE" : "", Tt); gset(g, 1, k, k === cC ? String(annee) : "", Tt); }
   gmerge(g, 0, cC, 0, cTL); gmerge(g, 1, cC, 1, cTL);
@@ -832,18 +832,24 @@ function etatGridX(e, colis){
 }
 var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}#pk-doc-zone .grl-recap{margin-top:8mm;break-inside:avoid;page-break-inside:avoid}</style>';
 function suffixe(){ return ui.xpSansLot ? "_sans_lot" : ""; }
-function imprimerX(e, quoi){
+function imprimerX(e, quoi, o){
   var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
   avecDest(e, function(){
     if (quoi === "fiches") return imprimerDoc(docCartonsHtml(e.cl, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", titreFichier(e, "Fiches_cartons"));
-    if (quoi === "colis"){ var gc = colisageGridX(e, colis, sl), oc = oriUnePage(gc); return imprimerDoc(GRL_CSS + grilleHtml(gc), "A4 " + oc, "10mm", titreFichier(e, "Colisage") + suf); }
-    if (quoi === "total") return imprimerDoc(totalHtml(e, colis, sl), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total") + suf);
-    if (quoi === "etat"){ var ets = etatsCommandes(e); ets.forEach(function(x){ x.grid.landscape = false; }); return imprimerDoc(GRL_CSS + ets.map(function(x, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(x.grid) + '</div>'; }).join(""), "A4 portrait", "10mm", titreFichier(e, "Etat_commandes")); }
+    if (quoi === "colis"){ var gc = colisageGridX(e, colis, sl); if (o){ gc.landscape = o === "landscape"; gc.fixeOri = true; } var oc = oriUnePage(gc); return imprimerDoc(GRL_CSS + grilleHtml(gc), "A4 " + oc, "10mm", titreFichier(e, "Colisage") + suf); }
+    if (quoi === "total"){ if (o) setOri("tot", o); return imprimerDoc(totalHtml(e, colis, sl), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total") + suf); }
+    if (quoi === "etat"){ var oe = o || "portrait", ets = etatsCommandes(e); ets.forEach(function(x){ x.grid.landscape = oe === "landscape"; x.grid.fixeOri = true; }); return imprimerDoc(GRL_CSS + ets.map(function(x, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(x.grid) + '</div>'; }).join(""), "A4 " + oe, "10mm", titreFichier(e, "Etat_commandes")); }
   });
 }
 /* un document de l'export, en feuilles (Excel) ou en pages (PDF) : chacun à part */
 var DOCS = {fiches:"Fiches_cartons", colis:"Colisage", total:"Liste_total", etat:"Etat_commandes"};
-function feuillesDoc(e, quoi){
+function feuillesDoc(e, quoi, o){
+  var f = feuillesDocBrut(e, quoi);
+  /* orientation choisie (onglet Documents) : tous les documents sauf les fiches cartons */
+  if (o && quoi !== "fiches") f.forEach(function(x){ x.grid.landscape = o === "landscape"; x.grid.fixeOri = true; });
+  return f;
+}
+function feuillesDocBrut(e, quoi){
   var colis = colisExport(e), sl = !!ui.xpSansLot;
   if (quoi === "fiches"){ var f = fichesCartonsGrid(libelleLots(e), e.cl, colis, ui.etqPP === 1 || ui.etqPP === 2 ? 2 : "4L"); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
     return [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]; }
@@ -853,8 +859,8 @@ function feuillesDoc(e, quoi){
   return etatsCommandes(e).map(function(x){ return {name:"Etat " + x.lot, grid:x.grid}; });
 }
 function nomDocX(e, quoi){ return titreFichier(e, DOCS[quoi]) + (quoi === "colis" || quoi === "total" ? suffixe() : ""); }
-function pdfDoc(e, quoi){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".pdf", pdfBuild(feuillesDoc(e, quoi).map(function(f){ return f.grid; }))); }); }
-function excelDoc(e, quoi){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".xlsx", xlsxBuild(feuillesDoc(e, quoi))); }); }
+function pdfDoc(e, quoi, o){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".pdf", pdfBuild(feuillesDoc(e, quoi, o).map(function(f){ return f.grid; }))); }); }
+function excelDoc(e, quoi, o){ avecDest(e, function(){ saveFile(nomDocX(e, quoi) + ".xlsx", xlsxBuild(feuillesDoc(e, quoi, o))); }); }
 function niceLabelX(e){
   var colis = colisExport(e);
   avecDest(e, function(){

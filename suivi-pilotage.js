@@ -55,7 +55,10 @@ var CSS = [
   '.ph-attente{position:sticky;top:0;z-index:7;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 8px;padding:10px 12px;border:2px solid #e8590c;border-radius:12px;background:#fff4e6}',
   '.ph-attente b{flex:1 1 200px;color:#5c2b00}',
   '.ph-chg{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:8px 0}.ph-chg>div{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px}.ph-chg>div:last-child{border-bottom:0}.ph-chg b{white-space:nowrap}',
-  '.ph-av{margin:6px 0;padding:8px 10px;border-radius:10px;background:#fff3cd;color:#5c3b00;font-size:13.5px}',
+  '.ph-alerte{margin:6px 0;padding:8px 10px;border-radius:10px;background:#fff3cd;color:#5c3b00;font-size:13.5px}',
+  /* dates des étapes dans la confirmation */
+  '.ph-dates{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--sub)}',
+  '.ph-dates label{display:grid;gap:3px;font-size:13px;font-weight:700}.ph-dates input{min-height:42px;font-size:15px}.ph-dates .t{grid-column:1/-1;font-size:13px;color:var(--mut);font-weight:600}',
   '.ph-t td .v{display:block}.ph-tout{display:block;margin:3px auto 0;border:1px solid #2563eb;background:#fff;color:#1d4f91;border-radius:7px;font-size:11px;font-weight:800;padding:2px 6px;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
   '.ph-t tr.tg .ph-tout{border-color:#fff}.ph-tout:hover{background:#e7f1ff}',
   '.ph-exp{background:var(--sub);border-radius:12px;padding:8px 10px}',
@@ -267,12 +270,13 @@ function chargerLogo(){
   try { return fetch(G ? "./logo-gadh.png" : "./logo-tek.png").then(function(r){ if (!r.ok) throw new Error(); return r.arrayBuffer(); }).then(function(b){ LOGO_TEK = new Uint8Array(b); return LOGO_TEK; }).catch(function(){ return null; }); }
   catch (e) { return Promise.resolve(null); }
 }
-function exporterExcel(lot, rows, portee, grp, suffixe){
+function exporterExcel(lot, rows, portee, grp, suffixe, ori){
   if (!rows.length){ toast("Aucune ligne à exporter."); return Promise.resolve(false); }
   var gS = grilleExcel(lot, rows, portee, grp), gR = recapExcel(lot, gS), nom = nomFichier("Suivi_" + lot + "_" + today().replace(/-/g, "") + (suffixe || "")) + ".xlsx";
   return chargerLogo().then(function(img){
     var f1 = {name:"Suivi", grid:gS, first:1};
     if (img) { f1.image = {data:img, ext:"png"}; f1.anchors = [{row:0, col:0, colOff:60000, rowOff:30000, cx:Math.round(380000 * 640 / 417), cy:380000}]; }
+    if (ori){ gS.landscape = gR.landscape = ori !== "portrait"; }
     saveFile(nom, xlsxBuild([f1, {name:"Récapitulatif", grid:gR}]));
     return true;
   });
@@ -308,7 +312,7 @@ function versPdf(g){
   delete g.hide; delete g.filter; delete g.printTitles;
   return g;
 }
-function exporterPdf(lot, rows, portee, grp, suffixe, format){
+function exporterPdf(lot, rows, portee, grp, suffixe, format, ori){
   if (!rows.length){ toast("Aucune ligne à exporter."); return Promise.resolve(false); }
   var gS = grilleExcel(lot, rows, portee, grp), gR = recapExcel(lot, gS), A3 = format === "A3";
   var nom = nomFichier("Suivi_" + lot + "_" + today().replace(/-/g, "") + (suffixe || "") + (A3 ? "_A3" : "")) + ".pdf";
@@ -319,7 +323,7 @@ function exporterPdf(lot, rows, portee, grp, suffixe, format){
   versPdf(gS); versPdf(gR);
   if (gR.rows[1] && gR.rows[1].cells[0]) gR.rows[1].cells[0].v = "Lignes : " + portee + " · total général du tableau.";
   var pied = (G ? "GADH" : "TEK-TREND") + " · Suivi de commande " + lot + " · " + portee + " · édité le " + dmyL(today());
-  gS.format = gR.format = A3 ? "A3" : "A4"; gS.pied = gR.pied = pied; gS.landscape = gR.landscape = true;
+  gS.format = gR.format = A3 ? "A3" : "A4"; gS.pied = gR.pied = pied; gS.landscape = gR.landscape = ori !== "portrait";
   gR.cols = [44, 22, 24];
   return logoJpeg().then(function(L){
     if (L){ gS.img = L.d; var cy = 380000; gS.anchors = [{row:0, col:0, colOff:60000, rowOff:30000, cx:Math.round(cy * L.r), cy:cy}]; }
@@ -386,6 +390,7 @@ window.vPilotage = function(v){
     el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · " + clients.join(" + ")}))),
     el("div", {class:"ph-info"}, el("small", {text:"Date commande"}), dc),
     el("div", {class:"ph-info"}, el("small", {text:"Lot"}), el("b", {text:lot})),
+    typeof libelleCommande === "function" && libelleCommande(lot) ? el("div", {class:"ph-info"}, el("small", {text:"Commande"}), el("b", {text:libelleCommande(lot)})) : null,
     el("div", {class:"ph-info"}, el("small", {text:"Année"}), el("b", {text:String(annee || "—")})),
     L.livraison ? el("div", {class:"ph-info"}, el("small", {text:"Livraison prévue"}), el("b", {text:dmyL(L.livraison)})) : null,
     el("div", {class:"ph-info"}, el("small", {text:"Dernière mise à jour"}), el("b", {text:maj ? dmyL(maj) : "—"})),
@@ -418,15 +423,16 @@ window.vPilotage = function(v){
     var box = sxModal();
     box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"✏️ Enregistrer " + ch.length + " modification(s) ?"}));
     box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:"Commande " + lot + " · date de saisie " + dmy(P.date || today())}));
-    if (ch.some(function(c){ return c.k === "fr"; })) box.appendChild(el("div", {class:"ph-av", text:"Les quantités commandées changent : l'ordre de coupe et les consommations seront recalculés" + (ch.some(function(c){ return c.k === "fr" && c.v === 0; }) ? " ; une taille à 0 sort de la commande (elle reste affichée à 0 si elle a déjà été traitée)." : ".")}));
+    if (ch.some(function(c){ return c.k === "fr"; })) box.appendChild(el("div", {class:"ph-alerte", text:"Les quantités commandées changent : l'ordre de coupe et les consommations seront recalculés" + (ch.some(function(c){ return c.k === "fr" && c.v === 0; }) ? " ; une taille à 0 sort de la commande (elle reste affichée à 0 si elle a déjà été traitée)." : ".")}));
     var lst = el("div", {class:"ph-chg"});
     ch.forEach(function(c){ var l = lineById(c.id) || {}, d = c.v - c.avant;
       lst.appendChild(el("div", null, el("span", {text:l.lib + " " + l.size + (clients.length > 1 ? " · " + l.client : "") + " — " + (noms[c.k] || c.k)}), el("b", {style:"color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(c.avant) + " → " + fmt(c.v) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
     box.appendChild(lst);
+    var lireDates = blocDates(box, ch);
     box.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-bottom:8px", text:"Tout ou rien : si une quantité ne suit pas l'étape précédente, rien n'est enregistré et vos saisies restent en attente pour être corrigées."}));
     box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Confirmer et enregistrer", onclick:function(){
       sxClose(); var garde = P.br; P.br = {};
-      if (!appliquer(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), ch.length + " modification(s) enregistrée(s)")){ P.br = garde; render(true); }
+      if (!appliquer(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), ch.length + " modification(s) enregistrée(s)", lireDates())){ P.br = garde; render(true); }
     }}));
     box.appendChild(el("button", {class:"sx-annul", text:"Revenir à la saisie", onclick:sxClose}));
   }
@@ -516,7 +522,16 @@ window.vPilotage = function(v){
      « Modification de l'étape : Pilotage · utilisateur » (historique du suivi) ; les étapes automatiques
      suivent comme dans le flux (retour GADH → assemblage et confection ; expédition → prêt à expédier).
      Qté commandée : modifie la commande (journal du lot). Tout ou rien : en cas d'incohérence, rien n'est enregistré. */
-  function appliquer(changes, msg){
+  /* une date par étape concernée (commande déjà en partie expédiée, reprise d'un historique…) ; par défaut la date de saisie */
+  function blocDates(box, ch){
+    var ks = ETAPES.map(function(e){ return e[0]; }).filter(function(k){ return ch.some(function(c){ return c.k === k; }); }), champs = {};
+    if (!ks.length) return function(){ return {}; };
+    var b = el("div", {class:"ph-dates"}, el("div", {class:"t", text:"📅 Date de chaque étape (modifiable, par exemple pour une commande déjà en partie expédiée)"}));
+    ks.forEach(function(k){ var e = ETAPES.filter(function(x){ return x[0] === k; })[0], i = el("input", {type:"date", value:(P.dates && P.dates[k]) || P.date || today(), "data-etape":k}); champs[k] = i; b.appendChild(el("label", null, e[2], i)); });
+    box.appendChild(b);
+    return function(){ var d = {}; ks.forEach(function(k){ d[k] = champs[k].value || P.date || today(); }); P.dates = Object.assign({}, P.dates || {}, d); return d; };
+  }
+  function appliquer(changes, msg, dates){
     if (!changes.length) return false;
     return commit(function(){
       var m0 = S.moves.slice(), lines0 = S.lines.slice(), q0 = S.lines.map(function(l){ return [l, l.qty, l.cc]; }), lots0 = JSON.stringify(S.lots);
@@ -528,7 +543,7 @@ window.vPilotage = function(v){
           ordre.forEach(function(k){
             var tot = stageTotals(), vals = {}, n = 0;
             changes.forEach(function(c){ if (c.k !== k) return; var cur = (tot[c.id] || {})[k] || 0; if (monte ? c.v > cur : c.v < cur){ vals[c.id] = c.v; n++; } });
-            if (n) modifierEtape(k, vals, motif, d);
+            if (n) modifierEtape(k, vals, motif, (dates && dates[k]) || d);
           });
         }
         passe(ks, true); passe(ks.slice().reverse(), false);   /* hausses de l'amont vers l'aval, puis baisses de l'aval vers l'amont */
@@ -549,7 +564,8 @@ window.vPilotage = function(v){
       R.changes.slice(0, 60).forEach(function(c){ lst.appendChild(el("div", null, el("span", {text:c.lib + " " + c.size + (c.client ? " · " + c.client : "") + " — " + noms[c.k]}), el("b", {text:fmt(c.avant) + " → " + fmt(c.v)}))); });
       if (R.changes.length > 60) lst.appendChild(el("div", {class:"mut", text:"… et " + (R.changes.length - 60) + " autre(s)"}));
       box.appendChild(lst);
-      box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Appliquer ces " + R.changes.length + " modification(s)", onclick:function(){ sxClose(); appliquer(R.changes.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), R.changes.length + " quantité(s) reprises du fichier Excel"); }}));
+      var lireD = blocDates(box, R.changes);
+      box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Appliquer ces " + R.changes.length + " modification(s)", onclick:function(){ sxClose(); appliquer(R.changes.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), R.changes.length + " quantité(s) reprises du fichier Excel", lireD()); }}));
       box.appendChild(el("button", {class:"sx-annul", text:"Annuler", onclick:sxClose}));
     }).catch(function(e){ toast(e.message); });
   }
@@ -697,14 +713,15 @@ window.vPilotage = function(v){
   }
 };
 /* onglet Documents : pilotage de toute la commande */
-function docPilotage(lot, mode){
+function docPilotage(lot, mode, ori){
+  ori = ori === "portrait" ? "portrait" : "landscape";
   configurer();
   var rows = trier(lignesPilotage(lot)), P = filtres(), portee = "Toute la commande (" + rows.length + " lignes)";
-  if (mode === "pdf") return exporterPdf(lot, rows, portee, P.grp !== false, "", "A4");
-  if (mode === "xlsx") return exporterExcel(lot, rows, portee, P.grp !== false, "");
+  if (mode === "pdf") return exporterPdf(lot, rows, portee, P.grp !== false, "", "A4", ori);
+  if (mode === "xlsx") return exporterExcel(lot, rows, portee, P.grp !== false, "", ori);
   var gS = grilleExcel(lot, rows, portee, P.grp !== false), gR = recapExcel(lot, gS); versPdf(gS); versPdf(gR);
   var X = window.pkExports;
-  imprimerDoc(X.GRL_CSS + X.grilleHtml(gS) + '<div class="grl-saut">' + X.grilleHtml(gR) + '</div>', "A4 landscape", "8mm", "Pilotage_" + lot);
+  imprimerDoc(X.GRL_CSS + X.grilleHtml(gS) + '<div class="grl-saut">' + X.grilleHtml(gR) + '</div>', "A4 " + ori, "8mm", "Pilotage_" + lot);
 }
 /* pour les tests */
 window.pkPilotage = {lignesPilotage:lignesPilotage, sommer:sommer, couleurDe:couleurDe, appliquerFiltres:appliquerFiltres, trier:trier, grilleExcel:grilleExcel, recapExcel:recapExcel, lireImport:lireImport, exporterExcel:exporterExcel, exporterPdf:exporterPdf, docPilotage:docPilotage};
