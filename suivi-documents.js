@@ -18,32 +18,40 @@ var CSS = [
   '.dc-l{display:grid;gap:8px}',
   '.dc-d{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}',
   '.dc-n{font-size:15.5px;font-weight:800}.dc-s{font-size:12.5px;color:var(--mut)}.dc-f{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;color:#1d4f91;background:#e7f1ff;border-radius:99px;padding:1px 8px;vertical-align:middle}',
-  '.dc-b{display:flex;flex-wrap:wrap;gap:6px}'
+  '.dc-b{display:flex;flex-wrap:wrap;gap:6px}',
+  '.dc-o{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-right:4px}.dc-o button{border:0;background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:6px 10px;min-height:36px;cursor:pointer}.dc-o button.on{background:#1d4f91;color:#fff}'
 ].join('\n');
 function poserCss(){ if (document.getElementById('dc-css')) return; var st = document.createElement('style'); st.id = 'dc-css'; st.textContent = CSS; document.head.appendChild(st); }
 function X(){ return window.pkExports || {}; }
 function jour(){ return today().replace(/-/g, ""); }
 
+/* ---------- orientation choisie par document (retenue sur l'appareil) ---------- */
+function oriChoisie(d){ try { var o = JSON.parse(localStorage.getItem("pk_doc_ori") || "{}")[d.t]; return o === "portrait" || o === "landscape" ? o : ""; } catch (e) { return ""; } }
+function choisirOri(d, o){ try { var x = JSON.parse(localStorage.getItem("pk_doc_ori") || "{}"); x[d.t] = o; localStorage.setItem("pk_doc_ori", JSON.stringify(x)); } catch (e) {} }
+function ori(d){ return oriChoisie(d) || d.o; }
 /* ---------- actions communes ---------- */
 /* d = {t, s, o:"portrait"|"landscape", nom, grilles:function → [{name, grid}], apercu?, pdf?, excel?} */
 function apercu(d){
   if (d.apercu) return d.apercu();
   var gs = d.grilles(); if (!gs.length){ toast(d.vide || "Rien à afficher."); return; }
-  /* chaque fiche sur une page A4 : orientation du document, ou celle où une fiche longue reste lisible */
-  gs.forEach(function(x){ x.grid.landscape = d.o === "landscape"; });
+  /* chaque fiche sur une page A4 : orientation choisie, sinon celle du document (une fiche longue passe en portrait) */
+  var ch = oriChoisie(d);
+  gs.forEach(function(x){ x.grid.landscape = ori(d) === "landscape"; if (ch) x.grid.fixeOri = true; });
   var o = oriUnePage(gs[0].grid); gs.forEach(function(x){ x.grid.landscape = o === "landscape"; });
   var h = X().GRL_CSS + gs.map(function(x, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + X().grilleHtml(x.grid) + '</div>'; }).join("");
   imprimerDoc(h, "A4 " + o, "10mm", d.nom);
 }
 function pdf(d){
   if (d.pdf) return d.pdf();
-  var gs = d.grilles(); if (!gs.length){ toast("Rien à exporter."); return; }
-  saveFile(d.nom + ".pdf", pdfBuild(gs.map(function(x){ x.grid.plein = true; x.grid.landscape = d.o === "landscape"; return x.grid; })));
+  var gs = d.grilles(); if (!gs.length){ toast(d.vide || "Rien à exporter."); return; }
+  var ch = oriChoisie(d);
+  saveFile(d.nom + ".pdf", pdfBuild(gs.map(function(x){ x.grid.plein = true; x.grid.landscape = ori(d) === "landscape"; if (ch) x.grid.fixeOri = true; return x.grid; })));
 }
 function excel(d){
   if (d.excel) return d.excel();
-  var gs = d.grilles(); if (!gs.length){ toast("Rien à exporter."); return; }
-  saveFile(d.nom + ".xlsx", xlsxBuild(gs.map(function(x, i){ x.grid.landscape = d.o === "landscape"; var f = {name:x.name, grid:x.grid, first:i === 0}; if (x.image){ f.image = x.image; f.anchors = x.anchors; } return f; })));
+  var gs = d.grilles(); if (!gs.length){ toast(d.vide || "Rien à exporter."); return; }
+  var ch = oriChoisie(d);
+  saveFile(d.nom + ".xlsx", xlsxBuild(gs.map(function(x, i){ x.grid.landscape = ori(d) === "landscape"; if (ch) x.grid.fixeOri = true; var f = {name:x.name, grid:x.grid, first:i === 0}; if (x.image){ f.image = x.image; f.anchors = x.anchors; } return f; })));
 }
 
 /* ---------- liste des documents ---------- */
@@ -79,7 +87,7 @@ function groupes(lot){
     {t:"Rapport de commande", s:"Avancement par étape, puis étapes, dates et non-conformités", o:"landscape", nom:nomFichier("Rapport_" + lot + "_" + jour()),
       grilles:function(){ return fluxSheets(lot); }},
     P && P.docPilotage ? {t:"Pilotage de la commande", s:"Tableau par modèle et taille, sous-totaux, total, récapitulatif", o:"landscape", nom:"",
-      apercu:function(){ P.docPilotage(lot, "print"); }, pdf:function(){ P.docPilotage(lot, "pdf"); }, excel:function(){ P.docPilotage(lot, "xlsx"); }} : null
+      apercu:function(){ P.docPilotage(lot, "print", ori(this)); }, pdf:function(){ P.docPilotage(lot, "pdf", ori(this)); }, excel:function(){ P.docPilotage(lot, "xlsx", ori(this)); }} : null
   ].filter(Boolean)});
   /* exports qui contiennent cette commande */
   if (!G && X().imprimerX){
@@ -87,7 +95,7 @@ function groupes(lot){
       .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : a.n - b.n; });
     exs.forEach(function(e){
       var titre = "🚚 Export N°" + e.n + " du " + dmyL(e.d) + " · " + (e.nat || e.cl) + (e.st === "fini" ? " · expédié" : " · en cours");
-      function d(quoi, t, s, o){ return {t:t, s:s, o:o, apercu:function(){ X().imprimerX(e, quoi); }, pdf:function(){ X().pdfDoc(e, quoi); }, excel:function(){ X().excelDoc(e, quoi); }}; }
+      function d(quoi, t, s, o){ return {t:t, s:s, o:o, sansOri:quoi === "fiches", apercu:function(){ X().imprimerX(e, quoi, quoi === "fiches" ? null : ori(this)); }, pdf:function(){ X().pdfDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }, excel:function(){ X().excelDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }}; }
       out.push({t:titre, docs:[
         d("fiches", "Fiches cartons", "Une fiche par carton, avec le logo", "landscape"),
         d("colis", "Liste de colisage", "Commande de chaque ligne, total, nombre de colis, poids", "landscape"),
@@ -99,11 +107,9 @@ function groupes(lot){
   if (!G){
     out.push({t:"📦 Stock", stock:true, docs:[
       {t:"État de stock PERCKO", s:"Articles PERCKO et articles visibles par le client, par famille", o:"portrait", vide:"Aucun article à inclure (voir Stock › Affectation).", nom:nomFichier("Etat_stock_PERCKO_" + jour()),
-        grilles:function(){ var g = ficheClientGridUnique(etatStock(), true); return g ? [{name:"État PERCKO", grid:g}] : []; },
-        pdf:function(){ exportFicheClientPerckoPdf(); }, excel:function(){ exportFicheClientPercko(); }},
+        grilles:function(){ var g = ficheClientGridUnique(etatStock(), true); return g ? [{name:"État PERCKO", grid:g}] : []; }},
       {t:"Fiche de stock TEK-TREND", s:"Tous les articles, par famille", o:"landscape", nom:nomFichier("Fiche_stock_TEK-TREND_" + jour()),
-        grilles:function(){ return fichesStock(etatStock()).map(function(x){ return {name:FAM_PLUR[x.f] || x.f, grid:x.grid}; }); },
-        pdf:function(){ exportStockPdf(); }, excel:function(){ exportStock(); }}
+        grilles:function(){ return fichesStock(etatStock()).map(function(x){ return {name:FAM_PLUR[x.f] || x.f, grid:x.grid}; }); }}
     ]});
   }
   return out;
@@ -123,8 +129,10 @@ window.vDocuments = function(v){
     var c = el("div", {class:"card dc-grp"}, el("h2", null, g.t)), l = el("div", {class:"dc-l"});
     g.docs.forEach(function(d){
       l.appendChild(el("div", {class:"dc-d", "data-doc":d.t},
-        el("div", null, el("div", {class:"dc-n"}, d.t, el("span", {class:"dc-f", text:"A4 " + (d.o === "landscape" ? "paysage" : "portrait")})), el("div", {class:"dc-s", text:d.s})),
+        el("div", null, el("div", {class:"dc-n"}, d.t, el("span", {class:"dc-f", text:"A4 " + (ori(d) === "landscape" ? "paysage" : "portrait")})), el("div", {class:"dc-s", text:d.s})),
         el("div", {class:"dc-b"},
+          d.sansOri ? null : el("div", {class:"dc-o", role:"group", "aria-label":"Orientation de l'impression"},
+            [["portrait", "▯ Portrait"], ["landscape", "▭ Paysage"]].map(function(o){ return el("button", {type:"button", class:ori(d) === o[0] ? "on" : "", "data-ori":o[0], "aria-pressed":String(ori(d) === o[0]), text:o[1], onclick:function(){ choisirOri(d, o[0]); render(true); }}); })),
           el("button", {class:"btn small", text:"👁 Aperçu", onclick:function(){ try { apercu(d); } catch (e) { toast(e.message); } }}),
           el("button", {class:"btn small sec", text:"📕 PDF", onclick:function(){ try { pdf(d); } catch (e) { toast(e.message); } }}),
           el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ try { excel(d); } catch (e) { toast(e.message); } }}))));

@@ -51,6 +51,16 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['message : chaque modification (avant → après), total, livraison', /3 modification\(s\) · total 260 → 210 pièces/.test(m2) && /120 → 150 \(\+30\)/.test(m2) && /80 → 0 \(-80\)/.test(m2) && /Livraison prévue : — → 15\/02\/27/.test(m2)]);
   await p.click('.sx-modal .sx-go'); await p.waitForTimeout(250);
   r.push(['modifications enregistrées', await p.evaluate(() => findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M').qty === 150 && !findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'L') && S.lots.PK202701.livraison === '2027-02-15')]);
+  // mois de la commande : automatique (lot) ou choisi ; en-tête « COMMANDE : NOVEMBRE -1 »
+  r.push(['mois lu dans le lot : « NOVEMBRE -1 »', await p.evaluate(() => libelleCommande('PK202611-1') === 'NOVEMBRE -1' && libelleCommande('PK202701') === 'JANVIER')]);
+  await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);
+  r.push(['champ MOIS (automatique par défaut)', /Automatique : JANVIER/.test(await p.locator('#mMois option').first().textContent())]);
+  await p.selectOption('#mMois', '3'); await p.waitForTimeout(150);
+  r.push(['en-tête annoncé : COMMANDE : MARS', /COMMANDE : MARS \(mois choisi\)/.test(await txt('#view .card'))]);
+  await p.click('.cm-barre button:has-text("Valider")'); await p.waitForTimeout(150);
+  r.push(['confirmation : changement de mois', /Mois : JANVIER \(lu dans le lot\) → MARS \(choisi\)/.test(await txt('.sx-modal'))]);
+  await p.click('.sx-modal .sx-go'); await p.waitForTimeout(250);
+  r.push(['mois enregistré et repris dans la fiche de commande', await p.evaluate(() => S.lots.PK202701.mois === 3 && commandeGrid('PK202701', 2027, '*').rows[0].cells[0].v === 'Commande: MARS')]);
   // Annuler abandonne
   await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);
   await cellule('PHARMA_HOMME COL V NOIR', 'M').fill('999'); await cellule('PHARMA_HOMME COL V NOIR', 'M').press('Enter');

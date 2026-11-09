@@ -89,6 +89,13 @@ async function donnees(p){
   r.push(['refusée : la saisie reste en attente pour être corrigée', await p.locator('.ph-t td.e.chg').count() === 1]);
   await p.click('.ph-attente button:has-text("Annuler")'); await p.waitForTimeout(200);
   r.push(['Annuler : saisies en attente abandonnées', await p.locator('.ph-attente:visible').count() === 0 && await p.locator('.ph-t td.e.chg').count() === 0]);
+  // une date par étape dans la confirmation (commande déjà en partie expédiée)
+  await cell('G_S', 'exp').fill('35'); await cell('G_S', 'exp').press('Enter'); await cell('G_S', 'ctl').fill('45'); await cell('G_S', 'ctl').press('Enter'); await p.waitForTimeout(200);
+  await p.click('.ph-attente button:has-text("Valider")'); await p.waitForTimeout(150);
+  r.push(['confirmation : une date par étape modifiée', await p.locator('.sx-modal .ph-dates input[data-etape]').count() === 2]);
+  await p.fill('.sx-modal input[data-etape="ctl"]', '2026-10-02'); await p.fill('.sx-modal input[data-etape="exp"]', '2026-10-05');
+  await p.click('.sx-modal .sx-go'); await p.waitForTimeout(400);
+  r.push(['chaque étape enregistrée à sa date', await p.evaluate(() => S.moves.some(m => m.lineId === 'G_S' && m.stage === 'ctl' && m.date === '2026-10-02') && S.moves.some(m => m.lineId === 'G_S' && m.stage === 'exp' && m.date === '2026-10-05') && S.moves.some(m => m.lineId === 'G_S' && m.stage === 'pret' && m.date === '2026-10-05'))]);
   await cell('R_XS', 'ret').fill('95'); await cell('R_XS', 'ret').press('Enter'); await p.waitForTimeout(300);
   r.push(['Entrée : la case du dessous est prête', await p.evaluate(() => { const a = document.activeElement; return !!a && a.getAttribute('data-id') === 'R_S' && a.getAttribute('data-k') === 'ret'; })]);
   await valider();

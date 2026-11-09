@@ -61,6 +61,23 @@ async function page(b, url){
   r.push(['une seule page : fiche de commande (' + une.n + ' lignes), état de commande, fiche de coupe', une.n > 100 && une.c === 1 && une.e === 1 && une.f === 1]);
   r.push(['fiche de coupe très longue : passe en portrait pour rester lisible', une.fOri === false]);
   r.push(['Excel : une page en hauteur ; aperçu : lignes resserrées', une.x && une.h]);
+  // orientation au choix (retenue sur l'appareil)
+  await p.evaluate(() => { localStorage.removeItem('pk_doc_ori'); ui.lot = 'PK202612-1'; render(); }); await p.waitForTimeout(200);
+  const blocCmd = p.locator('.dc-d[data-doc="Fiche de commande"]');
+  r.push(['boutons Portrait / Paysage (sauf fiches cartons)', await blocCmd.locator('.dc-o button').count() === 2 && await p.locator('.dc-d[data-doc="Fiches cartons"] .dc-o').count() === 0 && await p.locator('.dc-d[data-doc="Liste de colisage"] .dc-o').count() === 1]);
+  await blocCmd.locator('.dc-o button[data-ori="landscape"]').click(); await p.waitForTimeout(150);
+  await p.evaluate(() => { window.__f = []; });
+  await p.locator('.dc-d[data-doc="Fiche de commande"] button', {hasText: 'PDF'}).click(); await p.waitForTimeout(250);
+  await p.locator('.dc-d[data-doc="Fiche de commande"] button', {hasText: 'Excel'}).click(); await p.waitForTimeout(300);
+  const fo = await p.evaluate(() => window.__f.map(x => /\.pdf$/.test(x.n) ? (/MediaBox \[0 0 841\.89 595\.28\]/.test(x.d) ? 'pdf-paysage' : 'pdf-portrait') : (/orientation="landscape"/.test(x.d) ? 'xls-paysage' : 'xls-portrait')));
+  r.push(['fiche de commande en paysage (PDF et Excel)', fo.join() === 'pdf-paysage,xls-paysage' && /paysage/.test(await p.locator('.dc-d[data-doc="Fiche de commande"] .dc-f').textContent())]);
+  await p.locator('.dc-d[data-doc="Fiche de commande"] button', {hasText: 'Aperçu'}).click(); await p.waitForTimeout(250);
+  r.push(['aperçu en paysage', await p.evaluate(() => /size:A4 landscape/.test((document.getElementById('pk-doc-zone') || {}).innerHTML || ''))]);
+  r.push(['choix retenu sur l\'appareil', await p.evaluate(() => JSON.parse(localStorage.getItem('pk_doc_ori'))['Fiche de commande'] === 'landscape')]);
+  await p.evaluate(() => { window.__f = []; const z = document.getElementById('pk-doc-zone'); if (z) z.remove(); });
+  await p.locator('.dc-d[data-doc="État des commandes"] .dc-o button[data-ori="landscape"]').click(); await p.waitForTimeout(150);
+  await p.locator('.dc-d[data-doc="État des commandes"] button', {hasText: 'PDF'}).click(); await p.waitForTimeout(250);
+  r.push(['export : état des commandes en paysage', await p.evaluate(() => window.__f.length === 1 && /MediaBox \[0 0 841\.89 595\.28\]/.test(window.__f[0].d))]);
   // vue GADH
   const g = await page(b, 'http://localhost:8790/suivi-commandes.html?vue=gadh');
   const tg = await g.p.$$eval('.dc-d', ds => ds.map(d => d.getAttribute('data-doc')));
