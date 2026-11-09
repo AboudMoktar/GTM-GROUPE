@@ -163,6 +163,30 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   // 10. ALLOGA : une seule taille, limité à la commande
   const al = await p.evaluate(() => { const e = {id:'X2', n:2, d:'2026-11-08', cl:'ALLOGA', nat:'ALLOGA', dest:null, st:'cours', dv:'', cartons:[]}; S.exports.push(e); const l = lineById('B_AL'); return pkExports.dispoLigne(l, 'ALLOGA', null); });
   r.push(['ALLOGA : disponible indiqué (60 sur 64 revenues)', al === 60]);
+  // 11. FLÉCHÉS / VESTIAIRES : des produits, pas des clients ; le client se choisit à la création des cartons (nature de l'export)
+  await p.evaluate(() => { S.lines.push({id:'B_F', lot:'PK202611', year:2026, client:'FLÉCHÉS', model:'M', lib:'PHARMA_HOMME COL V NOIR', size:'S', qty:40, cc:0});
+    ['cp','gadh','asm','ret','conf'].forEach((st, k) => S.moves.push({id:'MF' + k, date:'2026-11-02', lineId:'B_F', stage:st, qty:40, nc:0, note:''}));
+    ui.tab = 'exp'; ui.xp = {nouveau:true}; render(); });
+  const natures = await p.locator('.xp-form .seg button').allTextContents();
+  r.push(['FLÉCHÉS : jamais une nature d\'export (seulement les clients)', natures.includes('NEOLYS') && natures.includes('ALLOGA') && !natures.some(t => /FLÉCHÉS|VESTIAIRES/.test(t))]);
+  r.push(['FLÉCHÉS : disponible pour un export NEOLYS ou ALLOGA', await p.evaluate(() => pkExports.dispoLigne(lineById('B_F'), 'NEOLYS', null) === 40 && pkExports.dispoLigne(lineById('B_F'), 'ALLOGA', null) === 40)]);
+  await p.evaluate(() => { S.exports.push({id:'X3', n:3, d:'2026-11-09', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', cartons:[]}); ui.xp = {id:'X3', carton:{nouveau:true}}; render(); });
+  await p.locator('.xp-cmd .sx-chip', {hasText: /PK202611$/}).click(); await p.waitForTimeout(150);
+  const cf = p.locator('.xp-mx input[data-sp="FLÉCHÉS"][title^="Pharma Homme Col V Noir · FLÉCHÉS · S "]');
+  r.push(['carton : ligne « FLÉCHÉS » à part, sous son modèle', await cf.count() === 1 && await p.locator('.xp-mx tr.sp .xp-tag.sp', {hasText: 'FLÉCHÉS'}).count() === 1 && await cf.getAttribute('placeholder') === '40']);
+  await cf.fill('10'); await cell('Lyne Pro Homme Gris', 'S').fill('5');
+  await p.click('text=✔ Valider le carton N°1'); await p.waitForTimeout(300);
+  const x3 = await p.evaluate(() => JSON.parse(JSON.stringify(S.exports.find(e => e.id === 'X3'))));
+  const itF = x3.cartons[0].it.find(x => x[0] === 'B_F');
+  r.push(['carton : pièces FLÉCHÉS sur leur ligne, pour NEOLYS', !!itF && itF[1] === 10 && itF[5] === 'FLÉCHÉS' && await p.evaluate(() => S.moves.filter(m => m.lineId === 'B_F' && m.stage === 'emb').reduce((a, m) => a + m.qty, 0) === 10)]);
+  r.push(['fiche de l\'export : étiquette FLÉCHÉS, pas « surplus »', await p.locator('.xp-carton .xp-tag.sp', {hasText: 'FLÉCHÉS'}).count() === 1 && !/surplus FLÉCHÉS/.test(await p.locator('#view').textContent())]);
+  const fd = await p.evaluate(() => { const e = S.exports.find(x => x.id === 'X3'), c = pkExports.colisExport(e), it = c[0].items.find(x => x.sp === 'FLÉCHÉS');
+    const g = pkExports.totalCommandeGrid(e, c, 'PK202611'), rf = g.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS');
+    const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.findIndex(v => /^En cours 09\/11/.test(v));
+    const rs = et.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR' && r.cells[2] && r.cells[2].v === 'S');
+    return {it: it && it.lib + '|' + it.src, col: /Pharma Homme Col V Noir · Fléchés/.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
+  r.push(['documents : « LIBELLÉ · FLÉCHÉS » pour le client de l\'export', fd.it === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS|NEOLYS' && fd.col && fd.tot === 10 && fd.tot2 === 'NEOLYS,NEOLYS']);
+  r.push(['état de commande : colonne FLÉCHÉS et export suivi', fd.fl === 40 && fd.ex === 10]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);

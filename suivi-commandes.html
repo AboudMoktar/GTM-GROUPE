@@ -569,7 +569,7 @@ function sortedUnique(a){ return Array.from(new Set(a)).sort(); }
 /* ---------- données ---------- */
 function nomIndex(){ var m = {}; S.nomen.forEach(function(n){ m[refP(n.lib,n.size)] = n; }); return m; }
 function libOrder(){ var m = {}, k = 0; S.nomen.forEach(function(n){ if (!(n.lib in m)) m[n.lib] = k++; }); return m; }
-function modelOf(lib){ for (var i = 0; i < S.nomen.length; i++) if (S.nomen[i].lib === lib) return S.nomen[i].model; return ""; }
+function modelOf(lib){ lib = libBase(lib); for (var i = 0; i < S.nomen.length; i++) if (S.nomen[i].lib === lib) return S.nomen[i].model; return ""; }
 function libList(){ var seen = {}, out = []; S.nomen.forEach(function(n){ if (!seen[n.lib]){ seen[n.lib] = {lib:n.lib, model:n.model, sizes:[]}; out.push(seen[n.lib]); } seen[n.lib].sizes.push(n.size); }); return out; }
 function cutQty(q, model){
   var r = null, i;
@@ -1648,8 +1648,16 @@ function confirmBtn(label, cls, action){
   return b;
 }
 
-/* clients d'une commande, en colonnes sur la même feuille (comme la commande papier) */
+/* colonnes d'une commande, sur la même feuille (comme la commande papier) :
+   les clients NEOLYS et ALLOGA, puis les produits FLÉCHÉS et VESTIAIRES (modèle avec flèches blanches).
+   FLÉCHÉS et VESTIAIRES ne sont pas des clients : le client (NEOLYS ou ALLOGA) se choisit à la création des cartons,
+   par la nature de l'export. */
 var CLIENTS_CMD = ["NEOLYS", "ALLOGA", "FLÉCHÉS", "VESTIAIRES"];
+var PRODUITS_SPECIAUX = ["FLÉCHÉS", "VESTIAIRES"];
+function estSpecial(c){ return PRODUITS_SPECIAUX.indexOf(c) >= 0; }
+/* libellé d'une pièce FLÉCHÉS / VESTIAIRES sur les documents d'export : « LIBELLÉ · FLÉCHÉS » */
+function libAvecType(lib, sp){ return sp ? lib + " · " + sp : lib; }
+function libBase(lib){ lib = String(lib); var i = lib.lastIndexOf(" · "); return i > 0 && estSpecial(lib.slice(i + 3)) ? lib.slice(0, i) : lib; }
 function clientsCommande(lot){ return CLIENTS_CMD.concat(sortedUnique(S.lines.filter(function(l){ return lot && l.lot === lot; }).map(function(l){ return l.client; })).filter(function(c){ return CLIENTS_CMD.indexOf(c) < 0; })); }
 /* toutes les références de la nomenclature, plus celles déjà saisies dans la commande (tous clients) */
 function libsCommande(lot){
@@ -4417,7 +4425,7 @@ function sxEmballage(v, lot, rows){
     el("div", {style:"font-weight:700;font-size:16px", text:"📦 Les cartons se préparent dans l'onglet Exports"}),
     el("div", {class:"mut", style:"margin:4px 0 8px", text:"Un export peut contenir des pièces de plusieurs commandes. Cette page reste disponible pour les cartons déjà commencés ici."}),
     el("button", {class:"btn", text:"Aller aux exports", onclick:function(){ ui.tab = "exp"; ui.xp = null; render(); }})));
-  var clients = sortedUnique(rows.map(function(l){ return l.client; }));
+  var clients = sortedUnique(rows.map(function(l){ return l.client; })).filter(function(c){ return !estSpecial(c); });
   if (!ui.ecl || clients.indexOf(ui.ecl) < 0) ui.ecl = clients[0];
   if (clients.length > 1){
     var sc = el("div", {class:"seg"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Cartons pour :"}));
@@ -4855,7 +4863,7 @@ function regExtras(v){
       if (!l.length){ toast("Saisissez au moins un motif."); return; }
       S.motifs = l; persist(); toast("Motifs enregistrés");
     }}))));
-  var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat(["ALLOGA", "NEOLYS"]).concat(Object.keys(S.colis || {})));
+  var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat(["ALLOGA", "NEOLYS"]).concat(Object.keys(S.colis || {}))).filter(function(c){ return !estSpecial(c); });
   var t = el("table"), tb = el("tbody"), ins = {};
   t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Client"}), el("th", {text:"Pièces par carton"}), el("th", {text:"Poids carton plein (kg)"}), el("th", {text:"Une seule taille"}), el("th", {text:"Limité à la commande"}))));
   clients.forEach(function(c){
