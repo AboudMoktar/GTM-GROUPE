@@ -63,7 +63,7 @@ var CSS = [
   '.xp-cartons{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}.xp-cartons .xp-carton{margin:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}',
   '.xp-cq{font-weight:800;font-size:14px;background:var(--sub);border-radius:99px;padding:3px 10px}',
   '.xp-rl{margin-top:8px}.xp-rl-n{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:14px}',
-  '.xp-tag{display:inline-block;line-height:1.5;white-space:nowrap;font-size:11.5px;font-weight:700;color:var(--mut);background:var(--sub);border-radius:99px;padding:1px 8px}.xp-tag.libre{background:#fff3cd;color:#7a4b00}',
+  '.xp-tag.sp{background:#1F3864;color:#fff;margin-left:6px}.xp-mx tr.sp td.m{background:#eef2fb}.xp-tag{display:inline-block;line-height:1.5;white-space:nowrap;font-size:11.5px;font-weight:700;color:var(--mut);background:var(--sub);border-radius:99px;padding:1px 8px}.xp-tag.libre{background:#fff3cd;color:#7a4b00}',
   '.xp-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.xp-pill{border:1px solid var(--line);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--mut)}.xp-pill b{color:var(--ink);font-weight:800}',
   '.xp-cedit{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 10px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}',
   '.xp-cedit label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:700;color:var(--mut)}.xp-cedit input{height:38px}.xp-cedit label.lg2{flex:1 1 140px}',
@@ -79,22 +79,26 @@ function poserCss(){ if (document.getElementById('xp-css')) return; var st = doc
 /* ---------- données ---------- */
 function EX(){ return S.exports || (S.exports = []); }
 function exportDe(id){ return EX().filter(function(e){ return e.id === id; })[0] || null; }
-function clientsPossibles(){ var c = sortedUnique(S.lines.map(function(l){ return l.client; })); return c.length ? c : ["NEOLYS", "ALLOGA"]; }
+/* natures d'export : les clients (NEOLYS, ALLOGA…), jamais FLÉCHÉS / VESTIAIRES (produits, pas clients) */
+function clientsPossibles(){ var c = sortedUnique(S.lines.map(function(l){ return l.client; })).filter(function(x){ return !estSpecial(x); }); return c.length ? c : ["NEOLYS", "ALLOGA"]; }
 function destDefaut(cl){ var d = PK_DESTINATAIRES[cl] || {nom:cl, lignes:[], tel:""}; return {nom:d.nom, lignes:d.lignes.slice(), tel:d.tel || ""}; }
 function destTexte(d){ return [d.nom].concat(d.lignes || []).concat(d.tel ? ["Tél : " + d.tel] : []).join("\n"); }
 function destDepuisTexte(t){ var ls = String(t || "").split(/\n/).map(function(x){ return x.trim(); }).filter(Boolean), tel = ""; ls = ls.filter(function(x){ var m = /^t[ée]l[ée]?(phone)?\s*:?\s*(.*)$/i.exec(x); if (m){ tel = m[2]; return false; } return true; }); return {nom:ls[0] || "", lignes:ls.slice(1), tel:tel}; }
-/* pièce d'un carton : [lineId, quantité, lot, libellé, taille] ; lineId vide = commande pas encore enregistrée */
-function infoItem(x){ var l = x[0] ? lineById(x[0]) : null; return {l:l, lot:l ? l.lot : x[2], lib:l ? l.lib : x[3], size:l ? l.size : x[4], src:l ? l.client : null}; }
+/* pièce d'un carton : [lineId, quantité, lot, libellé, taille, produit FLÉCHÉS/VESTIAIRES éventuel] ; lineId vide = commande pas encore enregistrée */
+function infoItem(x){ var l = x[0] ? lineById(x[0]) : null; return {l:l, lot:l ? l.lot : x[2], lib:l ? l.lib : x[3], size:l ? l.size : x[4], src:l ? l.client : null, sp:l ? (estSpecial(l.client) ? l.client : "") : (x[5] || "")}; }
 /* ligne de commande correspondante : celle du client de l'export, sinon le surplus d'un client limité à sa commande */
 function ligneDe(cl, lot, lib, size){
   var own = null, sur = null, R = regleColis(cl);
+  /* FLÉCHÉS / VESTIAIRES : seulement la ligne de ce produit */
+  if (estSpecial(cl)){ S.lines.forEach(function(l){ if (l.lot === lot && l.lib === lib && l.size === size && l.client === cl) own = l; }); return own; }
   S.lines.forEach(function(l){ if (l.lot !== lot || l.lib !== lib || l.size !== size) return; if (l.client === cl) own = l; else if (!(R && R.cde)){ var Ro = regleColis(l.client); if (Ro && Ro.cde && !sur) sur = l; } });
   return own || sur;
 }
 /* pièces saisies avant l'enregistrement de leur commande : rattachées dès que la commande existe */
-function aRattacher(e){ var n = 0; e.cartons.forEach(function(c){ c.it.forEach(function(x){ if (!(x[0] && lineById(x[0])) && ligneDe(e.cl, x[2], x[3], x[4])) n += x[1]; }); }); return n; }
+function ligneItem(e, x){ return ligneDe(x[5] || e.cl, x[2], x[3], x[4]); }
+function aRattacher(e){ var n = 0; e.cartons.forEach(function(c){ c.it.forEach(function(x){ if (!(x[0] && lineById(x[0])) && ligneItem(e, x)) n += x[1]; }); }); return n; }
 function rattacher(e){
-  e.cartons.forEach(function(c){ c.it.forEach(function(x){ var l = x[0] ? lineById(x[0]) : null; if (l){ x[2] = l.lot; x[3] = l.lib; x[4] = l.size; return; } var l2 = ligneDe(e.cl, x[2], x[3], x[4]); x[0] = l2 ? l2.id : ""; }); });
+  e.cartons.forEach(function(c){ c.it.forEach(function(x){ var l = x[0] ? lineById(x[0]) : null; if (l){ x[2] = l.lot; x[3] = l.lib; x[4] = l.size; return; } var l2 = ligneItem(e, x); x[0] = l2 ? l2.id : ""; }); });
   e.cartons.slice().forEach(function(c){ enregistrerCartonExport(e, c); });
   if (e.st === "fini") validerExport(e);
 }
@@ -112,6 +116,7 @@ function lireKg(v){ v = String(v === null || v === undefined ? "" : v).trim().re
 /* pièces encore disponibles pour l'export de nature cl, sur une ligne de commande (hors un carton en modification) */
 function dispoLigne(l, cl, saufCt){
   var ret = dispoRetour(l.lot, l.id, saufCt), R = regleColis(cl);
+  if (estSpecial(l.client)) return ret;   /* FLÉCHÉS / VESTIAIRES : pour l'export choisi (NEOLYS ou ALLOGA) */
   if (l.client === cl) return Math.min(ret, (R && R.cde) ? Math.max(0, l.qty - enCarton(l.lot, cl, l.id, saufCt)) : Infinity);
   /* surplus d'un client limité à sa commande (ex. surplus ALLOGA sur un export NEOLYS) : ce qui dépasse sa commande */
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
@@ -256,9 +261,9 @@ function formExport(v, e){
 }
 function resumeCarton(c){
   var par = {}, ordre = [];
-  c.it.forEach(function(x){ var i = infoItem(x), k = i.lib + "|" + i.lot + "|" + (i.src || ""); if (!par[k]){ par[k] = {i:i, t:[]}; ordre.push(k); } par[k].t.push([i.size, x[1]]); });
+  c.it.forEach(function(x){ var i = infoItem(x), k = i.lib + "|" + i.lot + "|" + (i.sp || i.src || ""); if (!par[k]){ par[k] = {i:i, t:[]}; ordre.push(k); } par[k].t.push([i.size, x[1]]); });
   return ordre.map(function(k){ var p = par[k], i = p.i; p.t.sort(function(a, b){ return sizeIdx(a[0]) - sizeIdx(b[0]); });
-    return el("div", {class:"xp-rl"}, el("div", {class:"xp-rl-n"}, el("b", {text:nomDoc(i.lib)}), el("span", {class:"xp-tag" + (!i.l ? " libre" : ""), text:i.lot + (!i.l ? " · non enregistrée" : i.src !== ui.xpCl ? " · surplus " + i.src : "")})),
+    return el("div", {class:"xp-rl"}, el("div", {class:"xp-rl-n"}, el("b", {text:nomDoc(i.lib)}), i.sp ? el("span", {class:"xp-tag sp", text:i.sp}) : null, el("span", {class:"xp-tag" + (!i.l ? " libre" : ""), text:i.lot + (!i.l ? " · non enregistrée" : !i.sp && i.src !== ui.xpCl ? " · surplus " + i.src : "")})),
       el("div", {class:"xp-pills"}, p.t.map(function(t){ return el("span", {class:"xp-pill"}, t[0] + " ", el("b", {text:String(t[1])})); }))); });
 }
 function ficheExport(v, e, arch){
@@ -352,12 +357,13 @@ function confirmerValidation(e){
       sont affichés pour information ; un dépassement est signalé, jamais bloqué. */
 function catalogueModeles(lot, cl){
   var o = [], par = {};
-  function aj(lib, size, dans){ var m = par[lib]; if (!m){ m = par[lib] = {lib:lib, sizes:[], dans:false}; o.push(m); } if (size && m.sizes.indexOf(size) < 0) m.sizes.push(size); if (dans) m.dans = true; }
-  S.lines.forEach(function(l){ if (l.lot === lot) aj(l.lib, l.size, l.client === cl); });
+  /* FLÉCHÉS / VESTIAIRES : une ligne à part par modèle (« LIBELLÉ · FLÉCHÉS »), pour l'export choisi */
+  function aj(lib, size, dans, sp){ var k = lib + "|" + (sp || ""), m = par[k]; if (!m){ m = par[k] = {lib:lib, sp:sp || "", key:k, sizes:[], dans:false}; o.push(m); } if (size && m.sizes.indexOf(size) < 0) m.sizes.push(size); if (dans) m.dans = true; }
+  S.lines.forEach(function(l){ if (l.lot === lot) aj(l.lib, l.size, l.client === cl || estSpecial(l.client), estSpecial(l.client) ? l.client : ""); });
   libList().forEach(function(x){ x.sizes.forEach(function(s){ aj(x.lib, s, false); }); });
   o.forEach(function(m){ m.sizes.sort(function(a, b){ return sizeIdx(a) - sizeIdx(b); }); });
   var ordre = libOrder();
-  return o.sort(function(a, b){ return (b.dans - a.dans) || ((a.lib in ordre ? ordre[a.lib] : 999) - (b.lib in ordre ? ordre[b.lib] : 999)) || (a.lib < b.lib ? -1 : 1); });
+  return o.sort(function(a, b){ return (b.dans - a.dans) || ((a.lib in ordre ? ordre[a.lib] : 999) - (b.lib in ordre ? ordre[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : 0) || (a.sp < b.sp ? -1 : a.sp > b.sp ? 1 : 0); });
 }
 function editeurCarton(v, e){
   if (e.st === "fini"){ ui.xp = {id:e.id}; return ficheExport(v, e); }
@@ -371,7 +377,7 @@ function editeurCarton(v, e){
   }
   var E = C.etat, saufCt = C.id || null, R = regleColis(e.cl), t1 = !!(R && R.t1), nbC = e.cartons.length + (C.id ? 0 : 1);
   var lotsConnus = sortedUnique(S.lines.map(function(l){ return l.lot; })).reverse();
-  function itemDe(lot, lib, size){ return E.it.filter(function(y){ var i = infoItem(y); return i.lot === lot && i.lib === lib && i.size === size; })[0]; }
+  function itemDe(lot, lib, size, sp){ return E.it.filter(function(y){ var i = infoItem(y); return i.lot === lot && i.lib === lib && i.size === size && (i.sp || "") === (sp || ""); })[0]; }
   function total(){ var t = 0; E.it.forEach(function(x){ t += x[1]; }); return t; }
   /* bandeau toujours visible : dans quel carton on est */
   var totEl = el("b", {class:"xp-tot", text:fmt(total())});
@@ -396,8 +402,8 @@ function editeurCarton(v, e){
   if (!E.lot){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Choisissez la commande (N° de lot)."}))); return; }
   /* 2. tableau : un modèle par ligne, une taille par colonne ; on tape les quantités directement */
   var mods = catalogueModeles(E.lot, e.cl), dansCmd = mods.some(function(m){ return m.dans; });
-  var dansCarton = {}; E.it.forEach(function(x){ var i = infoItem(x); if (i.lot === E.lot) dansCarton[i.lib] = 1; });
-  var montres = mods.filter(function(m){ return E.tous || !dansCmd || m.dans || dansCarton[m.lib]; });
+  var dansCarton = {}; E.it.forEach(function(x){ var i = infoItem(x); if (i.lot === E.lot) dansCarton[i.lib + "|" + (i.sp || "")] = 1; });
+  var montres = mods.filter(function(m){ return E.tous || !dansCmd || m.dans || dansCarton[m.key]; });
   var groupes = [], parG = {};
   montres.forEach(function(m){ var k = m.sizes.every(function(z){ return /^H\d/.test(z); }) ? "H" : (m.sizes.length === 1 && m.sizes[0] === "TU") ? "TU" : "STD";
     var g = parG[k]; if (!g){ g = parG[k] = {k:k, mods:[], tailles:[]}; groupes.push(g); } g.mods.push(m); m.sizes.forEach(function(z){ if (g.tailles.indexOf(z) < 0) g.tailles.push(z); }); });
@@ -414,28 +420,28 @@ function editeurCarton(v, e){
     t.appendChild(el("thead", null, th));
     var tb = el("tbody");
     g.mods.forEach(function(m){
-      var tr = el("tr", {class:m.dans ? "dans" : ""}, el("td", {class:"m", text:nomDoc(m.lib)}));
+      var tr = el("tr", {class:(m.dans ? "dans" : "") + (m.sp ? " sp" : "")}, el("td", {class:"m"}, nomDoc(m.lib), m.sp ? el("span", {class:"xp-tag sp", text:m.sp}) : null));
       var totRow = el("td", {class:"t"});
       g.tailles.forEach(function(z){
         if (m.sizes.indexOf(z) < 0){ tr.appendChild(el("td", {class:"x", text:"·"})); return; }
-        var l = ligneDe(e.cl, E.lot, m.lib, z), reste = l ? Math.max(0, retourGadh(l.id) - totalEnCartons(l.lot, l.id, saufCt)) : null, it0 = itemDe(E.lot, m.lib, z);
-        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + ", reste " + reste : " — hors commande")});
-        function marquer(){ var x = itemDe(E.lot, m.lib, z), q = x ? x[1] : 0; inp.className = (q && l && q > reste) ? "trop" : q ? "plein" : ""; }
+        var l = ligneDe(m.sp || e.cl, E.lot, m.lib, z), reste = l ? Math.max(0, retourGadh(l.id) - totalEnCartons(l.lot, l.id, saufCt)) : null, it0 = itemDe(E.lot, m.lib, z, m.sp);
+        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", "data-sp":m.sp, value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + (m.sp ? " · " + m.sp : "") + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + ", reste " + reste : " — hors commande")});
+        function marquer(){ var x = itemDe(E.lot, m.lib, z, m.sp), q = x ? x[1] : 0; inp.className = (q && l && q > reste) ? "trop" : q ? "plein" : ""; }
         inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
         inp.addEventListener("input", function(){
-          var q = Math.max(0, num(inp.value)), x = itemDe(E.lot, m.lib, z);
-          if (x){ if (q) x[1] = q; else E.it.splice(E.it.indexOf(x), 1); } else if (q) E.it.push([l ? l.id : "", q, E.lot, m.lib, z]);
+          var q = Math.max(0, num(inp.value)), x = itemDe(E.lot, m.lib, z, m.sp);
+          if (x){ if (q) x[1] = q; else E.it.splice(E.it.indexOf(x), 1); } else if (q) E.it.push(m.sp ? [l ? l.id : "", q, E.lot, m.lib, z, m.sp] : [l ? l.id : "", q, E.lot, m.lib, z]);
           marquer(); recalc(); });
         marquer();
         tr.appendChild(el("td", null, inp));
       });
-      majs.push(function(){ var s = 0; m.sizes.forEach(function(z){ var x = itemDe(E.lot, m.lib, z); if (x) s += x[1]; }); totRow.textContent = s ? fmt(s) : ""; });
+      majs.push(function(){ var s = 0; m.sizes.forEach(function(z){ var x = itemDe(E.lot, m.lib, z, m.sp); if (x) s += x[1]; }); totRow.textContent = s ? fmt(s) : ""; });
       tr.appendChild(totRow); tb.appendChild(tr);
     });
     t.appendChild(tb);
     var tf = el("tr", null, el("td", {class:"m", text:"Total"}));
-    g.tailles.forEach(function(z){ var td = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ var x = itemDe(E.lot, m.lib, z); if (x) s += x[1]; }); td.textContent = s ? fmt(s) : ""; }); tf.appendChild(td); });
-    var tdT = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ m.sizes.forEach(function(z){ var x = itemDe(E.lot, m.lib, z); if (x) s += x[1]; }); }); tdT.textContent = s ? fmt(s) : ""; }); tf.appendChild(tdT);
+    g.tailles.forEach(function(z){ var td = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ var x = itemDe(E.lot, m.lib, z, m.sp); if (x) s += x[1]; }); td.textContent = s ? fmt(s) : ""; }); tf.appendChild(td); });
+    var tdT = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ m.sizes.forEach(function(z){ var x = itemDe(E.lot, m.lib, z, m.sp); if (x) s += x[1]; }); }); tdT.textContent = s ? fmt(s) : ""; }); tf.appendChild(tdT);
     t.appendChild(el("tfoot", null, tf));
     mx.appendChild(el("div", {class:"tw xp-mxw"}, t));
   });
@@ -478,6 +484,7 @@ function editeurCarton(v, e){
    Model | LIBELLE | Taille | Quantité | Total : toutes les références du client (comme la commande),
    avec les quantités de l'export (par commande, ou pour tout l'export « sans lot »). */
 function couleurLib(lib){
+  lib = libBase(lib);
   var m = FM.filter(function(x){ return x[0] === lib; })[0]; if (m) return [m[5], m[6]];
   var t = String(lib).toLowerCase();
   if (/noir/.test(t)) return ["595959", "FFFFFF"]; if (/sable|beige/.test(t)) return ["DEDC86", "000000"]; if (/rose/.test(t)) return ["FFC0CB", "000000"]; if (/gris/.test(t)) return ["D9D9D9", "000000"];
@@ -488,7 +495,9 @@ function totalCommandeGrid(e, colis, lot){
   colis.forEach(function(c){ c.items.forEach(function(x){ if (lot && x.lot !== lot) return; var k = x.lib + "|" + x.size; q[k] = (q[k] || 0) + x.q; }); });
   var libs = clientLibs(lot || lotsE[0] || "", e.cl), vus = {};
   libs.forEach(function(l){ vus[l.lib] = l; });
-  Object.keys(q).forEach(function(k){ var p = k.split("|"); if (!vus[p[0]]){ vus[p[0]] = {lib:p[0], model:modelOf(p[0]) || p[0], sizes:[]}; libs.push(vus[p[0]]); } if (vus[p[0]].sizes.indexOf(p[1]) < 0){ vus[p[0]].sizes.push(p[1]); vus[p[0]].sizes.sort(function(a, b){ return sizeIdx(a) - sizeIdx(b); }); } });
+  Object.keys(q).forEach(function(k){ var p = k.split("|"); if (!vus[p[0]]){ vus[p[0]] = {lib:p[0], model:modelOf(p[0]) || p[0], sizes:[]};
+    /* « LIBELLÉ · FLÉCHÉS » juste après son modèle */
+    var ib = -1; libs.forEach(function(x, j){ if (libBase(x.lib) === libBase(p[0]) || x.model === vus[p[0]].model) ib = j; }); if (ib >= 0) libs.splice(ib + 1, 0, vus[p[0]]); else libs.push(vus[p[0]]); } if (vus[p[0]].sizes.indexOf(p[1]) < 0){ vus[p[0]].sizes.push(p[1]); vus[p[0]].sizes.sort(function(a, b){ return sizeIdx(a) - sizeIdx(b); }); } });
   var g = {cols:[20, 44, 8, 12, 12], rows:[], merges:[], plein:true, onePage:true, landscape:ori("tot") === "landscape"}, B = {b:1, sz:11, al:"c", bd:"t"};
   gset(g, 0, 0, "Export N°" + e.n + " — " + dmyL(e.d) + " — " + (e.dest || destDefaut(e.cl)).nom, {b:1, sz:11}); gmerge(g, 0, 0, 0, 2);
   gset(g, 0, 3, "LOT", B); gset(g, 0, 4, "DATE", B);
@@ -523,7 +532,7 @@ function recapTotalGrid(e, colis, sansLot){
   colis.forEach(function(c){ var vus = {};
     c.items.forEach(function(x){ if (!q[x.lib]){ q[x.lib] = {}; ordre.push(x.lib); } q[x.lib][x.lot] = (q[x.lib][x.lot] || 0) + x.q; q[x.lib].__t = (q[x.lib].__t || 0) + x.q; vus[x.lot] = 1; });
     Object.keys(vus).forEach(function(l){ cartons[l] = (cartons[l] || 0) + 1; }); });
-  ordre.sort(function(a, b){ return ((a in lo ? lo[a] : 999) - (b in lo ? lo[b] : 999)) || (a < b ? -1 : 1); });
+  ordre.sort(function(a, b){ var A = libBase(a), B = libBase(b); return ((A in lo ? lo[A] : 999) - (B in lo ? lo[B] : 999)) || (a < b ? -1 : 1); });
   var nL = lots.length, cT = 2 + nL, L = colName;
   var g = {cols:[20, 34].concat(lots.map(function(){ return 14; })).concat([14]), rows:[], merges:[], plein:true, onePage:true, landscape:ori("tot") === "landscape"};
   var H = {b:1, sz:11, fg:"C00000", al:"c", bd:"m"}, C = {sz:10, al:"c", bd:"t"}, TT = {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE"};
@@ -596,7 +605,8 @@ function grilleHtml(g){
 function colisExport(e){
   return e.cartons.slice().sort(function(a, b){ return a.n - b.n; }).map(function(c){
     var items = [], q = 0;
-    c.it.forEach(function(x){ if (!x[1]) return; var i = infoItem(x); items.push({lineId:i.l ? i.l.id : null, lib:i.lib, size:i.size, q:x[1], lot:i.lot, src:i.src || e.cl}); q += x[1]; });
+    /* FLÉCHÉS / VESTIAIRES : « LIBELLÉ · FLÉCHÉS » sur les documents, pour le client de l'export */
+    c.it.forEach(function(x){ if (!x[1]) return; var i = infoItem(x); items.push({lineId:i.l ? i.l.id : null, lib:libAvecType(i.lib, i.sp), size:i.size, q:x[1], lot:i.lot, src:i.sp ? e.cl : (i.src || e.cl), sp:i.sp}); q += x[1]; });
     items.sort(function(a, b){ return a.lib === b.lib ? (a.lot === b.lot ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lot < b.lot ? -1 : 1)) : (a.lib < b.lib ? -1 : 1); });
     return {n:c.n, id:c.id, manuel:true, items:items, q:q, poids:Math.round(poidsDe(e, c) * 10) / 10, ouvert:false, lots:lotsDeCarton(c)};
   });
@@ -756,7 +766,7 @@ function suiviCommande(e, lot){
     chiffres:function(lib, z, tot){ var r = R[lib + "|" + z] || {ex:{}, av:0, emb:0, exp:0}, sx = r.av; exs.forEach(function(x){ sx += r.ex[x.id] || 0; });
       var emb = Math.max(0, r.emb - Math.max(r.exp, sx)); return {exporte:sx, emballe:emb, reste:Math.max(0, tot - sx - emb)}; }};
 }
-/* clients de la commande, en colonnes : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES, puis les autres */
+/* colonnes de la commande : clients NEOLYS, ALLOGA, produits FLÉCHÉS, VESTIAIRES, puis les autres */
 function clientsColonnes(lot, client){
   if (client) return [client];
   var std = typeof CLIENTS_CMD !== "undefined" ? CLIENTS_CMD.slice() : ["NEOLYS", "ALLOGA"];
@@ -913,7 +923,7 @@ function docsCard(e){
     ["colis", "📋 Liste de colisage", sansLot ? "Sans N° de commande" : "Avec le N° de commande de chaque ligne"],
     ["total", "🧾 Liste total", sansLot ? "Tout l'export, au format de la commande" : "Au format de la commande, une page par commande"]
   ];
-  if (!sansLot) docs.push(["etat", "📊 État des commandes", "Au format de la commande : par client, total, exporté, reste"]);
+  if (!sansLot) docs.push(["etat", "📊 État des commandes", "Au format de la commande : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES, total, exporté, reste"]);
   var L = el("div", {class:"xp-docs"});
   docs.forEach(function(d){
     L.appendChild(el("div", {class:"xp-doc", "data-doc":d[0]},
