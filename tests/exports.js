@@ -98,9 +98,9 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const etA = html.D.etat.find(x => x.lot === 'PK202610');
   const ec = await p.evaluate(() => { const e = S.exports[0], g = pkExports.etatCommandeGrid(e, 'PK202610'), v = (r) => g.rows[r].cells.map(x => x ? x.v : '');
     const iS = g.rows.findIndex(r => r.cells[2] && r.cells[2].v === 'S'), iT = g.rows.length - 1;
-    return {t0: v(0).join('|'), t1: v(1).join('|'), head: v(2).join('|'), s: v(iS).slice(1).join('|'), tot: v(iT).slice(3).join('|'), f: g.rows[iS].cells[7].f, gB: pkExports.etatCommandeGrid(e, 'PK202612'), noms: pkExports.feuillesDoc(e, 'etat').map(x => x.name).join('|')}; });
-  r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|Total|Total|Exporté 07/11|Reste']);
-  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20|20|30|12|8' && ec.tot === '30|30|30|22|8' && /^MAX\(0,E\d+-SUM\(G\d+:G\d+\)\)$/.test(ec.f)]);
+    return {t0: v(0).join('|'), t1: v(1).join('|'), head: v(2).join('|'), s: v(iS).slice(1).join('|'), tot: v(iT).slice(3).join('|'), f: g.rows[iS].cells[12].f, gB: pkExports.etatCommandeGrid(e, 'PK202612'), noms: pkExports.feuillesDoc(e, 'etat').map(x => x.name).join('|')}; });
+  r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
+  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^MAX\(0,H\d+-SUM\(K\d+:L\d+\)\)$/.test(ec.f)]);
   r.push(['état : une page par commande', ec.noms === 'Etat PK202610|Etat PK202612']);
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});
@@ -134,7 +134,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['Archive : liste des exports expédiés', await p.evaluate(() => ui.tab === 'arch') && await p.locator('.xp-li.fini').count() === 1]);
   await p.locator('.xp-li.fini').click(); await p.waitForTimeout(150);
   const ec2 = await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.map(x => x ? x.v : '').join('|'));
-  r.push(['état de commande (tout le lot) depuis le suivi', ec2 === 'Model|LIBELLE|Taille|NEOLYS|Total|Total|Exporté 07/11|Reste']);
+  r.push(['état de commande (tout le lot) depuis le suivi', ec2 === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
   await p.evaluate(() => { ui.tab = 'suivi'; ui.lot = 'PK202610'; ui.smode = 'q'; render(); }); await p.waitForTimeout(150);
   r.push(['boutons « État de commande » dans le suivi', await p.locator('.xp-etat').count() === 1 && await p.locator('.xp-etat button', {hasText: 'PDF'}).count() === 1]);
   await p.evaluate(() => { ui.tab = 'arch'; ui.amodeX = 'exp'; ui.xpa = {id: S.exports[0].id}; render(); }); await p.waitForTimeout(150);

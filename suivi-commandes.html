@@ -356,6 +356,39 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 /* chiffres des tableaux de saisie : noir gras, toujours lisibles */
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
+/* commande sur une seule feuille (tous les clients) + suivi */
+table.cmdT{border-collapse:collapse;table-layout:fixed;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+table.cmdT th{position:sticky;z-index:3;background:#1f3864;color:#fff;border:1px solid #000;font:700 11.5px Arial,sans-serif;padding:3px 2px;text-align:center;white-space:normal;line-height:1.15}
+table.cmdT tr.h1 th{top:0;background:#ddebf7;color:#000;font-size:12.5px;height:26px}
+table.cmdT tr.h1 th.cmdSuivi{background:#fde9d9}
+table.cmdT tr.h2 th{top:26px}
+table.cmdT th.sv{background:#7f3f00}
+table.cmdT td{border:1px solid #000;font-size:11px;height:25px;text-align:center}
+table.cmdT td.mdl{font-size:10px;font-weight:700;white-space:normal;background:#fff}
+table.cmdT td.lib{font-size:9.5px;text-align:left;white-space:normal;line-height:1.1;padding:0 3px}
+table.cmdT td.sz{font-weight:700}
+table.cmdT td.fr{padding:1px}
+table.cmdT td.fr.off{background:#e6e6e6}
+table.cmdT td.tot{font-size:12px}
+table.cmdT td.tl{font-size:13px;background:#f5f8fc}
+table.cmdT td.st{font-size:11px;font-weight:700;white-space:normal;padding:2px}
+table.cmdT td.sv{background:#fffaf5}
+table.cmdT td.rst{color:#c00000}
+table.cmdT tr.ttot td{background:#eee;font-size:12.5px;border-top:2px solid #000;height:30px}
+table.cmdT td.rouge{color:#c00000}
+table.cmdT td input{width:100%;height:22px;padding:0 3px;font:700 13px Arial,sans-serif;color:#000;text-align:right;box-sizing:border-box}
+table.cmdT td input.lu{background:transparent;border:0}
+table.cmdT td input.ed{background:#fff3bf;border:1px solid #e7cf6a;border-radius:3px}
+table.cmdT td input.chg,table.cmdT textarea.chg{background:#ffd8a8!important;border-color:#e8590c!important}
+table.cmdT textarea.stIn{width:100%;box-sizing:border-box;font:700 11px Arial,sans-serif;border:1px solid #e7cf6a;background:#fff3bf;border-radius:3px;resize:vertical;min-height:40px}
+.cmdWrap{max-height:calc(100vh - 170px)}
+table.cmdT.tel td.lib,table.cmdT.tel th:nth-child(1){position:sticky;left:0;z-index:2}
+table.cmdT.tel td.sz{position:sticky;left:118px;z-index:2;background:#fff}
+table.cmdT.tel tr.h2 th:nth-child(1){z-index:5}table.cmdT.tel tr.h2 th:nth-child(2){position:sticky;left:118px;z-index:5}
+table.cmdT.tel tr.h1 th:first-child{position:sticky;left:0;z-index:5;text-align:left}
+.cm-bas{display:flex;gap:10px;flex-wrap:wrap}.cm-bas .btn{flex:1 1 140px}
+@media(max-width:700px){.cm-barre{position:static!important}}
+table.cmdT.tel th{font-size:9px;padding:3px 1px;overflow-wrap:anywhere}
 /* commande : consultation, saisie (brouillon) et confirmation */
 table.entry td input.lu{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 table.entry td input.chg,.xlwrap input.chg{background:#ffd8a8!important;border-color:#e8590c!important;box-shadow:0 0 0 2px #e8590c inset}
@@ -1615,6 +1648,16 @@ function confirmBtn(label, cls, action){
   return b;
 }
 
+/* clients d'une commande, en colonnes sur la même feuille (comme la commande papier) */
+var CLIENTS_CMD = ["NEOLYS", "ALLOGA", "FLÉCHÉS", "VESTIAIRES"];
+function clientsCommande(lot){ return CLIENTS_CMD.concat(sortedUnique(S.lines.filter(function(l){ return lot && l.lot === lot; }).map(function(l){ return l.client; })).filter(function(c){ return CLIENTS_CMD.indexOf(c) < 0; })); }
+/* toutes les références de la nomenclature, plus celles déjà saisies dans la commande (tous clients) */
+function libsCommande(lot){
+  var libs = libList().map(function(l){ return {lib:l.lib, model:l.model, sizes:l.sizes.slice()}; }), by = {};
+  libs.forEach(function(l){ by[l.lib] = l; });
+  S.lines.forEach(function(x){ if (!lot || x.lot !== lot) return; var l = by[x.lib]; if (!l){ l = by[x.lib] = {lib:x.lib, model:x.model, sizes:[]}; libs.push(l); } if (l.sizes.indexOf(x.size) < 0){ l.sizes.push(x.size); l.sizes.sort(function(a, b){ return sizeIdx(a) - sizeIdx(b); }); } });
+  return libs;
+}
 /* Une commande ALLOGA ne contient que PHARMA-HOMME col V noir (S→XXXL) et PHARMA-FEMME col V noir (XS→XXL) */
 var ALLOGA_ONLY = {"PHARMA_HOMME COL V NOIR":["S","M","L","XL","XXL","XXXL"], "PHARMA_FEMME COL V NOIR":["XS","S","M","L","XL","XXL"]};
 function clientLibs(lot, cli){
@@ -1658,6 +1701,7 @@ var clients = sortedUnique(S.lines.map(function(l){ return l.client; }).concat([
    enregistrée seulement après « Valider » et confirmation du message récapitulatif */
 function vCmdSaisie(v, clients, cli, libs){
   var E = ui.cmdEd;
+  if (E && !E.st) E.st = {};   /* statuts (note par libellé : « Manque tissu »…) */
   /* une saisie en cours sur une autre commande (changée en haut de l'écran) est abandonnée */
   if (E && !E.nouveau && E.lot !== ui.lot){ ui.cmdEd = E = null; toast("Modification non enregistrée abandonnée."); }
   var existe = !!ui.lot && S.lines.some(function(l){ return l.lot === ui.lot; }), RO = lectureSeule();
@@ -1717,61 +1761,110 @@ function vCmdSaisie(v, clients, cli, libs){
       el("button", {class:"btn", text:"✔ Valider", onclick:function(){ confirmerSaisie(); }}),
       el("button", {class:"btn sec", text:"Annuler", onclick:function(){ var n = changements().length; if (n && !confirm("Abandonner " + n + " modification(s) non enregistrée(s) ?")) return; ui.cmdEd = null; render(); }})));
   }
-  var seg = el("div", {class:"seg"});
-  clients.forEach(function(c){ seg.appendChild(el("button", {class:c === cli ? "on" : "", text:c, onclick:function(){ ui.cmdClient = c; render(true); }})); });
-  v.appendChild(el("div", {class:"card", style:"padding:10px 12px"}, el("div", {class:"mut", text:"CLIENT :"}), seg));
   var stat = el("div", {class:"stat"});
   v.appendChild(stat);
   if (!E && !lotReady(ui.lot) && !RO){
     v.appendChild(el("div", {class:"card", style:"padding:10px 12px"},
       el("button", {class:"btn", style:"width:100%", text:"✔ Vérification faite : valider la commande et calculer les consommations", onclick:function(){ validateLot(ui.lot); }})));
   }
-  if (E && E.nouveau) libs = clientLibs("", cli);
-  var t = el("table", {class:"xl entry"}), tb = el("tbody"), groups = [], inputs = [];
-  var cg = el("colgroup"); (PC ? [90,300,60,90,70] : [52,172,36,54,40]).forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
-  t.appendChild(el("thead", null, el("tr", null, ["Model","LIBELLE","Taille","Quantité","Total"].map(function(h){ return el("th", {text:h}); }))));
-  /* nombre de lignes par modèle consécutif (cellule Model fusionnée) */
-  var span = {}, mstart = {}, prevM = null, cur = null;
-  libs.forEach(function(li, i){ if (li.model !== prevM){ cur = i; mstart[i] = 1; span[i] = 0; prevM = li.model; } span[cur] += li.sizes.length; });
-  libs.forEach(function(li, gi){
-    var g = {li:li, cells:[], tot:null};
-    g.tot = el("td", {class:"tot b", rowspan:String(li.sizes.length)});
-    li.sizes.forEach(function(s, i){
-      var k = cle(cli, li.lib, s), q = qVue(cli, li.lib, s);
-      var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:E ? "ed" + (k in E.q ? " chg" : "") : "lu", value:q ? q : "", enterkeyhint:"next"});
-      if (!E){ inp.readOnly = true; inp.tabIndex = -1; }
+  /* ---- la commande sur une seule feuille, comme la commande papier :
+     Model | LIBELLE | Taille | NEOLYS | ALLOGA | FLÉCHÉS | VESTIAIRES | Total | Total du libellé
+     | SUIVI (automatique) : Statut | exporté (une colonne par export) | Emballés | Reste ---- */
+  var lotT = E && E.nouveau ? "" : ui.lot, CL = clientsCommande(lotT), libsT = libsCommande(lotT);
+  var SV = lotT && window.pkExports && pkExports.suiviCommande ? pkExports.suiviCommande(null, lotT) : null;
+  var statuts = (S.lots[lotT] || {}).statuts || {};
+  function stVue(lib){ return E && E.st && lib in E.st ? E.st[lib] : (statuts[lib] || ""); }
+  function permis(c, lib, z){ return c !== "ALLOGA" || (ALLOGA_ONLY[lib] && ALLOGA_ONLY[lib].indexOf(z) >= 0) || qEnr(c, lib, z) > 0; }
+  function totRef(lib, z){ var t = 0; CL.forEach(function(c){ t += qVue(c, lib, z); }); return t; }
+  /* consultation : seulement les tailles commandées (ou déjà suivies) ; saisie : toutes */
+  var blocs = libsT.map(function(li){ return {li:li, sizes:li.sizes.filter(function(z){ if (E) return true; if (totRef(li.lib, z) > 0) return true; var rs = SV && SV.R[li.lib + "|" + z]; return !!(rs && (rs.av || Object.keys(rs.ex).length)); })}; }).filter(function(b){ return b.sizes.length; });
+  var nEx = SV ? SV.exs.length : 0, avant = !!(SV && SV.avant);
+  /* sur téléphone : sans la colonne Model (le libellé la contient), libellé et taille fixés à gauche pendant le défilement */
+  var TEL = !PC, nG = TEL ? 2 : 3;
+  var t = el("table", {class:"xl cmdT" + (TEL ? " tel" : "")}), tb = el("tbody"), inputs = [], cellsTot = [], cellsLib = [], cellsReste = [], footCells = {};
+  var W = PC ? {m:96, l:240, z:46, c:70, t:62, tl:64, st:110, e:72, emb:70, r:62} : {m:0, l:118, z:38, c:52, t:48, tl:52, st:90, e:58, emb:56, r:48};
+  var cols = (TEL ? [] : [W.m]).concat([W.l, W.z]).concat(CL.map(function(){ return W.c; })).concat([W.t, W.tl]).concat(SV ? [W.st].concat(avant ? [W.e] : []).concat(SV.exs.map(function(){ return W.e; })).concat([W.emb, W.r]) : []);
+  var cg = el("colgroup"); cols.forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
+  t.style.width = cols.reduce(function(a, b){ return a + b; }, 0) + "px";
+  var h1 = el("tr", {class:"h1"}, el("th", {colspan:String(nG + CL.length + 2), class:"cmdTitre", text:(libelleCommande(lotT || (E && E.lot) || "") ? "COMMANDE : " + libelleCommande(lotT || (E && E.lot) || "") : "COMMANDE") + "   ·   LOT " + (lotT || (E && E.lot) || "—")}));
+  if (SV) h1.appendChild(el("th", {colspan:String(1 + (avant ? 1 : 0) + nEx + 2), class:"cmdSuivi", text:"SUIVI (automatique)"}));
+  var h2 = el("tr", {class:"h2"}, (TEL ? [] : ["Model"]).concat(["LIBELLE", "Taille"]).concat(CL).concat(["Total", "Total"]).map(function(h){ return el("th", {text:h}); }));
+  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); if (avant) h2.appendChild(el("th", {class:"sv", text:"Expédié avant"})); SV.exs.forEach(function(x){ h2.appendChild(el("th", {class:"sv", text:SV.titre(x)})); }); h2.appendChild(el("th", {class:"sv", text:"Emballés"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
+  t.appendChild(el("thead", null, h1, h2));
+  var span = {}, prevM = null, curM = null;
+  blocs.forEach(function(b, i){ if (b.li.model !== prevM){ curM = i; span[i] = 0; prevM = b.li.model; } span[curM] += b.sizes.length; });
+  function couleur(lib){ var m = FM.filter(function(x){ return x[0] === lib; })[0]; if (m) return [m[5], m[6]]; var t0 = String(lib).toLowerCase(); if (/noir/.test(t0)) return ["595959", "FFFFFF"]; if (/sable|beige/.test(t0)) return ["DEDC86", "000000"]; if (/rose/.test(t0)) return ["FFC0CB", "000000"]; if (/gris/.test(t0)) return ["D9D9D9", "000000"]; return ["FFFFFF", "000000"]; }
+  blocs.forEach(function(b, bi){
+    var li = b.li, n = b.sizes.length, co = couleur(li.lib);
+    var tdTL = el("td", {class:"tot tl b", rowspan:String(n)}); cellsLib.push({lib:li.lib, sizes:b.sizes, td:tdTL});
+    b.sizes.forEach(function(z, i){
       var tr = el("tr", {class:i === 0 ? "gstart" : ""});
-      if (i === 0 && mstart[gi]) tr.appendChild(el("td", {class:"mdl b", rowspan:String(span[gi]), text:li.model}));
-      tr.appendChild(el("td", {class:"lib", text:li.lib}));
-      tr.appendChild(el("td", {class:"sz", text:s}));
-      tr.appendChild(el("td", {class:"fr"}, inp));
-      if (i === 0) tr.appendChild(g.tot);
-      tb.appendChild(tr);
-      g.cells.push({inp:inp, size:s}); inputs.push(inp);
-      if (E){
-        inp.addEventListener("change", function(){
-          var n = String(inp.value).trim() === "" ? 0 : Number(inp.value);
-          if (!(n >= 0) || Math.floor(n) !== n){ toast("Tapez un nombre entier (0 ou plus)."); inp.value = qVue(cli, li.lib, s) || ""; return; }
-          if (n === qEnr(cli, li.lib, s)) delete E.q[k]; else E.q[k] = n;
-          inp.classList.toggle("chg", k in E.q); upd();
-        });
-        inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var x = inputs.indexOf(inp); if (inputs[x+1]) inputs[x+1].focus(); else inp.blur(); } });
-        inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+      if (!TEL && i === 0 && span[bi] !== undefined) tr.appendChild(el("td", {class:"mdl b", rowspan:String(span[bi]), text:li.model}));
+      tr.appendChild(el("td", {class:"lib", style:"background:#" + co[0] + ";color:#" + co[1], text:li.lib}));
+      tr.appendChild(el("td", {class:"sz", text:z}));
+      CL.forEach(function(c){
+        var k = cle(c, li.lib, z), q = qVue(c, li.lib, z), ok = permis(c, li.lib, z);
+        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", class:E && ok ? "ed" + (k in E.q ? " chg" : "") : "lu", value:q ? q : "", enterkeyhint:"next", "data-c":c, "data-lib":li.lib, "data-sz":z, "aria-label":c + " " + li.lib + " " + z});
+        if (!E || !ok){ inp.readOnly = true; inp.tabIndex = -1; }
+        var td = el("td", {class:"fr" + (ok ? "" : " off"), title:ok ? "" : "Taille non commandée par " + c}, inp); tr.appendChild(td);
+        if (E && ok){
+          inputs.push(inp);
+          inp.addEventListener("change", function(){
+            var nv = String(inp.value).trim() === "" ? 0 : Number(inp.value);
+            if (!(nv >= 0) || Math.floor(nv) !== nv){ toast("Tapez un nombre entier (0 ou plus)."); inp.value = qVue(c, li.lib, z) || ""; return; }
+            if (nv === qEnr(c, li.lib, z)) delete E.q[k]; else E.q[k] = nv;
+            inp.classList.toggle("chg", k in E.q); upd();
+          });
+          inp.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); var x = inputs.indexOf(inp); if (inputs[x + 1]) inputs[x + 1].focus(); else inp.blur(); } });
+          inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
+        }
+      });
+      var tdT = el("td", {class:"tot b"}); tr.appendChild(tdT); cellsTot.push({lib:li.lib, z:z, td:tdT});
+      if (i === 0) tr.appendChild(tdTL);
+      if (SV){
+        if (i === 0){
+          var tdS = el("td", {class:"st", rowspan:String(n)});
+          if (E){ var ta = el("textarea", {rows:"2", class:"stIn" + (E.st && li.lib in E.st ? " chg" : ""), placeholder:"Ex. Manque tissu", "data-statut":li.lib}); ta.value = stVue(li.lib);
+            ta.addEventListener("change", function(){ var vv = cleanTxt(ta.value); if (vv === (statuts[li.lib] || "")) delete E.st[li.lib]; else E.st[li.lib] = vv; ta.classList.toggle("chg", li.lib in E.st); compter(); });
+            tdS.appendChild(ta); }
+          else tdS.textContent = stVue(li.lib);
+          tr.appendChild(tdS);
+        }
+        var rs = SV.R[li.lib + "|" + z] || {ex:{}, av:0};
+        if (avant) tr.appendChild(el("td", {class:"sv", text:rs.av ? fmt(rs.av) : ""}));
+        SV.exs.forEach(function(x){ tr.appendChild(el("td", {class:"sv b", text:rs.ex[x.id] ? fmt(rs.ex[x.id]) : ""})); });
+        var tdE = el("td", {class:"sv b"}), tdR = el("td", {class:"sv rst b"}); tr.appendChild(tdE); tr.appendChild(tdR); cellsReste.push({lib:li.lib, z:z, emb:tdE, reste:tdR});
       }
+      tb.appendChild(tr);
     });
-    groups.push(g);
   });
-  t.appendChild(tb); v.appendChild(el("div", {class:"xlwrap"}, t));
+  /* ligne TOTAL */
+  var trT = el("tr", {class:"ttot"}, el("td", {colspan:String(nG), class:"b", text:"TOTAL"}));
+  CL.forEach(function(c){ var td = el("td", {class:"b"}); footCells[c] = td; trT.appendChild(td); });
+  footCells.__t = el("td", {class:"b"}); footCells.__tl = el("td", {class:"b rouge"}); trT.appendChild(footCells.__t); trT.appendChild(footCells.__tl);
+  if (SV){ trT.appendChild(el("td")); if (avant) footCells.__av = trT.appendChild(el("td", {class:"b"})); footCells.__ex = SV.exs.map(function(){ return trT.appendChild(el("td", {class:"b"})); }); footCells.__emb = trT.appendChild(el("td", {class:"b"})); footCells.__r = trT.appendChild(el("td", {class:"b rouge"})); }
+  tb.appendChild(trT);
+  t.appendChild(tb);
+  if (!blocs.length) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune quantité dans cette commande. Appuyez sur ✏️ Modifier pour la saisir."})));
+  else v.appendChild(el("div", {class:"xlwrap tall cmdWrap"}, t));
+  /* en bas du tableau : mêmes boutons que la barre de saisie */
+  if (E && blocs.length) v.appendChild(el("div", {class:"card cm-bas"},
+    el("button", {class:"btn", text:"✔ Valider", onclick:function(){ confirmerSaisie(); }}),
+    el("button", {class:"btn sec", text:"Annuler", onclick:function(){ var n0 = changements().length; if (n0 && !confirm("Abandonner " + n0 + " modification(s) non enregistrée(s) ?")) return; ui.cmdEd = null; render(); }})));
   function upd(){
-    var gf = 0, gc = 0;
-    groups.forEach(function(g){
-      var tf = 0, tc = 0;
-      g.cells.forEach(function(c){ var q = qVue(cli, g.li.lib, c.size); tf += q; if (q) tc += cutQty(q, g.li.model); });
-      g.tot.textContent = tf ? fmt(tf) : "0"; gf += tf; gc += tc;
-    });
+    var gf = 0, gc = 0, parC = {}, tEmb = 0, tR = 0, tAv = 0, tEx = SV ? SV.exs.map(function(){ return 0; }) : [];
+    CL.forEach(function(c){ parC[c] = 0; });
+    cellsTot.forEach(function(x){ var tt = 0; CL.forEach(function(c){ var q = qVue(c, x.lib, x.z); tt += q; parC[c] += q; }); x.td.textContent = tt ? fmt(tt) : ""; gf += tt; if (tt) gc += cutQty(tt, modelOf(x.lib)); });
+    cellsLib.forEach(function(x){ var tt = 0; x.sizes.forEach(function(z){ tt += totRef(x.lib, z); }); x.td.textContent = tt ? fmt(tt) : ""; });
+    cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, totRef(x.lib, x.z)); x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tR += ch.reste; });
+    if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; tAv += r0.av; SV.exs.forEach(function(x, i){ tEx[i] += r0.ex[x.id] || 0; }); }); }
+    CL.forEach(function(c){ footCells[c].textContent = parC[c] ? fmt(parC[c]) : ""; });
+    footCells.__t.textContent = fmt(gf); footCells.__tl.textContent = fmt(gf);
+    if (SV){ if (footCells.__av) footCells.__av.textContent = tAv ? fmt(tAv) : ""; footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; footCells.__r.textContent = fmt(tR); }
     stat.innerHTML = "";
-    stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées · " + cli})));
+    stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées" + (CL.filter(function(c){ return parC[c]; }).length ? " · " + CL.filter(function(c){ return parC[c]; }).map(function(c){ return c + " " + fmt(parC[c]); }).join(" · ") : "")})));
     stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));
+    if (SV) stat.appendChild(el("div", null, el("b", {text:fmt(tR)}), el("span", {text:"reste à produire / expédier"})));
     compter();
   }
   function compter(){ if (!E) return; var n = changements().length; nbTxt.textContent = n ? "✏️ Saisie en cours : " + n + " modification(s) non enregistrée(s)" : "✏️ Saisie en cours : modifiez les quantités puis appuyez sur Valider"; }
@@ -1782,6 +1875,7 @@ function vCmdSaisie(v, clients, cli, libs){
     var lo = libOrder();
     out.sort(function(x, y){ return x.c < y.c ? -1 : x.c > y.c ? 1 : ((lo[x.lib] || 999) - (lo[y.lib] || 999)) || (x.lib < y.lib ? -1 : x.lib > y.lib ? 1 : sizeIdx(x.z) - sizeIdx(y.z)); });
     if (!E.nouveau && E.year !== undefined && E.year !== yr0) out.push({info:"Année : " + yr0 + " → " + E.year});
+    Object.keys(E.st || {}).forEach(function(lib){ var av = ((S.lots[ui.lot] || {}).statuts || {})[lib] || ""; if (!E.nouveau && E.st[lib] !== av) out.push({info:"Statut " + lib + " : « " + (av || "—") + " » → « " + (E.st[lib] || "—") + " »"}); });
     if (E.mois !== undefined && String(E.mois || "") !== (E.nouveau ? "" : String((S.lots[ui.lot] || {}).mois || ""))){ var am = lotMonthAuto(E.nouveau ? E.lot : ui.lot), nomM = function(v){ return v ? MOIS[+v - 1] + " (choisi)" : (am ? MOIS[am.m - 1] + " (lu dans le lot)" : "—"); }; out.push({info:"Mois : " + nomM(E.nouveau ? "" : (S.lots[ui.lot] || {}).mois) + " → " + nomM(E.mois)}); }
     if (!E.nouveau && E.liv !== undefined && E.liv !== ((S.lots[ui.lot] || {}).livraison || "")) out.push({info:"Livraison prévue : " + (((S.lots[ui.lot] || {}).livraison) ? dmy(S.lots[ui.lot].livraison) : "—") + " → " + (E.liv ? dmy(E.liv) : "—")});
     return out;
@@ -1821,6 +1915,7 @@ function vCmdSaisie(v, clients, cli, libs){
         if (Ed.year !== undefined) S.lines.forEach(function(l){ if (l.lot === lot) l.year = Ed.year; });
         if (Ed.liv !== undefined){ ensureLot(lot); S.lots[lot].livraison = Ed.liv || ""; }
         if (Ed.mois !== undefined){ ensureLot(lot); if (Ed.mois) S.lots[lot].mois = +Ed.mois; else delete S.lots[lot].mois; }
+        Object.keys(Ed.st || {}).forEach(function(lib){ ensureLot(lot); var st = S.lots[lot].statuts = S.lots[lot].statuts || {}; if (Ed.st[lib]) st[lib] = Ed.st[lib]; else delete st[lib]; });
       }, null);
       if (ok){ ui.cmdEd = null; ui.lot = lot; render(); toast(Ed.nouveau ? "Commande " + lot + " créée" : ch.length + " modification(s) enregistrée(s) sur " + lot); }
     }}));
