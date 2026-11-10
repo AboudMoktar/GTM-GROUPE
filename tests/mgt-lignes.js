@@ -57,18 +57,20 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['recherche : article proposé avec son prix', /B-75-631/.test(await fr.locator('#billLnResults').textContent())]);
   await fr.click('#billLnResults [data-ln="pick"]'); await p.waitForTimeout(300);
   await fr.fill('#billLinesBox tr[data-i="0"] [data-f="quantite"]', '2'); await p.waitForTimeout(200);
-  r.push(['montant calculé (total HT des lignes) et marge affichée', await fr.inputValue('#billAmount') === '500' && /200,00/.test(await fr.locator('#billLinesBox .lnTotals').textContent())]);
+  r.push(['montant calculé (total HT des lignes) et marge affichée', await fr.inputValue('#billAmount') === '400' && /100,00/.test(await fr.locator('#billLinesBox .lnTotals').textContent())]);
+  /* V4.6.9H : prix de vente standard = prix catalogue (ENCODER 250 → 200) */
+  r.push(['nouvelle ligne : prix standard = prix catalogue', await fr.inputValue('#billLinesBox tr[data-i="0"] [data-f="prixVente"]') === '200']);
   await fr.click('#billingForm button[type=submit]'); await p.waitForTimeout(2000);
   let c1 = await cli('1'), f = c1.Factures.find(x => x.number === 'FA026-010');
   r.push(['fenêtre fermée après l\'enregistrement', await fr.evaluate(() => document.getElementById('billingModal').hidden)]);
-  r.push(['facture enregistrée avec ses lignes figées (prix d\'achat, marge)', !!f && f.amount === 500 && f.lignes.length === 1 && f.lignes[0].prixAchat === 150 && f.lignes[0].articleId === 'ART-0002' && f.totaux.marge === 200 && f.montantSource === 'LIGNES']);
+  r.push(['facture enregistrée avec ses lignes figées (prix d\'achat, marge)', !!f && f.amount === 400 && f.lignes.length === 1 && f.lignes[0].prixAchat === 150 && f.lignes[0].articleId === 'ART-0002' && f.totaux.marge === 100 && f.montantSource === 'LIGNES']);
   r.push(['historique de la facture', Array.isArray(f.historique) && f.historique[0].action === 'CREATION']);
   // facture ancienne sans lignes : ajout du détail, montant d'origine gardé
   await fr.evaluate(() => editBillingInvoice('1', 'F-OLD')); await p.waitForTimeout(500);
   await fr.fill('#billLnSearch', 'machine essai'); await p.waitForTimeout(600); await fr.click('#billLnResults [data-ln="pick"]'); await p.waitForTimeout(300);
   await fr.click('#billingForm button[type=submit]'); await p.waitForTimeout(2000);
   c1 = await cli('1'); f = c1.Factures.find(x => x.id === 'F-OLD');
-  r.push(['facture sans détail : lignes ajoutées, montant d\'origine conservé', f.amount === 1200 && f.montantSaisiOrigine === 500 && f.lignes.length === 1]);
+  r.push(['facture sans détail : lignes ajoutées, montant d\'origine conservé', f.amount === 1000 && f.montantSaisiOrigine === 500 && f.lignes.length === 1]);
   // document client : sans prix d'achat ni marge
   const doc = await fr.evaluate(() => MGT_LINES.clientDocumentHtml({titre: 'Facture', numero: 'X', date: '2026-11-08', client: 'Client Essai', lignes: [{reference: 'B-75-631', designation: 'ENCODER', quantite: 2, prixVente: 250, remise: 0, prixAchat: 150}]}));
   r.push(['document client : sans prix d\'achat ni marge', /500,00/.test(doc) && !/150,00/.test(doc) && !/[Mm]arge/.test(doc)]);

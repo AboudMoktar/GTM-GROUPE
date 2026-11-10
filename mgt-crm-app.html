@@ -10222,9 +10222,12 @@ function compact(a){
   if(j.length) o.journal=j;
   return o;
 }
-function getArtBrut(id){var l=tous();for(var i=0;i<l.length;i++)if(l[i].id===String(id))return l[i];return null;}
+/* écriture groupée (dm.listingEnLot) : beaucoup de modifications, une seule écriture à la fin */
+var LOT=null;
+function getArtBrut(id){var l=LOT||tous();for(var i=0;i<l.length;i++)if(l[i].id===String(id))return l[i];return null;}
 async function getArt(id){var s=getArtBrut(id);return s?complet(s):null;}
-async function putArt(a){var c=compact(a),l=tous().slice(),k=l.findIndex(function(x){return x.id===c.id;});if(k>=0)l[k]=c;else l.push(c);await ecrire(l);}
+async function putArt(a){var c=compact(a),l=LOT||tous().slice(),k=l.findIndex(function(x){return x.id===c.id;});if(k>=0)l[k]=c;else l.push(c);if(LOT)return;await ecrire(l);}
+dm.listingEnLot=async function(fn){if(LOT)return fn();LOT=tous().slice();var ok=false,r;try{r=await fn();ok=true;}finally{var l=LOT;LOT=null;if(ok)await ecrire(l);}return r;};
 async function delArt(id){await ecrire(tous().filter(function(x){return x.id!==String(id);}));}
 
 /* ---------- import : fichier du CRM de l'associé (Listing intégré) ou sauvegarde du Listing ---------- */
@@ -10375,7 +10378,7 @@ dm.listingUpdateArticle=async function(id,patch,opts){
     next.historiquePrix=(a.historiquePrix||[]).concat([{id:rid('px'),dateChangement:ts,dateEffet:eff,dateEffetPrecision:'jour',
       prixCatalogue:next.prixCatalogue,remise:next.remise,prixAchat:next.prixAchat,prixVente:next.prixVente,devise:next.devise||'EUR',
       precedent:prev,source:opts.source||'MANUEL',user:u,note:str(opts.note)}]);
-    next.dateMaj=eff; next.dateMajPrecision='jour';
+    if(!opts.keepDateMaj){next.dateMaj=eff; next.dateMajPrecision='jour';} /* V4.6.9H : la standardisation garde la date du tarif */
     PRICE_FIELDS.forEach(function(f){ if(p[f]!==undefined&&prev[f]!==p[f]) changes[f]=[prev[f],p[f]]; });
   }
   next.journal=(a.journal||[]).concat([{ts:ts,user:u,action:'MODIFICATION',detail:Object.keys(changes).join(', '),champs:changes,note:str(opts.note)}]);
@@ -10504,7 +10507,7 @@ var IC={
 };
 var GROUPES=[{id:'MORGAN',label:'MORGAN',icon:'factory',meta:'Fabricant'},{id:'MACPI',label:'MACPI',icon:'factory',meta:'Fabricant'},{id:'AUTRES',label:'AUTRES',icon:'layers',meta:'Autres marques'}];
 var CATS=[{id:'MACHINES',label:'Machines',icon:'cog',meta:'Catalogue machines'},{id:'PIECES',label:'Pièces détachées',icon:'wrench',meta:'Catalogue pièces'},{id:'LOGICIELS',label:'Logiciels',icon:'monitor',meta:'Catalogue logiciels'},{id:'SERVICES',label:'Services',icon:'headset',meta:'Catalogue services'}];
-var ANO_LABEL={LIEN_EXTERNE_ROMPU:'Lien Excel rompu',PRIX_ACHAT_A_SAISIR:'Prix d\'achat à saisir',SANS_PRIX_ACHAT:'Sans prix d\'achat',SANS_PRIX_VENTE:'Sans prix de vente',SANS_PRIX_CATALOGUE:'Sans prix catalogue',
+var ANO_LABEL={LIEN_EXTERNE_ROMPU:'Lien Excel rompu',PRIX_ACHAT_A_SAISIR:'Prix d\'achat à saisir',SANS_PRIX_ACHAT:'Sans prix d\'achat',SANS_PRIX_VENTE:'Sans prix de vente',SANS_PRIX_CATALOGUE:'Prix catalogue à saisir',
   REGLE_INCREMENTEE:'Libellé de règle douteux',SANS_REGLE:'Sans règle',REMISE_NON_UTILISEE:'Remise non utilisée',DATE_ANNEE_SEULE:'Date : année seule',REFERENCE_EN_DOUBLE:'Référence en double',ESPACES_PARASITES:'Espaces parasites',VENTE_INFERIEURE_ACHAT:'Vente < achat'};
 var PAGE=50;
 var st={level:'home',groupe:'',categorie:'',q:'',sf:'',ano:'',sort:'ref',page:0,globalQ:''};
@@ -10716,7 +10719,7 @@ async function openEdit(id){
     +inp('prixCatalogue','Prix catalogue',a.prixCatalogue,'text',{attrs:'inputmode="decimal"'})
     +inp('remise','Remise (%)',a.remise==null?'':Math.round(a.remise*10000)/100,'text',{attrs:'inputmode="decimal"'})
     +inp('prixAchat','Prix d\'achat (interne)',a.prixAchat,'text',{attrs:'inputmode="decimal"'})
-    +inp('prixVente','Prix de vente',a.prixVente,'text',{attrs:'inputmode="decimal"'})
+    +inp('prixVente','Prix de vente standard (= prix catalogue)',a.prixCatalogue,'text',{attrs:'inputmode="decimal" readonly tabindex="-1" aria-readonly="true" title="Le prix de vente standard est le prix catalogue ; il se modifie sur la ligne de l\'offre ou de la facture"'}) /* V4.6.9H */
     +sel('devise','Devise',a.devise||'EUR',[['EUR','EUR'],['USD','USD'],['TND','TND']])
     +inp('dateEffet','Date d\'effet du prix',todayIso,'date')
     +inp('note','Motif du changement (historique)','', 'text',{wide:true,attrs:'placeholder="Ex. hausse fournisseur, nouveau tarif 2027…"'})
@@ -10772,7 +10775,7 @@ async function renderRules(){
     var av=r.achat.mode==='coef_achat'?r.achat.valeur:Math.round(r.achat.valeur*10000)/100, vv=r.vente.mode==='coef_achat'?r.vente.valeur:Math.round(r.vente.valeur*10000)/100;
     return '<tr data-i="'+i+'"><td data-l="Règle"><input class="lsRuleIn" name="label" value="'+esc(r.label)+'" aria-label="Libellé"/><div class="lsSmall">'+esc(gLabel(r.groupe))+' · '+esc(r.categories.map(cLabel).join(', '))+'</div></td>'
       +'<td data-l="Prix d\'achat"><select name="achatMode" aria-label="Mode achat">'+o(modeA,r.achat.mode)+'</select><input name="achatVal" inputmode="decimal" value="'+esc(av)+'" aria-label="Valeur achat (% ou remise par défaut en %)"/></td>'
-      +'<td data-l="Prix de vente"><select name="venteMode" aria-label="Mode vente">'+o(modeV,r.vente.mode)+'</select><input name="venteVal" inputmode="decimal" value="'+esc(vv)+'" aria-label="Valeur vente"/></td>'
+      +'<td data-l="Prix de vente"><select name="venteMode" aria-label="Mode vente" disabled title="Prix de vente standard = prix catalogue (V4.6.9H)">'+o(modeV,r.vente.mode)+'</select><input name="venteVal" inputmode="decimal" value="'+esc(vv)+'" aria-label="Valeur vente" disabled/></td>'
       +'<td data-l="Active"><label><input type="checkbox" name="actif"'+(r.actif!==false?' checked':'')+'/> Active</label></td></tr>';
   }).join('');
   root.innerHTML=headHtml('Règles de prix','Propositions de calcul modifiables — jamais appliquées automatiquement')+crumbHtml()
@@ -11099,7 +11102,7 @@ function createEditor(host,opts){
       +'<td data-l="Référence">'+(free?'<input class="lnIn" data-f="reference" value="'+esc(l.reference)+'" aria-label="Référence"'+dis+'/>':'<span class="lnRef">'+esc(l.reference)+'</span><div class="lnSmall">'+esc(l.marque||'')+' · prix figés le '+esc(new Date(l.figeLe).toLocaleDateString('fr-FR'))+'</div>')+'</td>'
       +'<td data-l="Désignation">'+(free?'<input class="lnIn lnWide" data-f="designation" value="'+esc(l.designation)+'" aria-label="Désignation"'+dis+'/>':esc(l.designation))+'</td>'
       +'<td class="n" data-l="Quantité"><input class="lnIn lnNum" data-f="quantite" inputmode="decimal" value="'+esc(l.quantite)+'" aria-label="Quantité"'+dis+'/></td>'
-      +'<td class="n" data-l="Prix vente HT"><input class="lnIn lnNum" data-f="prixVente" inputmode="decimal" value="'+esc(l.prixVente)+'" aria-label="Prix de vente HT"'+dis+'/>'+(l.prixVenteCatalogue!=null&&num(l.prixVente)!==num(l.prixVenteCatalogue)?'<div class="lnSmall">Catalogue : '+money(l.prixVenteCatalogue)+'</div>':'')+'</td>'
+      +'<td class="n" data-l="Prix vente HT"><input class="lnIn lnNum" data-f="prixVente" inputmode="decimal" value="'+esc(l.prixVente)+'" aria-label="Prix de vente HT"'+dis+'/>'+(l.prixVenteCatalogue!=null&&num(l.prixVente)!==num(l.prixVenteCatalogue)?'<div class="lnSmall">Prix standard : '+money(l.prixVenteCatalogue)+'</div>':'')+'</td>'
       +'<td class="n" data-l="Remise %"><input class="lnIn lnNum" data-f="remise" inputmode="decimal" value="'+esc(l.remise||0)+'" aria-label="Remise en %"'+dis+'/></td>'
       +cellsHtml(l)
       +'<td data-l="">'+(readOnly?'':'<button type="button" class="lnIcon" data-ln="del" data-i="'+i+'" aria-label="Retirer la ligne '+(i+1)+'" title="Retirer la ligne">'+IC_TRASH+'</button>')+'</td></tr>';
@@ -13149,7 +13152,7 @@ async function run(kind,key){
 }
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.exBar [data-ex]');if(!b)return;run(b.getAttribute('data-ex'),b.closest('.exBar').getAttribute('data-ex-view'));});
 
-window.MGT_EXPORTS={version:'V4.6.8L',situationModel:situationModel,registerModel:registerModel,pdfDoc:pdfDoc,xlsxBlob:xlsxBlob,printDoc:printDoc,run:run};
+window.MGT_EXPORTS={version:'V4.6.8L',situationModel:situationModel,registerModel:registerModel,pdfDoc:pdfDoc,xlsxBlob:xlsxBlob,printDoc:printDoc,run:run,chargerPdf:chargerPdf};
 })();
 
 </script>
@@ -13488,6 +13491,1550 @@ function majBouton(){var b=document.getElementById('cmpImporter');if(!b||!rappor
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',dessiner);else dessiner();
 })();
 </script>
+<!-- ===== Nouveautés du CRM de l'associé V4.6.9J (calendrier, prix standard, export des offres), adaptées à GTM Groupe ===== -->
+<style id="mgt-v469b-cal-engine-css">
+/* MGT CRM V4.6.9B — diagnostic du calendrier (lecture seule) */
+#p7Legend #mgtCalDiagBtn{all:unset;box-sizing:border-box;padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;cursor:pointer;background:var(--soft,#eef2f7);color:var(--ink,#1b2433)!important;border:1px solid var(--line,#d3dae4)}
+#p7Legend #mgtCalDiagBtn:focus-visible{outline:2px solid #e8590c;outline-offset:2px}
+#mgtCalDiag{position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;--mcb:#fff;--mcf:#1b2433;--mcm:#566377;--mcl:#d3dae4}
+html:not([data-mgt-theme="light"]) #mgtCalDiag{--mcb:#15181d;--mcf:#e8edf3;--mcm:#9aa5b4;--mcl:#2b3038}
+#mgtCalDiag .mcdBox{width:100%;max-width:460px;max-height:86vh;overflow:auto;box-sizing:border-box;background:var(--mcb);color:var(--mcf);border:1px solid var(--mcl);border-radius:16px;padding:14px 16px}
+#mgtCalDiag .mcdHead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
+#mgtCalDiag .mcdSub{font-size:12px;color:var(--mcm);margin:6px 0 10px}
+#mgtCalDiag .mcdClose{all:unset;box-sizing:border-box;min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid var(--mcl);color:var(--mcf)!important;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+#mgtCalDiag .mcdList{margin:0;font-size:13px}
+#mgtCalDiag .mcdRow{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid var(--mcl)}
+#mgtCalDiag .mcdRow dt{margin:0;min-width:0}
+#mgtCalDiag .mcdRow dd{margin:0;font-weight:800;white-space:nowrap;text-align:right}
+</style>
+<script id="mgt-v469b-cal-engine">
+/* =====================================================================
+   MGT CRM V4.6.9B — MOTEUR DU CALENDRIER : INDEX, CACHE FIABLE, IDENTIFIANTS STABLES
+   Remplace, par une version equivalente et plus rapide, le moteur actif :
+     - allPlanningActions (definition l. « moteur 4 » + enveloppe V4.6.7 T1 fix2) ;
+     - plannedActions, clientStatusData, clientNextVisit, segmentMatches (« urgent »)
+       qui parcouraient toutes les actions pour chaque client (decision Q3).
+   Resultat identique a la V4.6.8M (meme liste, meme ordre, memes champs), sauf :
+     - identifiant stable pour les anciennes actions sans identifiant (decision Q4,
+       calcule a l'affichage, rien n'est ecrit dans les donnees) ;
+     - actions masquees : filtrage client par client (le moteur d'origine utilisait par
+       erreur la liste du dernier client ; l'enveloppe fix2 compensait deja).
+   Cache : recalcul apres chaque reconstruction des donnees (invalidateApaCache, appele
+   par rebuildClientCache) ; filet de securite : controle d'une empreinte legere des
+   donnees au plus toutes les 50 ms (au lieu d'un cache aveugle de 500 ms).
+   Aucune ecriture : DataManager, SyncManager, IndexedDB et Supabase non modifies.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9B';
+var prevAPA=window.allPlanningActions;
+if(typeof prevAPA!=='function'||typeof generatedActions!=='function'){console.error('[CALENDRIER '+VERSION+'] moteur introuvable');return;}
+
+/* ---------- outils ---------- */
+var oid=new WeakMap(), oidN=0;
+function idOf(o){ if(!o||typeof o!=='object') return 0; var v=oid.get(o); if(!v){ v=++oidN; oid.set(o,v);} return v; }
+function sh(s){ s=String(s==null?'':s); var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h+s.charCodeAt(i))|0; } return h; }
+function lc(v){return String(v||'').toLowerCase().trim();}
+function todayIso(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function stableManualId(nid,i,a){ var h=(sh(i+'|'+(a.date||'')+'|'+(a.type||'')+'|'+(a.objective||'')+'|'+(a.relanceDate||''))>>>0).toString(36); return 'manual-'+nid+'-'+h; }
+
+/* ---------- empreinte legere des donnees (filet de securite) ---------- */
+function signature(){
+  var hc=window._historyCache||[], h=0, list=(typeof CLIENTS!=='undefined'&&CLIENTS)||[];
+  h=(h*31+idOf(list))|0; h=(h*31+list.length)|0; h=(h*31+idOf(hc))|0; h=(h*31+hc.length)|0;
+  for(var i=0;i<list.length;i++){ var c=list[i]; if(!c) continue;
+    h=(h*31+idOf(c))|0; h=(h*31+idOf(c.Planning))|0; h=(h*31+(c.Planning&&c.Planning.length||0))|0;
+    h=(h*31+idOf(c.SuppressedActions))|0; h=(h*31+(c.SuppressedActions&&c.SuppressedActions.length||0))|0;
+    h=(h*31+idOf(c.NextAction))|0; h=(h*31+idOf(c.Offres))|0; h=(h*31+(c.Offres&&c.Offres.length||0))|0;
+    h=(h*31+idOf(c.Visites))|0; h=(h*31+(c.Visites&&c.Visites.length||0))|0;
+    h=(h*31+sh(c[fields.lastVisit]))|0; h=(h*31+sh(c[fields.importance]))|0; h=(h*31+sh(c.VisitFrequency))|0; h=(h*31+sh(c._updated_at))|0; h=(h*31+sh(c._version))|0; }
+  var u=''; try{u=syncUser();}catch(e){}
+  return h+'|'+todayIso()+'|'+u;
+}
+
+/* ---------- construction (equivalent moteur 4 + enveloppe fix2) ---------- */
+function buildRaw(){
+  var out=[], hc=window._historyCache||[], list=CLIENTS, byCliHist=new Map(), user=syncUser();
+  for(var hi=0;hi<hc.length;hi++){ var h=hc[hi]; if(!h||h.entity_type!=='CLIENT') continue; var k=String(h.entity_id); var arr=byCliHist.get(k); if(!arr){arr=[];byCliHist.set(k,arr);} arr.push(h); }
+  for(var ci=0;ci<list.length;ci++){
+    var c=list[ci], nid=String(c[fields.id]), usedIds=new Set(), pl=planningList(c), start=out.length;
+    for(var i=0;i<pl.length;i++){ var a=pl[i];
+      if(!a||!((a.date||'').trim()||(a.relanceDate||'').trim()||(a.type||'').trim()||(a.objective||'').trim()||(a.status||'').trim()||(a.commercial||'').trim())) continue;
+      var eid=a.id||stableManualId(nid,i,a); if(usedIds.has(eid)) continue; usedIds.add(eid);
+      out.push({client:c,clientId:nid,source:a.source||'manuel',eventIndex:null,eventId:eid,type:a.type||'visite',date:a.date||'',relanceDate:a.relanceDate||'',priority:a.priority||'',status:a.status||'',objective:a.objective||'',commercial:a.commercial||user,startTime:a.startTime||a.start_time||'',endTime:a.endTime||a.end_time||'',_from:'planning'}); }
+    var hl=byCliHist.get(nid)||[];
+    for(var j=0;j<hl.length;j++){ var hh=hl[j], hid=hh.id; if(usedIds.has(hid)) continue; usedIds.add(hid);
+      out.push({client:c,clientId:nid,source:hh.source||'manuel',eventIndex:null,eventId:hid,date:hh.event_date||'',relanceDate:hh.due_date||'',priority:hh.priority||'',status:hh.status||'',objective:hh.subject||'',commercial:hh.assigned_to_user_id||user,type:hh.event_type||'AUTRE',_from:'history'}); }
+    var gen=generatedActions(c);
+    for(var g=0;g<gen.length;g++){ var ga=gen[g]; if(!ga||(ga.eventId&&usedIds.has(ga.eventId))) continue; if(ga.eventId) usedIds.add(ga.eventId);
+      out.push({client:c,clientId:nid,source:'auto',eventIndex:null,eventId:ga.eventId||('auto-'+nid+'-'+g),type:ga.type||'',date:ga.date||'',relanceDate:ga.relanceDate||'',priority:ga.priority||'',status:ga.status||'',objective:ga.objective||'',commercial:ga.commercial||user,_from:'generated'}); }
+    /* actions masquees : liste de CE client */
+    var sup=Array.isArray(c.SuppressedActions)?c.SuppressedActions:null;
+    if(sup&&sup.length){ var bl=new Set(sup.map(String)), w=start; for(var r=start;r<out.length;r++){ if(!bl.has(String(out[r].eventId))) out[w++]=out[r]; } out.length=w; }
+  }
+  /* enveloppe fix2 : doublons automatiques et « suivi fournisseur » automatique */
+  var autoKeys={}, hasAuto={}, a2, k2, x;
+  for(x=0;x<out.length;x++){ a2=out[x]; if(a2.source==='auto'){ k2=a2.clientId; hasAuto[k2]=1; autoKeys[k2+'|'+lc(a2.type)+'|'+lc(a2.objective)]=1; } }
+  for(x=0;x<out.length;x++){ a2=out[x]; if(a2.source!=='auto'&&hasAuto[a2.clientId]) autoKeys[a2.clientId+'|'+lc(a2.type)+'|'+lc(a2.objective)]=2; }
+  var res=[];
+  for(x=0;x<out.length;x++){ a2=out[x]; if(a2.source==='auto'){ if(lc(a2.type)==='suivi fournisseur') continue; if(autoKeys[a2.clientId+'|'+lc(a2.type)+'|'+lc(a2.objective)]===2) continue; } res.push(a2); }
+  return res;
+}
+
+/* ---------- dates : lecture memorisee (fonctions pures, resultat identique) ----------
+   parseDateValue et daysUntil etaient appelees des centaines de milliers de fois sur les
+   memes chaines ; chaque appel renvoie toujours un NOUVEL objet Date (comme l'original). */
+var basePDV=window.parseDateValue, baseDU=window.daysUntil, pdvMemo=new Map(), duMemo=new Map(), duDay='';
+if(typeof basePDV==='function'){ window.parseDateValue=function(v){ var k=String(v||''); var t=pdvMemo.get(k);
+  if(t===undefined){ var d=basePDV(v); t=d?d.getTime():null; if(pdvMemo.size>50000) pdvMemo.clear(); pdvMemo.set(k,t); }
+  return t===null?null:new Date(t); }; }
+if(typeof baseDU==='function'){ window.daysUntil=function(v){ var day=todayIso(); if(day!==duDay){ duMemo.clear(); duDay=day; } var k=String(v||''); var r=duMemo.get(k);
+  if(r===undefined){ r=baseDU(v); if(duMemo.size>50000) duMemo.clear(); duMemo.set(k,r); } return r; }; }
+
+/* ---------- cache et index ---------- */
+var S={dirty:true,sig:null,checked:0,list:null,cal:null,ver:0,idx:{},builds:0,buildMs:0};
+function isVisRem(a){ var f=window.__p7isVisRem; return typeof f==='function'?f(a):false; }
+function ensure(){
+  var now=performance.now();
+  if(!S.dirty&&now-S.checked<50) return;
+  S.checked=now; var s=signature();
+  if(S.dirty||s!==S.sig){ var t=performance.now(); S.list=buildRaw(); S.cal=null; S.idx={}; S.sig=s; S.dirty=false; S.ver++; S.builds++; S.buildMs=Math.round((performance.now()-t)*10)/10; dates=new WeakMap(); }
+}
+function calMode(){ return !!(window.__p7cal&&!window.__p7showV); }
+function current(){ ensure(); if(calMode()){ if(!S.cal) S.cal=S.list.filter(function(a){return !isVisRem(a);}); return S.cal; } return S.list; }
+function variantKey(){ return calMode()?'cal':'all'; }
+function byClientMap(){ var k='cli_'+variantKey(); ensure(); var m=S.idx[k]; if(m) return m; m=new Map(); var L=current(); for(var i=0;i<L.length;i++){ var id=L[i].clientId, arr=m.get(id); if(!arr){arr=[];m.set(id,arr);} arr.push(L[i]); } S.idx[k]=m; return m; }
+var dates=new WeakMap();
+function dateOf(a){ if(!a) return null; var v=dates.get(a); if(v===undefined){ v=parseDateValue(actionMainDate(a)); dates.set(a,v||null);} return v?new Date(v.getTime()):null; }
+function isoOf(a){ var d=dateOf(a); return d?dateIso(d):''; }
+function byDateMap(){ var k='date_'+variantKey(); ensure(); var m=S.idx[k]; if(m) return m; m=new Map(); var L=current(); for(var i=0;i<L.length;i++){ var iso=isoOf(L[i]); if(!iso) continue; var arr=m.get(iso); if(!arr){arr=[];m.set(iso,arr);} arr.push(L[i]); } S.idx[k]=m; return m; }
+function forClient(c){ var id=String(c&&c[fields.id]); return byClientMap().get(id)||[]; }
+function forDay(d){ var iso=typeof d==='string'?d:dateIso(d); return byDateMap().get(iso)||[]; }
+
+/* ---------- remplacement du moteur ---------- */
+var engine=function(){ return current(); };
+engine.__mgtCalEngine=VERSION;
+window.allPlanningActions=engine;
+var prevInv=window.invalidateApaCache;
+if(typeof prevInv==='function'){ window.invalidateApaCache=function(){ S.dirty=true; return prevInv.apply(this,arguments); }; }
+
+/* ---------- liste Clients : memes resultats, sans reparcourir toutes les actions (Q3) ---------- */
+window.plannedActions=function(c){ return forClient(c).filter(function(a){return actionIsPlanned(a)&&parseDateValue(actionMainDate(a));}); };
+window.clientStatusData=function(c){
+  var urgent=forClient(c).some(function(a){return actionIsPlanned(a)&&(norm(a.priority).includes('haute')||norm(a.type).includes('sav')||(actionDays(a)!==null&&actionDays(a)<0));});
+  var days=daysSinceLatestVisit(c); var statusText=norm(c[fields.status]||'');
+  if(urgent) return {key:'urgent',label:'Urgent'};
+  if(statusText.includes('inact')||((days===null||days>120)&&!hasActiveOffer(c)&&!hasUpcomingAction(c))) return {key:'inactive',label:'Inactif'};
+  return {key:'active',label:'Actif'};
+};
+window.clientNextVisit=function(c){ return forClient(c).filter(function(a){return isFieldVisit(a)&&actionIsPlanned(a)&&parseDateValue(actionMainDate(a))&&actionDays(a)!==null&&actionDays(a)>=0;}).sort(function(a,b){return parseDateValue(actionMainDate(a))-parseDateValue(actionMainDate(b));})[0]||null; };
+var prevSeg=window.segmentMatches;
+if(typeof prevSeg==='function'){ window.segmentMatches=function(c){ var s=(document.getElementById('clientSegment')||{}).value||''; if(s!=='urgent') return prevSeg.apply(this,arguments);
+  var d=daysSinceLatestVisit(c); return d===null||d>120||forClient(c).some(function(a){return actionIsPlanned(a)&&(norm(a.priority).includes('haute')||norm(a.type).includes('sav')||(actionDays(a)!==null&&actionDays(a)<0));}); }; }
+
+/* classement de la liste Clients : calcule une fois par client et par etat des donnees
+   (il etait recalcule a chaque comparaison du tri) */
+var prevRank=window.clientRankData;
+if(typeof prevRank==='function'){ var rk=new WeakMap(); window.clientRankData=function(c){ if(!c||typeof c!=='object') return prevRank.apply(this,arguments); ensure(); var d=todayIso(), e=rk.get(c); if(e&&e.v===S.ver&&e.d===d) return e.r; var r=prevRank.apply(this,arguments); rk.set(c,{v:S.ver,d:d,r:r}); return r; }; }
+
+/* ---------- diagnostic en lecture seule ---------- */
+function mins(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return m?(+m[1])*60+(+m[2]):null;}
+function diagnostic(){
+  ensure(); var L=S.list, r={version:VERSION,actions:L.length,clients:(CLIENTS||[]).length,planning:0,historique:0,automatiques:0,sansIdentifiant:0,avecHoraire:0,sansHoraire:0,avant8h:0,apres21h:0,sansDate:0,archivees:0,masqueesParClient:0,calculs:S.builds,dernierCalculMs:S.buildMs};
+  (CLIENTS||[]).forEach(function(c){ planningList(c).forEach(function(a){ if(a&&!a.id&&((a.date||'').trim()||(a.type||'').trim()||(a.objective||'').trim())) r.sansIdentifiant++; }); r.masqueesParClient+=Array.isArray(c.SuppressedActions)?c.SuppressedActions.length:0; });
+  L.forEach(function(a){ if(a._from==='planning') r.planning++; else if(a._from==='history') r.historique++; else r.automatiques++;
+    var s=mins(a.startTime); if(s===null) r.sansHoraire++; else { r.avecHoraire++; if(s<480) r.avant8h++; if(s>=1260) r.apres21h++; }
+    if(!dateOf(a)) r.sansDate++; if(norm(a.status).includes('archive')) r.archivees++; });
+  return r;
+}
+function showDiag(){
+  var d=diagnostic(), old=document.getElementById('mgtCalDiag'); if(old) old.remove();
+  var rows=[['Actions dans le calendrier',d.actions],['Clients',d.clients],['Saisies dans les fiches (planning)',d.planning],['Issues de l’historique',d.historique],['Générées automatiquement (visites, relances)',d.automatiques],['Anciennes actions sans identifiant',d.sansIdentifiant],['Avec horaire',d.avecHoraire],['Sans horaire',d.sansHoraire],['Commençant avant 08:00',d.avant8h],['Commençant à 21:00 ou après',d.apres21h],['Sans date',d.sansDate],['Archivées',d.archivees],['Actions masquées (toutes fiches)',d.masqueesParClient],['Temps du dernier calcul',d.dernierCalculMs+' ms']];
+  var m=document.createElement('div'); m.id='mgtCalDiag'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-label','Diagnostic du calendrier');
+  m.innerHTML='<div class="mcdBox"><div class="mcdHead"><strong>Diagnostic du calendrier</strong><button type="button" class="mcdClose" data-x="1">Fermer</button></div><p class="mcdSub">Lecture seule — aucune donnée n’est modifiée. Moteur '+VERSION+'.</p><dl class="mcdList">'+rows.map(function(r){return '<div class="mcdRow"><dt>'+esc(r[0])+'</dt><dd>'+esc(typeof r[1]==='number'?r[1].toLocaleString('fr-FR'):r[1])+'</dd></div>';}).join('')+'</dl></div>';
+  m.addEventListener('click',function(e){ if(e.target===m||e.target.closest('[data-x]')) m.remove(); });
+  document.addEventListener('keydown',function k(e){ if(e.key==='Escape'){ m.remove(); document.removeEventListener('keydown',k);} });
+  document.body.appendChild(m); var b=m.querySelector('.mcdClose'); if(b) b.focus();
+}
+function diagButton(){ var lg=document.getElementById('p7Legend'); if(!lg||document.getElementById('mgtCalDiagBtn')) return !!lg;
+  var b=document.createElement('button'); b.type='button'; b.id='mgtCalDiagBtn'; b.className='mgtCalDiagBtn'; b.textContent='ⓘ Diagnostic'; b.title='Diagnostic du calendrier (lecture seule)'; b.setAttribute('aria-label','Diagnostic du calendrier'); b.onclick=showDiag; lg.appendChild(b); return true; }
+if(!diagButton()){ var tries=0, iv=setInterval(function(){ if(diagButton()||++tries>40) clearInterval(iv); },250); }
+
+window.MGT_CAL={version:VERSION,all:engine,forClient:forClient,forDay:forDay,dateOf:dateOf,isoOf:isoOf,invalidate:function(){S.dirty=true;},diagnostic:diagnostic,showDiagnostic:showDiag,state:function(){return {ver:S.ver,builds:S.builds,buildMs:S.buildMs};},_previous:prevAPA};
+})();
+
+</script>
+<script id="mgt-v469c-cal-render">
+/* =====================================================================
+   MGT CRM V4.6.9C — RENDU DU CALENDRIER ET INTERACTIONS
+   Remplace la chaine d'affichage (rendu « phase 6 » + enveloppe des rappels + decoration et
+   placement declenches apres coup par un observateur + barre mobile) par UN rendu equivalent :
+     - meme HTML final (verifie par comparaison avec la V4.6.9B), memes clics, double-clics,
+       ajout, ouverture d'un jour, appui long, menu contextuel ;
+     - les actions sont regroupees par jour en UN passage, seulement pour les jours affiches
+       (avant : chaque case reparcourait toutes les actions) ;
+     - decoration (🚗 / 🖥️, type) et placement horaire faits pendant le rendu : l'observateur
+       existant ne trouve plus rien a refaire ;
+     - recherche : une seule mise a jour apres 250 ms de pause, par le rendu complet (les
+       « Visites a planifier » masquees le restent), Echap efface la recherche.
+   Aucun changement de donnees ni de modele. Les vues Jour / Semaine / Mois / Annee seront
+   modernisees en V4.6.9D et V4.6.9E.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9C';
+if(typeof window.renderCalendar!=='function'||typeof phase6ActionTime!=='function'){console.error('[CALENDRIER '+VERSION+'] rendu introuvable');return;}
+var previous=window.renderCalendar;
+
+/* ---------- reprises a l'identique (couches V4.5.2 phase 6 et V4.6.7 T1 fix2) ---------- */
+var TERR=/visite|sav|install|livraison|depann|formation|demonstration|intervention|deplacement|tournee|salon|mission/;
+function grp(a){return TERR.test(norm(a.type||''))?'terrain':'bureau';}
+function pretty(t){t=String(t||'Action').replace(/_/g,' ').toLowerCase();if(t==='sav')return 'SAV';return t.charAt(0).toUpperCase()+t.slice(1);}
+function mins(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return m?(+m[1])*60+(+m[2]):null;}
+function E(v){return esc(v==null?'':v);}
+function pill(a,compact){
+  calendarActionMap[a.eventId]=a; var t=phase6ActionTime(a), g=grp(a);
+  return '<button type="button" class="phase6Event '+(compact?'compact ':'')+actionTypeClass(a)+' p7-'+g+'" data-event-id="'+E(a.eventId)+'" title="'+E((a.type||'Action')+' — '+(a.client[fields.name]||'')+' — '+(a.objective||''))+'" data-p7="1">'
+    +'<span class="phase6EventTime">'+(t?E(t)+' ':'')+'</span><span class="phase6EventText"><b class="p7Type"><span class="p7Ico">'+(g==='terrain'?'🚗':'🖥️')+'</span><span class="p7Tx"> '+esc(pretty(a.type))+'</span></b><span class="p7Sep"> · </span>'+E(a.client[fields.name]||a.type||'Action')+'</span></button>';
+}
+function bindEvents(root){
+  root.querySelectorAll('[data-event-id]').forEach(function(el){var get=function(){return calendarActionMap[el.dataset.eventId];};
+    el.onclick=function(e){e.stopPropagation();var a=get();if(a)openTaskDetail(a);};
+    el.ondblclick=function(e){e.preventDefault();e.stopPropagation();var a=get();if(a){document.getElementById('taskDetailModal').hidden=true;showEventContext(a);openEventEditor(a);}};});
+  root.querySelectorAll('[data-add-date]').forEach(function(b){b.onclick=function(e){e.stopPropagation();openEventEditor(null,b.dataset.addDate);};});
+  root.querySelectorAll('[data-day-open]').forEach(function(b){b.onclick=function(){pilotCalendarDate=parseDateValue(b.dataset.dayOpen)||new Date();pilotCalendarMode='day';var m=document.getElementById('calendarMode');if(m)m.value='day';renderCalendar();};});
+}
+/* placement horaire (meme calcul que la couche V4.6.7 T1 fix2) : les evenements horaires sont
+   generes directement dans le calque ; seule leur position est calculee apres insertion. */
+function startMin(a){return mins(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut);}
+function endMin(a){return mins(a.endTime||a.end_time||a.heureFin||a.fin);}
+function placeTimed(el,items,isDay){try{var root=el.querySelector(isDay?'.phase6DayTimeline':'.phase6WeekHours');if(!root||root.dataset.p7t==='1')return;
+var rows=root.querySelectorAll(isDay?'.phase6Hour':'.phase6HourRow');if(!rows.length)return;var H=rows[0].offsetHeight||(isDay?60:46),nD=isDay?1:7,left=isDay?55:48;
+root.dataset.p7t='1';if(!items.length)return;root.style.position='relative';
+var layer=root.querySelector(':scope > .p7Layer');layer.style.cssText='position:absolute;top:0;bottom:0;right:0;pointer-events:none;left:'+left+'px';
+var btns=layer.children,ev=items.map(function(x,i){var s=startMin(x.a),e=endMin(x.a);return {b:btns[i],s:s,e:(e!==null&&e>s)?e:s+30,d:x.d};});
+var byDay={};ev.forEach(function(x){(byDay[x.d]=byDay[x.d]||[]).push(x);});
+var chips=[];Object.keys(byDay).forEach(function(k){var list=byDay[k].slice().sort(function(p,q){return p.s-q.s||p.e-q.e;}),cl=[],cEnd=0,lanes=[];function fin(){if(!cl.length)return;if(!isDay&&lanes.length>2){var hid=0;cl.forEach(function(x){x.n=2;if(x.l>=2){x.hide=1;hid++;}});chips.push({d:cl[0].d,s:Math.min.apply(null,cl.map(function(x){return x.s;})),k:hid});}else cl.forEach(function(x){x.n=lanes.length||1;});}
+list.forEach(function(x){if(x.s>=cEnd){fin();cl=[];lanes=[];}var l=0;while(l<lanes.length&&lanes[l]>x.s)l++;lanes[l]=x.e;x.l=l;cl.push(x);cEnd=Math.max(cEnd,x.e);});fin();});
+ev.forEach(function(x){var b=x.b;if(x.hide){b.style.display='none';return;}var top=(Math.max(x.s,480)-480)/60*H,bot=(Math.min(x.e,1440)-480)/60*H;var h=Math.max(bot-top-1,18),cw=100/nD,w=cw/x.n;b.classList.add('p7Block');if(h<34)b.classList.add('p7Short');b.style.cssText='position:absolute;top:'+top+'px;height:'+h+'px;left:calc('+(x.d*cw+x.l*w)+'% + 1px);width:calc('+w+'% - 2px)';});
+chips.forEach(function(c){var ch=document.createElement('button');ch.type='button';ch.className='p7More';ch.textContent='+'+c.k;ch.style.cssText='position:absolute;top:'+((Math.max(c.s,480)-480)/60*H)+'px;left:calc('+((c.d+1)*100/nD)+'% - 22px);pointer-events:auto';ch.onclick=function(e){e.stopPropagation();var hs=document.querySelectorAll('#planningCalendar .phase6WeekDay');if(hs[c.d])hs[c.d].click();};layer.appendChild(ch);});}catch(e){console.warn('[CALENDRIER] placement',e);}}
+function layerHtml(items){return items.length?'<div class="p7Layer">'+items.map(function(x){return x.html;}).join('')+'</div>':'';}
+
+/* ---------- regroupement par jour, en un passage, pour les jours affiches ---------- */
+var isoMemo=new Map();
+function isoOfStr(s){ var r=isoMemo.get(s); if(r===undefined){ var d=parseDateValue(s); r=d?dateIso(d):''; if(isoMemo.size>50000) isoMemo.clear(); isoMemo.set(s,r);} return r; }
+function query(){ return ((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr'); }
+function bucket(daySet){
+  var q=query(), f=pilotFilterValues(), pil=!!(f.city||f.commercial), L=allPlanningActions(), out=new Map(), n=0;
+  for(var i=0;i<L.length;i++){ var a=L[i], iso=isoOfStr(actionMainDate(a)); if(!iso||!daySet.has(iso)) continue;
+    if(pil&&!matchesPilot(a.client,a)) continue;
+    if(norm(a.status).includes('archive')) continue;
+    if(q&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q)) continue;
+    var arr=out.get(iso); if(!arr){arr=[];out.set(iso,arr);} arr.push(a); n++; }
+  out.total=n; return out;
+}
+function setOf(days){ var s=new Set(); days.forEach(function(d){s.add(dateIso(d));}); return s; }
+
+/* ---------- rendu (meme HTML que la phase 6 decoree) ---------- */
+var stats={renders:0,lastMs:0,lastActions:0};
+function core(){
+  var el=document.getElementById('planningCalendar'); if(!el) return; var t0=performance.now();
+  calendarActionMap={}; var title=document.getElementById('calendarTitle'), mode=pilotCalendarMode||'week', html, by, today=new Date();
+  if(mode==='month'){
+    var year=pilotCalendarDate.getFullYear(),month=pilotCalendarDate.getMonth(),first=new Date(year,month,1),start=startOfWeek(first),last=new Date(year,month+1,0),end=addDays(startOfWeek(last),6),days=[];for(var d=new Date(start);d<=end;d=addDays(d,1))days.push(new Date(d));
+    if(title)title.textContent=monthTitle(pilotCalendarDate);
+    by=bucket(setOf(days)); var selIso=dateIso(pilotCalendarDate);
+    html='<div class="phase6Month"><div class="phase6Dow">'+['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(function(x){return '<div>'+x+'</div>';}).join('')+'</div><div class="phase6MonthGrid">';
+    days.forEach(function(day){var iso=dateIso(day),list=by.get(iso)||[],isT=sameDay(day,today),out=day.getMonth()!==month,selected=iso===selIso;
+      html+='<div class="phase6MonthDay '+(out?'out ':'')+(isT?'isToday ':'')+(selected?'isSelected':'')+'" data-day-open="'+iso+'"><button class="phase6DateNum" type="button" data-day-open="'+iso+'"><span>'+day.getDate()+'</span></button><div class="phase6Pills">'+list.slice(0,3).map(function(a){return pill(a,true);}).join('')+(list.length>3?'<button type="button" class="phase6More" data-day-open="'+iso+'">+ '+(list.length-3)+' autres</button>':'')+'</div></div>';});
+    html+='</div></div>'; el.innerHTML=html;
+  } else if(mode==='day'){
+    var day=new Date(pilotCalendarDate),iso=dateIso(day); by=bucket(setOf([day]));
+    var list=(by.get(iso)||[]).slice().sort(function(a,b){return phase6ActionTime(a).localeCompare(phase6ActionTime(b));});
+    var items=[],timed=list.filter(function(a){return phase6ActionTime(a);}),allDay=list.filter(function(a){return !phase6ActionTime(a);});
+    if(title)title.textContent=day.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    html='<div class="phase6DayView"><div class="phase6DayBanner"><div class="phase6TodayNumber '+(sameDay(day,today)?'isToday':'')+'">'+day.getDate()+'</div><div><strong>'+day.toLocaleDateString('fr-FR',{weekday:'long',month:'long',year:'numeric'})+'</strong><div class="phase6Muted">'+list.length+' action(s) planifiée(s)</div></div><button class="phase6Add" data-add-date="'+iso+'">+ Nouvelle action</button></div><div class="phase6AllDay"><span>Toute la journée</span><div>'+allDay.map(function(a){return pill(a,false);}).join('')+'</div></div><div class="phase6DayTimeline">'
+      +Array.from({length:16},function(_,i){return 8+i;}).map(function(h){var hh=String(h).padStart(2,'0');var slot=timed.filter(function(a){return phase6ActionTime(a).slice(0,2)===hh;});return '<div class="phase6Hour"><span>'+hh+':00</span><div>'+slot.map(function(a){var p=pill(a,false);if(startMin(a)!==null){items.push({a:a,d:0,html:p});return '';}return p;}).join('')+'</div></div>';}).join('')
+      +layerHtml(items)+'</div><p class="phase6Note">Les actions peuvent avoir une heure de début et une heure de fin, facultatives. Celles avec un horaire apparaissent dans le créneau correspondant ; celles sans horaire restent dans « Toute la journée ».</p></div>';
+    el.innerHTML=html;
+  } else {
+    var ws=startOfWeek(pilotCalendarDate),wd=Array.from({length:7},function(_,i){return addDays(ws,i);});
+    if(title)title.textContent=phase6DateLabel(wd[0],{day:'numeric',month:'short'})+' – '+phase6DateLabel(wd[6],{day:'numeric',month:'short',year:'numeric'});
+    by=bucket(setOf(wd)); var items=[], sel=dateIso(pilotCalendarDate), per=wd.map(function(d){return by.get(dateIso(d))||[];});
+    html='<div class="phase6Week"><div class="phase6WeekHead"><div class="phase6TimeHead"></div>'+wd.map(function(d){return '<button type="button" class="phase6WeekDay '+(sameDay(d,today)?'isToday ':'')+(dateIso(d)===sel?'isSelected':'')+'" data-day-open="'+dateIso(d)+'"><span>'+d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','')+'</span><strong>'+d.getDate()+'</strong></button>';}).join('')
+      +'</div><div class="phase6AllDayRow"><div class="phase6TimeLabel">Toute la journée</div>'+wd.map(function(d,i){var list=per[i].filter(function(a){return !phase6ActionTime(a);});return '<div class="phase6AllDayCell">'+list.slice(0,4).map(function(a){return pill(a,true);}).join('')+(list.length>4?'<button class="phase6More" data-day-open="'+dateIso(d)+'">+ '+(list.length-4)+' autres</button>':'')+'<button type="button" class="phase6TinyAdd" data-add-date="'+dateIso(d)+'" aria-label="Ajouter une action">+</button></div>';}).join('')
+      +'</div><div class="phase6WeekHours">'+Array.from({length:16},function(_,i){return 8+i;}).map(function(h){var hh=String(h).padStart(2,'0');return '<div class="phase6HourRow"><div class="phase6TimeLabel">'+hh+':00</div>'+wd.map(function(d,i){var slot=per[i].filter(function(a){return phase6ActionTime(a).slice(0,2)===hh;});return '<div class="phase6HourCell">'+slot.map(function(a){var p=pill(a,true);if(startMin(a)!==null){items.push({a:a,d:i,html:p});return '';}return p;}).join('')+'</div>';}).join('')+'</div>';}).join('')
+      +layerHtml(items)+'</div><p class="phase6Note">Les actions avec un horaire apparaissent dans le créneau correspondant ; celles sans horaire restent dans « Toute la journée ». Les horaires sont facultatifs.</p></div>';
+    el.innerHTML=html;
+  }
+  bindEvents(el); if(mode!=='month') placeTimed(el,items||[],mode==='day');
+  stats.renders++; stats.lastMs=Math.round((performance.now()-t0)*10)/10; stats.lastActions=by?by.total:0;
+}
+function phase6DateLabel(d,opts){return d.toLocaleDateString('fr-FR',opts||{day:'numeric',month:'short'});}
+function updateActive(){ var m=document.getElementById('calendarModule'); if(!m) return; var s=document.getElementById('calendarMode'), cur=(s&&s.value)||String(pilotCalendarMode||'');
+  var btns=m.querySelectorAll('.lot1Views button'); for(var i=0;i<btns.length;i++) btns[i].classList.toggle('lot1Active',btns[i].getAttribute('data-mode')===cur); }
+
+var render=function(){ window.__p7cal=1; try{ core(); } finally{ window.__p7cal=0; } try{ updateActive(); }catch(e){} try{ if(window.__p7visCount) window.__p7visCount(); }catch(e){} };
+render.__p7=1; render.__mgtCalRender=VERSION;
+window.renderCalendar=render;
+
+/* ---------- recherche : une seule mise a jour apres 250 ms de pause ---------- */
+var timer=null;
+function isSearch(t){ return t&&t.id==='calendarQuickSearch'; }
+document.addEventListener('input',function(e){ if(!isSearch(e.target)) return; e.stopPropagation(); clearTimeout(timer); timer=setTimeout(function(){ timer=null; renderCalendar(); },250); },true);
+document.addEventListener('keydown',function(e){ if(!isSearch(e.target)||e.key!=='Escape') return; if(e.target.value){ e.preventDefault(); e.stopPropagation(); e.target.value=''; clearTimeout(timer); timer=null; renderCalendar(); } },true);
+
+window.MGT_CAL_RENDER={version:VERSION,render:render,stats:function(){return Object.assign({},stats);},_previous:previous,_pending:function(){return !!timer;}};
+})();
+
+</script>
+<style id="mgt-v469d-cal-views-css">
+/* MGT CRM V4.6.9D — vues Jour / Semaine / Agenda (classes .mc*, valables aussi dans l'apercu) */
+.mcCal{--mc-bg:#12161c;--mc-col:#151a21;--mc-fg:#e8edf3;--mc-muted:#9aa5b4;--mc-line:#2a313b;--mc-line2:#20262f;--mc-soft:#1b2129;--mc-acc:#e8590c;--mc-acc2:#c2410c;
+  --mc-terr:#16a34a;--mc-terr-bg:#173526;--mc-bur:#7c5cdb;--mc-bur-bg:#29233f;--mcH:52px;color:var(--mc-fg);font-size:13px;line-height:1.3;box-sizing:border-box}
+html[data-mgt-theme="light"] .mcCal{--mc-bg:#f6f7f9;--mc-col:#fff;--mc-fg:#18212f;--mc-muted:#5b6575;--mc-line:#d9dee5;--mc-line2:#eef1f4;--mc-soft:#f1f3f6;
+  --mc-terr-bg:#e3f4ea;--mc-bur-bg:#ece7fb}
+.mcCal *,.mcCal *::before,.mcCal *::after{box-sizing:border-box}
+.mcCal [role="button"]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mcCal [role="button"]:focus-visible{outline:2px solid var(--mc-acc);outline-offset:2px}
+.mcDay{--mcH:56px}.mcWeek{--mcH:48px}
+/* barre et bascule */
+.mcBar,.mcDayHead{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0 0 10px}
+.mcCount{color:var(--mc-muted);font-size:12px}
+.mcToggle{display:inline-flex;border:1px solid var(--mc-line);border-radius:10px;overflow:hidden;margin-left:auto}
+.mcTg{min-height:36px;padding:0 14px;display:inline-flex;align-items:center;font-weight:700;font-size:12.5px;color:var(--mc-muted);background:transparent}
+.mcCal .mcTg.on{background:var(--mc-acc2);color:#fff!important}
+.mcCal .mcAdd{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:10px;background:var(--mc-acc2);color:#fff!important;font-weight:800}
+/* en-tete du jour */
+.mcDayNum{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;background:var(--mc-soft);border:1px solid var(--mc-line)}
+.mcDayNum.mcIsToday{background:var(--mc-acc2);border-color:var(--mc-acc2);color:#fff}
+.mcDayTx{display:flex;flex-direction:column;min-width:0}.mcDayTx strong{font-size:16px;text-transform:capitalize}.mcDayTx span{color:var(--mc-muted);font-size:12.5px}
+/* toute la journee */
+.mcAllDay{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--mc-line);border-bottom:1px solid var(--mc-line);margin-bottom:6px}
+.mcAllDayLbl{font-size:10.5px;color:var(--mc-muted);line-height:1.2;padding-top:4px}
+.mcAllDayList{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mcEmpty{color:var(--mc-muted);font-size:12px;padding:6px 0}
+.mcChip{display:flex;align-items:center;gap:5px;min-height:28px;padding:3px 7px;border-radius:7px;border-left:3px solid var(--mc-bur);background:var(--mc-bur-bg);font-size:11.5px;min-width:0;overflow:hidden}
+.mcChip.mc-terrain{border-left-color:var(--mc-terr);background:var(--mc-terr-bg)}
+.mcChipTx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.mcChipMeta{color:var(--mc-muted)}
+/* grilles */
+.mcGrid{display:grid;position:relative}
+.mcGrid1{grid-template-columns:52px minmax(0,1fr)}
+.mcGrid7{grid-template-columns:48px repeat(7,minmax(0,1fr))}
+.mcGutter{position:relative}
+.mcHourLbl{position:absolute;left:0;right:6px;text-align:right;font-size:10.5px;color:var(--mc-muted);transform:translateY(-6px)}
+.mcHourLbl:first-child{transform:none}
+.mcCol{position:relative;background-color:var(--mc-col);border-left:1px solid var(--mc-line);
+  background-image:repeating-linear-gradient(to bottom,var(--mc-line) 0,var(--mc-line) 1px,transparent 1px,transparent var(--mcH))}
+.mcCol:last-child{border-right:1px solid var(--mc-line)}
+.mcCol.mcToday{background-color:color-mix(in srgb,var(--mc-acc) 6%,var(--mc-col))}
+.mcEv{position:absolute;padding:1px 2px;min-height:22px;z-index:1}
+.mcEvIn{height:100%;min-height:20px;overflow:hidden;border-radius:6px;border-left:3px solid var(--mc-bur);background:var(--mc-bur-bg);padding:3px 6px;display:flex;flex-direction:column;gap:1px;font-size:11.5px;line-height:1.2}
+.mc-terrain .mcEvIn{border-left-color:var(--mc-terr);background:var(--mc-terr-bg)}
+.mcEvTime{font-weight:800;font-size:10.5px}.mcEvName{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.mcEvMeta{color:var(--mc-muted);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcEvIn>*{flex:0 0 auto;min-width:0}
+.mcEvName,.mcEvTime{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcL1 .mcEvIn{flex-direction:row;align-items:center;gap:4px;white-space:nowrap;padding:1px 5px}
+.mcL1 .mcEvName{flex:1 1 auto}
+.mcEvRow{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
+.mcEvRow .mcEvMeta{flex:0 1 auto}.mcEvRow .mcEvName{flex:1 1 auto}
+.mcWeek .mcEvIn{font-size:10.5px;padding:2px 4px}.mcWeek .mcEvTime{font-size:9.5px}
+.mcEv:hover .mcEvIn{filter:brightness(1.08)}
+.mcEv.mcSt-done .mcEvIn,.mcChip.mcSt-done,.mcCard.mcSt-done{opacity:.72}
+.mcSt-done .mcEvName,.mcSt-done .mcCardName{text-decoration:line-through}
+.mcEv.mcSt-late .mcEvIn,.mcChip.mcSt-late{box-shadow:inset -3px 0 0 #dc2626}
+.mcMore{position:absolute;right:2px;z-index:2;min-width:30px;height:22px;padding:0 6px;border-radius:999px;background:var(--mc-acc2);color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;transform:translateY(1px)}
+.mcNow{position:absolute;left:0;right:0;height:2px;background:#dc2626;z-index:3;pointer-events:none}
+.mcNow::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:#dc2626}
+/* semaine : en-tetes */
+.mcWkHead,.mcWkAll{display:grid;grid-template-columns:48px repeat(7,minmax(0,1fr))}
+.mcWkDay{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:48px;padding:4px 2px;border-radius:10px;position:relative}
+.mcWkDay span{font-size:11px;color:var(--mc-muted);text-transform:capitalize}.mcWkDay strong{font-size:17px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.mcWkDay em{position:absolute;top:3px;right:6px;font-style:normal;font-size:10px;font-weight:800;color:var(--mc-muted)}
+.mcWkDay.mcIsToday strong{background:var(--mc-acc2);color:#fff}
+.mcWkDay.mcIsSel{box-shadow:inset 0 0 0 2px var(--mc-acc)}
+.mcWkDay:hover{background:var(--mc-soft)}
+.mcWkAll{border-top:1px solid var(--mc-line);border-bottom:1px solid var(--mc-line);margin-bottom:6px}
+.mcWkAll .mcAllDayLbl{padding:6px 4px 0 0;text-align:right}
+.mcWkAllCell{display:flex;flex-direction:column;gap:3px;padding:4px 3px;border-left:1px solid var(--mc-line);min-width:0}
+.mcWkAllCell:last-child{border-right:1px solid var(--mc-line)}
+.mcWkAllCell .mcChip{font-size:10.5px;min-height:24px;padding:2px 5px}
+.mcMoreTx{font-size:11px;font-weight:700;color:var(--mc-acc);min-height:24px;display:flex;align-items:center;padding:2px 4px}
+.mcTinyAdd{align-self:center;min-width:28px;min-height:24px;display:flex;align-items:center;justify-content:center;color:var(--mc-muted);font-weight:800;border-radius:6px}
+.mcTinyAdd:hover{background:var(--mc-soft);color:var(--mc-fg)}
+.mcNote{color:var(--mc-muted);font-size:11.5px;margin:8px 0 0}
+/* agenda */
+.mcList .mcAgDay{border:1px solid var(--mc-line);border-radius:12px;background:var(--mc-col);margin:0 0 10px;overflow:hidden}
+.mcAgHead{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;background:var(--mc-soft);border-bottom:1px solid var(--mc-line)}
+.mcAgHead.mcIsToday{box-shadow:inset 4px 0 0 var(--mc-acc)}
+.mcAgDate{flex:1;min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;text-transform:capitalize}
+.mcAgDate .mcCount{text-transform:none}
+.mcAgAdd{width:44px;height:44px;flex:0 0 44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff!important;background:var(--mc-acc2)}
+.mcAgList{display:flex;flex-direction:column}
+.mcCard{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:start;min-height:56px;padding:10px 12px;border-left:4px solid var(--mc-bur);border-bottom:1px solid var(--mc-line2)}
+.mcCard:last-child{border-bottom:0}
+.mcCard.mc-terrain{border-left-color:var(--mc-terr)}
+.mcCard:hover{background:var(--mc-soft)}
+.mcCardTime{display:flex;flex-direction:column;font-variant-numeric:tabular-nums}.mcCardTime b{font-size:14px}.mcCardTime span{color:var(--mc-muted);font-size:12px}
+.mcCardName{font-weight:800;font-size:14px;overflow-wrap:anywhere}
+.mcCardMeta{color:var(--mc-muted);font-size:12.5px;margin-top:2px}
+.mcCardObj{font-size:12.5px;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mcCardSide{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.mcList.mcDay .mcAgList{border:1px solid var(--mc-line);border-radius:12px;background:var(--mc-col);overflow:hidden}
+/* statuts */
+.mcBadge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;white-space:nowrap;background:color-mix(in srgb,var(--mc-muted) 22%,transparent);color:var(--mc-fg)}
+.mcBadge.mcSt-doing{background:#1d4ed8;color:#fff}.mcBadge.mcSt-done{background:#15803d;color:#fff}
+.mcBadge.mcSt-later{background:#b45309;color:#fff}.mcBadge.mcSt-late{background:#b91c1c;color:#fff}
+.mcEvIn .mcBadge{align-self:flex-start;margin-top:1px;flex:0 0 auto}
+.mcSimTag{font-size:10.5px;font-weight:700;color:var(--mc-acc)}
+/* telephone et tablette */
+@media (max-width:1024px){.mcTg,.mcCal .mcAdd{min-height:44px}.mcAgDate{min-height:44px}}
+@media (max-width:760px){.mcGrid7,.mcWkHead,.mcWkAll{grid-template-columns:34px repeat(7,minmax(0,1fr))}.mcHourLbl{font-size:9.5px;right:3px}
+  .mcWeek .mcEvIn{padding:1px 2px;border-left-width:2px}.mcWeek .mcEvTime{font-size:8.5px}.mcWeek .mcEvName{font-size:9px}
+  .mcWkDay strong{font-size:14px;width:26px;height:26px}.mcWkDay em{right:2px}.mcWkAllCell .mcChip .mcIco{display:none}
+  .mcTinyAdd{min-height:32px}.mcTg{min-height:44px}.mcAdd{min-height:44px}}
+@media (max-width:480px){.mcDayHead .mcToggle{margin-left:0}.mcGrid1{grid-template-columns:40px minmax(0,1fr)}.mcAllDay{grid-template-columns:40px 1fr}
+  .mcCard{grid-template-columns:64px minmax(0,1fr);gap:8px}.mcCardTime b{font-size:13px}.mcCardSide{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start}}
+.mcAgMore{min-height:44px;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--mc-acc);border-top:1px solid var(--mc-line2)}
+</style>
+<script id="mgt-v469d-cal-views">
+/* =====================================================================
+   MGT CRM V4.6.9D — VUES JOUR ET SEMAINE, AGENDA MOBILE
+   - Plage horaire 07:00–21:00, etendue automatiquement a l'action la plus matinale ou la
+     plus tardive affichee (decision Q1) : plus aucune action horaire invisible.
+   - Placement proportionnel calcule sans mesure de la page (unite = hauteur d'une heure,
+     variable CSS --mcH), chevauchements en colonnes, actions courtes compactes.
+   - Jour : en-tete (date, jour, nombre d'actions, « + Nouvelle action »), « Toute la journee »,
+     chronologie ; chaque bloc montre horaire, client, type, commercial et statut.
+   - Semaine : 7 colonnes, jour actuel et jour choisi signales, section « Toute la journee »,
+     acces direct a un jour, « +n » au-dela de 2 actions simultanees.
+   - Deux presentations : Grille ou Agenda (liste par jour). Telephone (<= 480 px) : la
+     Semaine s'ouvre en Agenda (decision Q7) ; le choix est memorise sur l'appareil.
+   - Vue Mois : inchangee (rendu V4.6.9C) ; modernisee en V4.6.9E.
+   Lecture seule : aucune donnee modifiee. Statuts harmonises a l'affichage uniquement.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9D';
+var previous=window.renderCalendar;
+if(typeof previous!=='function'){console.error('[CALENDRIER '+VERSION+'] rendu introuvable');return;}
+var MOBILE_MAX=480, DEF_START=7, DEF_END=21, WEEK_LANES=2;
+
+/* ---------- outils ---------- */
+function E(v){return esc(v==null?'':v);}
+function mins(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());if(!m)return null;var h=+m[1],mi=+m[2];if(h>24||mi>59)return null;return Math.min(h*60+mi,1440);}
+function startMin(a){return mins(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut);}
+function endMin(a){return mins(a.endTime||a.end_time||a.heureFin||a.fin);}
+function hhmm(m){m=Math.max(0,Math.min(1440,m));return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+var TERR=/visite|sav|install|livraison|depann|formation|demonstration|intervention|deplacement|tournee|salon|mission/;
+function grp(a){return window.MGT_CAL_CAT?MGT_CAL_CAT.of(a):(TERR.test(norm(a.type||''))?'terrain':'bureau');}
+function ICO(g){return window.MGT_CAL_CAT?MGT_CAL_CAT.icon(g):ICO(g);} /* revise V4.6.9F : 4 categories (Q2) */
+function pretty(t){t=String(t||'Action').replace(/_/g,' ').toLowerCase();if(t==='sav')return 'SAV';return t.charAt(0).toUpperCase()+t.slice(1);}
+function isMobile(){return window.innerWidth<=MOBILE_MAX;}
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+/* statut affiche (aucune donnee reecrite) */
+function statusOf(a){var s=norm(a.status||'');
+  if(s.includes('realise')||s.includes('termine')) return {k:'done',l:'Terminé'};
+  if(s.includes('report')) return {k:'later',l:'Reporté'};
+  var d=actionDays(a); if(d!==null&&d<0) return {k:'late',l:'En retard'};
+  if(s.includes('cours')) return {k:'doing',l:'En cours'};
+  return {k:'todo',l:'À faire'};}
+
+/* ---------- donnees : regroupement par jour (memes filtres que le calendrier) ---------- */
+var isoMemo=new Map();
+function isoOfStr(s){var r=isoMemo.get(s);if(r===undefined){var d=parseDateValue(s);r=d?dateIso(d):'';if(isoMemo.size>50000)isoMemo.clear();isoMemo.set(s,r);}return r;}
+function query(){return((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr');}
+function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=pilotFilterValues(),pil=!!(f.city||f.commercial),L=allPlanningActions(),out=new Map();
+  for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||!set.has(iso))continue;
+    if(pil&&!matchesPilot(a.client,a))continue; if(norm(a.status).includes('archive'))continue;
+    if(q&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q))continue;
+    var arr=out.get(iso);if(!arr){arr=[];out.set(iso,arr);}arr.push(a);}
+  return out;}
+/* separation horaires / journee, intervalles normalises */
+function split(list){var timed=[],allDay=[];list.forEach(function(a){var s=startMin(a);if(s===null||s>=1440){allDay.push(a);return;}var e=endMin(a);if(e===null||e<=s)e=Math.min(s+30,1440);timed.push({a:a,s:s,e:e});});
+  timed.sort(function(x,y){return x.s-y.s||x.e-y.e;});return {timed:timed,allDay:allDay};}
+function range(groups){var lo=DEF_START*60,hi=DEF_END*60;groups.forEach(function(g){g.timed.forEach(function(x){if(x.s<lo)lo=x.s;if(x.e>hi)hi=x.e;});});
+  return {start:Math.max(0,Math.floor(lo/60)),end:Math.min(24,Math.ceil(hi/60))};}
+/* colonnes pour les actions simultanees */
+function lanes(timed){var clusters=[],cl=null,cEnd=-1;timed.forEach(function(x){if(!cl||x.s>=cEnd){cl={items:[],lanes:[]};clusters.push(cl);cEnd=-1;}var l=0;while(l<cl.lanes.length&&cl.lanes[l]>x.s)l++;cl.lanes[l]=x.e;x.l=l;cl.items.push(x);cEnd=Math.max(cEnd,x.e);});
+  clusters.forEach(function(c){c.n=c.lanes.length;c.items.forEach(function(x){x.n=c.n;x.sim=c.items.length>1;});});return clusters;}
+
+/* ---------- elements ---------- */
+function ariaOf(a,x){var st=statusOf(a);return (x?hhmm(x.s)+(x.e?'–'+hhmm(x.e):'')+', ':'Toute la journée, ')+pretty(a.type)+', '+(a.client[fields.name]||'')+', '+st.l;}
+function evBlock(x,R,opt){var a=x.a;calendarActionMap[a.eventId]=a;var st=statusOf(a),g=grp(a),dur=x.e-x.s,n=Math.min(x.n,opt.maxLanes),w=100/n;
+  var top=(x.s-R.start*60)/60,h=Math.max(dur,1)/60,px=(opt.compact?48:56)*dur/60,lv=px<40?1:(px<70?2:3);
+  var time=hhmm(x.s)+(dur>=30&&lv>1?'–'+hhmm(x.e):''),name=E(a.client[fields.name]||pretty(a.type)),ico='<span class="mcIco">'+ICO(g)+'</span> ';
+  var inner;
+  if(lv===1) inner='<span class="mcEvTime">'+hhmm(x.s)+'</span> <span class="mcEvName">'+name+'</span>';
+  else if(opt.compact) inner='<span class="mcEvTime">'+time+'</span><span class="mcEvName">'+name+'</span>'+(lv===3?'<span class="mcEvMeta">'+ico+E(pretty(a.type))+'</span>':'');
+  else if(lv===2) inner='<span class="mcEvRow"><span class="mcEvTime">'+time+'</span> <span class="mcEvName">'+name+'</span></span><span class="mcEvRow"><span class="mcEvMeta">'+ico+E(pretty(a.type))+' · '+E(actionCommercial(a))+'</span><span class="mcBadge mcSt-'+st.k+'">'+E(st.l)+'</span></span>';
+  else inner='<span class="mcEvTime">'+time+'</span><span class="mcEvName">'+name+'</span><span class="mcEvMeta">'+ico+E(pretty(a.type))+' · '+E(actionCommercial(a))+'</span><span class="mcBadge mcSt-'+st.k+'">'+E(st.l)+'</span>';
+  return '<div class="mcEv mc-'+g+' mcSt-'+st.k+' mcL'+lv+(x.sim?' mcSim':'')+'" role="button" tabindex="0" data-event-id="'+E(a.eventId)+'" data-mc-ev="1" aria-label="'+E(ariaOf(a,x))+'" title="'+E(ariaOf(a,x)+(a.objective?' — '+a.objective:''))+'" style="top:calc(var(--mcH) * '+top.toFixed(4)+');height:calc(var(--mcH) * '+h.toFixed(4)+');left:'+(x.l*w).toFixed(4)+'%;width:'+w.toFixed(4)+'%"><div class="mcEvIn">'+inner+'</div></div>';}
+function chip(a,withMeta){calendarActionMap[a.eventId]=a;var st=statusOf(a),g=grp(a);
+  return '<div class="mcChip mc-'+g+' mcSt-'+st.k+'" role="button" tabindex="0" data-event-id="'+E(a.eventId)+'" data-mc-ev="1" aria-label="'+E(ariaOf(a,null))+'" title="'+E(ariaOf(a,null)+(a.objective?' — '+a.objective:''))+'"><span class="mcIco">'+ICO(g)+'</span><span class="mcChipTx"><b>'+E(pretty(a.type))+'</b> · '+E(a.client[fields.name]||'')+(withMeta?' <span class="mcChipMeta">· '+E(actionCommercial(a))+'</span> <span class="mcBadge mcSt-'+st.k+'">'+E(st.l)+'</span>':'')+'</span></div>';}
+function gutter(R){var h='';for(var i=R.start;i<R.end;i++)h+='<div class="mcHourLbl" style="top:calc(var(--mcH) * '+(i-R.start)+')">'+String(i).padStart(2,'0')+':00</div>';return '<div class="mcGutter" style="height:calc(var(--mcH) * '+(R.end-R.start)+')">'+h+'</div>';}
+function nowLine(day,R){var n=new Date();if(!sameDay(day,n))return '';var m=n.getHours()*60+n.getMinutes();if(m<R.start*60||m>R.end*60)return '';return '<div class="mcNow" style="top:calc(var(--mcH) * '+((m-R.start*60)/60).toFixed(4)+')" aria-hidden="true"></div>';}
+function column(g,R,day,opt){var cls=lanes(g.timed),h='',hiddenAll=[];
+  cls.forEach(function(c){var hid=c.items.filter(function(x){return x.l>=opt.maxLanes;});
+    c.items.forEach(function(x){if(x.l<opt.maxLanes){var y=Object.assign({},x,{n:Math.min(c.n,opt.maxLanes)});h+=evBlock(y,R,opt);}});
+    if(hid.length){hid.forEach(function(x){calendarActionMap[x.a.eventId]=x.a;});hiddenAll=hiddenAll.concat(hid);
+      h+='<div class="mcMore" role="button" tabindex="0" data-mc-more="'+dateIso(day)+'" data-mc-hidden="'+E(hid.map(function(x){return x.a.eventId;}).join(','))+'" aria-label="'+hid.length+' autre(s) action(s) à ce moment" style="top:calc(var(--mcH) * '+((c.items[0].s-R.start*60)/60).toFixed(4)+')">+'+hid.length+'</div>';}});
+  return '<div class="mcCol'+(sameDay(day,new Date())?' mcToday':'')+'" data-day="'+dateIso(day)+'" style="height:calc(var(--mcH) * '+(R.end-R.start)+')">'+h+nowLine(day,R)+'</div>';}
+function toggle(mode,layout){return '<div class="mcToggle" role="group" aria-label="Présentation"><span role="button" tabindex="0" class="mcTg'+(layout==='grid'?' on':'')+'" aria-pressed="'+(layout==='grid')+'" data-mc-layout="grid">Grille</span><span role="button" tabindex="0" class="mcTg'+(layout==='list'?' on':'')+'" aria-pressed="'+(layout==='list')+'" data-mc-layout="list">Agenda</span></div>';}
+function layoutFor(mode){var k='mgtCalLayout_'+mode+(isMobile()?'_m':''),v=store(k);if(v==='grid'||v==='list')return v;return mode==='week'&&isMobile()?'list':'grid';}
+
+/* ---------- vues ---------- */
+function dayView(day,by){var iso=dateIso(day),g=split(by.get(iso)||[]),R=range([g]),total=g.timed.length+g.allDay.length,layout=layoutFor('day');
+  var head='<div class="mcDayHead"><div class="mcDayNum'+(sameDay(day,new Date())?' mcIsToday':'')+'">'+day.getDate()+'</div><div class="mcDayTx"><strong>'+E(day.toLocaleDateString('fr-FR',{weekday:'long'}))+'</strong><span>'+E(day.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}))+'</span><span class="mcCount">'+total+' action'+(total>1?'s':'')+' programmée'+(total>1?'s':'')+'</span></div>'+toggle('day',layout)+'<span role="button" tabindex="0" class="mcAdd" data-add-date="'+iso+'">+ Nouvelle action</span></div>';
+  if(layout==='list') return '<div class="mcCal mcDay mcList">'+head+agendaDay(day,g,false)+'</div>';
+  var opt={maxLanes:isMobile()?2:4,compact:false};
+  return '<div class="mcCal mcDay" style="--mcSpan:'+(R.end-R.start)+'">'+head
+    +'<div class="mcAllDay"><div class="mcAllDayLbl">Toute la journée</div><div class="mcAllDayList">'+(g.allDay.length?g.allDay.map(function(a){return chip(a,true);}).join(''):'<span class="mcEmpty">Aucune action sans horaire</span>')+'</div></div>'
+    +'<div class="mcGrid mcGrid1">'+gutter(R)+column(g,R,day,opt)+'</div>'
+    +'<p class="mcNote">Plage affichée '+String(R.start).padStart(2,'0')+':00 – '+String(R.end).padStart(2,'0')+':00, élargie automatiquement si une action commence plus tôt ou finit plus tard.</p></div>';}
+function weekView(days,by){var gs=days.map(function(d){return split(by.get(dateIso(d))||[]);}),R=range(gs),sel=dateIso(pilotCalendarDate),layout=layoutFor('week'),today=new Date();
+  var heads=days.map(function(d,i){var n=gs[i].timed.length+gs[i].allDay.length;return '<div class="mcWkDay'+(sameDay(d,today)?' mcIsToday':'')+(dateIso(d)===sel?' mcIsSel':'')+'" role="button" tabindex="0" data-day-open="'+dateIso(d)+'" aria-label="'+E(d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))+', '+n+' action(s)"><span>'+E(d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.',''))+'</span><strong>'+d.getDate()+'</strong>'+(n?'<em>'+n+'</em>':'')+'</div>';}).join('');
+  var bar='<div class="mcBar"><span class="mcCount">'+gs.reduce(function(t,g){return t+g.timed.length+g.allDay.length;},0)+' action(s) cette semaine</span>'+toggle('week',layout)+'</div>';
+  if(layout==='list') return '<div class="mcCal mcWeek mcList">'+bar+days.map(function(d,i){return agendaDay(d,gs[i],true);}).join('')+'</div>';
+  var opt={maxLanes:isMobile()?1:WEEK_LANES,compact:true};
+  return '<div class="mcCal mcWeek">'+bar
+    +'<div class="mcWkHead"><div class="mcCorner"></div>'+heads+'</div>'
+    +'<div class="mcWkAll"><div class="mcAllDayLbl">Toute la journée</div>'+days.map(function(d,i){var l=gs[i].allDay;return '<div class="mcWkAllCell">'+l.slice(0,4).map(function(a){return chip(a,false);}).join('')+(l.length>4?'<div class="mcMoreTx" role="button" tabindex="0" data-day-open="'+dateIso(d)+'" data-mc-hidden="'+E(l.slice(4).map(function(a){calendarActionMap[a.eventId]=a;return a.eventId;}).join(','))+'">+ '+(l.length-4)+' autres</div>':'')+'<span role="button" tabindex="0" class="mcTinyAdd" data-add-date="'+dateIso(d)+'" aria-label="Ajouter une action le '+E(d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))+'">+</span></div>';}).join('')+'</div>'
+    +'<div class="mcGrid mcGrid7">'+gutter(R)+days.map(function(d,i){return column(gs[i],R,d,opt);}).join('')+'</div></div>';}
+function agendaDay(day,g,withHead){var iso=dateIso(day),items=g.allDay.map(function(a){return {a:a,s:null};}).concat(g.timed);lanes(g.timed);
+  var n=items.length,h='';
+  if(withHead) h+='<div class="mcAgHead'+(sameDay(day,new Date())?' mcIsToday':'')+(iso===dateIso(pilotCalendarDate)?' mcIsSel':'')+'"><div class="mcAgDate" role="button" tabindex="0" data-day-open="'+iso+'"><strong>'+E(day.toLocaleDateString('fr-FR',{weekday:'long'}))+'</strong> '+E(day.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))+'<span class="mcCount">'+(n?n+' action'+(n>1?'s':''):'Aucune action')+'</span></div><span role="button" tabindex="0" class="mcAgAdd" data-add-date="'+iso+'" aria-label="Ajouter une action le '+E(day.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))+'">+</span></div>';
+  var CAP=25,open=expanded.has(iso),shownItems=open?items:items.slice(0,CAP),rest=items.slice(shownItems.length);
+  h+='<div class="mcAgList">'+shownItems.map(function(x){var a=x.a;calendarActionMap[a.eventId]=a;var st=statusOf(a),g2=grp(a);
+    return '<div class="mcCard mc-'+g2+' mcSt-'+st.k+'" role="button" tabindex="0" data-event-id="'+E(a.eventId)+'" data-mc-ev="1" aria-label="'+E(ariaOf(a,x.s===null?null:x))+'"><div class="mcCardTime">'+(x.s===null?'<b>Journée</b>':'<b>'+hhmm(x.s)+'</b><span>'+hhmm(x.e)+'</span>')+'</div><div class="mcCardBody"><div class="mcCardName">'+E(a.client[fields.name]||'-')+'</div><div class="mcCardMeta"><span class="mcIco">'+ICO(g2)+'</span> '+E(pretty(a.type))+' · '+E(actionCommercial(a))+'</div>'+(a.objective?'<div class="mcCardObj">'+E(a.objective)+'</div>':'')+'</div><div class="mcCardSide"><span class="mcBadge mcSt-'+st.k+'">'+E(st.l)+'</span>'+(x.sim?'<span class="mcSimTag" title="Une autre action a lieu en même temps">Simultané</span>':'')+'</div></div>';}).join('')
+    +(rest.length?'<div class="mcAgMore" role="button" tabindex="0" data-mc-expand="'+iso+'" data-mc-hidden="'+E(rest.map(function(x){calendarActionMap[x.a.eventId]=x.a;return x.a.eventId;}).join(','))+'">Afficher les '+rest.length+' autres actions</div>':'')+(n?'':(withHead?'':'<div class="mcEmpty">Aucune action ce jour.</div>'))+'</div>';
+  return '<div class="mcAgDay" data-day="'+iso+'">'+h+'</div>';}
+
+/* ---------- rendu ---------- */
+var stats={renders:0,lastMs:0},expanded=new Set();
+function core(mode){var el=document.getElementById('planningCalendar');if(!el)return;var t0=performance.now();calendarActionMap={};var title=document.getElementById('calendarTitle');
+  if(mode==='day'){var day=new Date(pilotCalendarDate);day.setHours(0,0,0,0);if(title)title.textContent=day.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});el.innerHTML=dayView(day,bucket([day]));}
+  else{var ws=startOfWeek(pilotCalendarDate),days=Array.from({length:7},function(_,i){return addDays(ws,i);});if(title)title.textContent=days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' – '+days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});el.innerHTML=weekView(days,bucket(days));}
+  bind(el);stats.renders++;stats.lastMs=Math.round((performance.now()-t0)*10)/10;}
+function updateActive(){var m=document.getElementById('calendarModule');if(!m)return;var s=document.getElementById('calendarMode'),cur=(s&&s.value)||String(pilotCalendarMode||'');var b=m.querySelectorAll('.lot1Views button');for(var i=0;i<b.length;i++)b[i].classList.toggle('lot1Active',b[i].getAttribute('data-mode')===cur);}
+var render=function(){var mode=pilotCalendarMode||'week';if(mode!=='day'&&mode!=='week')return previous.apply(this,arguments);
+  window.__p7cal=1;try{core(mode);}finally{window.__p7cal=0;}try{updateActive();}catch(e){}try{if(window.__p7visCount)window.__p7visCount();}catch(e){}};
+render.__p7=1;render.__mgtCalViews=VERSION;
+window.renderCalendar=render;
+
+/* ---------- interactions (delegation, une seule fois) ---------- */
+function goDay(iso){pilotCalendarDate=parseDateValue(iso)||new Date();pilotCalendarMode='day';var m=document.getElementById('calendarMode');if(m)m.value='day';renderCalendar();}
+function act(t,kind){var a;
+  if((a=t.closest('[data-mc-ev]'))){var x=calendarActionMap[a.dataset.eventId];if(!x)return true;if(kind==='dbl'){var tm=document.getElementById('taskDetailModal');if(tm)tm.hidden=true;showEventContext(x);openEventEditor(x);}else openTaskDetail(x);return true;}
+  if(kind==='dbl')return false;
+  if((a=t.closest('[data-add-date]'))){openEventEditor(null,a.dataset.addDate);return true;}
+  if((a=t.closest('[data-mc-more]'))){var mode=pilotCalendarMode;if(mode==='week')goDay(a.dataset.mcMore);else{store('mgtCalLayout_day'+(isMobile()?'_m':''),'list');renderCalendar();}return true;}
+  if((a=t.closest('[data-mc-expand]'))){expanded.add(a.dataset.mcExpand);renderCalendar();return true;}
+  if((a=t.closest('[data-mc-layout]'))){store('mgtCalLayout_'+(pilotCalendarMode||'week')+(isMobile()?'_m':''),a.dataset.mcLayout);renderCalendar();return true;}
+  if((a=t.closest('[data-day-open]'))){goDay(a.dataset.dayOpen);return true;}
+  return false;}
+function bind(el){if(el.__mcBound)return;el.__mcBound=true;
+  el.addEventListener('click',function(e){var t=e.target;if(!t.closest||!t.closest('.mcCal'))return;if(window.__p7tapAt&&Date.now()-window.__p7tapAt<700&&t.closest('[data-mc-ev]'))return;if(act(t,'click')){e.preventDefault();e.stopPropagation();}});
+  el.addEventListener('dblclick',function(e){var t=e.target;if(!t.closest||!t.closest('.mcCal'))return;if(act(t,'dbl')){e.preventDefault();e.stopPropagation();}});
+  el.addEventListener('keydown',function(e){var t=e.target;if(!t.closest||!t.closest('.mcCal'))return;if(e.key!=='Enter'&&e.key!==' ')return;if(t.getAttribute('role')!=='button')return;if(act(t,'click'))e.preventDefault();});}
+
+window.MGT_CAL_VIEWS={version:VERSION,render:render,stats:function(){return Object.assign({},stats);},statusOf:statusOf,range:range,split:split,_previous:previous};
+})();
+
+</script>
+<style id="mgt-v469e-cal-month-css">
+/* MGT CRM V4.6.9E — vue Mois et indicateurs de la vue Annee */
+.mcMonth .mcBar{margin-bottom:8px}.moHint{color:var(--mc-muted);font-size:12px;margin-left:auto}
+.moGrid{display:grid;grid-template-columns:40px repeat(7,minmax(0,1fr));border-top:1px solid var(--mc-line);border-left:1px solid var(--mc-line)}
+.moDow,.moWkNumH{font-size:11px;font-weight:800;color:var(--mc-muted);text-transform:uppercase;letter-spacing:.03em;padding:6px 6px;border-right:1px solid var(--mc-line);border-bottom:1px solid var(--mc-line);background:var(--mc-soft)}
+.moWkNumH{text-transform:none;text-align:center;padding:6px 2px}
+.moWkNum{display:flex;align-items:flex-start;justify-content:center;padding-top:8px;font-size:10.5px;font-weight:700;color:var(--mc-muted);border-right:1px solid var(--mc-line);border-bottom:1px solid var(--mc-line);background:var(--mc-soft)}
+.moWkNum:hover{color:var(--mc-fg)}
+.moDay{position:relative;min-height:112px;padding:4px 4px 6px;border-right:1px solid var(--mc-line);border-bottom:1px solid var(--mc-line);background:var(--mc-col);display:flex;flex-direction:column;gap:3px;min-width:0;outline:none}
+.moDay.moWe{background:color-mix(in srgb,var(--mc-soft) 60%,var(--mc-col))}
+.moDay.moOut{background:var(--mc-bg)}.moDay.moOut .moNum,.moDay.moOut .moList{opacity:.55}
+.moDay:hover{background:color-mix(in srgb,var(--mc-acc) 5%,var(--mc-col))}
+.moDay.moSel{box-shadow:inset 0 0 0 2px var(--mc-acc);z-index:1}
+.moDay:focus-visible{box-shadow:inset 0 0 0 3px var(--mc-acc)}
+.moHead{display:flex;align-items:center;gap:4px;min-height:26px}
+.moNum{min-width:26px;height:26px;padding:0 5px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.moNum:hover{background:var(--mc-soft);text-decoration:underline}
+.moToday .moNum{background:var(--mc-acc2);color:#fff}
+.moLate{margin-left:auto;color:#dc2626;font-size:10px}
+.moCnt{margin-left:auto;font-size:11px;font-weight:800;color:var(--mc-muted)}
+.moList{display:flex;flex-direction:column;gap:2px;min-width:0}
+.moEv{font-size:11px;line-height:1.25;padding:2px 5px;border-radius:5px;border-left:3px solid var(--mc-bur);background:var(--mc-bur-bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:20px}
+.moEv.mc-terrain{border-left-color:var(--mc-terr);background:var(--mc-terr-bg)}
+.moEv.mcSt-done{opacity:.7;text-decoration:line-through}.moEv.mcSt-late{box-shadow:inset -3px 0 0 #dc2626}
+.moEv b{font-weight:800;font-size:10.5px}
+.moMore{font-size:11px;font-weight:800;color:var(--mc-acc);padding:1px 5px;min-height:20px}
+.moMore:hover{text-decoration:underline}
+.moPanel{margin-top:12px;border:1px solid var(--mc-line);border-radius:12px;background:var(--mc-col);overflow:hidden}
+.moPanelHead{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 10px 8px 14px;background:var(--mc-soft);border-bottom:1px solid var(--mc-line)}
+.moPanelTx{flex:1;display:flex;flex-direction:column;min-width:160px}.moPanelTx strong{text-transform:capitalize;font-size:14px}
+.moBtn{min-height:40px;padding:0 14px;border-radius:10px;display:inline-flex;align-items:center;font-weight:800;border:1px solid var(--mc-line);background:var(--mc-col)}
+.mcCal .moBtnAdd{background:var(--mc-acc2);border-color:var(--mc-acc2);color:#fff!important}
+.moEmpty{padding:14px}
+/* telephone */
+.moMob .moGrid{grid-template-columns:26px repeat(7,minmax(0,1fr))}
+.moMob .moDow{padding:5px 2px;text-align:center;font-size:10px}.moMob .moWkNumH{font-size:0;padding:5px 0}
+.moMob .moWkNum{font-size:9px;padding-top:6px}
+.moMob .moDay{min-height:58px;padding:3px 2px;align-items:center;cursor:pointer}
+.moMob .moHead{flex-direction:column;gap:0;min-height:0}
+.moMob .moNum{min-width:26px;height:26px;font-size:12.5px}
+.moMob .moCnt{margin:0;font-size:10px}
+.moDots{display:flex;gap:2px;justify-content:center;flex-wrap:wrap}
+.moDot{width:6px;height:6px;border-radius:50%;background:var(--mc-bur)}.moDot.mc-terrain{background:var(--mc-terr)}.moDot.mcSt-late{box-shadow:0 0 0 1.5px #dc2626}
+.moMob .moHint{margin-left:0;width:100%}
+@media (max-width:1024px){.moBtn{min-height:44px}.moWkNum{min-height:44px}}
+/* vue Annee : indicateurs ajoutes */
+#annualCalendarBody .miniMonthHead[data-mc-year-month]{cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+#annualCalendarBody .miniMonthHead[data-mc-year-month]:hover strong{text-decoration:underline}
+#annualCalendarBody .miniMonthHead[data-mc-year-month]:focus-visible{outline:2px solid #e8590c;outline-offset:2px}
+#annualCalendarBody .mcYrCount{margin-left:auto;font-size:11px;font-weight:800;opacity:.85}
+#annualCalendarBody .mcYrBar{flex-basis:100%;height:4px;border-radius:2px;background:rgba(127,139,153,.25);overflow:hidden}
+#annualCalendarBody .mcYrBar i{display:block;height:100%;background:#e8590c;border-radius:2px}
+#annualCalendarBody [data-mc-heat="1"]{background-color:rgba(232,89,12,.10)!important}
+#annualCalendarBody [data-mc-heat="2"]{background-color:rgba(232,89,12,.22)!important}
+#annualCalendarBody [data-mc-heat="3"]{background-color:rgba(232,89,12,.38)!important}
+#annualCalendarBody .mcYrLegend{font-size:11px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#annualCalendarBody .mcYrLegend i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid rgba(127,139,153,.4)}
+#annualCalendarBody .mcYrLegend i[data-l="1"]{background:rgba(232,89,12,.10)}#annualCalendarBody .mcYrLegend i[data-l="2"]{background:rgba(232,89,12,.22)}#annualCalendarBody .mcYrLegend i[data-l="3"]{background:rgba(232,89,12,.38)}
+</style>
+<script id="mgt-v469e-cal-month">
+/* =====================================================================
+   MGT CRM V4.6.9E — VUE MOIS ET VUE ANNEE
+   Vue Mois (remplace l'affichage « phase 6 ») :
+     - numero du jour, jour actuel (pastille orange), jour choisi (cadre), jours hors du mois
+       attenues, numero de semaine (acces a la semaine) ;
+     - 3 actions au plus par case (horaire + client, couleur deplacement / bureau, statut),
+       puis « + n autres » ;
+     - selection d'un jour par simple clic : detail du jour sous la grille (cartes Agenda),
+       boutons « Voir la journee » et « + Ajouter » ; clic sur le numero : vue Jour ;
+     - telephone (<= 480 px) : pastilles de couleur et nombre d'actions dans les cases, detail
+       du jour selectionne sous la grille.
+   Vue Annee (fenetre « Calendrier annuel », conservee - decision Q5) :
+     - meme contenu, calcule une seule fois par annee au lieu d'une recherche par jour ;
+     - ajout : nombre d'actions par mois, barre de charge, intensite par jour (periodes
+       chargees), clic sur le nom du mois : vue Mois de ce mois.
+   La date choisie est conservee entre toutes les vues. Lecture seule.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9E';
+var previous=window.renderCalendar;
+if(typeof previous!=='function'||!window.MGT_CAL_VIEWS){console.error('[CALENDRIER '+VERSION+'] rendu introuvable');return;}
+var MOBILE_MAX=480, CAP=25, statusOf=MGT_CAL_VIEWS.statusOf;
+function E(v){return esc(v==null?'':v);}
+function mins(v){var m=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());if(!m)return null;var h=+m[1],mi=+m[2];if(h>24||mi>59)return null;return Math.min(h*60+mi,1440);}
+function startMin(a){return mins(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut);}
+function endMin(a){return mins(a.endTime||a.end_time||a.heureFin||a.fin);}
+function hhmm(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+var TERR=/visite|sav|install|livraison|depann|formation|demonstration|intervention|deplacement|tournee|salon|mission/;
+function grp(a){return window.MGT_CAL_CAT?MGT_CAL_CAT.of(a):(TERR.test(norm(a.type||''))?'terrain':'bureau');}
+function ICO(g){return window.MGT_CAL_CAT?MGT_CAL_CAT.icon(g):ICO(g);} /* revise V4.6.9F : 4 categories (Q2) */
+function pretty(t){t=String(t||'Action').replace(/_/g,' ').toLowerCase();if(t==='sav')return 'SAV';return t.charAt(0).toUpperCase()+t.slice(1);}
+function isMobile(){return window.innerWidth<=MOBILE_MAX;}
+var isoMemo=new Map();
+function isoOfStr(s){var r=isoMemo.get(s);if(r===undefined){var d=parseDateValue(s);r=d?dateIso(d):'';if(isoMemo.size>50000)isoMemo.clear();isoMemo.set(s,r);}return r;}
+function query(){return((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr');}
+function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=pilotFilterValues(),pil=!!(f.city||f.commercial),L=allPlanningActions(),out=new Map();
+  for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||!set.has(iso))continue;
+    if(pil&&!matchesPilot(a.client,a))continue; if(norm(a.status).includes('archive'))continue;
+    if(q&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q))continue;
+    var arr=out.get(iso);if(!arr){arr=[];out.set(iso,arr);}arr.push(a);}
+  return out;}
+/* ordre dans une journee : sans horaire d'abord, puis par heure de debut (ordre d'origine conserve a egalite) */
+function ordered(list){return list.map(function(a,i){return {a:a,s:startMin(a),i:i};}).sort(function(x,y){var xs=x.s===null?-1:x.s,ys=y.s===null?-1:y.s;return xs-ys||x.i-y.i;});}
+
+/* ---------- vue Mois ---------- */
+var expanded=new Set();
+function chip(x){var a=x.a;calendarActionMap[a.eventId]=a;var st=statusOf(a),g=grp(a);
+  return '<div class="moEv mc-'+g+' mcSt-'+st.k+'" role="button" tabindex="0" data-event-id="'+E(a.eventId)+'" data-mc-ev="1" aria-label="'+E((x.s===null?'Journée':hhmm(x.s))+', '+pretty(a.type)+', '+(a.client[fields.name]||'')+', '+st.l)+'" title="'+E(pretty(a.type)+' — '+(a.client[fields.name]||'')+(a.objective?' — '+a.objective:''))+'">'+(x.s===null?'':'<b>'+hhmm(x.s)+'</b> ')+E(a.client[fields.name]||pretty(a.type))+'</div>';}
+function card(x,sim){var a=x.a;calendarActionMap[a.eventId]=a;var st=statusOf(a),g=grp(a),e=endMin(a);if(x.s!==null&&(e===null||e<=x.s))e=Math.min(x.s+30,1440);
+  return '<div class="mcCard mc-'+g+' mcSt-'+st.k+'" role="button" tabindex="0" data-event-id="'+E(a.eventId)+'" data-mc-ev="1" aria-label="'+E((x.s===null?'Toute la journée':hhmm(x.s)+'–'+hhmm(e))+', '+pretty(a.type)+', '+(a.client[fields.name]||'')+', '+st.l)+'"><div class="mcCardTime">'+(x.s===null?'<b>Journée</b>':'<b>'+hhmm(x.s)+'</b><span>'+hhmm(e)+'</span>')+'</div><div class="mcCardBody"><div class="mcCardName">'+E(a.client[fields.name]||'-')+'</div><div class="mcCardMeta"><span class="mcIco">'+ICO(g)+'</span> '+E(pretty(a.type))+' · '+E(actionCommercial(a))+'</div>'+(a.objective?'<div class="mcCardObj">'+E(a.objective)+'</div>':'')+'</div><div class="mcCardSide"><span class="mcBadge mcSt-'+st.k+'">'+E(st.l)+'</span>'+(sim?'<span class="mcSimTag">Simultané</span>':'')+'</div></div>';}
+function simSet(items){var t=items.filter(function(x){return x.s!==null;}).map(function(x){var e=endMin(x.a);return {x:x,s:x.s,e:(e===null||e<=x.s)?x.s+30:e};}),out=new Set();
+  for(var i=0;i<t.length;i++)for(var j=i+1;j<t.length;j++){if(t[i].s<t[j].e&&t[j].s<t[i].e){out.add(t[i].x);out.add(t[j].x);}}return out;}
+function panel(day,list){var iso=dateIso(day),items=ordered(list),n=items.length,open=expanded.has(iso),show=open?items:items.slice(0,CAP),rest=items.slice(show.length),sim=simSet(items);
+  return '<div class="moPanel" aria-live="polite"><div class="moPanelHead"><div class="moPanelTx"><strong>'+E(day.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))+'</strong><span class="mcCount">'+(n?n+' action'+(n>1?'s':''):'Aucune action')+'</span></div>'
+    +'<span role="button" tabindex="0" class="moBtn" data-day-open="'+iso+'">Voir la journée</span><span role="button" tabindex="0" class="moBtn moBtnAdd" data-add-date="'+iso+'">+ Ajouter</span></div>'
+    +'<div class="mcAgList">'+show.map(function(x){return card(x,sim.has(x));}).join('')
+    +(rest.length?'<div class="mcAgMore" role="button" tabindex="0" data-mo-expand="'+iso+'" data-mc-hidden="'+E(rest.map(function(x){calendarActionMap[x.a.eventId]=x.a;return x.a.eventId;}).join(','))+'">Afficher les '+rest.length+' autres actions</div>':'')
+    +(n?'':'<div class="mcEmpty moEmpty">Aucune action ce jour. Utilisez « + Ajouter » pour en programmer une.</div>')+'</div></div>';}
+function monthView(){var year=pilotCalendarDate.getFullYear(),month=pilotCalendarDate.getMonth(),first=new Date(year,month,1),start=startOfWeek(first),last=new Date(year,month+1,0),end=addDays(startOfWeek(last),6),days=[];
+  for(var d=new Date(start);d<=end;d=addDays(d,1))days.push(new Date(d));
+  var by=bucket(days),mob=isMobile(),today=new Date(),sel=dateIso(pilotCalendarDate),total=0;
+  days.forEach(function(d){if(d.getMonth()===month)total+=(by.get(dateIso(d))||[]).length;});
+  var h='<div class="mcCal mcMonth'+(mob?' moMob':'')+'"><div class="mcBar"><span class="mcCount">'+total+' action'+(total>1?'s':'')+' ce mois-ci</span><span class="moHint">'+(mob?'Touchez un jour pour voir ses actions.':'Cliquez sur un jour pour voir ses actions ; sur son numéro pour ouvrir la journée.')+'</span></div>'
+    +'<div class="moGrid" role="grid" aria-label="'+E(monthTitle(pilotCalendarDate))+'"><div class="moWkNumH" aria-hidden="true">Sem.</div>'+['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(function(x){return '<div class="moDow">'+x+'</div>';}).join('');
+  for(var w=0;w<days.length;w+=7){var wk=days.slice(w,w+7);h+='<div class="moWkNum" role="button" tabindex="0" data-mo-week="'+dateIso(wk[0])+'" aria-label="Semaine '+weekNumber(wk[0])+'">S'+weekNumber(wk[0])+'</div>';
+    wk.forEach(function(day){var iso=dateIso(day),list=by.get(iso)||[],items=ordered(list),n=items.length,out=day.getMonth()!==month,isT=sameDay(day,today),isS=iso===sel,we=day.getDay()===0||day.getDay()===6;
+      var late=items.some(function(x){return statusOf(x.a).k==='late';});
+      h+='<div class="moDay'+(out?' moOut':'')+(isT?' moToday':'')+(isS?' moSel':'')+(we?' moWe':'')+(n?' moHas':'')+'" role="gridcell" data-mo-select="'+iso+'" tabindex="0" aria-selected="'+isS+'" aria-label="'+E(day.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))+', '+(n?n+' action'+(n>1?'s':''):'aucune action')+(isT?', aujourd’hui':'')+'">'
+        +'<div class="moHead">'+(mob?'<span class="moNum">'+day.getDate()+'</span>':'<span class="moNum" role="button" tabindex="0" data-day-open="'+iso+'" aria-label="Ouvrir la journée du '+E(day.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))+'">'+day.getDate()+'</span>')+(n&&mob?'<span class="moCnt">'+n+'</span>':'')+(late&&!mob?'<span class="moLate" title="Action en retard">●</span>':'')+'</div>';
+      if(mob){h+='<div class="moMini">'+items.slice(0,3).map(function(x){var nm=(x.a.client&&x.a.client[fields.name])||pretty(x.a.type);return '<span class="moMiniEv mc-'+grp(x.a)+' mcSt-'+statusOf(x.a).k+'">'+E(nm)+'</span>';}).join('')+(n>3?'<span class="moMiniMore">+'+(n-3)+'</span>':'')+'</div>';} /* revise V4.6.9G1 : nom des actions au lieu des seules pastilles */
+      else{h+='<div class="moList">'+items.slice(0,3).map(chip).join('')+(n>3?'<div class="moMore" role="button" tabindex="0" data-mo-select="'+iso+'" data-mc-hidden="'+E(items.slice(3).map(function(x){calendarActionMap[x.a.eventId]=x.a;return x.a.eventId;}).join(','))+'">+ '+(n-3)+' autre'+(n-3>1?'s':'')+'</div>':'')+'</div>';}
+      h+='</div>';});}
+  h+='</div>';
+  var selDay=parseDateValue(sel)||first;
+  h+=panel(selDay,by.get(sel)||(sel?bucket([selDay]).get(sel)||[]:[]));
+  return h+'</div>';}
+
+var stats={renders:0,lastMs:0};
+function updateActive(){var m=document.getElementById('calendarModule');if(!m)return;var s=document.getElementById('calendarMode'),cur=(s&&s.value)||String(pilotCalendarMode||'');var b=m.querySelectorAll('.lot1Views button');for(var i=0;i<b.length;i++)b[i].classList.toggle('lot1Active',b[i].getAttribute('data-mode')===cur);}
+function core(){var el=document.getElementById('planningCalendar');if(!el)return;var t0=performance.now();calendarActionMap={};var title=document.getElementById('calendarTitle');if(title)title.textContent=monthTitle(pilotCalendarDate);
+  el.innerHTML=monthView();bind(el);stats.renders++;stats.lastMs=Math.round((performance.now()-t0)*10)/10;}
+var render=function(){var mode=pilotCalendarMode||'week';if(mode!=='month')return previous.apply(this,arguments);
+  window.__p7cal=1;try{core();}finally{window.__p7cal=0;}try{updateActive();}catch(e){}try{if(window.__p7visCount)window.__p7visCount();}catch(e){}};
+render.__p7=1;render.__mgtCalMonth=VERSION;
+window.renderCalendar=render;
+
+/* ---------- interactions de la vue Mois (capture : traitees ici seulement) ---------- */
+function setMode(m,d){if(d)pilotCalendarDate=d;pilotCalendarMode=m;var s=document.getElementById('calendarMode');if(s)s.value=m;renderCalendar();}
+function select(iso){var d=parseDateValue(iso);if(!d)return;var keepMonth=d.getMonth()===pilotCalendarDate.getMonth()&&d.getFullYear()===pilotCalendarDate.getFullYear();pilotCalendarDate=d;renderCalendar();
+  if(!keepMonth)return;var el=document.querySelector('#planningCalendar .moDay[data-mo-select="'+iso+'"]');if(el&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#planningCalendar'))try{el.focus({preventScroll:true});}catch(e){}
+  if(isMobile()){var p=document.querySelector('#planningCalendar .moPanel');if(p&&p.getBoundingClientRect().top>window.innerHeight-80)try{p.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}}}
+function act(t,kind){var a;
+  if((a=t.closest('[data-mc-ev]'))){var x=calendarActionMap[a.dataset.eventId];if(!x)return true;if(kind==='dbl'){var tm=document.getElementById('taskDetailModal');if(tm)tm.hidden=true;showEventContext(x);openEventEditor(x);}else openTaskDetail(x);return true;}
+  if(kind==='dbl'){if((a=t.closest('[data-mo-select]'))){setMode('day',parseDateValue(a.dataset.moSelect));return true;}return false;}
+  if((a=t.closest('[data-add-date]'))){openEventEditor(null,a.dataset.addDate);return true;}
+  if((a=t.closest('[data-day-open]'))){setMode('day',parseDateValue(a.dataset.dayOpen)||new Date());return true;}
+  if((a=t.closest('[data-mo-week]'))){setMode('week',parseDateValue(a.dataset.moWeek));return true;}
+  if((a=t.closest('[data-mo-expand]'))){expanded.add(a.dataset.moExpand);renderCalendar();return true;}
+  if((a=t.closest('[data-mo-select]'))){select(a.dataset.moSelect);return true;}
+  return false;}
+function inMonth(t){return t&&t.closest&&t.closest('.mcMonth');}
+function bind(el){if(el.__moBound)return;el.__moBound=true;
+  el.addEventListener('click',function(e){if(!inMonth(e.target))return;if(window.__p7tapAt&&Date.now()-window.__p7tapAt<700&&e.target.closest('[data-mc-ev]')){e.stopPropagation();return;}if(act(e.target,'click')){e.preventDefault();}e.stopPropagation();},true);
+  el.addEventListener('dblclick',function(e){if(!inMonth(e.target))return;if(act(e.target,'dbl'))e.preventDefault();e.stopPropagation();},true);
+  el.addEventListener('keydown',function(e){var t=e.target;if(!inMonth(t))return;
+    if(t.classList&&t.classList.contains('moDay')&&/^Arrow(Left|Right|Up|Down)$/.test(e.key)){var d=parseDateValue(t.dataset.moSelect),k={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];e.preventDefault();e.stopPropagation();var nd=addDays(d,k);pilotCalendarDate=nd;renderCalendar();var c=document.querySelector('#planningCalendar .moDay[data-mo-select="'+dateIso(nd)+'"]');if(c)try{c.focus();}catch(x){}return;}
+    if(e.key!=='Enter'&&e.key!==' ')return;if(t.getAttribute('role')!=='button'&&t.getAttribute('role')!=='gridcell')return;e.stopPropagation();if(act(t,'click'))e.preventDefault();},true);}
+
+/* ---------- vue Annee : meme contenu, calcule une fois par annee ---------- */
+var yCache={key:null,map:null};
+function yearMap(){var L=allPlanningActions(),key=annualYear+'|'+(window.MGT_CAL?MGT_CAL.state().ver:0)+'|'+L.length;
+  if(yCache.key===key&&yCache.list===L)return yCache.map;var m=new Map();
+  for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||+iso.slice(0,4)!==annualYear)continue;var arr=m.get(iso);if(!arr){arr=[];m.set(iso,arr);}arr.push(a);}
+  m.forEach(function(arr){arr.sort(function(a,b){return String(a.type).localeCompare(String(b.type),'fr');});});
+  yCache={key:key,list:L,map:m};return m;}
+var baseDayActions=window.annualDayActions;
+if(typeof baseDayActions==='function'){window.annualDayActions=function(iso){var m=yearMap();if(String(iso).slice(0,4)!==String(annualYear))return baseDayActions.apply(this,arguments);return (m.get(String(iso))||[]).slice();};}
+var baseAnnual=window.renderAnnualCalendar;
+function decorateYear(){var body=document.getElementById('annualCalendarBody');if(!body)return;var m=yearMap(),per=Array.from({length:12},function(){return 0;});
+  m.forEach(function(arr,iso){per[+iso.slice(5,7)-1]+=arr.length;});var max=Math.max.apply(null,per)||1;
+  body.querySelectorAll('.miniMonth').forEach(function(sec){var k=+String(sec.id).replace('annualMonth','');var head=sec.querySelector('.miniMonthHead');if(!head||head.querySelector('.mcYrCount'))return;
+    head.setAttribute('role','button');head.setAttribute('tabindex','0');head.setAttribute('data-mc-year-month',String(k));head.setAttribute('title','Ouvrir ce mois dans le calendrier');
+    head.insertAdjacentHTML('beforeend','<span class="mcYrCount">'+per[k]+' action'+(per[k]>1?'s':'')+'</span><span class="mcYrBar" aria-hidden="true"><i style="width:'+Math.round(per[k]/max*100)+'%"></i></span>');});
+  body.querySelectorAll('[data-annual-date]').forEach(function(b){var n=(m.get(b.dataset.annualDate)||[]).length;if(n)b.setAttribute('data-mc-heat',n>=6?'3':n>=3?'2':'1');});
+  var hdr=body.querySelector('.annualMiniHeader');if(hdr&&!hdr.querySelector('.mcYrLegend'))hdr.insertAdjacentHTML('beforeend','<div class="mcYrLegend" aria-hidden="true">Activité : <i data-l="1"></i>1–2 <i data-l="2"></i>3–5 <i data-l="3"></i>6 et plus par jour</div>');}
+if(typeof baseAnnual==='function'){window.renderAnnualCalendar=function(){var r=baseAnnual.apply(this,arguments);try{decorateYear();}catch(e){console.warn('[CALENDRIER] année',e);}return r;};}
+document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('#annualCalendarBody [data-mc-year-month]');if(!h)return;e.stopPropagation();var k=+h.dataset.mcYearMonth;
+  try{closePanel('annualCalendarModal');}catch(x){var md=document.getElementById('annualCalendarModal');if(md)md.hidden=true;}
+  try{openModule('calendar');}catch(x){}setMode('month',new Date(annualYear,k,1));},true);
+document.addEventListener('keydown',function(e){if(e.key!=='Enter'&&e.key!==' ')return;var h=e.target.closest&&e.target.closest('#annualCalendarBody [data-mc-year-month]');if(!h)return;e.preventDefault();h.click();},true);
+
+/* ---------- barre d'outils (ordinateur) : boutons Annee / Apercu / Imprimer / PDF ----------
+   Defaut present depuis la V4.5.3 : la barre « phase 6 » recree ces boutons sans les relier
+   (seule la barre mobile les reconnecte). Ils sont relies ici aux MEMES fonctions existantes ;
+   si un autre raccordement existe deja (telephone), il reste seul a agir. */
+var TB={annualCalendarBtn:function(){openAnnualCalendar();},
+  calPreviewBtn:function(){CalendrierPreview.open();},
+  calPrintBtn:function(){CalendrierPreview.open();setTimeout(function(){CalendrierPreview.print();},200);},
+  calPdfBtn:function(){CalendrierPreview.open();setTimeout(function(){CalendrierPreview.exportPdf();},200);}};
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#annualCalendarBtn,#calPreviewBtn,#calPrintBtn,#calPdfBtn');if(!b||b.onclick)return;var f=TB[b.id];if(!f)return;
+  try{f();}catch(x){console.warn('[CALENDRIER] '+b.id,x);}});
+
+window.MGT_CAL_MONTH={version:VERSION,render:render,stats:function(){return Object.assign({},stats);},yearMap:yearMap,_previous:previous};
+})();
+
+</script>
+<style id="mgt-v469f-cal-ux-css">
+/* MGT CRM V4.6.9F — harmonisation du calendrier */
+/* 4 categories (Q2) */
+.mcCal{--mc-sav:#0284c7;--mc-sav-bg:#12324a;--mc-rel:#d97706;--mc-rel-bg:#3b2a12}
+html[data-mgt-theme="light"] .mcCal{--mc-sav-bg:#e0f2fe;--mc-rel-bg:#fef3c7}
+.mc-sav .mcEvIn,.mcChip.mc-sav,.moEv.mc-sav{border-left-color:var(--mc-sav);background:var(--mc-sav-bg)}
+.mc-relance .mcEvIn,.mcChip.mc-relance,.moEv.mc-relance{border-left-color:var(--mc-rel);background:var(--mc-rel-bg)}
+.mcCard.mc-sav{border-left-color:var(--mc-sav)}.mcCard.mc-relance{border-left-color:var(--mc-rel)}
+.moDot.mc-sav{background:var(--mc-sav)}.moDot.mc-relance{background:var(--mc-rel)}
+#p7Legend .mcLg{border-left:4px solid;padding:3px 9px;border-radius:999px}
+#p7Legend .mcLg-terrain,#mgtCalSummary .mcLg-terrain{border-color:#16a34a;background:rgba(22,163,74,.18)}
+#p7Legend .mcLg-sav,#mgtCalSummary .mcLg-sav{border-color:#0284c7;background:rgba(2,132,199,.18)}
+#p7Legend .mcLg-relance,#mgtCalSummary .mcLg-relance{border-color:#d97706;background:rgba(217,119,6,.18)}
+#p7Legend .mcLg-bureau,#mgtCalSummary .mcLg-bureau{border-color:#7c5cdb;background:rgba(124,92,219,.16)}
+/* synthese du jour */
+#mgtCalSummary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:4px 10px 8px;font-size:12px;color:var(--ink,#e8edf3)}
+html[data-mgt-theme="light"] #mgtCalSummary{color:#18212f}
+#mgtCalSummary .mcSumT{font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.04em;opacity:.8}
+#mgtCalSummary .mcSumN{margin-right:4px}
+#mgtCalSummary .mcSumC{border-left:4px solid;padding:3px 9px;border-radius:999px;white-space:nowrap}
+#mgtCalSummary .mcSumLate{margin-left:auto;padding:4px 11px;border-radius:999px;border:1px solid rgba(127,139,153,.45);font-weight:700;cursor:pointer;min-height:28px;display:inline-flex;align-items:center;gap:4px}
+#mgtCalSummary .mcSumLate.on{border-color:#dc2626;color:#fca5a5}
+html[data-mgt-theme="light"] #mgtCalSummary .mcSumLate.on{color:#b91c1c}
+#mgtCalSummary .mcSumLate:focus-visible{outline:2px solid #e8590c;outline-offset:2px}
+/* theme clair : bouton « Visites a planifier » lisible (defaut ancien) */
+html[data-mgt-theme="light"] #p7Legend #p7VisBtn{color:#1b2433!important;background:#eef2f7!important;border-color:#d3dae4!important}
+html[data-mgt-theme="dark"] #p7Legend #p7VisBtn{color:#e8edf3!important}
+/* barre d'outils : ordinateur et tablette */
+#mgtCalSeg{display:none}
+@media (min-width:481px){
+  #calendarModule .calendarControls{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end;gap:6px!important;grid-template-columns:none!important}
+  #calendarModule .calendarControls>*{width:auto!important;max-width:none!important;flex:0 0 auto;margin:0!important}
+  #calendarModule .calendarControls #calPrev{order:1}#calendarModule .calendarControls #calToday{order:2}#calendarModule .calendarControls #calNext{order:3}
+  #calendarModule .calendarControls #calendarMode{display:none!important}
+  #calendarModule .calendarControls #annualCalendarBtn{display:none!important}
+  #calendarModule .calendarControls #mgtCalSeg{order:4;display:inline-flex;border:1px solid rgba(127,139,153,.45);border-radius:10px;overflow:hidden}
+  #calendarModule .calendarControls .phase6Search{order:5;flex:1 1 180px!important;min-width:160px}
+  #calendarModule .calendarControls #phase6AddAction{order:6}
+  #calendarModule .calendarControls #mgtCalTasksBtn{order:7}
+  #calendarModule .calendarControls #calPreviewBtn{order:8}
+  #calendarModule .calendarControls #calPrintBtn{order:9;display:inline-flex!important}
+  #calendarModule .calendarControls #calPdfBtn{order:10;display:inline-flex!important}
+  #calendarModule .calendarControls>button,#calendarModule .calendarControls .phase6Search{height:38px!important;min-height:38px}
+  #calendarModule .calendarControls>button{display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 12px!important;line-height:1.1!important;white-space:nowrap}
+  #calendarModule .calendarControls #calPrev,#calendarModule .calendarControls #calNext{min-width:38px!important;padding:0!important;font-size:18px}
+  #mgtCalSeg .mcSegB{display:inline-flex;align-items:center;padding:0 13px;height:36px;font-weight:700;font-size:13px;cursor:pointer;color:inherit;border-left:1px solid rgba(127,139,153,.3)}
+  #mgtCalSeg .mcSegB:first-child{border-left:0}
+  #mgtCalSeg .mcSegB.on{background:#c2410c;color:#fff}
+  #mgtCalSeg .mcSegB:focus-visible{outline:2px solid #e8590c;outline-offset:-2px}
+  #calendarModule .calendarTop{flex-wrap:wrap;gap:8px}
+}
+@media (min-width:481px) and (max-width:1024px){
+  #calendarModule .calendarControls>button,#calendarModule .calendarControls .phase6Search{height:44px!important;min-height:44px}
+  #mgtCalSeg .mcSegB{height:42px}
+  #calendarModule .calendarControls #calPrev,#calendarModule .calendarControls #calNext{min-width:44px!important}
+  #calendarModule .calendarControls .phase6Search{flex-basis:100%!important;order:11}
+}
+/* menu contextuel : au premier plan */
+#calendarContextMenu{z-index:100000}
+</style>
+<script id="mgt-v469f-cal-ux">
+/* =====================================================================
+   MGT CRM V4.6.9F — HARMONISATION ET ERGONOMIE DU CALENDRIER
+   - 4 categories (decision Q2) : 🚗 Terrain · 🔧 SAV · 🔔 Relances · 🖥️ Bureau ; calculees a
+     l'affichage a partir du type (aucun type modifie) ; legende mise a jour.
+   - Synthese du jour : actions du jour par categorie et actions en retard (memes donnees que
+     le calendrier, aucune seconde source).
+   - Barre d'outils (ordinateur et tablette) : Precedent / Aujourd'hui / Suivant, vues
+     Jour-Semaine-Mois-Annee, recherche, + Action, Rappels et taches, Apercu, Imprimer, PDF.
+   - Clic droit (ou touche Menu) sur une action : menu Modifier / Supprimer (existant, relie
+     de nouveau). Confirmation de suppression detaillee.
+   - Apercu : navigation corrigee (jour +-1, semaine +-7, mois +-1). Imprimer et PDF (Q6) :
+     document A4 paysage de la periode affichee (moteur PDF integre depuis la V4.6.8L).
+   - Fenetre « Taches du ... » : accent corrige. Theme clair : bouton « Visites a planifier »
+     lisible.
+   Aucune donnee modifiee par ce module (sauf suppression demandee et confirmee).
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9F';
+function $(id){return document.getElementById(id);}
+function E(v){return esc(v==null?'':v);}
+
+/* ---------- categories (Q2) ---------- */
+var CATS={terrain:{l:'Terrain',i:'🚗'},sav:{l:'SAV',i:'🔧'},relance:{l:'Relances',i:'🔔'},bureau:{l:'Bureau',i:'🖥️'}};
+var RX_BUREAU=/redaction|calcul|rapport client|recapitulatif|preparation|administr|e-?mail|mailing|presentation|transit|fournisseur/,
+    RX_SAV=/(^|[^a-z])sav([^a-z]|$)|maintenance|intervention|depann/,
+    RX_REL=/(^|[^a-z])offre([^a-z]|$)|relance|rappel|recouvrement|devis/,
+    RX_TERR=/visite|install|exposition|expo([^a-z]|$)|livraison|deplacement|tournee|formation|demonstration|salon|mission/;
+var catMemo=new Map();
+function of(a){var t=norm((a&&a.type)||'');var r=catMemo.get(t);if(r)return r;
+  r=RX_BUREAU.test(t)?'bureau':RX_SAV.test(t)?'sav':RX_REL.test(t)?'relance':RX_TERR.test(t)?'terrain':'bureau';catMemo.set(t,r);return r;}
+window.MGT_CAL_CAT={of:of,icon:function(k){return (CATS[k]||CATS.bureau).i;},label:function(k){return (CATS[k]||CATS.bureau).l;},list:['terrain','sav','relance','bureau']};
+
+/* ---------- legende ---------- */
+function legend(){var lg=$('p7Legend');if(!lg)return false;if(lg.querySelector('.mcLg'))return true;
+  lg.querySelectorAll('.p7L').forEach(function(s){s.remove();});
+  lg.insertAdjacentHTML('afterbegin',['terrain','sav','relance','bureau'].map(function(k){return '<span class="p7L mcLg mcLg-'+k+'" title="Catégorie '+CATS[k].l+'">'+CATS[k].i+' '+CATS[k].l+'</span>';}).join(''));return true;}
+
+/* ---------- synthese du jour ---------- */
+var sumCache={key:null,html:''};
+function summaryHtml(){var key=(window.MGT_CAL?MGT_CAL.state().ver:0)+'|'+dateIso(new Date())+'|'+JSON.stringify(pilotFilterValues());if(sumCache.key===key)return sumCache.html;
+  var f=pilotFilterValues(),pil=!!(f.city||f.commercial),today=dateIso(new Date()),c={terrain:0,sav:0,relance:0,bureau:0},n=0,late=0;
+  window.__p7cal=1;var L;try{L=allPlanningActions();}finally{window.__p7cal=0;}
+  for(var i=0;i<L.length;i++){var a=L[i];if(norm(a.status).includes('archive'))continue;if(pil&&!matchesPilot(a.client,a))continue;var d=parseDateValue(actionMainDate(a));if(!d)continue;
+    if(dateIso(d)===today){n++;c[of(a)]++;}else if(actionIsPlanned(a)){var k=actionDays(a);if(k!==null&&k<0)late++;}}
+  var h='<span class="mcSumT">Aujourd’hui</span><span class="mcSumN"><b>'+n+'</b> action'+(n>1?'s':'')+'</span>'
+    +['terrain','sav','relance','bureau'].map(function(k){return '<span class="mcSumC mcLg-'+k+'" title="'+CATS[k].l+' aujourd’hui">'+CATS[k].i+' '+CATS[k].l+' <b>'+c[k]+'</b></span>';}).join('')
+    +'<span role="button" tabindex="0" class="mcSumLate'+(late?' on':'')+'" data-mc-late="1" title="Ouvrir les actions en retard (Tâches & Rappels)">⚠ En retard <b>'+late+'</b></span>';
+  sumCache={key:key,html:h};return h;}
+function summary(){var lg=$('p7Legend');if(!lg)return;var s=$('mgtCalSummary');if(!s){s=document.createElement('div');s.id='mgtCalSummary';s.setAttribute('aria-label','Synthèse du jour');lg.parentNode.insertBefore(s,lg.nextSibling);}
+  var h=summaryHtml();if(s.__h!==h){s.innerHTML=h;s.__h=h;}}
+document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('#mgtCalSummary [data-mc-late]');if(!t)return;openLate();});
+document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.closest&&e.target.closest('#mgtCalSummary [data-mc-late]')){e.preventDefault();openLate();}});
+function openLate(){try{openModule('tasks');}catch(e){}setTimeout(function(){var b=[].slice.call(document.querySelectorAll('#tasksModule button, [data-tk-tab], .tkTabs button')).find(function(x){return /en retard/i.test(x.textContent);});if(b)b.click();},80);}
+
+/* ---------- barre d'outils (ordinateur / tablette) ---------- */
+var VIEWS=[['day','Jour'],['week','Semaine'],['month','Mois'],['year','Année']];
+function toolbar(){var c=document.querySelector('#calendarModule .calendarControls');if(!c)return false;
+  if(!$('mgtCalSeg')){var sel=$('calendarMode');var seg=document.createElement('div');seg.id='mgtCalSeg';seg.className='mcSeg';seg.setAttribute('role','group');seg.setAttribute('aria-label','Vue du calendrier');
+    seg.innerHTML=VIEWS.map(function(v){return '<span role="button" tabindex="0" class="mcSegB" data-mc-view="'+v[0]+'" aria-pressed="false">'+v[1]+'</span>';}).join('');
+    if(sel&&sel.parentNode===c)c.insertBefore(seg,sel.nextSibling);else c.appendChild(seg);}
+  if(!$('mgtCalTasksBtn')){var b=document.createElement('button');b.type='button';b.id='mgtCalTasksBtn';b.className='secondary mcTasksBtn';b.innerHTML='🔔 Rappels';b.title='Tâches & rappels';b.setAttribute('aria-label','Ouvrir les tâches et rappels');
+    var ref=$('calPreviewBtn');if(ref&&ref.parentNode===c)c.insertBefore(b,ref);else c.appendChild(b);}
+  segState();return true;}
+function segState(){var cur=pilotCalendarMode||'week',yr=!!($('annualCalendarModal')&&!$('annualCalendarModal').hidden);
+  document.querySelectorAll('#mgtCalSeg [data-mc-view]').forEach(function(x){var on=yr?x.dataset.mcView==='year':x.dataset.mcView===cur;x.classList.toggle('on',on);x.setAttribute('aria-pressed',String(on));});}
+function segGo(v){if(v==='year'){openAnnualCalendar();segState();return;}var s=$('calendarMode');if(s){s.value=v;s.dispatchEvent(new Event('change',{bubbles:true}));}else{pilotCalendarMode=v;renderCalendar();}}
+document.addEventListener('click',function(e){var x=e.target.closest&&e.target.closest('#mgtCalSeg [data-mc-view]');if(x){segGo(x.dataset.mcView);return;}if(e.target.closest&&e.target.closest('#mgtCalTasksBtn')){try{openModule('tasks');}catch(er){}}});
+document.addEventListener('keydown',function(e){var x=e.target.closest&&e.target.closest('#mgtCalSeg [data-mc-view]');if(!x)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();segGo(x.dataset.mcView);}
+  else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){var l=[].slice.call(document.querySelectorAll('#mgtCalSeg [data-mc-view]')),i=l.indexOf(x);var n=l[(i+(e.key==='ArrowRight'?1:l.length-1))%l.length];if(n){e.preventDefault();n.focus();}}});
+
+/* ---------- menu du clic droit (existant) et confirmation detaillee ---------- */
+document.addEventListener('contextmenu',function(e){var el=e.target.closest&&e.target.closest('#planningCalendar [data-event-id]');if(!el)return;var a=calendarActionMap[el.dataset.eventId];if(!a||typeof showCalendarContext!=='function')return;
+  e.preventDefault();e.stopPropagation();showCalendarContext(a,e.clientX,e.clientY);var m=$('calendarContextMenu');if(m){var f=m.querySelector('button');if(f)try{f.focus();}catch(x){}}},true);
+document.addEventListener('keydown',function(e){if(e.key!=='ContextMenu'&&!(e.shiftKey&&e.key==='F10'))return;var el=e.target.closest&&e.target.closest('#planningCalendar [data-event-id]');if(!el)return;var a=calendarActionMap[el.dataset.eventId];if(!a)return;
+  e.preventDefault();var r=el.getBoundingClientRect();showCalendarContext(a,r.left+10,r.bottom);var m=$('calendarContextMenu');if(m){var f=m.querySelector('button');if(f)try{f.focus();}catch(x){}}},true);
+document.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var m=$('calendarContextMenu');if(m&&!m.hidden){try{hideCalendarContext();}catch(x){m.hidden=true;}}});
+var baseDel=window.deleteCalendarAction;
+function delMessage(a){var who=(a.client&&a.client[fields.name])||'',d=actionMainDate(a),src=a.source||'manuel';
+  var what=a._from==='history'?'Elle sera retirée du calendrier ; l’historique du client est conservé.':(src==='manuel'||(a._from==='planning'&&String(a.eventId).indexOf('manual-')===0))?'Elle sera retirée du calendrier et de la fiche client.':'C’est une action proposée automatiquement : elle sera masquée et ne sera plus proposée.';
+  return 'Supprimer l’action « '+pretty(a.type)+' »'+(d?' du '+dateFr(d):'')+(who?' pour '+who:'')+' ?\n\n'+what+'\nCette opération ne peut pas être annulée.';}
+function pretty(t){t=String(t||'action').replace(/_/g,' ').toLowerCase();if(t==='sav')return 'SAV';return t.charAt(0).toUpperCase()+t.slice(1);}
+if(typeof baseDel==='function'){window.deleteCalendarAction=async function(a,skip){if(!a||!a.client)return baseDel.apply(this,arguments);if(!skip&&!confirm(delMessage(a)))return;return baseDel.call(this,a,true);};}
+
+/* ---------- apercu, impression, PDF ---------- */
+if(typeof CalendrierPreview==='object'&&CalendrierPreview){
+  CalendrierPreview.navigate=function(dir){var m=pilotCalendarMode||'week',d=pilotCalendarDate;
+    pilotCalendarDate=m==='day'?addDays(d,dir):m==='week'?addDays(d,7*dir):new Date(d.getFullYear(),d.getMonth()+dir,1);renderPilotage();this.render();};
+  CalendrierPreview.print=function(){try{this.close();}catch(e){}doc('print');};
+  CalendrierPreview.exportPdf=function(){try{this.close();}catch(e){}doc('pdf');};}
+function period(){var m=pilotCalendarMode||'week',d=new Date(pilotCalendarDate);d.setHours(0,0,0,0);var days=[],label;
+  if(m==='day'){days=[d];label=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+  else if(m==='week'){var s=startOfWeek(d);for(var i=0;i<7;i++)days.push(addDays(s,i));label='semaine du '+days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+' au '+days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});}
+  else{var f=new Date(d.getFullYear(),d.getMonth(),1),l=new Date(d.getFullYear(),d.getMonth()+1,0);for(var x=new Date(f);x<=l;x=addDays(x,1))days.push(new Date(x));label=monthTitle(d);}
+  return {mode:m,days:days,label:label};}
+function mins(v){var r=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return r?(+r[1])*60+(+r[2]):null;}
+function model(){var P=period(),set=new Set(P.days.map(dateIso)),q=(($('calendarQuickSearch')||{}).value||'').trim(),ql=q.toLocaleLowerCase('fr'),f=pilotFilterValues(),pil=!!(f.city||f.commercial);
+  window.__p7cal=1;var L;try{L=allPlanningActions();}finally{window.__p7cal=0;}
+  var list=[];L.forEach(function(a,i){var d=parseDateValue(actionMainDate(a));if(!d)return;var iso=dateIso(d);if(!set.has(iso))return;if(norm(a.status).includes('archive'))return;if(pil&&!matchesPilot(a.client,a))return;
+    if(ql&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(ql))return;var s=mins(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut);list.push({a:a,iso:iso,s:s,i:i});});
+  list.sort(function(x,y){return x.iso<y.iso?-1:x.iso>y.iso?1:((x.s===null?-1:x.s)-(y.s===null?-1:y.s))||x.i-y.i;});
+  var st=window.MGT_CAL_VIEWS?MGT_CAL_VIEWS.statusOf:function(a){return {l:a.status||''};},cnt={terrain:0,sav:0,relance:0,bureau:0},late=0,prev='';
+  var rows=list.map(function(x){var a=x.a,k=of(a),s=st(a),e=mins(a.endTime||a.end_time||a.heureFin||a.fin);cnt[k]++;if(s.k==='late')late++;var first=x.iso!==prev;prev=x.iso;
+    var hm=function(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
+    return [{t:first?parseDateValue(x.iso).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'}):'',b:first},{t:x.s===null?'Journée':hm(x.s)+(e!==null&&e>x.s?'–'+hm(e):'')},{t:(a.client&&a.client[fields.name])||'-',b:true},{t:pretty(a.type)},{t:CATS[k].l},{t:actionCommercial(a)},{t:s.l,hl:s.k==='late'},{t:a.objective||''}];});
+  var filters=['Période : '+P.label];if(f.commercial)filters.push('Commercial : '+f.commercial);if(f.city)filters.push('Ville : '+f.city);if(q)filters.push('Recherche : « '+q+' »');
+  var stamp=new Date();stamp=stamp.getFullYear()+'-'+String(stamp.getMonth()+1).padStart(2,'0')+'-'+String(stamp.getDate()).padStart(2,'0');
+  return {key:'planning',title:'Planning — '+P.label,file:'INTERNE_Planning_'+(P.mode==='day'?'jour':P.mode==='week'?'semaine':'mois')+'_'+dateIso(P.days[0])+'_'+stamp,
+    cx:{generated:new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),user:(function(){try{return syncUser()||'';}catch(e){return '';}})(),filters:filters},
+    cols:[{h:'Date',w:20,align:'left'},{h:'Horaire',w:20,align:'left'},{h:'Client',w:52,align:'left'},{h:'Type',w:30,align:'left'},{h:'Catégorie',w:20,align:'left'},{h:'Commercial',w:26,align:'left'},{h:'Statut',w:20,align:'left'},{h:'Objectif',w:80,align:'left'}],
+    rows:rows,foot:[],summary:[rows.length+' action'+(rows.length>1?'s':'')].concat(['terrain','sav','relance','bureau'].map(function(k){return CATS[k].l+' : '+cnt[k];})).concat(['En retard : '+late]),
+    notes:'Actions de la période affichée, mêmes filtres que le calendrier. Actions archivées et « Visites à planifier » masquées non incluses. Horaires facultatifs : « Journée » = sans horaire.'};}
+function doc(kind){try{if(!window.MGT_EXPORTS)throw new Error('module d’impression indisponible');var m=model();if(!m.rows.length){alert('Aucune action à '+(kind==='pdf'?'exporter':'imprimer')+' pour cette période.');return null;}
+    if(kind==='pdf'){/* GTM : moteur PDF chargé au premier export */return (typeof MGT_EXPORTS.chargerPdf==='function'?MGT_EXPORTS.chargerPdf():Promise.resolve()).then(function(){var d=MGT_EXPORTS.pdfDoc(m);try{toast('PDF exporté : '+m.file+'.pdf');}catch(e){}return d;}).catch(function(e){console.error('[CALENDRIER] pdf',e);alert('Export PDF impossible : '+e.message);return null;});}return MGT_EXPORTS.printDoc(m);}
+  catch(e){console.error('[CALENDRIER] '+kind,e);alert((kind==='pdf'?'Export PDF':'Impression')+' impossible : '+e.message);return null;}}
+
+/* ---------- divers ---------- */
+var baseADD=window.renderAnnualDateDetail;
+if(typeof baseADD==='function'){window.renderAnnualDateDetail=function(){var r=baseADD.apply(this,arguments);var t=$('annualDayTasksTitle');if(t&&/TÃches|TÃ¢ches/.test(t.textContent))t.textContent=t.textContent.replace(/TÃ¢ches|TÃches/,'Tâches');return r;};}
+var baseOAC=window.openAnnualCalendar;if(typeof baseOAC==='function'){window.openAnnualCalendar=function(){var r=baseOAC.apply(this,arguments);segState();return r;};}
+var baseClose=window.closePanel;if(typeof baseClose==='function'){window.closePanel=function(id){var r=baseClose.apply(this,arguments);if(id==='annualCalendarModal')segState();return r;};}
+
+/* ---------- branchement sur le rendu ---------- */
+var previous=window.renderCalendar;
+var render=function(){var r=previous.apply(this,arguments);try{legend();summary();toolbar();segState();}catch(e){console.warn('[CALENDRIER] harmonisation',e);}return r;};
+render.__p7=1;render.__mgtCalUx=VERSION;
+window.renderCalendar=render;
+function init(){legend();toolbar();try{summary();}catch(e){}}
+if(!init||!legend()){var tries=0,iv=setInterval(function(){if((legend()&&toolbar())||++tries>40){clearInterval(iv);try{summary();}catch(e){}}},250);}else{init();}
+window.MGT_CAL_UX={version:VERSION,category:of,model:model,print:function(){return doc('print');},pdf:function(){return doc('pdf');},summary:summary,_previous:previous};
+})();
+
+</script>
+<style id="mgt-v469g-cal-final-css">
+/* MGT CRM V4.6.9G — petits telephones (<= 360 px) : le bouton « + » de la barre mobile garde son icone
+   (le texte « + Action » debordait), « Aujourd'hui » s'affiche « Auj. » (au lieu de « A… ») et la rangee d'icones tient dans l'ecran (defaut present en V4.6.8M). */
+@media (max-width:360px){
+  #calendarModule.lot1-cal-mobile .lot1Icons #phase6AddAction{font-size:0!important}
+  #calendarModule.lot1-cal-mobile .lot1Icons #calToday{flex:1 1 0!important;min-width:40px!important;font-size:0!important;overflow:hidden;padding:0 2px!important}
+  #calendarModule.lot1-cal-mobile .lot1Icons #calToday::after{content:"Auj.";font-size:12.5px;font-weight:800}
+}
+</style>
+<script id="mgt-v469g-cal-final">
+/* =====================================================================
+   MGT CRM V4.6.9G — VALIDATION FINALE DU CALENDRIER : corrections issues des tests
+   1) Droits : les boutons d'ajout des nouvelles vues (« + Nouvelle action », « + Ajouter »,
+      « + ») et le bouton « Rappels » suivent les droits existants (calendar / edit,
+      communication / view), comme le bouton « + Action » d'origine ; « + Action » est de
+      nouveau masque sans le droit (la mise en page V4.6.9F de la barre l'emportait sur la regle).
+   2) Suppression : sans le droit « supprimer », aucune confirmation n'est demandee ; le refus
+      habituel (« Droit insuffisant ») s'affiche directement.
+   3) Date de relance de l'editeur : de nouveau enregistree (oubliee par la revision de
+      saveEventWithPhoto qui a ajoute les horaires ; defaut present en V4.6.8M). Meme
+      enregistrement unique : aucune ecriture supplementaire.
+   4) Double-clic sur une action : ouvre l'editeur (avant, le premier clic ouvrait la fiche detail
+      par-dessus l'action et le double-clic n'aboutissait jamais ; defaut present en V4.6.8M).
+      Un simple clic ouvre la fiche detail apres 1/4 de seconde.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9G';
+/* GTM : droits des comptes GTM Groupe (bloc mgt-droits) */
+function can(m,a){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN(m,a);}catch(e){return true;}}
+function applyRights(){var css='';
+  if(!can('calendar','edit')) css+='#calendarModule .calendarControls #phase6AddAction,#planningCalendar [data-add-date],#calendarModule .mcAdd,#calendarModule .moBtnAdd,#calendarModule .mcAgAdd,#calendarModule .mcTinyAdd{display:none!important}\n';
+  if(!can('communication','view')) css+='#mgtCalTasksBtn,#mgtCalSummary [data-mc-late]{display:none!important}\n';
+  var st=document.getElementById('mgt-v469g-rights-style');if(!st){st=document.createElement('style');st.id='mgt-v469g-rights-style';document.head.appendChild(st);}
+  if(st.textContent!==css)st.textContent=css;}
+document.addEventListener('mgt-crm-user-ready',applyRights);
+applyRights();
+var prevDel=window.deleteCalendarAction;
+if(typeof prevDel==='function'){window.deleteCalendarAction=function(a,skip){
+  if(!can('calendar','delete')){try{if(window.MGT_DROITS&&typeof MGT_DROITS.refuser==='function')MGT_DROITS.refuser('calendar','delete');else alert('Droit insuffisant : vous ne pouvez pas supprimer dans « Calendrier ».');}catch(e){}return Promise.resolve(null);}
+  return prevDel.apply(this,arguments);};}
+/* 3) date de relance */
+var prevSave=window.saveEventWithPhoto;
+if(typeof prevSave==='function'){window.saveEventWithPhoto=async function(){
+  var inp=document.getElementById('eventRelanceDateInput'),rel=inp?String(inp.value||''):null,baseCommit=window.commitPlanning;
+  if(rel===null||typeof baseCommit!=='function')return prevSave.apply(this,arguments);
+  window.commitPlanning=function(c,patch,list){try{var olds=planningList(c),cur=new Set(olds);(list||[]).forEach(function(x){if(!x||typeof x!=='object'||cur.has(x)||!('photoData' in x||'motif' in x))return;var prev=olds.find(function(o){return o&&x.id&&String(o.id)===String(x.id);});
+    /* champ ecrit seulement si une date est saisie, ou pour effacer une relance existante : sinon, donnees identiques a l'original */
+    if(rel||(prev&&prev.relanceDate))x.relanceDate=rel;});}catch(e){}return baseCommit.apply(this,arguments);};
+  try{return await prevSave.apply(this,arguments);}finally{window.commitPlanning=baseCommit;}};}
+/* 4) simple clic / double-clic sur une action du calendrier */
+var clickT=null;
+function evAt(t){return t&&t.closest&&t.closest('#planningCalendar [data-event-id]');}
+document.addEventListener('click',function(e){var el=evAt(e.target);if(!el)return;e.stopPropagation();e.preventDefault();if(e.detail>1)return;
+  clearTimeout(clickT);var id=el.dataset.eventId;clickT=setTimeout(function(){clickT=null;var a=calendarActionMap[id];if(a)openTaskDetail(a);},250);},true);
+document.addEventListener('dblclick',function(e){var el=evAt(e.target);if(!el)return;e.stopPropagation();e.preventDefault();clearTimeout(clickT);clickT=null;var a=calendarActionMap[el.dataset.eventId];if(!a)return;
+  var tm=document.getElementById('taskDetailModal');if(tm)tm.hidden=true;try{showEventContext(a);}catch(x){}openEventEditor(a);},true);
+
+var prevRC=window.renderCalendar;
+if(typeof prevRC==='function'){var rc=function(){var r=prevRC.apply(this,arguments);try{applyRights();}catch(e){}return r;};rc.__p7=1;rc.__mgtCalFinal=VERSION;window.renderCalendar=rc;}
+window.MGT_CAL_FINAL={version:VERSION,applyRights:applyRights};
+})();
+
+</script>
+<style id="mgt-v469g1-month-mobile-css">
+/* MGT CRM V4.6.9G1 — vue Mois sur telephone : nom des actions du jour dans chaque case (au lieu des seules pastilles) */
+.moMob .moDay{align-items:stretch;min-height:76px;padding:2px 2px 3px;gap:2px}
+.moMob .moHead{flex-direction:row;justify-content:space-between;align-items:center;gap:2px;min-height:22px}
+.moMob .moNum{min-width:22px;height:22px;padding:0 3px;font-size:12px}
+.moMob .moCnt{margin:0;font-size:9.5px;font-weight:800}
+.moMini{display:flex;flex-direction:column;gap:2px;min-width:0}
+.moMiniEv{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;min-width:0;font-size:9px;line-height:11px;font-weight:700;letter-spacing:-.01em;padding:0 2px 0 3px;border-radius:3px;border-left:2px solid var(--mc-bur);background:var(--mc-bur-bg);color:var(--mc-fg);white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;hyphens:none;box-sizing:border-box;max-height:22px}
+.moMiniEv.mc-terrain{border-left-color:var(--mc-terr);background:var(--mc-terr-bg)}
+.moMiniEv.mc-sav{border-left-color:var(--mc-sav);background:var(--mc-sav-bg)}
+.moMiniEv.mc-relance{border-left-color:var(--mc-rel);background:var(--mc-rel-bg)}
+.moMiniEv.mcSt-done{text-decoration:line-through;opacity:.72}
+.moMiniEv.mcSt-late{box-shadow:inset -2px 0 0 #dc2626}
+.moMiniMore{font-size:9.5px;font-weight:800;color:var(--mc-acc);padding-left:3px;line-height:1.3}
+.moOut .moMini{opacity:.55}
+.moMob .moGrid{grid-template-columns:18px repeat(7,minmax(0,1fr))}
+.moMob .moWkNum{font-size:8px;padding-top:6px;letter-spacing:-.02em}
+.moMob .moDay{padding:2px 1px 3px}
+</style>
+<style id="mgt-v469g2-done-css">
+/* MGT CRM V4.6.9G2 — actions terminees : plus de texte barre ni attenue (illisible) ; repere ✓ vert devant le nom */
+.mcCal{--mc-done:#22c55e}
+html[data-mgt-theme="light"] .mcCal{--mc-done:#15803d}
+.mcCal .mcSt-done .mcEvName,.mcCal .mcSt-done .mcCardName,.mcCal .moEv.mcSt-done,.mcCal .moMiniEv.mcSt-done,.mcCal .mcChip.mcSt-done{text-decoration:none!important}
+.mcCal .mcEv.mcSt-done .mcEvIn,.mcCal .mcChip.mcSt-done,.mcCal .mcCard.mcSt-done,.mcCal .moEv.mcSt-done,.mcCal .moMiniEv.mcSt-done{opacity:1!important}
+.mcCal .mcEv.mcSt-done .mcEvName::before,.mcCal .mcCard.mcSt-done .mcCardName::before,.mcCal .mcChip.mcSt-done .mcChipTx::before,.mcCal .moEv.mcSt-done::before,.mcCal .moMiniEv.mcSt-done::before{content:"✓ ";color:var(--mc-done);font-weight:900}
+/* telephone (vue Mois) : le ✓ reste colle au nom, sans prendre une ligne a lui seul */
+.mcCal .moMiniEv.mcSt-done::before{content:"✓\00a0";font-size:8.5px;letter-spacing:-.04em}
+</style>
+<script id="mgt-v469h-listing-std">
+/* =====================================================================
+   MGT CRM V4.6.9H — LISTING : PRIX DE VENTE STANDARD = PRIX CATALOGUE
+   Decision du client (09/11/2026) :
+   - le prix de vente standard d'un article est son prix catalogue ; l'ancien prix de vente
+     calcule avec un coefficient (catalogue x %, achat x coefficient) est abandonne ;
+   - les articles sans prix catalogue n'ont plus de prix de vente : ils sont signales
+     « Prix catalogue a saisir » (59 articles du fichier Excel) ;
+   - le prix reste modifiable ligne par ligne sur l'offre de prix et sur la facture.
+   Mise en oeuvre :
+   - au demarrage, chaque article dont le prix de vente differe du prix catalogue est mis a
+     jour par la fonction d'origine (dm.listingUpdateArticle) : nouvelle entree DATEE de
+     l'historique des prix (source STANDARDISATION) ; l'ancien prix reste dans l'historique et
+     dans l'origine Excel (aucune donnee supprimee) ; la date du tarif de l'article (date de
+     mise a jour issue du fichier Excel) est conservee, car ni le catalogue ni l'achat ne changent ;
+   - creation / modification / restauration / import : le prix de vente suit le catalogue ;
+   - proposition de prix et regles : la vente = prix catalogue (le prix d'achat garde ses regles) ;
+   - offres et factures existantes inchangees (lignes figees) ; les nouvelles lignes reprennent
+     le prix standard.
+   Le Listing est local a chaque appareil : la mise a jour se fait sur chaque appareil a l'ouverture.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9H';
+if(typeof dm==='undefined'||typeof dm.listingUpdateArticle!=='function'){console.error('[LISTING '+VERSION+'] Listing introuvable');return;}
+function num(v){if(v==null||v==='')return null;var n=typeof v==='number'?v:Number(String(v).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:null;}
+function fmt(n){return n==null?'vide':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+var base={create:dm.listingCreateArticle,update:dm.listingUpdateArticle,restore:dm.listingRestore,importData:dm.listingImportData,propose:dm.listingPropose,getRules:dm.listingGetRules,saveRules:dm.listingSaveRules,flags:dm.listingLiveFlags};
+var NOTE='Prix de vente standard = prix catalogue (V4.6.9H)';
+
+/* --- creation et modification : le prix de vente suit le prix catalogue --- */
+dm.listingCreateArticle=function(data,opts){data=Object.assign({},data||{});data.prixVente=num(data.prixCatalogue);return base.create.call(this,data,opts);};
+dm.listingUpdateArticle=async function(id,patch,opts){patch=Object.assign({},patch||{});
+  var cat;if(patch.prixCatalogue!==undefined)cat=num(patch.prixCatalogue);else{var a=await dm.listingGetArticle(id);cat=a?num(a.prixCatalogue):null;}
+  patch.prixVente=cat;return base.update.call(this,id,patch,opts);};
+async function standardizeOne(a){var cat=num(a.prixCatalogue),pv=num(a.prixVente);if(cat===pv)return 0;
+  await base.update.call(dm,a.id,{prixVente:cat},{keepDateMaj:true,source:'STANDARDISATION',note:NOTE+(pv!=null?' — ancien prix de vente calculé : '+fmt(pv):'')+(cat==null?' — prix catalogue à saisir':'')});return 1;}
+if(typeof base.restore==='function')dm.listingRestore=async function(id){var r=await base.restore.apply(this,arguments);try{var a=await dm.listingGetArticle(id);if(a)await standardizeOne(a);}catch(e){console.warn('[LISTING] standardisation',e);}return r;};
+if(typeof base.importData==='function')dm.listingImportData=async function(){var r=await base.importData.apply(this,arguments);try{await standardizeAll();}catch(e){console.warn('[LISTING] standardisation',e);}return r;};
+/* GTM : l'import passe par dm.listingFusionner (fichier du CRM ou sauvegarde) */
+if(typeof dm.listingFusionner==='function'){var baseFus=dm.listingFusionner;dm.listingFusionner=async function(){var r=await baseFus.apply(this,arguments);try{await standardizeAll();}catch(e){console.warn('[LISTING] standardisation',e);}return r;};}
+
+/* --- propositions et regles : vente = prix catalogue --- */
+dm.listingPropose=function(a,rules){var p=base.propose.call(this,a,rules);var cat=num(a&&a.prixCatalogue);
+  p.prixVente=cat;p.explication=String(p.explication||'').split(' · ').filter(function(x){return !/^Vente/.test(x);}).concat(cat==null?[]:['Vente = prix catalogue (prix standard)']).join(' · ');return p;};
+function forceRules(r){return (r||[]).map(function(x){return Object.assign({},x,{vente:{mode:'pct_catalogue',valeur:1}});});}
+if(typeof base.getRules==='function')dm.listingGetRules=async function(){return forceRules(await base.getRules.apply(this,arguments));};
+if(typeof base.saveRules==='function')dm.listingSaveRules=function(rules){return base.saveRules.call(this,forceRules(rules));};
+if(typeof base.defaultRules==='undefined'&&typeof dm.listingDefaultRules==='function'){var bd=dm.listingDefaultRules;dm.listingDefaultRules=function(){return forceRules(bd.apply(this,arguments));};}
+
+/* --- signalement : « Prix catalogue a saisir » (remplace « sans prix de vente ») --- */
+dm.listingLiveFlags=function(a){var f=base.flags.call(this,a);if(num(a&&a.prixCatalogue)==null)f=f.filter(function(x){return x.code!=='SANS_PRIX_VENTE';}).map(function(x){return x.code==='SANS_PRIX_CATALOGUE'?{code:x.code,detail:'Prix catalogue à saisir : il fixe le prix de vente standard'}:x;});return f;};
+
+/* --- mise a jour des articles existants (a l'ouverture, une seule fois par article) --- */
+var state={running:false,done:false,changed:0,cleared:0,at:null};
+/* GTM : le Listing est partagé (Firebase) : on attend les données à jour, puis tout est écrit en UNE fois
+   (dm.listingEnLot) ; seulement pour un compte qui peut modifier le Listing (les autres lisent le résultat). */
+function hote(){try{var x=window.parent;return(x&&x!==window&&typeof x.getJSON==='function')?x:null;}catch(e){return null;}}
+function peutModifier(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('stock','edit');}catch(e){return false;}}
+async function standardizeAll(){if(state.running)return state;if(hote()&&!window.CRM_USER)return state;if(!peutModifier())return state;
+  state.running=true;var mute=function(e){e.stopImmediatePropagation();};
+  document.addEventListener('mgt-listing-changed',mute,true);
+  try{var hx=hote();if(hx&&typeof attendreSyncPrete==='function'&&!(await attendreSyncPrete(hx,'crm_listing',25000))){state.running=false;document.removeEventListener('mgt-listing-changed',mute,true);return state;}
+    var all=await dm.listingGetAll({raw:true}),todo=all.filter(function(a){return num(a.prixCatalogue)!==num(a.prixVente);}),ch=0,cl=0;
+    var lot=typeof dm.listingEnLot==='function'?dm.listingEnLot.bind(dm):function(fn){return fn();};
+    await lot(async function(){for(var i=0;i<todo.length;i++){var a=todo[i];if(await standardizeOne(a)){ch++;if(num(a.prixCatalogue)==null)cl++;}}});
+    state.changed+=ch;state.cleared+=cl;state.at=new Date().toISOString();state.done=true;
+    if(ch){try{await dbSet('sync_logs',null,{timestamp:state.at,level:'info',message:'Listing : prix de vente standardisés (= prix catalogue)',details:ch+' article(s) mis à jour, dont '+cl+' sans prix catalogue',category:'listing',device_id:(typeof DEVICE_ID!=='undefined'?DEVICE_ID:'')});}catch(e){}}
+  }finally{document.removeEventListener('mgt-listing-changed',mute,true);state.running=false;}
+  try{document.dispatchEvent(new CustomEvent('mgt-listing-changed'));}catch(e){}
+  return state;}
+
+/* --- formulaire d'article : le prix de vente affiche suit la saisie du prix catalogue --- */
+document.addEventListener('input',function(e){var t=e.target;if(!t||t.name!=='prixCatalogue'||!t.form||t.form.getAttribute('data-ls-form')!=='article')return;var v=t.form.elements.prixVente;if(v)v.value=t.value;});
+
+var ready=standardizeAll().catch(function(e){console.error('[LISTING '+VERSION+'] standardisation',e);});
+/* GTM : relancée quand le compte connecté est connu (droits) */
+document.addEventListener('mgt-crm-user-ready',function(){if(!state.done)standardizeAll().catch(function(e){console.error('[LISTING '+VERSION+'] standardisation',e);});});
+/* articles arrivés d'un autre appareil (ancien import, ancienne version) : mis au prix standard eux aussi */
+var tStd=null;window.addEventListener('message',function(ev){if(!(ev&&ev.data&&ev.data.type==='gtm-mgt-data-updated'))return;clearTimeout(tStd);tStd=setTimeout(function(){standardizeAll().catch(function(e){console.warn('[LISTING] standardisation',e);});},3000);});
+window.MGT_LISTING_STD={version:VERSION,ready:ready,state:function(){return Object.assign({},state);},standardizeAll:standardizeAll};
+})();
+
+</script>
+<style id="mgt-v469i-offer-exports-css">
+/* V4.6.9I — export des offres (bouton + menu) */
+.ofxBtn{display:inline-flex!important;align-items:center;gap:6px;width:auto!important}
+.ofxBtn[hidden]{display:none!important}
+.ofxI{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.offresCardActions .ofxBtn{margin-right:6px}
+.ofxMenu{position:fixed;z-index:10050;width:320px;max-width:calc(100vw - 16px);background:var(--panel,#1b2129);color:var(--ink,#e8edf3);border:1px solid var(--line,#2c3440);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);padding:10px 12px 12px}
+.ofxMenu[hidden]{display:none!important}
+.ofxHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding-right:34px;position:relative;margin-bottom:6px}
+.ofxHead b{font-size:15px}
+.ofxSub{flex-basis:100%;font-size:12px;color:var(--muted,#9aa5b4);overflow-wrap:anywhere}
+.ofxClose{position:absolute!important;right:-4px;top:-4px;width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;border-radius:8px!important;font-size:20px!important;line-height:1!important;background:transparent!important;color:var(--ink,#18212f)!important;border:1px solid var(--line,#2c3440)!important;box-shadow:none!important;display:inline-flex!important;align-items:center;justify-content:center}
+#ofxMenu .ofxClose{color:#e8edf3!important;-webkit-text-fill-color:currentColor}
+html[data-mgt-theme="light"] #ofxMenu .ofxClose{color:#18212f!important;background:#fff!important;border-color:#cfd6df!important}
+#ofxMenu .ofxClose svg{stroke:currentColor!important}
+.ofxClose .ofxX{width:18px;height:18px;flex:0 0 18px;stroke-width:2.4}
+.ofxGroup{border:1px solid var(--line,#2c3440);border-radius:10px;padding:9px 10px;margin-top:8px}
+.ofxInt{border-color:#b4233a66;background:rgba(180,35,58,.07)}
+.ofxTitle{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13.5px}
+.ofxInt .ofxTitle{color:#ff6b81}
+.ofxNote{font-size:12px;color:var(--muted,#9aa5b4);margin:3px 0 8px;line-height:1.35}
+.ofxBtns{display:flex;gap:8px}
+.ofxBtns button{flex:1;min-height:40px!important;width:auto!important;font-weight:700!important}
+html[data-mgt-theme="light"] .ofxInt .ofxTitle{color:#b4233a}
+html[data-mgt-theme="light"] .ofxMenu{box-shadow:0 12px 32px rgba(16,42,67,.22)}
+.ofxMenu.ofxSheet{left:8px!important;right:8px;top:auto!important;bottom:8px;width:auto;max-width:none;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+</style>
+<script id="mgt-v469i-offer-exports">
+/* =====================================================================
+   MGT CRM V4.6.9I — EXPORT DES OFFRES DE PRIX (PDF / EXCEL)
+   Pour chaque offre, deux documents :
+   - OFFRE CLIENT : reference, designation, quantite, prix unitaire HT, remise,
+     total HT. JAMAIS de prix d'achat, de cout ni de marge (ni visibles, ni caches,
+     ni dans les proprietes du fichier).
+   - DOCUMENT INTERNE : en plus, prix de reference (Listing), prix net, prix d'achat,
+     cout d'achat, marge unitaire, marge totale, taux de marge par ligne et totaux.
+     Mention « DOCUMENT INTERNE » sur chaque page.
+   Calculs : ceux du composant de lignes (MGT_LINES.calcLine / calcTotals), sans
+   modification. Lecture seule : aucune donnee n'est ecrite.
+   Point d'entree : bouton « Exporter » sur chaque carte d'offre et dans la
+   fenetre « Modifier l'offre » (exporte alors l'etat affiche, meme non enregistre).
+   ===================================================================== */
+(function(){
+'use strict';
+if(!window.MGT_LINES){console.error('[EXPORT OFFRES V4.6.9I] composant de lignes absent');return;}
+var LN=window.MGT_LINES, VERSION='V4.6.9I';
+function $(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function num(v){if(v===''||v==null)return null;var n=typeof v==='number'?v:Number(String(v).replace(/[\s  ]/g,'').replace(',','.'));return Number.isFinite(n)?n:null;}
+function r2(n){return n==null?null:Math.round((n+Number.EPSILON)*100)/100;}
+function n2(n){return n==null?'':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');}
+function qty(n){return n==null?'':Number(n).toLocaleString('fr-FR',{maximumFractionDigits:3}).replace(/[  ]/g,' ');}
+function pc(n){return n==null?'—':(Math.round(n*100)/100).toLocaleString('fr-FR',{maximumFractionDigits:2}).replace(/[  ]/g,' ')+' %';}
+function frDate(s){s=String(s||'');return /^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):s;}
+function who(){try{return (typeof syncUser==='function'&&syncUser())||'';}catch(e){return '';}}
+function can(a){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('offres',a);}catch(e){return true;}}
+function say(t){try{if(typeof toast==='function')toast(t);}catch(e){}}
+function F(k){try{return fields[k];}catch(e){return null;}}
+function cur(dev){return !dev||dev==='EUR'?'€':dev;}
+function money(n,dev){return n==null?'—':n2(n)+' '+cur(dev);}
+function stamp(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowFr(){var d=new Date();return d.toLocaleDateString('fr-FR')+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function safeName(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60)||'offre';}
+function logo(){var i=document.querySelector('header .logoBox img, .logoBox img');return i&&/^data:image\/(png|jpe?g)/.test(i.getAttribute('src')||'')?{src:i.getAttribute('src'),w:i.naturalWidth||1,h:i.naturalHeight||1}:null;}
+
+/* ---------------------------------------------------------------
+   1) MODELE : une offre -> donnees du document (client / interne)
+   --------------------------------------------------------------- */
+function clientOf(cid){try{return CLIENTS.find(function(x){return String(x[F('id')])===String(cid);})||null;}catch(e){return null;}}
+function offerRef(c,o,i){try{if(typeof offerReference==='function')return offerReference(c,o,i);}catch(e){}return String(o.offerId||'');}
+function typeLabel(o){try{if(typeof offerTypeLabel==='function')return offerTypeLabel(o);}catch(e){}return o.type||'';}
+function buildModel(c,o,index,override){
+  override=override||{};
+  var meta=Object.assign({offerId:o.offerId,sentDate:o.sentDate||o.date||o.sent||'',echeance:o.echeance||'',marque:o.marque||'',commercial:o.commercial||'',machine:o.machine||'',type:o.type||'',devise:o.devise||'EUR',amount:o.amount},override.meta||{});
+  var src=override.lines||o.lignes||[];
+  var lines=src.map(function(l){var c2=LN.calcLine(l);return {reference:String(l.reference||''),designation:String(l.designation||''),marque:l.marque||'',quantite:num(l.quantite),prixVente:num(l.prixVente),remise:num(l.remise)||0,
+    prixAchat:num(l.prixAchat),prixRef:num(l.prixVenteCatalogue),prixNet:c2.prixNet,total:c2.total,cout:c2.cout,margeUnit:c2.margeUnit,margeTotale:c2.margeTotale,
+    taux:c2.margeTotale!=null&&c2.total?r2(c2.margeTotale/c2.total*100):null};});
+  var t=LN.calcTotals(src), detail=lines.length>0;
+  var refVal=0, refN=0; lines.forEach(function(l){if(l.prixRef!=null&&l.quantite!=null){refVal+=l.quantite*l.prixRef;refN++;}});
+  var amount=detail?t.totalHT:num(meta.amount);
+  var cl={nom:String((c&&c[F('name')])||'Client'),contact:String((c&&c[F('contact')])||''),ville:String((c&&c[F('city')])||''),region:String((c&&c[F('region')])||''),tel:String((c&&c[F('phone')])||''),email:String((c&&c[F('email')])||'')};
+  var numero=meta.offerId||offerRef(c,o,index);
+  return {numero:String(numero||''),date:meta.sentDate,validite:meta.echeance,marque:meta.marque,commercial:meta.commercial,objet:meta.machine,type:typeLabel({type:meta.type}),
+    devise:detail?'EUR':(meta.devise||'EUR'),client:cl,lines:lines,detail:detail,
+    totals:{totalHT:amount,remises:detail?t.remiseTotale:0,cout:detail?t.cout:null,marge:detail?t.marge:null,taux:detail?t.tauxMarge:null,sansPA:detail?t.sansPrixAchat:0,nb:lines.length,
+      valeurRef:refN===lines.length&&detail?r2(refVal):null,ecartRef:refN===lines.length&&detail?r2(t.totalHT-refVal):null},
+    generated:nowFr(),user:who()};
+}
+function modelFor(cid,index){
+  var c=clientOf(cid); if(!c) throw new Error('client introuvable');
+  var o=(Array.isArray(c.Offres)?c.Offres:[])[Number(index)]; if(!o) throw new Error('offre introuvable');
+  return buildModel(c,o,Number(index));
+}
+/* fenetre « Modifier l'offre » : etat affiche (lignes et champs), meme non enregistre */
+function modelFromEditor(){
+  var api=window.MGT_OFFERS_LINES, ctx=api&&api.ctx&&api.ctx(); if(!ctx) throw new Error('aucune offre ouverte');
+  var c=clientOf(ctx.cid), o=(c&&c.Offres||[])[ctx.index]||ctx.offer||{}, body=$('offreEditBody');
+  var fv=function(f){var el=body&&body.querySelector('[data-offer-field="'+f+'"]');return el?String(el.value||'').trim():null;};
+  var meta={}; ['offerId','sentDate','echeance','marque','commercial','machine','type','devise','amount'].forEach(function(k){var v=fv(k);if(v!=null)meta[k]=v;});
+  return buildModel(c,o,ctx.index,{meta:meta,lines:api.editEditor.getLines()});
+}
+function fileBase(m,kind){return (kind==='interne'?'INTERNE_Offre_':'Offre_')+safeName(m.numero)+'_'+safeName(m.client.nom)+(kind==='interne'?'_marges':'')+'_'+stamp();}
+
+/* ---------------------------------------------------------------
+   2) PDF (jsPDF + autotable, deja integres au CRM)
+   --------------------------------------------------------------- */
+function clean(s){return String(s==null?'':s).replace(/[   ]/g,' ').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,'...');}
+function infoRows(m){
+  var cl=m.client, a=[['Société',cl.nom]];
+  if(cl.contact) a.push(['Contact',cl.contact]); var loc=[cl.ville,cl.region].filter(Boolean).join(' — '); if(loc) a.push(['Adresse',loc]);
+  if(cl.tel) a.push(['Téléphone',cl.tel]); if(cl.email) a.push(['Email',cl.email]);
+  var b=[['N° d\'offre',m.numero||'—'],['Date',frDate(m.date)||'—']]; if(m.validite) b.push(['Valable jusqu\'au',frDate(m.validite)]);
+  if(m.objet) b.push(['Objet',m.objet]); if(m.marque) b.push(['Marque',m.marque]); if(m.commercial) b.push(['Commercial',m.commercial]);
+  return {client:a,offre:b};
+}
+function pdfDoc(m,kind,opts){
+  opts=opts||{}; var internal=kind==='interne';
+  var J=window.jspdf&&window.jspdf.jsPDF; if(!J) throw new Error('Moteur PDF indisponible');
+  var doc=new J({orientation:internal?'landscape':'portrait',unit:'mm',format:'a4'}); if(typeof doc.autoTable!=='function') throw new Error('Extension de tableau PDF indisponible');
+  var W=internal?297:210, H=internal?210:297, L=12, R=W-12, lg=logo(), y=12, dev=m.devise;
+  doc.setProperties({title:clean((internal?'DOCUMENT INTERNE - ':'')+'Offre de prix '+m.numero),subject:internal?'Offre de prix - calcul des marges (interne)':'Offre de prix',author:'MGT SARL',creator:'CRM MGT '+VERSION});
+  if(lg){var h=13,w=Math.min(46,h*lg.w/lg.h);try{doc.addImage(lg.src,lg.src.indexOf('image/png')>0?'PNG':'JPEG',L,y,w,h);}catch(e){}}
+  else {doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('MGT SARL',L,y+8);}
+  doc.setFont('helvetica','bold');doc.setFontSize(internal?15:17);doc.setTextColor(17,17,17);
+  doc.text(internal?'OFFRE DE PRIX - CALCUL DES MARGES':'OFFRE DE PRIX',R,y+6,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(clean('N° '+(m.numero||'—')+'   ·   '+(frDate(m.date)||'')),R,y+12,{align:'right'});
+  y+=18;
+  if(internal){doc.setFillColor(253,236,238);doc.setDrawColor(180,35,58);doc.rect(L,y,R-L,8,'FD');doc.setTextColor(180,35,58);doc.setFont('helvetica','bold');doc.setFontSize(9.5);
+    doc.text('DOCUMENT INTERNE - contient les prix d\'achat et les marges - NE PAS TRANSMETTRE AU CLIENT',W/2,y+5.3,{align:'center'});doc.setTextColor(17,17,17);y+=11;}
+  /* blocs client / offre */
+  var info=infoRows(m), colW=(R-L-6)/2, sty={font:'helvetica',fontSize:8.8,cellPadding:{top:0.9,bottom:0.9,left:2,right:2},textColor:[17,17,17],lineWidth:0};
+  var block=function(title,rows,x){doc.autoTable({startY:y,margin:{left:x,right:W-x-colW},tableWidth:colW,theme:'plain',head:[[{content:title,colSpan:2}]],body:rows.map(function(r){return [clean(r[0]),clean(r[1])];}),
+    styles:sty,headStyles:{fillColor:[236,239,243],textColor:[17,17,17],fontStyle:'bold',fontSize:9},columnStyles:{0:{cellWidth:internal?32:30,textColor:[85,93,105]},1:{fontStyle:'bold'}}});return doc.lastAutoTable.finalY;};
+  var y1=block('Client',info.client,L), y2=block('Offre',info.offre,L+colW+6); y=Math.max(y1,y2)+5;
+  /* lignes */
+  var head, body, cols, foot=[];
+  if(internal){
+    head=[['Référence','Désignation','Qté','Prix de référence','Prix vente HT','Remise','Prix net HT','Total HT','Prix d\'achat','Coût d\'achat','Marge unit.','Marge totale','Taux']];
+    body=m.lines.map(function(l){return [l.reference,l.designation,qty(l.quantite),n2(l.prixRef),n2(l.prixVente),l.remise?pc(l.remise):'—',n2(l.prixNet),n2(l.total),l.prixAchat==null?'inconnu':n2(l.prixAchat),l.cout==null?'—':n2(l.cout),l.margeUnit==null?'—':n2(l.margeUnit),l.margeTotale==null?'—':n2(l.margeTotale),pc(l.taux)];});
+    cols={0:{cellWidth:24},1:{cellWidth:'auto'},2:{cellWidth:11,halign:'right'},3:{cellWidth:20,halign:'right'},4:{cellWidth:20,halign:'right'},5:{cellWidth:14,halign:'right'},6:{cellWidth:20,halign:'right'},7:{cellWidth:22,halign:'right',fontStyle:'bold'},
+      8:{cellWidth:20,halign:'right',fillColor:[241,244,250]},9:{cellWidth:20,halign:'right',fillColor:[241,244,250]},10:{cellWidth:19,halign:'right',fillColor:[241,244,250]},11:{cellWidth:21,halign:'right',fillColor:[241,244,250],fontStyle:'bold'},12:{cellWidth:14,halign:'right',fillColor:[241,244,250]}};
+  } else {
+    var hasRem=m.lines.some(function(l){return l.remise>0;});
+    head=[['Référence','Désignation','Quantité','Prix unitaire HT'].concat(hasRem?['Remise']:[]).concat(['Total HT'])];
+    body=m.lines.map(function(l){return [l.reference,l.designation,qty(l.quantite),n2(l.prixVente)].concat(hasRem?[l.remise?pc(l.remise):'—']:[]).concat([n2(l.total)]);});
+    cols={0:{cellWidth:28},1:{cellWidth:'auto'},2:{cellWidth:18,halign:'right'},3:{cellWidth:27,halign:'right'}}; if(hasRem){cols[4]={cellWidth:17,halign:'right'};cols[5]={cellWidth:28,halign:'right',fontStyle:'bold'};} else cols[4]={cellWidth:28,halign:'right',fontStyle:'bold'};
+  }
+  if(!m.detail){ /* offre sans lignes d'articles : montant global saisi */
+    var nc=head[0].length; body=[[{content:clean((m.objet||typeLabel({type:m.type})||'Offre de prix')+' — montant global de l\'offre'),colSpan:nc-1},n2(m.totals.totalHT)]];
+  }
+  doc.autoTable({startY:y,margin:{left:L,right:W-R,top:14,bottom:16},theme:'grid',showHead:'everyPage',head:head,body:body.map(function(r){return r.map(function(x){return typeof x==='object'&&x?x:clean(x);});}),
+    styles:{font:'helvetica',fontSize:internal?7.6:8.8,cellPadding:internal?1.3:1.8,lineColor:[170,177,187],lineWidth:0.1,textColor:[17,17,17],overflow:'linebreak',valign:'middle'},
+    headStyles:{fillColor:[36,48,64],textColor:[255,255,255],fontStyle:'bold',halign:'center',fontSize:internal?7.4:8.6},columnStyles:m.detail?cols:{},
+    didParseCell:function(h){if(h.section!=='body'||!internal||!m.detail)return;var l=m.lines[h.row.index];if(!l)return;
+      if(h.column.index===8&&l.prixAchat==null){h.cell.styles.textColor=[163,50,10];h.cell.styles.fontStyle='bold';}
+      if((h.column.index===11||h.column.index===10)&&l.margeTotale!=null&&l.margeTotale<0)h.cell.styles.textColor=[180,35,58];
+      if(h.column.index===4&&l.prixRef!=null&&Math.abs(l.prixVente-l.prixRef)>0.004)h.cell.styles.fontStyle='bold';},
+    didDrawPage:function(){var p=doc.internal.getNumberOfPages();doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);
+      doc.text(clean(internal?'MGT SARL - Offre '+m.numero+' - DOCUMENT INTERNE (prix d\'achat et marges)':'MGT SARL - Offre de prix '+m.numero),L,H-7);doc.text('Page '+p+' / {total}',R,H-7,{align:'right'});
+      if(internal&&p>1){doc.setTextColor(180,35,58);doc.setFont('helvetica','bold');doc.text('DOCUMENT INTERNE',R,8,{align:'right'});}doc.setTextColor(17,17,17);}});
+  y=doc.lastAutoTable.finalY+4;
+  /* totaux */
+  var T=m.totals, tot=[['Total HT',money(T.totalHT,dev)]];
+  if(T.remises>0.004) tot.unshift(['Dont remises',money(T.remises,dev)]);
+  if(internal){
+    if(m.detail){ if(T.valeurRef!=null) tot.push(['Valeur au prix de référence',money(T.valeurRef,dev)],['Écart négocié / référence',(T.ecartRef>0?'+':'')+money(T.ecartRef,dev)]);
+      tot.push(['Coût d\'achat',money(T.cout,dev)+(T.sansPA?' *':'')],['Marge totale',money(T.marge,dev)+(T.sansPA?' *':'')],['Taux de marge',pc(T.taux)+(T.sansPA?' *':'')]); }
+    else tot.push(['Marge','non calculable']);
+  }
+  var tw=internal?110:86; if(y+tot.length*6+8>H-18){doc.addPage();y=16;}
+  doc.autoTable({startY:y,margin:{left:R-tw,right:W-R},tableWidth:tw,theme:'grid',body:tot.map(function(r){return [clean(r[0]),clean(r[1])];}),
+    styles:{font:'helvetica',fontSize:internal?8.6:9.4,cellPadding:1.8,lineColor:[170,177,187],lineWidth:0.1,textColor:[17,17,17]},columnStyles:{0:{cellWidth:tw-(internal?40:36)},1:{halign:'right',fontStyle:'bold'}},
+    didParseCell:function(h){var lab=tot[h.row.index][0];if(lab==='Total HT'){h.cell.styles.fillColor=[236,239,243];h.cell.styles.fontStyle='bold';h.cell.styles.fontSize=internal?9.4:10.5;}
+      if(lab==='Marge totale'||lab==='Taux de marge'){h.cell.styles.fillColor=[241,244,250];if(h.column.index===1&&T.marge<0)h.cell.styles.textColor=[180,35,58];}}});
+  y=doc.lastAutoTable.finalY+5;
+  /* notes */
+  var notes=[];
+  if(internal){
+    notes.push('Calculs : prix net = prix de vente x (1 - remise) ; total HT = quantité x prix net ; coût d\'achat = quantité x prix d\'achat ; marge totale = total HT - coût d\'achat ; taux de marge = marge / total HT.');
+    notes.push('Prix de référence : prix de vente du Listing au moment où la ligne a été ajoutée à l\'offre (prix figés). En gras : prix négocié différent du prix de référence.');
+    if(T.sansPA) notes.push('* '+T.sansPA+' ligne(s) sans prix d\'achat : coût, marge et taux partiels.');
+    if(!m.detail) notes.push('Offre sans lignes d\'articles : seul le montant global est connu, la marge ne peut pas être calculée.');
+    notes.push('Généré le '+m.generated+(m.user?' par '+m.user:'')+'.');
+  } else {
+    notes.push('Montants exprimés en '+(dev==='EUR'?'euros':dev)+' hors taxes.'+(m.validite?' Offre valable jusqu\'au '+frDate(m.validite)+'.':''));
+  }
+  doc.setFont('helvetica','normal');doc.setFontSize(internal?7.6:8.6);doc.setTextColor(60,60,60);
+  notes.forEach(function(n){var t=doc.splitTextToSize(clean(n),R-L);if(y+t.length*4>H-14){doc.addPage();y=16;}doc.text(t,L,y);y+=t.length*(internal?3.4:3.9)+1;});
+  doc.setTextColor(17,17,17);
+  if(typeof doc.putTotalPages==='function') doc.putTotalPages('{total}');
+  if(opts.returnDoc) return doc;
+  doc.save(fileBase(m,kind)+'.pdf'); return doc;
+}
+
+/* ---------------------------------------------------------------
+   3) EXCEL .xlsx (sans bibliotheque) — formules de calcul + valeurs
+   --------------------------------------------------------------- */
+var CRC=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){var c=0xFFFFFFFF;for(var i=0;i<u.length;i++)c=CRC[(c^u[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zip(files){
+  var parts=[],central=[],off=0,enc=new TextEncoder();
+  files.forEach(function(f){var nm=enc.encode(f.name),d=f.data,crc=crc32(d),h=new Uint8Array(30+nm.length),v=new DataView(h.buffer);
+    v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,0x0800,true);v.setUint16(8,0,true);v.setUint16(10,0,true);v.setUint16(12,0x21,true);
+    v.setUint32(14,crc,true);v.setUint32(18,d.length,true);v.setUint32(22,d.length,true);v.setUint16(26,nm.length,true);v.setUint16(28,0,true);h.set(nm,30);
+    var c=new Uint8Array(46+nm.length),w=new DataView(c.buffer);w.setUint32(0,0x02014b50,true);w.setUint16(4,20,true);w.setUint16(6,20,true);w.setUint16(8,0x0800,true);w.setUint16(10,0,true);w.setUint16(12,0,true);w.setUint16(14,0x21,true);
+    w.setUint32(16,crc,true);w.setUint32(20,d.length,true);w.setUint32(24,d.length,true);w.setUint16(28,nm.length,true);w.setUint32(42,off,true);c.set(nm,46);
+    parts.push(h,d);central.push(c);off+=h.length+d.length;});
+  var cs=central.reduce(function(s,c){return s+c.length;},0),e=new Uint8Array(22),z=new DataView(e.buffer);
+  z.setUint32(0,0x06054b50,true);z.setUint16(8,files.length,true);z.setUint16(10,files.length,true);z.setUint32(12,cs,true);z.setUint32(16,off,true);
+  return new Blob(parts.concat(central,[e]),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function xe(s){return String(s==null?'':s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];}).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');}
+function colL(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+/* styles : 0 texte | 1 en-tete | 2 montant | 3 montant gras (total) | 4 pourcentage | 5 libelle gras fond | 6 titre | 7 note | 8 bandeau interne | 9 quantite | 10 libelle info | 11 valeur info | 12 montant interne (fond) | 13 pct interne (fond) | 14 montant gras interne */
+var STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+ +'<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="0.00%"/><numFmt numFmtId="166" formatCode="#,##0.###"/></numFmts>'
+ +'<fonts count="6"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="15"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFB4233A"/><name val="Arial"/></font><font><i/><sz val="9"/><color rgb="FF444444"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font></fonts>'
+ +'<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF243040"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFECEFF3"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFDECEE"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF1F4FA"/></patternFill></fill></fills>'
+ +'<borders count="2"><border/><border><left style="thin"><color rgb="FFAAB1BB"/></left><right style="thin"><color rgb="FFAAB1BB"/></right><top style="thin"><color rgb="FFAAB1BB"/></top><bottom style="thin"><color rgb="FFAAB1BB"/></bottom></border></borders>'
+ +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="15">'
+ +'<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1"><alignment vertical="top" wrapText="1"/></xf>'
+ +'<xf xfId="0" numFmtId="0" fontId="5" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+ +'<xf xfId="0" numFmtId="164" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="164" fontId="1" fillId="3" borderId="1" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="165" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="1" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="4" fillId="0" borderId="0" applyFont="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="3" fillId="4" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="166" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="0"><alignment vertical="top"/></xf>'
+ +'<xf xfId="0" numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1"><alignment vertical="top"/></xf>'
+ +'<xf xfId="0" numFmtId="164" fontId="0" fillId="5" borderId="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="165" fontId="0" fillId="5" borderId="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'
+ +'<xf xfId="0" numFmtId="164" fontId="1" fillId="5" borderId="1" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'
+ +'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0"/></styleSheet>';
+/* cellule : {t:texte} | {v:nombre} | {f:formule, v:valeur calculee} ; s = style */
+function cellXml(ref,c){
+  if(c==null) return '';
+  var s=' s="'+(c.s||0)+'"';
+  if(c.f!=null){var v=c.v; if(typeof v==='number'&&isFinite(v)) return '<c r="'+ref+'"'+s+'><f>'+xe(c.f)+'</f><v>'+v+'</v></c>';
+    return '<c r="'+ref+'"'+s+' t="str"><f>'+xe(c.f)+'</f><v>'+xe(v==null?'':v)+'</v></c>';}
+  if(typeof c.v==='number'&&isFinite(c.v)) return '<c r="'+ref+'"'+s+'><v>'+c.v+'</v></c>';
+  if(c.t==null||c.t==='') return c.s?'<c r="'+ref+'"'+s+'/>':'';
+  return '<c r="'+ref+'"'+s+' t="inlineStr"><is><t xml:space="preserve">'+xe(c.t)+'</t></is></c>';
+}
+function xlsxBlob(m,kind){
+  var internal=kind==='interne', rows=[], merges=[], r=0;
+  function row(cells,ht){r++;rows.push('<row r="'+r+'"'+(ht?' ht="'+ht+'" customHeight="1"':'')+'>'+cells.map(function(c,i){return cellXml(colL(i)+r,c);}).join('')+'</row>');return r;}
+  var cols=internal
+    ?[['Référence',16],['Désignation',38],['Qté',7],['Prix de référence',13],['Prix vente HT',13],['Remise',9],['Prix net HT',13],['Total HT',14],['Prix d\'achat',13],['Coût d\'achat',14],['Marge unit.',13],['Marge totale',14],['Taux de marge',11]]
+    :[['Référence',18],['Désignation',46],['Quantité',10],['Prix unitaire HT',16],['Remise',10],['Total HT',16]];
+  var NC=cols.length, last=colL(NC-1), info=infoRows(m);
+  row([{t:'MGT SARL — '+(internal?'Offre de prix : calcul des marges':'Offre de prix'),s:6}],24); merges.push('A1:'+last+'1');
+  if(internal){var b=row([{t:'DOCUMENT INTERNE — contient les prix d\'achat et les marges — NE PAS TRANSMETTRE AU CLIENT',s:8}].concat(new Array(NC-1).fill({s:8})));merges.push('A'+b+':'+last+b);}
+  r++;
+  var n=Math.max(info.client.length,info.offre.length), oc=internal?7:3;
+  for(var i=0;i<n;i++){var cells=new Array(NC).fill(null), a=info.client[i], o=info.offre[i];
+    if(a){cells[0]={t:a[0],s:10};cells[1]={t:a[1],s:11};}
+    if(o){cells[oc]={t:o[0],s:10};cells[oc+1]={t:o[1],s:11};}
+    var rr=row(cells); if(o&&!internal) merges.push(colL(oc+1)+rr+':'+colL(NC-1)+rr); if(o&&internal) merges.push(colL(oc+1)+rr+':'+colL(oc+3)+rr);}
+  r++;
+  var headRow=row(cols.map(function(c){return {t:c[0],s:1};}),30), first=headRow+1, lastL;
+  if(m.detail){
+    m.lines.forEach(function(l){var k=r+1, C=function(x){return x+k;};
+      var rem=r2((l.remise||0)/100*1e4)/1e4;
+      if(internal){
+        row([{t:l.reference},{t:l.designation},{v:l.quantite,s:9},l.prixRef==null?{t:'',s:2}:{v:l.prixRef,s:2},{v:l.prixVente,s:2},{v:rem,s:4},
+          {f:'ROUND('+C('E')+'*(1-'+C('F')+'),2)',v:l.prixNet,s:2},
+          {f:'ROUND('+C('C')+'*'+C('E')+'*(1-'+C('F')+'),2)',v:l.total,s:3},
+          l.prixAchat==null?{t:'',s:12}:{v:l.prixAchat,s:12},
+          {f:'IF('+C('I')+'="","",ROUND('+C('C')+'*'+C('I')+',2))',v:l.cout==null?'':l.cout,s:12},
+          {f:'IF('+C('I')+'="","",ROUND('+C('E')+'*(1-'+C('F')+')-'+C('I')+',2))',v:l.margeUnit==null?'':l.margeUnit,s:12},
+          {f:'IF('+C('I')+'="","",'+C('H')+'-'+C('J')+')',v:l.margeTotale==null?'':l.margeTotale,s:14},
+          {f:'IF(OR('+C('I')+'="",'+C('H')+'=0),"",'+C('L')+'/'+C('H')+')',v:l.taux==null?'':r2(l.taux/100*1e4)/1e4,s:13}]);
+      } else {
+        row([{t:l.reference},{t:l.designation},{v:l.quantite,s:9},{v:l.prixVente,s:2},{v:rem,s:4},{f:'ROUND('+C('C')+'*'+C('D')+'*(1-'+C('E')+'),2)',v:l.total,s:3}]);
+      }
+    });
+  } else {
+    var lab=(m.objet||typeLabel({type:m.type})||'Offre de prix')+' — montant global de l\'offre';
+    var rr=row(internal?[{t:''},{t:lab},{t:''},{t:''},{t:''},{t:''},{t:''},{v:m.totals.totalHT,s:3},{t:'',s:12},{t:'',s:12},{t:'',s:12},{t:'',s:12},{t:'',s:12}]:[{t:''},{t:lab},{t:''},{t:''},{t:''},{v:m.totals.totalHT,s:3}]);
+  }
+  lastL=r; r++;
+  var T=m.totals, tc=internal?'H':'F', labCol=internal?6:4, put=function(label,cell){var cells=new Array(NC).fill(null);cells[labCol-1]={t:label,s:5};cells[labCol]={t:'',s:5};cells[labCol+1]=cell;var x=row(cells);merges.push(colL(labCol-1)+x+':'+colL(labCol)+x);return x;};
+  var rng=function(x){return x+first+':'+x+lastL;};
+  var totRow=put('Total HT',{f:'SUM('+rng(tc)+')',v:T.totalHT,s:3});
+  if(m.detail&&T.remises>0.004) put('Dont remises',internal?{f:'ROUND(SUMPRODUCT('+rng('C')+','+rng('E')+')-'+tc+totRow+',2)',v:T.remises,s:2}:{f:'ROUND(SUMPRODUCT('+rng('C')+','+rng('D')+')-'+tc+totRow+',2)',v:T.remises,s:2});
+  if(internal&&m.detail){
+    var cr=null,mr=null;
+    if(T.valeurRef!=null){var vr=put('Valeur au prix de référence',{f:'ROUND(SUMPRODUCT('+rng('C')+','+rng('D')+'),2)',v:T.valeurRef,s:2}); put('Écart négocié / référence',{f:tc+totRow+'-H'+vr,v:T.ecartRef,s:2});}
+    cr=put('Coût d\'achat'+(T.sansPA?' (partiel)':''),{f:'SUM('+rng('J')+')',v:T.cout,s:14});
+    mr=put('Marge totale'+(T.sansPA?' (partielle)':''),{f:'SUM('+rng('L')+')',v:T.marge,s:14});
+    put('Taux de marge',{f:'IF('+tc+totRow+'=0,"",H'+mr+'/'+tc+totRow+')',v:T.taux==null?'':r2(T.taux/100*1e4)/1e4,s:13});
+  }
+  if(internal&&!m.detail) put('Marge',{t:'non calculable',s:5});
+  r++;
+  var notes=internal
+    ?['Calculs : prix net = prix de vente × (1 − remise) ; total HT = quantité × prix net ; coût d\'achat = quantité × prix d\'achat ; marge = total HT − coût d\'achat ; taux = marge / total HT. Les cellules calculées sont des formules.',
+      'Prix de référence : prix de vente du Listing au moment de l\'ajout de la ligne à l\'offre (prix figés).']
+       .concat(T.sansPA?[T.sansPA+' ligne(s) sans prix d\'achat : coût, marge et taux partiels.']:[]).concat(m.detail?[]:['Offre sans lignes d\'articles : marge non calculable.']).concat(['Généré le '+m.generated+(m.user?' par '+m.user:'')+' — CRM MGT '+VERSION+'.'])
+    :['Montants exprimés en '+(m.devise==='EUR'?'euros':m.devise)+' hors taxes.'+(m.validite?' Offre valable jusqu\'au '+frDate(m.validite)+'.':'')];
+  notes.forEach(function(t){var x=row([{t:t,s:7}]);merges.push('A'+x+':'+last+x);});
+  var sheetName=internal?'Offre interne':'Offre client';
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    +'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:'+last+r+'"/>'
+    +'<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="'+headRow+'" topLeftCell="A'+(headRow+1)+'" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+    +'<sheetFormatPr defaultRowHeight="15"/><cols>'+cols.map(function(c,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+c[1]+'" customWidth="1"/>';}).join('')+'</cols>'
+    +'<sheetData>'+rows.join('')+'</sheetData>'
+    +(merges.length?'<mergeCells count="'+merges.length+'">'+merges.map(function(x){return '<mergeCell ref="'+x+'"/>';}).join('')+'</mergeCells>':'')
+    +'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.2" footer="0.25"/>'
+    +'<pageSetup paperSize="9" orientation="'+(internal?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="0"/>'
+    +'<headerFooter><oddFooter>&amp;L'+xe(internal?'MGT SARL — Offre '+m.numero+' — DOCUMENT INTERNE':'MGT SARL — Offre de prix '+m.numero)+'&amp;RPage &amp;P / &amp;N</oddFooter></headerFooter></worksheet>';
+  var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><workbookPr/><sheets><sheet name="'+sheetName+'" sheetId="1" r:id="rId1"/></sheets>'
+    +'<definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">\''+sheetName+'\'!$'+headRow+':$'+headRow+'</definedName></definedNames><calcPr calcId="0" fullCalcOnLoad="1"/></workbook>';
+  var enc=new TextEncoder(), FX=function(n,s){return {name:n,data:enc.encode(s)};};
+  return zip([
+    FX('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>'),
+    FX('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>'),
+    FX('docProps/core.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>'+xe((internal?'DOCUMENT INTERNE — ':'')+'Offre de prix '+m.numero)+'</dc:title><dc:creator>MGT SARL</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">'+new Date().toISOString().slice(0,19)+'Z</dcterms:created></cp:coreProperties>'),
+    FX('xl/workbook.xml',wb),
+    FX('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'),
+    FX('xl/styles.xml',STYLES),
+    FX('xl/worksheets/sheet1.xml',sheet)
+  ]);
+}
+function download(blob,name){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},1500);}
+
+/* ---------------------------------------------------------------
+   4) EXECUTION + MENU « EXPORTER »
+   --------------------------------------------------------------- */
+function exportModel(m,kind,format){
+  if(!can('export')){alert('Droit insuffisant : vous ne pouvez pas exporter dans « Offres ».');return null;}
+  try{
+    var name=fileBase(m,kind);
+    if(format==='pdf'){/* GTM : moteur PDF chargé au premier export */var go=function(){pdfDoc(m,kind);say((kind==='interne'?'Document interne':'Offre client')+' exporté(e) en PDF : '+name+'.pdf');return name+'.pdf';};
+      if(!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)&&window.MGT_EXPORTS&&typeof MGT_EXPORTS.chargerPdf==='function')return MGT_EXPORTS.chargerPdf().then(go).catch(function(e){console.error('[EXPORT OFFRES '+VERSION+']',e);alert('Export impossible : '+e.message);return null;});
+      return go();}
+    download(xlsxBlob(m,kind),name+'.xlsx');say((kind==='interne'?'Document interne':'Offre client')+' exporté(e) en Excel : '+name+'.xlsx');return name+'.xlsx';
+  }catch(e){console.error('[EXPORT OFFRES '+VERSION+']',e);alert('Export impossible : '+e.message);return null;}
+}
+function run(kind,format,cid,index){return exportModel(modelFor(cid,index),kind,format);}
+function runEditor(kind,format){return exportModel(modelFromEditor(),kind,format);}
+
+var IC_DL='<svg class="ofxI" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
+var IC_LOCK='<svg class="ofxI" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+var IC_USER='<svg class="ofxI" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+var menu=document.createElement('div'); menu.id='ofxMenu'; menu.className='ofxMenu'; menu.hidden=true; menu.setAttribute('role','dialog'); menu.setAttribute('aria-label','Exporter l\'offre');
+menu.innerHTML='<div class="ofxHead"><b>Exporter l\'offre</b><span class="ofxSub"></span><button type="button" class="ofxClose" data-ofx-close aria-label="Fermer" title="Fermer"><svg class="ofxI ofxX" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>'
+  +'<div class="ofxGroup"><div class="ofxTitle">'+IC_USER+'Offre client</div><div class="ofxNote">Sans prix d\'achat ni marges : à envoyer au client.</div><div class="ofxBtns"><button type="button" data-ofx="client|pdf">PDF</button><button type="button" data-ofx="client|xlsx">Excel</button></div></div>'
+  +'<div class="ofxGroup ofxInt"><div class="ofxTitle">'+IC_LOCK+'Document interne</div><div class="ofxNote">Prix d\'achat, marges par ligne, marge totale et taux. Usage interne uniquement.</div><div class="ofxBtns"><button type="button" data-ofx="interne|pdf">PDF</button><button type="button" data-ofx="interne|xlsx">Excel</button></div></div>';
+document.body.appendChild(menu);
+var target=null, opener=null, openedAt=0, openY=0;
+function closeMenu(){if(menu.hidden)return;menu.hidden=true;target=null;if(opener){opener.setAttribute('aria-expanded','false');try{opener.focus({preventScroll:true});}catch(e){}}opener=null;}
+function openMenu(btn,tgt,label){
+  if(!can('export')){alert('Droit insuffisant : vous ne pouvez pas exporter dans « Offres ».');return;}
+  if(opener===btn&&!menu.hidden){closeMenu();return;}
+  target=tgt; opener=btn; btn.setAttribute('aria-expanded','true');
+  menu.querySelector('.ofxSub').textContent=label||''; menu.hidden=false;
+  var phone=window.innerWidth<=600; menu.classList.toggle('ofxSheet',phone);
+  if(phone){menu.style.left='';menu.style.top='';}
+  else {var r=btn.getBoundingClientRect(), mw=menu.offsetWidth, mh=menu.offsetHeight, x=Math.min(Math.max(8,r.right-mw),window.innerWidth-mw-8), y=r.bottom+6; if(y+mh>window.innerHeight-8) y=Math.max(8,r.top-mh-6); menu.style.left=x+'px'; menu.style.top=y+'px';}
+  openedAt=Date.now(); openY=window.scrollY;
+  var f=menu.querySelector('[data-ofx]'); if(f) try{f.focus({preventScroll:true});}catch(e){}
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  var b=t.closest&&t.closest('[data-ofx-open]');
+  if(b){e.preventDefault();e.stopPropagation();var v=b.getAttribute('data-ofx-open');
+    if(v==='editor'){var ctx=window.MGT_OFFERS_LINES&&MGT_OFFERS_LINES.ctx();openMenu(b,{editor:true},ctx?'Offre '+(ctx.offerId||'')+' (état affiché)':'');}
+    else{var p=v.split('|');var c=clientOf(p[0]),o=c&&(c.Offres||[])[Number(p[1])];openMenu(b,{cid:p[0],index:Number(p[1])},o?offerRef(c,o,Number(p[1]))+' — '+(c[F('name')]||''):'');}
+    return;}
+  var x=t.closest&&t.closest('#ofxMenu [data-ofx]');
+  if(x){e.preventDefault();var k=x.getAttribute('data-ofx').split('|'), tg=target; closeMenu(); if(!tg) return;
+    try{ if(tg.editor) runEditor(k[0],k[1]); else run(k[0],k[1],tg.cid,tg.index);}catch(err){console.error(err);alert('Export impossible : '+err.message);} return;}
+  if(t.closest&&t.closest('[data-ofx-close]')){closeMenu();return;}
+  if(!menu.hidden&&!(t.closest&&t.closest('#ofxMenu'))) closeMenu();
+},true);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!menu.hidden){e.stopPropagation();closeMenu();}},true);
+window.addEventListener('resize',function(){closeMenu();});
+/* defilement reel de la page (et non un recalage automatique juste apres l'ouverture) : le menu se ferme */
+document.addEventListener('scroll',function(e){if(menu.hidden||menu.contains(e.target)||menu.classList.contains('ofxSheet'))return;if(Date.now()-openedAt<400)return;if(e.target===document&&Math.abs(window.scrollY-openY)<24)return;closeMenu();},true);
+
+/* bouton sur chaque carte d'offre (module Offres) */
+function decorate(){
+  var ok=can('export');
+  document.querySelectorAll('article.offresCard').forEach(function(card){
+    var ed=card.querySelector('[data-offre-edit]'); if(!ed) return; var key=ed.getAttribute('data-offre-edit');
+    var b=card.querySelector('[data-ofx-open]');
+    if(b&&b.getAttribute('data-ofx-open')!==key){b.setAttribute('data-ofx-open',key);}
+    if(!b){b=document.createElement('button');b.type='button';b.className='secondary ofxBtn';b.setAttribute('data-ofx-open',key);b.setAttribute('aria-haspopup','dialog');b.setAttribute('aria-expanded','false');
+      b.title='Exporter l\'offre en PDF ou Excel (offre client / document interne avec marges)';b.innerHTML=IC_DL+'<span>Exporter</span>';ed.parentNode.insertBefore(b,ed);}
+    b.hidden=!ok;
+  });
+  var save=$('offreEditPreviewBtn')||$('offreEditSaveBtn');
+  if(save&&!$('offreEditExportBtn')){var e=document.createElement('button');e.type='button';e.id='offreEditExportBtn';e.className='secondary ofxBtn';e.setAttribute('data-ofx-open','editor');e.setAttribute('aria-haspopup','dialog');e.setAttribute('aria-expanded','false');
+    e.title='Exporter l\'offre affichée en PDF ou Excel';e.innerHTML=IC_DL+'<span>Exporter</span>';save.parentNode.insertBefore(e,save);}
+  var eb=$('offreEditExportBtn'); if(eb) eb.hidden=!ok;
+}
+var mo=new MutationObserver(function(){clearTimeout(mo._t);mo._t=setTimeout(function(){try{decorate();}catch(e){}},80);});
+mo.observe(document.body,{childList:true,subtree:true});
+document.addEventListener('mgt-crm-user-ready',function(){try{decorate();}catch(e){}});
+try{decorate();}catch(e){}
+
+window.MGT_OFFER_EXPORTS={version:VERSION,modelFor:modelFor,modelFromEditor:modelFromEditor,buildModel:buildModel,pdfDoc:pdfDoc,xlsxBlob:xlsxBlob,run:run,runEditor:runEditor,fileBase:fileBase,decorate:decorate};
+})();
+
+</script>
+<script id="mgt-v469-marker">
+window.MGT_V469={version:"V4.6.9J",date:'2026-11-08',base:"V4.6.9F (6b48c011f946be9b)",chantier:["V4.6.9A Audit calendrier","V4.6.9B Moteur","V4.6.9C Rendu et interactions","V4.6.9D Vues Jour et Semaine, Agenda mobile","V4.6.9E Vues Mois et Annee","V4.6.9F Harmonisation et ergonomie","V4.6.9G Tests et validation finale","V4.6.9G1 Vue Mois sur telephone : nom des actions","V4.6.9G2 Actions terminees : repere ✓ au lieu du texte barre","V4.6.9H Listing : prix de vente standard = prix catalogue","V4.6.9I Export PDF / Excel des offres (client et interne avec marges)","V4.6.9J Validation finale (prix standard + export des offres)"],corrections:["boutons d'ajout soumis au droit calendar/edit","pas de confirmation de suppression sans le droit calendar/delete","date de relance de nouveau enregistree","double-clic : ouverture de l'editeur","barre mobile des petits ecrans"]};
+try{console.info("[CRM] "+window.MGT_V469.version+" chargé");}catch(e){}
+</script>
+
 <style id="gtm-charte-crm">
 /* Charte GTM : plancher de lisibilité sur ordinateur (aucun texte sous 12 px) */
 @media (min-width:1024px){

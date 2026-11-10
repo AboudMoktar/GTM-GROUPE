@@ -49,7 +49,11 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const L1 = g.mgt_crm_listing || {};
   r.push(['import : 4 articles dans la base GTM, article par article', Object.keys(L1).length === 4 && String(L1['ART-0001']).startsWith('__gtm_json_v1:')]);
   const a1 = lire(L1['ART-0001']);
-  r.push(['forme compacte (prix, ligne Excel, sans formules)', a1.prixAchat === 600 && a1.prixVente === 1200 && a1.xl === 2 && !a1.excel && !a1.historiquePrix && JSON.stringify(a1).length < 600]);
+  r.push(['forme compacte (prix, ligne Excel, sans formules)', a1.prixAchat === 600 && a1.xl === 2 && !a1.excel && JSON.stringify(a1).length < 2500]);
+  // V4.6.9H : prix de vente standard = prix catalogue (ancien prix gardé dans l'historique, date du tarif gardée)
+  const a4 = lire(L1['ART-0004']);
+  r.push(['prix de vente standard = prix catalogue (historique daté, date du tarif gardée)', a1.prixVente === 1000 && a1.dateMaj === '2026-02-20' && (a1.historiquePrix || []).some(h => h.source === 'STANDARDISATION' && h.precedent && h.precedent.prixVente === 1200) && lire(L1['ART-0003']).prixVente === 5000 && (await fr.evaluate(() => MGT_LISTING_STD.state().changed)) === 3]);
+  r.push(['sans prix catalogue : plus de prix de vente (« Prix catalogue à saisir »)', a4.prixVente == null && (await fr.evaluate(async () => (await dm.listingGetArticle('ART-0004')).anomalies.concat(dm.listingLiveFlags(await dm.listingGetArticle('ART-0004'))).some(x => x.code === 'SANS_PRIX_CATALOGUE')))]);
   r.push(['import noté (date, nombre, fichier)', /Listing_essai/.test(String(g.mgt_crm_listing_meta || ''))]);
   r.push(['accueil : fenêtres Morgan / Macpi / Autres avec leurs nombres', /2\s*articles/.test(await fr.locator('.lsCardBtn.b-MORGAN').textContent()) && /1\s*articles?/.test(await fr.locator('.lsCardBtn.b-MACPI').textContent())]);
   await fr.click('.lsCardBtn.b-MORGAN'); await p.waitForTimeout(300);
@@ -59,10 +63,11 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['fiche article : historique avec le prix importé', /Import initial/.test(await fr.locator('#lsDlgBox').textContent()) && /Ligne Excel|ligne 2/i.test(await fr.locator('#lsDlgBox').textContent())]);
   // modification du prix : nouvelle ligne datée
   await fr.click('#lsDlgBox [data-ls="edit"]'); await p.waitForTimeout(300);
-  await fr.fill('#lsF_prixVente', '275'); await fr.fill('#lsF_note', 'Nouveau tarif'); await fr.click('#lsDlgBox button[type=submit]'); await p.waitForTimeout(1800);
+  r.push(['fiche : prix de vente non modifiable (suit le catalogue)', await fr.locator('#lsF_prixVente[readonly]').count() === 1]);
+  await fr.fill('#lsF_prixCatalogue', '275'); await fr.fill('#lsF_note', 'Nouveau tarif'); await fr.click('#lsDlgBox button[type=submit]'); await p.waitForTimeout(1800);
   const a2 = lire((await base()).mgt_crm_listing['ART-0002']);
-  r.push(['prix modifié : historique (prix importé + nouveau prix), journal', a2.prixVente === 275 && a2.historiquePrix.length === 2 && a2.historiquePrix[0].prixVente === 250 && a2.historiquePrix[1].prixVente === 275 && a2.journal.some(j => j.action === 'MODIFICATION')]);
-  r.push(['seul l\'article modifié a changé', lire((await base()).mgt_crm_listing['ART-0001']).prixVente === 1200]);
+  r.push(['prix modifié : historique (prix importé + nouveau prix), journal', a2.prixVente === 275 && a2.prixCatalogue === 275 && a2.historiquePrix.length === 3 && a2.historiquePrix[0].prixVente === 250 && a2.historiquePrix[1].source === 'STANDARDISATION' && a2.historiquePrix[1].prixVente === 200 && a2.historiquePrix[2].prixVente === 275 && a2.journal.some(j => j.action === 'MODIFICATION')]);
+  r.push(['seul l\'article modifié a changé', lire((await base()).mgt_crm_listing['ART-0001']).prixVente === 1000]);
   // corbeille et restauration
   await fr.click('#lsDlgBox [data-ls="close"]').catch(() => {}); await fr.evaluate(() => window.MGT_LISTING_UI.closeDialog());
   await fr.evaluate(async () => { await dm.listingSoftDelete('ART-0003'); }); await p.waitForTimeout(1500);
@@ -90,7 +95,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['Secrétaire : prix d\'achat visibles', (await S.fr.evaluate(async () => (await dm.listingGetArticle('ART-0001')).prixAchat)) === 600]);
   r.push(['Secrétaire : ni ajout, ni import, ni modification', await S.fr.locator('#listingModule [data-ls="new"]').count() === 0 && await S.fr.locator('#listingModule [data-ls="import"]').count() === 0]);
   await S.fr.evaluate(async () => { try { await dm.listingUpdateArticle('ART-0001', {prixVente: 1}); } catch(e) {} }); await S.p.waitForTimeout(2000);
-  r.push(['Secrétaire : écriture refusée par les règles de la base', lire((await base()).mgt_crm_listing['ART-0001']).prixVente === 1200]);
+  r.push(['Secrétaire : écriture refusée par les règles de la base', lire((await base()).mgt_crm_listing['ART-0001']).prixVente === 1000]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
