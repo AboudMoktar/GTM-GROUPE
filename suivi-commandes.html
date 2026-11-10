@@ -357,6 +357,7 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
 /* commande sur une seule feuille (tous les clients) + suivi */
+.corr-card{border:2px solid #e8590c}table.flux input.chg{background:#ffd8a8!important;border-color:#e8590c!important;box-shadow:0 0 0 2px #e8590c inset}.sx-cdet .auto{color:#7a4b00;font-style:italic}.sx-cdet b{white-space:nowrap}
 table.cmdT{border-collapse:collapse;table-layout:fixed;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
 table.cmdT th{position:sticky;z-index:3;background:#1f3864;color:#fff;border:1px solid #000;font:700 11.5px Arial,sans-serif;padding:3px 2px;text-align:center;white-space:normal;line-height:1.15}
 table.cmdT tr.h1 th{top:0;background:#ddebf7;color:#000;font-size:12.5px;height:26px}
@@ -3391,6 +3392,84 @@ function vSuivi(v){
   v.appendChild(el("p", {class:"mut", text:"Les cases jaunes sont les cumuls : touchez une case pour la corriger (notée dans le journal). Une étape ne peut pas dépasser la précédente (la coupe peut dépasser la commande)."}));
 }
 
+/* --- correction des quantités déjà passées à une étape (Flux) ---
+   Les cumuls (conformes et NC) deviennent modifiables ; à l'enregistrement, un mouvement de correction
+   par ligne (noté dans le journal). Si une baisse rend une étape suivante plus grande que celle-ci,
+   l'étape suivante est baissée aussi (affiché dans la confirmation). */
+function correctionsPassage(rows, stage, vals){
+  var tot = stageTotals(), ncT = ncTotals(), out = [], si = CHAIN.indexOf(stage), err = "";
+  rows.forEach(function(l){
+    var v = vals[l.id]; if (!v) return;
+    var t = {}, n = {}; CHAIN.forEach(function(k){ t[k] = (tot[l.id] || {})[k] || 0; n[k] = (ncT[l.id] || {})[k] || 0; });
+    var q = v.q === undefined ? t[stage] : v.q, nn = v.n === undefined ? n[stage] : v.n;
+    if (q < 0 || nn < 0){ err = err || l.lib + " " + l.size + " : quantité négative impossible."; return; }
+    if (q === t[stage] && nn === n[stage]) return;
+    out.push({l:l, stage:stage, de:[t[stage], n[stage]], a:[q, nn], auto:false});
+    t[stage] = q; n[stage] = nn;
+    /* étape précédente : on ne peut pas passer plus que ce qui est arrivé (sauf coupe et contrôle) */
+    var pk = si > 0 ? CHAIN[si - 1] : null;
+    if (pk && stage !== "ctl" && q + nn > t[pk]) err = err || l.lib + " " + l.size + " : « " + stageName(stage) + " » (" + (q + nn) + ") dépasserait « " + stageName(pk) + " » (" + t[pk] + "). Corrigez d'abord « " + stageName(pk) + " ».";
+    /* étapes suivantes : baissées si elles dépassent */
+    for (var j = si + 1; j < CHAIN.length; j++){
+      var k = CHAIN[j], lim = t[CHAIN[j - 1]]; if (k === "ctl") continue;
+      var de = [t[k], n[k]], trop = t[k] + n[k] - lim; if (trop <= 0) continue;
+      var dq = Math.min(t[k], trop); t[k] -= dq; trop -= dq; if (trop > 0) n[k] = Math.max(0, n[k] - trop);
+      out.push({l:l, stage:k, de:de, a:[t[k], n[k]], auto:true});
+    }
+  });
+  return {liste:out, err:err};
+}
+function corrigerPassages(v, lot, rows, stage, prevS, names){
+  var tot = stageTotals(), ncT = ncTotals(), F = ui.fcv || (ui.fcv = {}), pl = "", tb = el("tbody"), inputs = [];
+  function lire(){ var vals = {}; Object.keys(F).forEach(function(k){ var id = k.slice(0, -1), c = k.slice(-1); (vals[id] = vals[id] || {})[c] = F[k]; }); return vals; }
+  rows.forEach(function(l){
+    var t = tot[l.id] || {}, n = ncT[l.id] || {}, base = prevS ? (t[prevS] || 0) : cutQty(l.qty, l.model), dq = t[stage] || 0, dn = n[stage] || 0;
+    if (!base && !dq && !dn) return;   /* rien d'arrivé ni de passé : rien à corriger */
+    var lk = l.lib + "|" + l.client; if (lk !== pl){ pl = lk; tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"4", text:l.lib + " · " + l.client}))); }
+    function champ(c, val0){
+      var k = l.id + c, iv = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", "data-corr":l.id + "|" + c, value:String(k in F ? F[k] : val0)});
+      function marque(){ iv.classList.toggle("chg", num(iv.value) !== val0 || (iv.value === "" && val0 !== 0)); }
+      iv.addEventListener("input", function(){ if (iv.value === "" ) delete F[k]; else F[k] = Math.max(0, num(iv.value)); if (F[k] === val0) delete F[k]; marque(); });
+      iv.addEventListener("focus", function(){ try { iv.select(); } catch (e) {} });
+      iv.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var x = inputs.indexOf(iv); if (inputs[x + 1]) inputs[x + 1].focus(); else iv.blur(); } });
+      inputs.push(iv); marque(); return el("td", {class:"fr"}, iv);
+    }
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:l.size}), el("td", {text:fmt(base)}), champ("q", dq), champ("n", dn)));
+  });
+  var t = el("table", {class:"flux corr"});
+  t.appendChild(el("thead", null, el("tr", null, [["Taille", "l"], [prevS ? names[prevS] : "Ordre coupe", ""], ["Déjà passé (conformes)", ""], ["NC déjà passées", ""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(tb);
+  function annuler(){ ui.fcorr = null; ui.fcv = {}; ui.pend = null; render(true); }
+  function enregistrer(){
+    var C = correctionsPassage(rows, stage, lire());
+    if (C.err){ toast(C.err); return; }
+    if (!C.liste.length){ toast("Aucune quantité changée."); return; }
+    var box = sxModal(); box.classList.add("corr-box");
+    box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"✏️ Confirmer " + C.liste.length + " correction(s)"}));
+    var rec = el("div", {class:"sx-cdet"});
+    function txt(x){ return fmt(x[0]) + (x[1] ? " + " + fmt(x[1]) + " NC" : ""); }
+    C.liste.forEach(function(c){ rec.appendChild(el("div", {class:c.auto ? "auto" : ""}, el("span", {text:stageName(c.stage) + " · " + c.l.lib + " " + c.l.size + (c.auto ? " (suit la correction)" : "")}), el("b", {text:txt(c.de) + " → " + txt(c.a)}))); });
+    box.appendChild(rec);
+    box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, enregistrer les corrections", onclick:function(){
+      sxClose();
+      var ok = commit(function(){
+        var nm = C.liste.map(function(c){ return {id:nid("M"), date:today(), lineId:c.l.id, stage:c.stage, qty:c.a[0] - c.de[0], nc:c.a[1] - c.de[1], note:"Correction (Flux)" + (c.auto ? " · suit « " + stageName(stage) + " »" : "")}; });
+        checkMoves(nm); nm.forEach(function(m){ S.moves.push(m); });
+        ui.fcorr = null; ui.fcv = {};
+      }, C.liste.length + " correction(s) enregistrée(s) (voir « Derniers mouvements »)");
+      if (!ok) render(true);
+    }}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
+  }
+  v.appendChild(el("div", {class:"card corr-card"},
+    el("h2", {text:"✏️ Corriger les quantités passées — " + names[stage]}),
+    el("p", {class:"mut", style:"margin:0", text:"Changez directement les quantités déjà passées à cette étape (conformes et NC), puis enregistrez. Si une baisse dépasse l'étape suivante, celle-ci est baissée aussi : tout est montré avant d'enregistrer, et noté dans le journal."})));
+  var act = function(){ return el("div", {class:"actions"}, el("button", {class:"btn", text:"✔ Enregistrer les corrections", onclick:enregistrer}), el("button", {class:"btn sec", text:"Annuler", onclick:annuler})); };
+  v.appendChild(act());
+  v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
+  v.appendChild(act());
+}
+
 /* --- 4. Flux : parcours de la commande, passage d'une étape à la suivante --- */
 function stagePrev(stage){ var i = STG_KEYS.indexOf(stage); return i > 0 ? STG_KEYS[i-1] : null; }
 function sumStates(lines, tot){
@@ -3432,7 +3511,7 @@ function vFlux(v){
   var ready = lotReady(lot), info = S.lots[lot] || {};
   var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
   var A = sumStates(rows, tot);
-  function goStage(k){ ui.stage = k; ui.fv = {}; ui.pend = null; render(); }
+  function goStage(k){ ui.stage = k; ui.fv = {}; ui.fcorr = null; ui.pend = null; render(); }
   var sc = el("div", {class:"seg"});
   [["*","Toutes les commandes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
   v.appendChild(sc);
@@ -3477,6 +3556,8 @@ function vFlux(v){
     el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note), el("label", {text:"Motif des NC"}, iMotif)),
     el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
   if (!ready) v.appendChild(el("div", {class:"msg err", style:"margin-bottom:10px"}, "Commande non validée : " + (VUE === "gadh" ? "TEK-TREND doit la valider avant les étapes. " : "validez-la dans l'onglet Commandes avant de lancer les étapes. "), VUE === "gadh" ? null : el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
+  if (ui.fcorr === stage) corrigerPassages(v, lot, rows, stage, prevS, names);
+  else {
   var ncT = ncTotals(), inputs = [], pl = "", tb = el("tbody"), items = [], capped = stage !== "cp";
   rows.forEach(function(l){
     var t = tot[l.id] || {}, n = ncT[l.id] || {}, base = prevS ? (t[prevS] || 0) : cutQty(l.qty, l.model), done = (t[stage] || 0) + (n[stage] || 0);
@@ -3531,7 +3612,8 @@ function vFlux(v){
     el("button", {class:"btn", text:"Valider l'étape", onclick:function(){ ask(false); }}),
     VUE === "gadh" ? null : el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
     el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
-    el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }})));
+    el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }}),
+    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
   if (stage === "cp" && VUE !== "gadh"){
     var anyClosed = rows.some(function(l){ return l.cc; });
     v.appendChild(el("div", {class:"actions"},
@@ -3542,13 +3624,15 @@ function vFlux(v){
     var nxt = si < STG_KEYS.length - 1 ? STG_KEYS[si + 1] : null;
     v.appendChild(el("div", {class:"msg", style:"margin-bottom:10px;background:#fff3cd;border:1px solid #e7cf6a;color:#4a3b00"},
       el("b", {text:"Rien à saisir à cette étape : "}), "tout ce qui était disponible est déjà passé (colonne « Déjà passé »). Les cases sont bloquées. ",
-      nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null));
+      nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null,
+      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
     items.forEach(function(it){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; });
   } else {
     items.forEach(function(it){ if (capped && it.disp === 0){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; } });
   }
   v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
   v.appendChild(el("p", {class:"mut", text:stage === "cp" ? "La coupe peut couper plus ou moins que l'ordre de coupe : « Clôturer la coupe » accepte l'écart. Saisissez les pièces non conformes (NC) dans la colonne NC." : "Conformes + NC ne peuvent pas dépasser le disponible. Si vous saisissez des NC, les conformes se réduisent automatiquement. À l'emballage, la quantité proposée est celle qui est sortie du contrôle (conformes uniquement)."}));
+  }
 
   if (stage === "gadh" || stage === "ret") v.appendChild(bonsCard(lot, stage));
   if (VUE === "gadh" && stage === "ret") v.appendChild(bonsCard(lot, "gadh"));
