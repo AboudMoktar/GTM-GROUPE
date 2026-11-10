@@ -357,7 +357,7 @@ table.flux th,table.flux td{padding:5px 3px}table.flux td input{width:54px;paddi
 table.entry td input,table.entry td input.ed,.xlwrap input,.xlwrap input.ed,table.entry td input:disabled,table.entry td input:read-only{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;font-weight:800!important;font-size:14px!important}
 table.entry td.tot,table.entry td.fr{color:#000;font-weight:800}
 /* commande sur une seule feuille (tous les clients) + suivi */
-.corr-card{border:2px solid #e8590c}table.flux input.chg{background:#ffd8a8!important;border-color:#e8590c!important;box-shadow:0 0 0 2px #e8590c inset}.sx-cdet .auto{color:#7a4b00;font-style:italic}.sx-cdet b{white-space:nowrap}
+.corr-card{border:2px solid #e8590c}.dp-card table.dp input[type=date]{min-width:150px}table.cmdT th.sv.av{background:#5b3a1a}table.flux input.chg{background:#ffd8a8!important;border-color:#e8590c!important;box-shadow:0 0 0 2px #e8590c inset}.sx-cdet .auto{color:#7a4b00;font-style:italic}.sx-cdet b{white-space:nowrap}
 table.cmdT{border-collapse:collapse;table-layout:fixed;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
 table.cmdT th{position:sticky;z-index:3;background:#1f3864;color:#fff;border:1px solid #000;font:700 11.5px Arial,sans-serif;padding:3px 2px;text-align:center;white-space:normal;line-height:1.15}
 table.cmdT tr.h1 th{top:0;background:#ddebf7;color:#000;font-size:12.5px;height:26px}
@@ -1797,18 +1797,19 @@ function vCmdSaisie(v, clients, cli, libs){
   function totRef(lib, z){ var t = 0; CL.forEach(function(c){ t += qVue(c, lib, z); }); return t; }
   /* consultation : seulement les tailles commandées (ou déjà suivies) ; saisie : toutes */
   var blocs = libsT.map(function(li){ return {li:li, sizes:li.sizes.filter(function(z){ if (E) return true; if (totRef(li.lib, z) > 0) return true; var rs = SV && SV.R[li.lib + "|" + z]; return !!(rs && (rs.av || Object.keys(rs.ex).length)); })}; }).filter(function(b){ return b.sizes.length; });
-  var nEx = SV ? SV.exs.length : 0, avant = !!(SV && SV.avant);
+  /* colonnes du suivi par date : expéditions hors export (« Expédié jj/mm ») et exports, dans l'ordre des dates */
+  var COLS = SV ? SV.cols : [], nEx = COLS.length;
   /* sur téléphone : sans la colonne Model (le libellé la contient), libellé et taille fixés à gauche pendant le défilement */
   var TEL = !PC, nG = TEL ? 2 : 3;
   var t = el("table", {class:"xl cmdT" + (TEL ? " tel" : "")}), tb = el("tbody"), inputs = [], cellsTot = [], cellsLib = [], cellsReste = [], footCells = {};
   var W = PC ? {m:96, l:240, z:46, c:70, t:62, tl:64, st:110, e:72, emb:70, r:62} : {m:0, l:118, z:38, c:52, t:48, tl:52, st:90, e:58, emb:56, r:48};
-  var cols = (TEL ? [] : [W.m]).concat([W.l, W.z]).concat(CL.map(function(){ return W.c; })).concat([W.t, W.tl]).concat(SV ? [W.st].concat(avant ? [W.e] : []).concat(SV.exs.map(function(){ return W.e; })).concat([W.emb, W.r]) : []);
+  var cols = (TEL ? [] : [W.m]).concat([W.l, W.z]).concat(CL.map(function(){ return W.c; })).concat([W.t, W.tl]).concat(SV ? [W.st].concat(COLS.map(function(){ return W.e; })).concat([W.emb, W.r]) : []);
   var cg = el("colgroup"); cols.forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
   t.style.width = cols.reduce(function(a, b){ return a + b; }, 0) + "px";
   var h1 = el("tr", {class:"h1"}, el("th", {colspan:String(nG + CL.length + 2), class:"cmdTitre", text:(libelleCommande(lotT || (E && E.lot) || "") ? "COMMANDE : " + libelleCommande(lotT || (E && E.lot) || "") : "COMMANDE") + "   ·   LOT " + (lotT || (E && E.lot) || "—")}));
-  if (SV) h1.appendChild(el("th", {colspan:String(1 + (avant ? 1 : 0) + nEx + 2), class:"cmdSuivi", text:"SUIVI (automatique)"}));
+  if (SV) h1.appendChild(el("th", {colspan:String(1 + nEx + 2), class:"cmdSuivi", text:"SUIVI (automatique)"}));
   var h2 = el("tr", {class:"h2"}, (TEL ? [] : ["Model"]).concat(["LIBELLE", "Taille"]).concat(CL).concat(["Total", "Total"]).map(function(h){ return el("th", {text:h}); }));
-  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); if (avant) h2.appendChild(el("th", {class:"sv", text:"Expédié avant"})); SV.exs.forEach(function(x){ h2.appendChild(el("th", {class:"sv", text:SV.titre(x)})); }); h2.appendChild(el("th", {class:"sv", text:"Emballés"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
+  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); COLS.forEach(function(c){ h2.appendChild(el("th", {class:"sv" + (c.av ? " av" : ""), text:SV.titreCol(c)})); }); h2.appendChild(el("th", {class:"sv", text:"Emballés"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
   t.appendChild(el("thead", null, h1, h2));
   var span = {}, prevM = null, curM = null;
   blocs.forEach(function(b, i){ if (b.li.model !== prevM){ curM = i; span[i] = 0; prevM = b.li.model; } span[curM] += b.sizes.length; });
@@ -1850,8 +1851,7 @@ function vCmdSaisie(v, clients, cli, libs){
           tr.appendChild(tdS);
         }
         var rs = SV.R[li.lib + "|" + z] || {ex:{}, av:0};
-        if (avant) tr.appendChild(el("td", {class:"sv", text:rs.av ? fmt(rs.av) : ""}));
-        SV.exs.forEach(function(x){ tr.appendChild(el("td", {class:"sv b", text:rs.ex[x.id] ? fmt(rs.ex[x.id]) : ""})); });
+        COLS.forEach(function(c){ tr.appendChild(el("td", {class:"sv" + (c.av ? "" : " b"), text:rs.ex[c.id] ? fmt(rs.ex[c.id]) : ""})); });
         var tdE = el("td", {class:"sv b"}), tdR = el("td", {class:"sv rst b"}); tr.appendChild(tdE); tr.appendChild(tdR); cellsReste.push({lib:li.lib, z:z, emb:tdE, reste:tdR});
       }
       tb.appendChild(tr);
@@ -1861,7 +1861,7 @@ function vCmdSaisie(v, clients, cli, libs){
   var trT = el("tr", {class:"ttot"}, el("td", {colspan:String(nG), class:"b", text:"TOTAL"}));
   CL.forEach(function(c){ var td = el("td", {class:"b"}); footCells[c] = td; trT.appendChild(td); });
   footCells.__t = el("td", {class:"b"}); footCells.__tl = el("td", {class:"b rouge"}); trT.appendChild(footCells.__t); trT.appendChild(footCells.__tl);
-  if (SV){ trT.appendChild(el("td")); if (avant) footCells.__av = trT.appendChild(el("td", {class:"b"})); footCells.__ex = SV.exs.map(function(){ return trT.appendChild(el("td", {class:"b"})); }); footCells.__emb = trT.appendChild(el("td", {class:"b"})); footCells.__r = trT.appendChild(el("td", {class:"b rouge"})); }
+  if (SV){ trT.appendChild(el("td")); footCells.__ex = COLS.map(function(){ return trT.appendChild(el("td", {class:"b"})); }); footCells.__emb = trT.appendChild(el("td", {class:"b"})); footCells.__r = trT.appendChild(el("td", {class:"b rouge"})); }
   tb.appendChild(trT);
   t.appendChild(tb);
   if (!blocs.length) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune quantité dans cette commande. Appuyez sur ✏️ Modifier pour la saisir."})));
@@ -1871,17 +1871,17 @@ function vCmdSaisie(v, clients, cli, libs){
     el("button", {class:"btn", text:"✔ Valider", onclick:function(){ confirmerSaisie(); }}),
     el("button", {class:"btn sec", text:"Annuler", onclick:function(){ var n0 = changements().length; if (n0 && !confirm("Abandonner " + n0 + " modification(s) non enregistrée(s) ?")) return; ui.cmdEd = null; render(); }})));
   function upd(){
-    var gf = 0, gc = 0, parC = {}, tEmb = 0, tR = 0, tAv = 0, tEx = SV ? SV.exs.map(function(){ return 0; }) : [];
+    var gf = 0, gc = 0, parC = {}, tEmb = 0, tR = 0, tAv = 0, tEx = SV ? COLS.map(function(){ return 0; }) : [];
     CL.forEach(function(c){ parC[c] = 0; });
     cellsTot.forEach(function(x){ var tt = 0; CL.forEach(function(c){ var q = qVue(c, x.lib, x.z); tt += q; parC[c] += q; }); x.td.textContent = tt ? fmt(tt) : ""; gf += tt; if (tt) gc += cutQty(tt, modelOf(x.lib)); });
     cellsLib.forEach(function(x){ var tt = 0; x.sizes.forEach(function(z){ tt += totRef(x.lib, z); }); x.td.textContent = tt ? fmt(tt) : ""; });
     cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, totRef(x.lib, x.z)); x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tR += ch.reste; });
-    if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; tAv += r0.av; SV.exs.forEach(function(x, i){ tEx[i] += r0.ex[x.id] || 0; }); }); }
+    if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; COLS.forEach(function(c, i){ tEx[i] += r0.ex[c.id] || 0; }); }); }
     CL.forEach(function(c){ footCells[c].textContent = parC[c] ? fmt(parC[c]) : ""; });
     footCells.__t.textContent = fmt(gf); footCells.__tl.textContent = fmt(gf);
-    if (SV){ if (footCells.__av) footCells.__av.textContent = tAv ? fmt(tAv) : ""; footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; }
+    if (SV){ footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; }
     /* reste à produire : Total − (Expédié + Emballé) sur les totaux, jamais négatif (chaque ligne s'arrête à 0) */
-    if (SV){ var tX = tAv; tEx.forEach(function(q){ tX += q; }); tR = Math.max(0, gf - tX - tEmb); footCells.__r.textContent = fmt(tR); }
+    if (SV){ var tX = 0; tEx.forEach(function(q){ tX += q; }); tR = Math.max(0, gf - tX - tEmb); footCells.__r.textContent = fmt(tR); }
     stat.innerHTML = "";
     stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées" + (CL.filter(function(c){ return parC[c]; }).length ? " · " + CL.filter(function(c){ return parC[c]; }).map(function(c){ return c + " " + fmt(parC[c]); }).join(" · ") : "")})));
     stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));
@@ -3453,7 +3453,9 @@ function corrigerPassages(v, lot, rows, stage, prevS, names){
     box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, enregistrer les corrections", onclick:function(){
       sxClose();
       var ok = commit(function(){
-        var nm = C.liste.map(function(c){ return {id:nid("M"), date:today(), lineId:c.l.id, stage:c.stage, qty:c.a[0] - c.de[0], nc:c.a[1] - c.de[1], note:"Correction (Flux)" + (c.auto ? " · suit « " + stageName(stage) + " »" : "")}; });
+        /* la correction prend la date du dernier passage qu'elle corrige (pas la date du jour) */
+        function datePassage(id, st){ var d = ""; S.moves.forEach(function(m){ if (m.lineId === id && m.stage === st && m.date && m.date > d) d = m.date; }); return d || today(); }
+        var nm = C.liste.map(function(c){ return {id:nid("M"), date:datePassage(c.l.id, c.stage), lineId:c.l.id, stage:c.stage, qty:c.a[0] - c.de[0], nc:c.a[1] - c.de[1], note:"Correction (Flux)" + (c.auto ? " · suit « " + stageName(stage) + " »" : "")}; });
         checkMoves(nm); nm.forEach(function(m){ S.moves.push(m); });
         ui.fcorr = null; ui.fcv = {};
       }, C.liste.length + " correction(s) enregistrée(s) (voir « Derniers mouvements »)");
@@ -3468,6 +3470,47 @@ function corrigerPassages(v, lot, rows, stage, prevS, names){
   v.appendChild(act());
   v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
   v.appendChild(act());
+}
+
+/* --- dates des passages déjà enregistrés à une étape : modifiables (ex. expédition saisie après coup) ---
+   Un passage = les mouvements de l'étape à une même date. Les pièces d'un export gardent la date de l'export
+   (elle se change dans l'export : « Modifier les informations »). */
+function datesPassagesCard(lot, rows, stage, names){
+  var ids = {}; rows.forEach(function(l){ ids[l.id] = 1; });
+  var dansExport = {}, nomExport = {}; (S.exports || []).forEach(function(x){ dansExport[x.id] = x; (x.cartons || []).forEach(function(c){ dansExport[c.id] = x; }); });
+  var par = {}, exps = {};
+  S.moves.forEach(function(m){ if (!ids[m.lineId] || m.stage !== stage) return;
+    var x = m.ct && dansExport[m.ct]; if (x){ exps[x.id] = x; return; }
+    var d = m.date || "", p = par[d] || (par[d] = {d:d, q:0, nc:0, n:0}); p.q += m.qty || 0; p.nc += m.nc || 0; p.n++; });
+  var L = Object.keys(par).map(function(d){ return par[d]; }).filter(function(p){ return p.q || p.nc; }).sort(function(a, b){ return a.d < b.d ? -1 : 1; });
+  var c = el("div", {class:"card dp-card"}, el("h2", {text:"📅 Dates des passages — " + names[stage]}));
+  if (!L.length && !Object.keys(exps).length){ c.appendChild(el("p", {class:"mut", style:"margin:0", text:"Aucun passage enregistré à cette étape pour l'instant."})); return c; }
+  c.appendChild(el("p", {class:"mut", style:"margin:0 0 8px", text:"Chaque passage est enregistré à sa date. Si la date est fausse (ex. expédition saisie après coup), changez-la ici : le suivi et l'état de commande la reprennent."}));
+  var t = el("table", {class:"flux dp"}), tb = el("tbody");
+  t.appendChild(el("thead", null, el("tr", null, el("th", {class:"l", text:"Date enregistrée"}), el("th", {text:"Pièces"}), el("th", {text:"Nouvelle date"}), el("th", {text:""}))));
+  L.forEach(function(p){
+    var inp = el("input", {type:"date", value:p.d, "data-dp":p.d}), bt = el("button", {class:"btn small", text:"Changer", "data-dp-go":p.d});
+    bt.addEventListener("click", function(){
+      var nd = inp.value; if (!nd){ toast("Choisissez la nouvelle date."); return; } if (nd === p.d){ toast("La date est la même."); return; }
+      if (nd > today()){ toast("La date ne peut pas être dans le futur."); return; }
+      var box = sxModal();
+      box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"📅 Changer la date"}));
+      var rec = el("div", {class:"sx-cdet"});
+      rec.appendChild(el("div", null, el("span", {text:names[stage] + " · " + fmt(p.q) + " pièce(s)" + (p.nc ? " + " + fmt(p.nc) + " NC" : "")}), el("b", {text:(p.d ? dmyL(p.d) : "sans date") + " → " + dmyL(nd)})));
+      box.appendChild(rec);
+      box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, changer la date", onclick:function(){
+        sxClose();
+        commit(function(){ S.moves.forEach(function(m){ if (ids[m.lineId] && m.stage === stage && (m.date || "") === p.d && !(m.ct && dansExport[m.ct])){ m.date = nd; m.note = String(m.note || "").replace(/ · date corrigée \(était [^)]*\)$/, "") + " · date corrigée (était " + (p.d ? dmyL(p.d) : "sans date") + ")"; } }); },
+          names[stage] + " : passage du " + (p.d ? dmyL(p.d) : "sans date") + " enregistré au " + dmyL(nd));
+      }}));
+      box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
+    });
+    tb.appendChild(el("tr", null, el("td", {class:"l b", text:p.d ? dmyL(p.d) : "sans date"}), el("td", {text:fmt(p.q) + (p.nc ? " + " + fmt(p.nc) + " NC" : "")}), el("td", {class:"fr"}, inp), el("td", null, bt)));
+  });
+  t.appendChild(tb);
+  if (L.length) c.appendChild(el("div", {class:"tw"}, t));
+  Object.keys(exps).forEach(function(id){ var x = exps[id]; c.appendChild(el("div", {class:"mut", style:"margin-top:8px;font-size:13px"}, "🚚 Export N°" + x.n + " du " + dmyL(x.d) + " : ses pièces ont la date de l'export. ", el("button", {class:"btn small sec", text:"Changer la date de l'export", onclick:function(){ ui.tab = "exp"; ui.xp = {id:x.id, modif:true}; render(); }}))); });
+  return c;
 }
 
 /* --- 4. Flux : parcours de la commande, passage d'une étape à la suivante --- */
@@ -3634,6 +3677,7 @@ function vFlux(v){
   v.appendChild(el("p", {class:"mut", text:stage === "cp" ? "La coupe peut couper plus ou moins que l'ordre de coupe : « Clôturer la coupe » accepte l'écart. Saisissez les pièces non conformes (NC) dans la colonne NC." : "Conformes + NC ne peuvent pas dépasser le disponible. Si vous saisissez des NC, les conformes se réduisent automatiquement. À l'emballage, la quantité proposée est celle qui est sortie du contrôle (conformes uniquement)."}));
   }
 
+  v.appendChild(datesPassagesCard(lot, rows, stage, names));
   if (stage === "gadh" || stage === "ret") v.appendChild(bonsCard(lot, stage));
   if (VUE === "gadh" && stage === "ret") v.appendChild(bonsCard(lot, "gadh"));
   if (VUE !== "gadh" && (stage === "emb" || stage === "pret" || stage === "exp")) cartonsCards(lot, rows).forEach(function(c){ v.appendChild(c); });
