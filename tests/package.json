@@ -33,7 +33,8 @@
     "mgt-listing": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-listing.js\"",
     "mgt-lignes": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-lignes.js\"",
     "mgt-facturation": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-facturation.js\"",
-    "mgt-v469": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-v469.js\""
+    "mgt-v469": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-v469.js\"",
+    "mgt-sav": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-sav.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
