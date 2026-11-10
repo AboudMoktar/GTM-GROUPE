@@ -132,8 +132,28 @@ function mvtsCarton(e, c){
   return out;
 }
 function anciensDe(id){ var o = {}; S.moves.forEach(function(m){ if (m.ct === id) o[m.id] = 1; }); return o; }
+/* étapes d'avant (Coupe → Confection) en retard sur ce qui est mis en carton (ex. export préparé directement,
+   étapes jamais saisies) : remplies automatiquement jusqu'au contrôle, de la confection vers la coupe
+   (chaque étape au moins égale à la suivante + ses NC). Ces mouvements restent même si le carton est
+   ensuite modifié ou supprimé : les pièces ont bien été coupées et confectionnées. */
+var AMONT = ["cp", "gadh", "asm", "ret", "conf"];
+function remplirAmont(e, c, nm, anc){
+  var t = {}, n = {}, ids = {}, out = [];
+  function add(m){ var a = t[m.lineId] = t[m.lineId] || {}, b = n[m.lineId] = n[m.lineId] || {}; a[m.stage] = (a[m.stage] || 0) + (m.qty || 0); b[m.stage] = (b[m.stage] || 0) + (m.nc || 0); }
+  S.moves.forEach(function(m){ if (!anc[m.id]) add(m); }); nm.forEach(function(m){ add(m); ids[m.lineId] = 1; });
+  Object.keys(ids).forEach(function(id){
+    var a = t[id] || {}, b = n[id] || {}, besoin = (a.ctl || 0) + (b.ctl || 0);
+    for (var i = AMONT.length - 1; i >= 0; i--){
+      var k = AMONT[i], cur = a[k] || 0, d = besoin - cur;
+      if (d > 0){ out.push({id:nid("M"), date:e.d, lineId:id, stage:k, qty:d, nc:0, note:stageName(k) + " (rempli automatiquement) · export N°" + e.n + " carton N°" + c.n}); a[k] = besoin; }
+      besoin = (a[k] || 0) + (b[k] || 0);
+    }
+  });
+  return out;
+}
 function enregistrerCartonExport(e, c){
   var anc = anciensDe(c.id), nm = mvtsCarton(e, c);
+  nm = remplirAmont(e, c, nm, anc).concat(nm);
   checkMoves(nm, anc);
   S.moves = S.moves.filter(function(m){ return !anc[m.id]; }).concat(nm);
   var i = e.cartons.findIndex(function(x){ return x.id === c.id; });
@@ -411,7 +431,7 @@ function editeurCarton(v, e){
   groupes.sort(function(a, b){ return ["STD", "H", "TU"].indexOf(a.k) - ["STD", "H", "TU"].indexOf(b.k); });
   var mx = el("div", {class:"card"}, el("div", {class:"xp-head"}, el("div", {class:"mut", style:"font-weight:700", text:"Quantités du carton — commande " + E.lot}),
     dansCmd ? el("button", {class:"btn small sec", text:E.tous ? "Seulement les modèles de la commande" : "Afficher tous les modèles", onclick:function(){ E.tous = !E.tous; render(true); }}) : null));
-  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces revenues de la GADH pas encore mises en carton. Case rouge = plus que le retour GADH."}));
+  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces revenues de la GADH pas encore mises en carton. Case rouge = plus que le retour GADH : c'est permis, les étapes d'avant (coupe → confection) sont alors complétées automatiquement à l'enregistrement du carton."}));
   var majs = [];
   function recalc(){ totEl.textContent = fmt(total()); majs.forEach(function(f){ f(); }); }
   groupes.forEach(function(g){

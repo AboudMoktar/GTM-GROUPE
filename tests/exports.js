@@ -194,6 +194,20 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     return {it: it && it.lib + '|' + it.src, col: /Pharma Homme Col V Noir · Fléchés/.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
   r.push(['documents : « LIBELLÉ · FLÉCHÉS » pour le client de l\'export', fd.it === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS|NEOLYS' && fd.col && fd.tot === 10 && fd.tot2 === 'NEOLYS,NEOLYS']);
   r.push(['état de commande : colonne FLÉCHÉS et export suivi', fd.fl === 40 && fd.ex === 10]);
+  // 12. export préparé directement (étapes vides) : Coupe → Confection remplies automatiquement
+  const am = await p.evaluate(() => {
+    S.lines.push({id:'V1', lot:'PK202613', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'S', qty:50, cc:0}, {id:'V2', lot:'PK202613', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'M', qty:50, cc:0});
+    S.moves.push({id:'MV0', date:'2026-11-01', lineId:'V2', stage:'cp', qty:40, nc:0, note:''}, {id:'MV1', date:'2026-11-01', lineId:'V2', stage:'gadh', qty:30, nc:0, note:''});
+    const e = {id:'X9', n:9, d:'2026-11-10', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', cartons:[]}; S.exports.push(e);
+    const c = {id:'XC9', n:1, kg:null, com:'', it:[['V1', 20, 'PK202613', 'LYNE PRO homme gris', 'S'], ['V2', 35, 'PK202613', 'LYNE PRO homme gris', 'M']]};
+    pkExports.enregistrerCartonExport(e, c);
+    const T = () => { const t = stageTotals(); return ['V1', 'V2'].map(id => ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb'].map(k => (t[id] || {})[k] || 0).join(',')).join(' | '); };
+    const apres = T(), notes = S.moves.filter(m => m.lineId === 'V1' && /rempli automatiquement/.test(m.note)).length;
+    pkExports.supprimerCartonExport(e, 'XC9'); const sup = T();
+    return {apres, notes, sup};
+  });
+  r.push(['export direct : étapes vides remplies (coupe → confection)', am.apres === '20,20,20,20,20,20,20 | 40,35,35,35,35,35,35' && am.notes === 5]);
+  r.push(['étapes remplies gardées si le carton est supprimé', am.sup === '20,20,20,20,20,0,0 | 40,35,35,35,35,0,0']);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
