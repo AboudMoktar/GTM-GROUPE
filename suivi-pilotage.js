@@ -114,7 +114,8 @@ function couleurDe(lib){
   return {t:"", bg:"FFFFFF", fg:"000000"};
 }
 function pct(a, b){ return b ? Math.round(a / b * 1000) / 10 : 0; }
-function fmtPct(x){ return (Math.round(x * 10) / 10).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " %"; }
+var NF_PCT = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1});
+function fmtPct(x){ return NF_PCT.format(Math.round(x * 10) / 10) + " %"; }
 
 /* ---------- données ---------- */
 /* une ligne par référence × taille × client ; quantités = cumuls des mouvements de chaque étape */
