@@ -100,8 +100,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const iS = g.rows.findIndex(r => r.cells[2] && r.cells[2].v === 'S'), iT = g.rows.length - 1;
     return {t0: v(0).join('|'), t1: v(1).join('|'), head: v(2).join('|'), s: v(iS).slice(1).join('|'), tot: v(iT).slice(3).join('|'), f: g.rows[iS].cells[12].f, gB: pkExports.etatCommandeGrid(e, 'PK202612'), noms: pkExports.feuillesDoc(e, 'etat').map(x => x.name).join('|')}; });
   r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
-  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^H\d+-SUM\(K\d+:L\d+\)$/.test(ec.f)]);
-  r.push(['état : une page par commande', ec.noms === 'Etat PK202610|Etat PK202612']);
+  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^MAX\(0,H\d+-SUM\(K\d+:L\d+\)\)$/.test(ec.f)]);
+  const sur = await p.evaluate(() => { S.lines.push({id:'Z1', lot:'PKZ', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'S', qty:50, cc:0}, {id:'Z2', lot:'PKZ', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'M', qty:100, cc:0});
+    ['cp','gadh','asm','ret','conf','ctl','emb'].forEach((st, k) => S.moves.push({id:'MZ' + k, date:'2026-11-02', lineId:'Z1', stage:st, qty:55, nc:0, note:''}));
+    const g = pkExports.etatCommandeGrid(null, 'PKZ'), h = g.rows[2].cells.map(x => x ? x.v : ''), iR = h.lastIndexOf('Reste'), rs = g.rows.slice(3, -1).map(x => x.cells[iR].v), t = g.rows[g.rows.length - 1].cells[iR];
+    S.lines = S.lines.filter(l => l.lot !== 'PKZ'); S.moves = S.moves.filter(m => !/^MZ/.test(m.id)); return {rs: rs.join('|'), t: t.v, f: t.f}; });
+  r.push(['reste jamais négatif ; TOTAL = total − (expédié + emballé)', sur.rs === '0|100' && sur.t === 95 && /^MAX\(0,/.test(sur.f)]);
+  r.push(['état : une page par commande',ec.noms === 'Etat PK202610|Etat PK202612']);
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});
   r.push(['chaque document à part : imprimer, PDF, Excel', await p.locator('.xp-doc').count() === 5 && await doc('total', 'PDF').count() === 1 && await doc('colis', 'Excel').count() === 1 && await p.locator('text=Tout en PDF').count() === 0]);

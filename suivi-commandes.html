@@ -1868,7 +1868,9 @@ function vCmdSaisie(v, clients, cli, libs){
     if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; tAv += r0.av; SV.exs.forEach(function(x, i){ tEx[i] += r0.ex[x.id] || 0; }); }); }
     CL.forEach(function(c){ footCells[c].textContent = parC[c] ? fmt(parC[c]) : ""; });
     footCells.__t.textContent = fmt(gf); footCells.__tl.textContent = fmt(gf);
-    if (SV){ if (footCells.__av) footCells.__av.textContent = tAv ? fmt(tAv) : ""; footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; footCells.__r.textContent = fmt(tR); }
+    if (SV){ if (footCells.__av) footCells.__av.textContent = tAv ? fmt(tAv) : ""; footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; }
+    /* reste à produire : Total − (Expédié + Emballé) sur les totaux, jamais négatif (chaque ligne s'arrête à 0) */
+    if (SV){ var tX = tAv; tEx.forEach(function(q){ tX += q; }); tR = Math.max(0, gf - tX - tEmb); footCells.__r.textContent = fmt(tR); }
     stat.innerHTML = "";
     stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées" + (CL.filter(function(c){ return parC[c]; }).length ? " · " + CL.filter(function(c){ return parC[c]; }).map(function(c){ return c + " " + fmt(parC[c]); }).join(" · ") : "")})));
     stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));

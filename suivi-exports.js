@@ -744,7 +744,7 @@ function totalGridX(e, colis, sansLot){
 /* ---------- état d'une commande, au format de la commande initiale ----------
    Model | LIBELLE | Taille | un client par colonne (NEOLYS, ALLOGA…) | Total | Total du libellé
    | SUIVI : expédié avant les exports (ancien suivi), une colonne « Exporté jj/mm » par export
-   de cette commande jusqu'à celui-ci | Reste = total − (expédié + emballé).
+   de cette commande jusqu'à celui-ci | Reste = total − (expédié + emballé), jamais négatif.
    Seulement les tailles commandées (ou exportées). Totaux en formules dans l'Excel. */
 /* suivi d'une commande, par référence (libellé|taille) : exports de cette commande jusqu'à e (ou tous),
    expédié par l'ancien suivi (hors exports), emballé, expédié (étapes). Sert à l'état de commande et à l'écran Commandes. */
@@ -764,8 +764,8 @@ function suiviCommande(e, lot){
     titre:function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "En cours " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); },
     /* pièces d'une référence : exportées (ou expédiées avant), emballées en attente d'export, reste */
     chiffres:function(lib, z, tot){ var r = R[lib + "|" + z] || {ex:{}, av:0, emb:0, exp:0}, sx = r.av; exs.forEach(function(x){ sx += r.ex[x.id] || 0; });
-      /* reste à produire = total − (expédié + emballé) ; négatif = pièces en plus de la commande */
-      var emb = Math.max(0, r.emb - Math.max(r.exp, sx)); return {exporte:sx, emballe:emb, reste:tot - sx - emb}; }};
+      /* reste à produire = total − (expédié + emballé), jamais négatif */
+      var emb = Math.max(0, r.emb - Math.max(r.exp, sx)); return {exporte:sx, emballe:emb, reste:Math.max(0, tot - sx - emb)}; }};
 }
 /* colonnes de la commande : clients NEOLYS, ALLOGA, produits FLÉCHÉS, VESTIAIRES, puis les autres */
 function clientsColonnes(lot, client){
@@ -776,7 +776,7 @@ function clientsColonnes(lot, client){
 /* ---------- état d'une commande, au format de la commande initiale ----------
    Model | LIBELLE | Taille | NEOLYS | ALLOGA | FLÉCHÉS | VESTIAIRES | Total | Total du libellé
    | SUIVI : Statut (note par libellé), expédié avant les exports, une colonne par export, Emballés (en attente
-   d'export), Reste à produire = total − (expédié + emballé), négatif si pièces en plus. Seulement les tailles commandées (ou exportées). Totaux en formules. */
+   d'export), Reste à produire = total − (expédié + emballé), jamais négatif ; TOTAL du reste calculé sur les totaux. Seulement les tailles commandées (ou exportées). Totaux en formules. */
 function etatCommandeGrid(e, lot, opt){
   /* opt.commande : la fiche de commande seule (sans SUIVI) ; opt.client : un seul client ; opt.annee */
   opt = opt || {};
@@ -825,7 +825,7 @@ function etatCommandeGrid(e, lot, opt){
       gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
       var s1 = avant ? cAv : cE;
       gset(g, r, cR, ch.reste, {b:1, sz:10, al:"c", bd:"t"});
-      g.rows[r].cells[cR].f = L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + ")";
+      g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + "))";
     }
     g.rows[r].h = 15; r++;
   });
@@ -840,6 +840,9 @@ function etatCommandeGrid(e, lot, opt){
     var sv = 0; for (var i2 = 3; i2 < fin; i2++){ var cv = g.rows[i2].cells[k]; if (cv && typeof cv.v === "number") sv += cv.v; }
     gset(g, r, k, sv, k === cR || (CM && k === cTL) ? {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE", fg:"C00000"} : TT); g.rows[r].cells[k].f = "SUM(" + L(k) + deb + ":" + L(k) + fin + ")";
   }
+  /* TOTAL du reste : Total − (Expédié + Emballé) sur les totaux (les lignes, elles, s'arrêtent à 0) */
+  if (!CM){ var s0 = avant ? cAv : cE, tE = 0; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
+    g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cEmb) + (r + 1) + "))"; }
   g.rows[r].h = 18; g.sticky = 3;
   return g;
 }
