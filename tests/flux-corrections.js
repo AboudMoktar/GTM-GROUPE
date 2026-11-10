@@ -48,6 +48,20 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   // étape où tout est passé : le bouton est aussi dans le message « Rien à saisir »
   await p.evaluate(() => { S.lines = S.lines.filter(l => l.id === 'A'); ui.stage = 'exp'; render(); }); await p.waitForTimeout(100);
   r.push(['« Rien à saisir » : bouton de correction proposé', await p.locator('.msg button', {hasText: 'Corriger les quantités passées'}).count() === 1]);
+  // dates des passages : expédition saisie après coup, enregistrée à sa vraie date
+  await p.evaluate(() => { S.lines = S.lines.filter(l => l.id === 'A'); ui.stage = 'exp'; ui.fcorr = null; render(); }); await p.waitForTimeout(100);
+  const e1 = await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202611-1').rows[2].cells.map(x => x ? x.v : '').filter(v => /Expédié/.test(v)).join());
+  r.push(['état : expéditions hors export dans une colonne datée', e1 === 'Expédié 05/11']);
+  r.push(['carte « Dates des passages » : passage du 05/11', /05\/11\/2026/.test(await p.locator('.dp-card').textContent()) && await p.locator('.dp-card input[data-dp="2026-11-05"]').count() === 1]);
+  await p.fill('.dp-card input[data-dp="2026-11-05"]', '2026-11-02'); await p.click('.dp-card [data-dp-go="2026-11-05"]'); await p.waitForTimeout(150);
+  r.push(['confirmation : ancienne date → nouvelle date', /05\/11\/2026 → 02\/11\/2026/.test(await p.locator('.sx-cdet').textContent())]);
+  await p.click('text=✔ Oui, changer la date'); await p.waitForTimeout(250);
+  const mv = await p.evaluate(() => S.moves.filter(m => m.lineId === 'A' && m.stage === 'exp').map(m => m.date + ':' + m.qty));
+  r.push(['date changée (toutes les pièces du passage), noté dans le mouvement', mv.every(x => /^2026-11-02:/.test(x)) && await p.evaluate(() => S.moves.some(m => m.lineId === 'A' && m.stage === 'exp' && /date corrigée \(était 05\/11\/2026\)/.test(m.note)))]);
+  const e2 = await p.evaluate(() => { const g = pkExports.etatCommandeGrid(null, 'PK202611-1'), h = g.rows[2].cells.map(x => x ? x.v : ''), i = h.indexOf('Expédié 02/11'); return i > 0 ? g.rows[3].cells[i].v : null; });
+  r.push(['état de commande : colonne « Expédié 02/11 »', e2 === 85]);
+  await p.evaluate(() => { ui.stage = 'exp'; render(); }); await p.fill('.dp-card input[type=date]', '2099-01-01'); await p.click('.dp-card [data-dp-go]'); await p.waitForTimeout(150);
+  r.push(['date future refusée', await p.locator('.sx-cdet').count() === 0 && /futur/.test(await p.locator('#toast').textContent())]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if (err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);

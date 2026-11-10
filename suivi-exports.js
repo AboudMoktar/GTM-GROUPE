@@ -778,10 +778,19 @@ function suiviCommande(e, lot){
   var parId = {}; lignes.forEach(function(l){ parId[l.id] = l; });
   S.moves.forEach(function(m){ var l = parId[m.lineId]; if (!l) return; var r;
     if (m.stage === "emb"){ r = ref(l.lib, l.size); r.emb += m.qty; }
-    else if (m.stage === "exp"){ r = ref(l.lib, l.size); r.exp += m.qty; if (!idsX[m.ct]) r.av += m.qty; } });
+    else if (m.stage === "exp"){ r = ref(l.lib, l.size); r.exp += m.qty; if (!idsX[m.ct]){ r.av += m.qty; var kd = "av:" + (m.date || ""); r.ex[kd] = (r.ex[kd] || 0) + m.qty; } } });
   var dates = {}; exs.forEach(function(x){ var d = dmyL(x.d).slice(0, 5); dates[d] = (dates[d] || 0) + 1; });
-  return {exs:exs, R:R, avant:Object.keys(R).some(function(k){ return R[k].av; }),
-    titre:function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "En cours " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); },
+  /* colonnes du suivi, par date : expéditions faites hors export (« Expédié jj/mm », date du passage) et exports (« Exporté jj/mm ») */
+  /* une correction négative (ex. −5 saisi plus tard) se retire des passages précédents, du plus récent au plus ancien */
+  Object.keys(R).forEach(function(k){ var ex = R[k].ex, ds = Object.keys(ex).filter(function(id){ return id.indexOf("av:") === 0; }).sort();
+    ds.forEach(function(id, i){ if (!(ex[id] < 0)) return; for (var j = i - 1; j >= 0 && ex[id] < 0; j--){ var pr = ds[j], t = Math.min(ex[pr] || 0, -ex[id]); if (t > 0){ ex[pr] -= t; ex[id] += t; } } }); });
+  var avD = {}; Object.keys(R).forEach(function(k){ Object.keys(R[k].ex).forEach(function(id){ if (id.indexOf("av:") === 0 && R[k].ex[id]) avD[id.slice(3)] = 1; }); });
+  var cols = Object.keys(avD).map(function(d){ return {id:"av:" + d, d:d, av:true}; }).concat(exs.map(function(x){ return {id:x.id, d:x.d, x:x}; }))
+    .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : (b.av ? 1 : 0) - (a.av ? 1 : 0) || (a.x && b.x ? a.x.n - b.x.n : 0); });
+  var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "En cours " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
+  return {exs:exs, R:R, avant:Object.keys(R).some(function(k){ return R[k].av; }), cols:cols,
+    titreCol:function(c){ return c.av ? "Expédié " + (c.d ? dmyL(c.d).slice(0, 5) : "(sans date)") : titre(c.x); },
+    titre:titre,
     /* pièces d'une référence : exportées (ou expédiées avant), emballées en attente d'export, reste */
     chiffres:function(lib, z, tot){ var r = R[lib + "|" + z] || {ex:{}, av:0, emb:0, exp:0}, sx = r.av; exs.forEach(function(x){ sx += r.ex[x.id] || 0; });
       /* reste à produire = total − (expédié + emballé), jamais négatif */
@@ -806,13 +815,13 @@ function etatCommandeGrid(e, lot, opt){
   var R = {}, cle = function(lib, z){ return lib + "|" + z; };
   function ref(lib, z){ var k = cle(lib, z); return R[k] || (R[k] = {lib:lib, size:z, q:{}, tot:0}); }
   lignes.forEach(function(l){ if (!(l.qty > 0)) return; var x = ref(l.lib, l.size); x.q[l.client] = (x.q[l.client] || 0) + l.qty; x.tot += l.qty; });
-  var SV = CM ? null : suiviCommande(e, lot), exs = SV ? SV.exs : [], avant = SV ? SV.avant : false;
+  var SV = CM ? null : suiviCommande(e, lot), cols = SV ? SV.cols : [];
   if (SV) Object.keys(SV.R).forEach(function(k){ var p = k.split("|"), r = SV.R[k]; if (Object.keys(r.ex).some(function(id){ return r.ex[id]; }) || r.av) ref(p[0], p[1]); });
   var statuts = ((S.lots[lot] || {}).statuts) || {};
   var refs = Object.keys(R).map(function(k){ return R[k]; }).sort(function(a, b){ return ((a.lib in lo ? lo[a.lib] : 999) - (b.lib in lo ? lo[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : sizeIdx(a.size) - sizeIdx(b.size)); });
   /* colonnes */
-  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cAv = avant ? cSt + 1 : -1, cE = cSt + 1 + (avant ? 1 : 0), cEmb = cE + exs.length, cR = cEmb + 1, L = colName;
-  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(avant ? [11] : []).concat(exs.map(function(){ return 12; })).concat(CM ? [] : [10, 9]), rows:[], merges:[], plein:true, onePage:true};
+  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cE = cSt + 1, cEmb = cE + cols.length, cR = cEmb + 1, L = colName;
+  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [10, 9]), rows:[], merges:[], plein:true, onePage:true};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
   var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = opt.annee || (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
   gset(g, 0, 0, "Commande: " + (typeof libelleCommande === "function" && libelleCommande(lot) ? libelleCommande(lot) : mois), Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
@@ -822,8 +831,8 @@ function etatCommandeGrid(e, lot, opt){
   if (!CM){ for (k = cSt; k <= cR; k++){ gset(g, 0, k, k === cSt ? "SUIVI" : "", Tt); gset(g, 1, k, "", Tt); }
     gmerge(g, 0, cSt, 1, cR); }
   g.rows[0].h = 18; g.rows[1].h = 16;
-  ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"]).concat(avant ? ["Expédié avant"] : [])
-    .concat(exs.map(function(x){ return SV.titre(x); })).concat(CM ? [] : ["Emballés", "Reste"])
+  ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"])
+    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : ["Emballés", "Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = 28;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"};
@@ -840,10 +849,9 @@ function etatCommandeGrid(e, lot, opt){
     if (!CM){
       var ch = SV.chiffres(x.lib, x.size, x.tot), rx = SV.R[x.lib + "|" + x.size] || {ex:{}, av:0};
       gset(g, r, cSt, "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
-      if (avant) gset(g, r, cAv, rx.av || "", C);
-      exs.forEach(function(ex, i){ var v = rx.ex[ex.id] || 0; gset(g, r, cE + i, v || "", {b:1, sz:10, al:"c", bd:"t"}); });
+      cols.forEach(function(c, i){ var v = rx.ex[c.id] || 0; gset(g, r, cE + i, v || "", c.av ? C : {b:1, sz:10, al:"c", bd:"t"}); });
       gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
-      var s1 = avant ? cAv : cE;
+      var s1 = cE;
       gset(g, r, cR, ch.reste, {b:1, sz:10, al:"c", bd:"t"});
       g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + "))";
     }
@@ -861,7 +869,7 @@ function etatCommandeGrid(e, lot, opt){
     gset(g, r, k, sv, k === cR || (CM && k === cTL) ? {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE", fg:"C00000"} : TT); g.rows[r].cells[k].f = "SUM(" + L(k) + deb + ":" + L(k) + fin + ")";
   }
   /* TOTAL du reste : Total − (Expédié + Emballé) sur les totaux (les lignes, elles, s'arrêtent à 0) */
-  if (!CM){ var s0 = avant ? cAv : cE, tE = 0; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
+  if (!CM){ var s0 = cE, tE = 0; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
     g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cEmb) + (r + 1) + "))"; }
   g.rows[r].h = 18; g.sticky = 3;
   return g;
