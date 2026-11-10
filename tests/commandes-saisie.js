@@ -108,6 +108,11 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.evaluate(() => { S.lines.push({id:'Z1', lot:'PK202702', year:2027, client:'NEOLYS', model:'PHARMA-HOMME', lib:'PHARMA_HOMME COL V NOIR', size:'M', qty:10}); ui.lot = 'PK202702'; window.__ls = lectureSeule; lectureSeule = () => true; render(); });
   r.push(['lecture seule : ni Modifier ni Supprimer', await p.locator('.cm-act').count() === 0 && await p.locator('table.cmdT input.lu').count() > 0]);
   await p.evaluate(() => { lectureSeule = window.__ls; render(); });
+  // fluidité : le tableau de la commande garde sa position quand l'écran est redessiné (enregistrement, mise à jour d'un autre poste)
+  const pos = await p.evaluate(() => { const st = document.createElement('style'); st.textContent = '.xlwrap{max-height:60px!important;min-height:0!important}'; document.head.appendChild(st);
+    ui.cmdEd = null; ui.tab = 'cmd'; render(); const w = document.querySelector('.xlwrap'); w.scrollTop = 60; const avant = w.scrollTop; render(true); const apres = document.querySelector('.xlwrap').scrollTop; st.remove(); return [avant, apres]; });
+  r.push(['tableau : position gardée après un nouvel affichage', pos[0] === 60 && pos[1] === 60]);
+  r.push(['nombres : formateur réutilisé', await p.evaluate(() => fmt(1234567) === (1234567).toLocaleString('fr-FR') && fmt(2.5, 1) === (2.5).toLocaleString('fr-FR', {minimumFractionDigits:1, maximumFractionDigits:1}) && fmt('') === '')]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if (err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);

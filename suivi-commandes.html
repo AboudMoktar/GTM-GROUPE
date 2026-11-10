@@ -547,7 +547,10 @@ function refP(lib,size){ return cleanTxt(lib).replace(/ /g,"-") + "_" + normSize
 function sizeIdx(s){ var i = SZ.indexOf(s); return i < 0 ? 99 : i; }
 function num(v){ var n = parseInt(v,10); return isNaN(n) ? 0 : n; }
 function r2(x){ return Math.round(x*100)/100; }
-function fmt(n,d){ if (n === null || n === undefined || n === "") return ""; return Number(n).toLocaleString("fr-FR",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+/* formateurs de nombres réutilisés (en créer un à chaque appel ralentit les grands tableaux) */
+var FMT_NF = {};
+function fmtNF(d){ d = d || 0; return FMT_NF[d] || (FMT_NF[d] = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d})); }
+function fmt(n,d){ if (n === null || n === undefined || n === "") return ""; return fmtNF(d).format(Number(n)); }
 function today(){ var d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function el(tag, props){
   var e = document.createElement(tag);
@@ -765,9 +768,14 @@ function loadHost(){
   try { conditionnementsFils(); } catch (e) {}
 }
 /* appelé par l'application groupe à chaque mise à jour (autre appareil) ; on ne redessine pas sous une saisie en cours */
+/* défilement (molette, doigt) : une mise à jour reçue pendant ce temps attend la fin du défilement */
+var DERNIER_DEFIL = 0, RECHARGE_EN_ATTENTE = null;
+["scroll", "wheel", "touchmove"].forEach(function(t){ document.addEventListener(t, function(){ DERNIER_DEFIL = Date.now(); }, {capture:true, passive:true}); });
 window.suiviRecharger = function(){
   if (!HOST || dirty || ui.pend) return;
   var a = document.activeElement; if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+  var att = 900 - (Date.now() - DERNIER_DEFIL);
+  if (att > 0){ clearTimeout(RECHARGE_EN_ATTENTE); RECHARGE_EN_ATTENTE = setTimeout(window.suiviRecharger, att + 50); return; }
   var before = JSON.stringify(lastSaved); loadHost();
   if (JSON.stringify(lastSaved) !== before) render(true);
 };
@@ -1610,12 +1618,14 @@ function drawTabs(){
   var t = document.getElementById("tabs"); t.innerHTML = ""; t.className = TABS.length > 7 ? "n8" : "";
   TABS.forEach(function(x){ t.appendChild(el("button", {class:ui.tab === x[0] ? "on" : "", onclick:function(){ ui.tab = x[0]; if (x[0] === "flux"){ ui.sxOpen = false; ui.pend = null; } render(); }}, tabIcon(x[0]), el("span", {text:x[1]}))); });
 }
+/* tableaux défilants de la vue : leur position est gardée quand l'écran est redessiné */
+var SCROLLERS = ".tw,.xlwrap";
 function render(keepScroll){
   var v = document.getElementById("view");
-  var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(".tw"), function(e){ return [e.scrollLeft, e.scrollTop]; });
+  var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(SCROLLERS), function(e){ return [e.scrollLeft, e.scrollTop]; });
   refreshSelectors(); drawTabs(); v.innerHTML = "";
   ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, exp:function(x){ if (typeof vExports === "function") vExports(x); }, doc:function(x){ if (typeof vDocuments === "function") vDocuments(x); }, stock:vStock, arch:vArch, reg:vReg})[ui.tab](v);
-  if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(".tw"), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
+  if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(SCROLLERS), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
   else v.scrollTop = 0;
 }
 function commit(fn, okMsg){
