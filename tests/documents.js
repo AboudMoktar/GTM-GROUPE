@@ -5,7 +5,7 @@
 const {chromium} = require('playwright'); const serveur = require(__dirname + '/serveur.js');
 async function page(b, url){
   const p = await b.newPage(); const err = []; p.on('pageerror', e => err.push(e.message)); p.on('dialog', d => d.accept());
-  await p.addInitScript(() => { window.print = () => {}; });
+  await p.addInitScript(() => { window.__imp = 0; window.print = () => { window.__imp++; }; });
   await p.goto(url); await p.waitForFunction(() => typeof vDocuments === 'function' && typeof S === 'object');
   await p.evaluate(() => {
     const L = (id, cl, lib, sz, q) => ({id, lot:'PK202612-1', year:2026, client:cl, model:modelOf(lib) || 'M', lib, size:sz, qty:q, cc:0});
@@ -33,6 +33,7 @@ async function page(b, url){
     await row.locator('button', {hasText: 'Aperçu'}).click(); await p.waitForTimeout(250);
     const ap = await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return z ? z.innerHTML.length : 0; });
     const toastAp = await p.locator('#toast').textContent();
+    if (await p.locator('#pk-apercu').count()) await p.click('#pk-apercu [data-ap="Fermer"]');
     await row.locator('button', {hasText: 'PDF'}).click(); await p.waitForTimeout(250);
     await row.locator('button', {hasText: 'Excel'}).click(); await p.waitForTimeout(400);
     const f = await p.evaluate(() => window.__f.map(x => ({n: x.n, pdf: x.d.startsWith('%PDF'), xl: x.d.startsWith('PK'), land: /MediaBox \[0 0 841\.89 595\.28\]/.test(x.d), port: /MediaBox \[0 0 595\.28 841\.89\]/.test(x.d)})));
@@ -61,6 +62,20 @@ async function page(b, url){
   r.push(['une seule page : fiche de commande (' + une.n + ' lignes), état de commande, fiche de coupe', une.n > 100 && une.c === 1 && une.e === 1 && une.f === 1]);
   r.push(['fiche de coupe très longue : passe en portrait pour rester lisible', une.fOri === false]);
   r.push(['Excel : une page en hauteur ; aperçu : lignes resserrées', une.x && une.h]);
+  // aperçu plein écran, lisible (à la largeur de l'écran), imprimable
+  await p.evaluate(() => { ui.lot = 'PK202611'; render(); }); await p.waitForTimeout(200);
+  await p.locator('.dc-d[data-doc="Fiche de commande"] button', {hasText: 'Aperçu'}).click(); await p.waitForTimeout(500);
+  const ap = await p.evaluate(() => { const o = document.getElementById('pk-apercu'), f = o && o.querySelector('iframe'), d = f && f.contentDocument, z = d && d.getElementById('pk-doc-zone');
+    const R = o ? o.getBoundingClientRect() : {}; return {plein: !!o && R.width === innerWidth && R.height === innerHeight, tab: !!z && !!z.querySelector('table.grl'), zoom: z ? parseFloat(z.style.zoom) : 0,
+      larg: z ? Math.round(z.getBoundingClientRect().width) : 0, ecran: f ? f.clientWidth : 0}; });
+  r.push(['aperçu : plein écran, document à la largeur de l\'écran', ap.plein && ap.tab && ap.zoom > 1 && (Math.abs(ap.larg - ap.ecran) < 40 || Math.abs(ap.larg * ap.zoom - ap.ecran) < 40)]);
+  await p.click('#pk-apercu [data-ap="Agrandir"]'); await p.waitForTimeout(100);
+  const z2 = await p.evaluate(() => parseFloat(document.querySelector('#pk-apercu iframe').contentDocument.getElementById('pk-doc-zone').style.zoom));
+  r.push(['aperçu : zoom + / − / ajuster', Math.abs(z2 - ap.zoom * 1.2) < 0.01]);
+  await p.click('#pk-apercu [data-ap="Imprimer"]'); await p.waitForTimeout(300);
+  r.push(['aperçu : bouton Imprimer (une page A4)', await p.evaluate(() => window.__imp === 1 && !!document.getElementById('pk-doc-zone') && /grl-1p/.test(document.getElementById('pk-doc-zone').innerHTML))]);
+  await p.click('#pk-apercu [data-ap="Fermer"]');
+  r.push(['aperçu : fermé', await p.locator('#pk-apercu').count() === 0]);
   // orientation au choix (retenue sur l'appareil)
   await p.evaluate(() => { localStorage.removeItem('pk_doc_ori'); ui.lot = 'PK202612-1'; render(); }); await p.waitForTimeout(200);
   const blocCmd = p.locator('.dc-d[data-doc="Fiche de commande"]');
@@ -73,6 +88,7 @@ async function page(b, url){
   r.push(['fiche de commande en paysage (PDF et Excel)', fo.join() === 'pdf-paysage,xls-paysage' && /paysage/.test(await p.locator('.dc-d[data-doc="Fiche de commande"] .dc-f').textContent())]);
   await p.locator('.dc-d[data-doc="Fiche de commande"] button', {hasText: 'Aperçu'}).click(); await p.waitForTimeout(250);
   r.push(['aperçu en paysage', await p.evaluate(() => /size:A4 landscape/.test((document.getElementById('pk-doc-zone') || {}).innerHTML || ''))]);
+  await p.click('#pk-apercu [data-ap="Fermer"]');
   r.push(['choix retenu sur l\'appareil', await p.evaluate(() => JSON.parse(localStorage.getItem('pk_doc_ori'))['Fiche de commande'] === 'landscape')]);
   await p.evaluate(() => { window.__f = []; const z = document.getElementById('pk-doc-zone'); if (z) z.remove(); });
   await p.locator('.dc-d[data-doc="État des commandes"] .dc-o button[data-ori="landscape"]').click(); await p.waitForTimeout(150);

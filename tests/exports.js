@@ -100,7 +100,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const iS = g.rows.findIndex(r => r.cells[2] && r.cells[2].v === 'S'), iT = g.rows.length - 1;
     return {t0: v(0).join('|'), t1: v(1).join('|'), head: v(2).join('|'), s: v(iS).slice(1).join('|'), tot: v(iT).slice(3).join('|'), f: g.rows[iS].cells[12].f, gB: pkExports.etatCommandeGrid(e, 'PK202612'), noms: pkExports.feuillesDoc(e, 'etat').map(x => x.name).join('|')}; });
   r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
-  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^MAX\(0,H\d+-SUM\(K\d+:L\d+\)\)$/.test(ec.f)]);
+  r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^H\d+-SUM\(K\d+:L\d+\)$/.test(ec.f)]);
   r.push(['état : une page par commande', ec.noms === 'Etat PK202610|Etat PK202612']);
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});
@@ -118,8 +118,10 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.click('text=Avec les lots (par commande)'); await p.waitForTimeout(150);
   await doc('total', 'Imprimer').click(); await p.waitForTimeout(300);
   r.push(['impression de la liste total seule', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /LIBELLE/.test(z.innerHTML) && /PK202612/.test(z.innerHTML) && !/CARTON N°2/.test(z.innerHTML); })]);
+  if (await p.locator('#pk-apercu').count()) await p.click('#pk-apercu [data-ap="Fermer"]');
   await doc('fiches', 'Imprimer').click(); await p.waitForTimeout(300);
   r.push(['impression des fiches cartons', await p.evaluate(() => { const z = document.getElementById('pk-doc-zone'); return !!z && /CARTON N°2/.test(z.innerHTML); })]);
+  if (await p.locator('#pk-apercu').count()) await p.click('#pk-apercu [data-ap="Fermer"]');
   // 7. validation : pièces expédiées, affectées à leurs commandes
   await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
   await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);

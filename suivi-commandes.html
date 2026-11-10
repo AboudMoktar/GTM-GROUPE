@@ -1872,7 +1872,7 @@ function vCmdSaisie(v, clients, cli, libs){
     stat.innerHTML = "";
     stat.appendChild(el("div", null, el("b", {text:fmt(gf)}), el("span", {text:"pièces commandées" + (CL.filter(function(c){ return parC[c]; }).length ? " · " + CL.filter(function(c){ return parC[c]; }).map(function(c){ return c + " " + fmt(parC[c]); }).join(" · ") : "")})));
     stat.appendChild(el("div", null, el("b", {text:fmt(gc)}), el("span", {text:"pièces à couper (avec marge)"})));
-    if (SV) stat.appendChild(el("div", null, el("b", {text:fmt(tR)}), el("span", {text:"reste à produire / expédier"})));
+    if (SV) stat.appendChild(el("div", null, el("b", {text:fmt(tR)}), el("span", {text:"reste à produire (total − expédié − emballé)"})));
     compter();
   }
   function compter(){ if (!E) return; var n = changements().length; nbTxt.textContent = n ? "✏️ Saisie en cours : " + n + " modification(s) non enregistrée(s)" : "✏️ Saisie en cours : modifiez les quantités puis appuyez sur Valider"; }
@@ -4266,12 +4266,62 @@ var PK_DOC_CSS = [
   "#pk-doc-zone .tot-tab tr{break-inside:avoid;page-break-inside:avoid}"
 ].join("\n");
 /* impression : dans la page du groupe (le cadre seul s'imprime mal sur téléphone), sinon ici */
+/* Aperçu : le document s'ouvre en plein écran, à la largeur de l'écran (lisible), avec Imprimer,
+   zoom (− Ajuster +) et Fermer. L'impression reste la même (A4, une page par fiche). */
 function imprimerDoc(html, format, marge, titre){
   var full = "<style>@page{size:" + format + ";margin:" + marge + "}\n" + PK_DOC_CSS + "</style>" + html;
   titre = nomFichier(titre);
-  if (HOST && typeof HOST.imprimer === "function"){ HOST.imprimer(full, titre); return; }
+  var imprimer = function(){ if (HOST && typeof HOST.imprimer === "function") HOST.imprimer(full, titre); else imprimerIci(full, titre); };
+  if (!(HOST && typeof HOST.imprimer === "function")) preparerZone(full);
+  apercuDoc(full, titre, format, marge, imprimer);
+}
+function apercuDoc(full, titre, format, marge, imprimer){
+  var D = document;
+  try { if (HOST && window.parent && window.parent !== window && window.parent.document && window.parent.document.body) D = window.parent.document; } catch (e) {}
+  var ancien = D.getElementById("pk-apercu"); if (ancien) ancien.remove();
+  var pays = /landscape/.test(format), pw = pays ? 297 : 210, ph = pays ? 210 : 297, zoom = 1, ajuste = true;
+  var ov = D.createElement("div"); ov.id = "pk-apercu"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "Aperçu avant impression");
+  ov.setAttribute("style", "position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:#525659;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif");
+  var bar = D.createElement("div");
+  bar.setAttribute("style", "display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;background:#1F3864;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)");
+  var t = D.createElement("div"); t.textContent = "👁 " + String(titre).replace(/_/g, " ") + " · A4 " + (pays ? "paysage" : "portrait");
+  t.setAttribute("style", "flex:1 1 200px;min-width:0;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap");
+  bar.appendChild(t);
+  function bouton(txt, titreB, fn, fort){ var b = D.createElement("button"); b.type = "button"; b.textContent = txt; b.title = titreB; b.setAttribute("data-ap", titreB);
+    b.setAttribute("style", "border:0;border-radius:10px;padding:8px 14px;min-height:40px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;" + (fort ? "background:#fff;color:#1F3864" : "background:rgba(255,255,255,.16);color:#fff"));
+    b.addEventListener("click", fn); bar.appendChild(b); return b; }
+  var fr = D.createElement("iframe"); fr.title = "Aperçu"; fr.setAttribute("style", "flex:1;width:100%;border:0;background:#525659");
+  function zone(){ try { return fr.contentDocument && fr.contentDocument.getElementById("pk-doc-zone"); } catch (e) { return null; } }
+  function appliquer(){ var z = zone(); if (!z) return;
+    if (ajuste){ var px = pw * 96 / 25.4; zoom = Math.max(0.3, Math.min(4, (fr.clientWidth - 28) / px)); }
+    z.style.zoom = String(zoom); }
+  function fermer(){ ov.remove(); D.removeEventListener("keydown", clavier); try { (D.defaultView || window).removeEventListener("resize", appliquer); } catch (e) {} }
+  function clavier(ev){ if (ev.key === "Escape") fermer(); }
+  bouton("🖨 Imprimer", "Imprimer", function(){ imprimer(); }, true);
+  bouton("−", "Réduire", function(){ ajuste = false; zoom = Math.max(0.3, zoom / 1.2); appliquer(); });
+  bouton("↔ Ajuster", "Ajuster à l'écran", function(){ ajuste = true; appliquer(); });
+  bouton("+", "Agrandir", function(){ ajuste = false; zoom = Math.min(4, zoom * 1.2); appliquer(); });
+  bouton("✕ Fermer", "Fermer", fermer);
+  ov.appendChild(bar); ov.appendChild(fr); D.body.appendChild(ov);
+  fr.addEventListener("load", appliquer);
+  fr.srcdoc = '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    'html,body{margin:0;padding:0;background:#525659}' +
+    '#pk-doc-zone{display:block!important;box-sizing:border-box;width:' + pw + 'mm;min-height:' + ph + 'mm;padding:' + marge + ';margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.45)}' +
+    '#pk-doc-zone .grl-saut,#pk-doc-zone .sec-colis,#pk-doc-zone .sec-total{margin-top:8mm;padding-top:8mm;border-top:3px dashed #9aa4b5}' +
+    '#pk-doc-zone .etq-page{margin-bottom:8mm;padding-bottom:8mm;border-bottom:3px dashed #9aa4b5}' +
+    '</style></head><body><div id="pk-doc-zone">' + full + '</div></body></html>';
+  D.addEventListener("keydown", clavier);
+  try { (D.defaultView || window).addEventListener("resize", appliquer); } catch (e) {}
+  return ov;
+}
+/* zone imprimée (cachée à l'écran) */
+function preparerZone(full){
   var z = document.getElementById("pk-doc-zone"); if (z) z.remove();
   z = document.createElement("div"); z.id = "pk-doc-zone"; z.innerHTML = full; document.body.appendChild(z);
+  return z;
+}
+function imprimerIci(full, titre){
+  preparerZone(full);
   var avant = document.title;
   var fin = function(){ var x = document.getElementById("pk-doc-zone"); if (x) x.remove(); document.title = avant; window.removeEventListener("afterprint", fin); };
   window.addEventListener("afterprint", fin); document.title = titre;
