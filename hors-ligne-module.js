@@ -180,7 +180,10 @@ function hlMemoriserTexte(cle, texte, valeur){
 // (mgt/mgt_crm_clients/<ID> = "__gtm_json_v1:{…}") : seule la fiche modifiée circule.
 // Le reste de l'application et le CRM voient toujours un tableau, comme avant.
 // L'ancien format (un seul bloc) reste lu ; il est converti à la première écriture.
-const HL_PAR_FICHE = {mgt_crm_clients:'ID', mgt_crm_history:'id', mgt_crm_listing:'id'};   // + Listing (catalogue d'articles)
+const HL_PAR_FICHE = {mgt_crm_clients:'ID', mgt_crm_history:'id', mgt_crm_listing:'id',   // + Listing (catalogue d'articles)
+  // GADH · Gestion des commandes : une fiche par enregistrement (saisies simultanées sur plusieurs appareils, hors ligne).
+  gadh_gc_articles:'id', gadh_gc_fournisseurs:'id', gadh_gc_tarifs:'id', gadh_gc_demandes:'id', gadh_gc_offres:'id', gadh_gc_cmd_clients:'id', gadh_gc_cmd_fournisseurs:'id',
+  gadh_gc_receptions:'id', gadh_gc_livraisons:'id', gadh_gc_mouvements:'id', gadh_gc_journal:'id', gadh_gc_sauvegardes:'id'};
 const hlFichesServeur = {};    // cle -> {cleFirebase: texte} tel que reçu du serveur ; null = ancien format
 const hlFichesLocales = {};    // cle -> {cleFirebase: texte} de la dernière valeur en mémoire sur cet appareil
 const hlFichesCache = {};      // cle -> {map:{k:{texte,valeur}}, tableau, sig}

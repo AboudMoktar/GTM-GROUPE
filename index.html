@@ -1216,8 +1216,7 @@ function renderModuleSelect(){
             ['gadh-tableau', ICONS.stats, 'Tableau de bord', 'Pièces, personnel, commandes en un coup d\'œil'],
             ['gadh', ICONS.gadh, 'Gestion Production', 'Pièces assemblées et retournées, par commande'],
             ['gadh-rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
-            ['gadh-achats', ICONS.box, 'Achats et stock', 'Fournisseurs, bons d\'achat, réceptions, paiements, stock'],
-            ['gadh-ventes', ICONS.trend, 'Ventes', 'Devis, commandes clients, livraisons, factures et encaissements'],
+            ['gadh-commandes', ICONS.box, 'Gestion des commandes', 'Offres, commandes, approvisionnement, stock, livraisons, rentabilité'],
             ['commandes', '<span style="font-size:24px;line-height:1;">📦</span>', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
             ['machines', ICONS.wrench, 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
             ['factures', ICONS.invoice, 'Facturation', 'Factures, avoirs, paiements, relances']
@@ -1415,8 +1414,7 @@ function navItems(){
     ];
     return items.filter(i=>i.show);
   }
-  if(activeModule === 'gadh-achats') return achNavItems();
-  if(activeModule === 'gadh-ventes') return venNavItems();
+  if(activeModule === 'gadh-commandes') return gcNavItems();
   if(activeModule === 'gadh-rh'){
     const items = [
       {tab:'gadh-rh-pointage', label:'Pointage', icon:ICONS.saisie, show:true},
@@ -1443,7 +1441,7 @@ function navItems(){
 // apparence identique à l'application Gestion Rendement d'origine. MGT et GADH gardent leur habillage.
 function gtmStyleApp(){
   if(typeof activeModule === 'undefined' || !activeModule || activeModule === 'admin' || activeModule === 'mgt') return false;
-  if(activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-achats' || activeModule === 'gadh-ventes' || activeModule === 'gadh-tableau') return false;
+  if(activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-commandes' || activeModule === 'gadh-tableau') return false;
   if((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh') return false;
   return true;
 }
@@ -1452,7 +1450,7 @@ function appBrandingHTML(){
   // Toutes les sociétés : vrai logo (image) sur pastille blanche.
   // Logo officiel de la société, sur une pastille blanche (lisible sur la barre bleu nuit comme sur la barre latérale).
   const soc = (activeModule === 'mgt') ? 'mgt'
-    : (activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-achats' || activeModule === 'gadh-ventes' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
+    : (activeModule === 'gadh' || activeModule === 'gadh-rh' || activeModule === 'gadh-commandes' || activeModule === 'gadh-tableau' || ((activeModule === 'factures' || activeModule === 'machines') && activeSociete === 'gadh')) ? 'gadh' : 'tek';
   return `<div class="logo-wrap" style="align-items:flex-start;"><span style="display:inline-flex;align-items:center;background:#fff;border-radius:9px;padding:3px 9px;">${societeLogo(soc, 34, societeMot(soc), 120)}</span></div>`;
 }
 function renderShell(){
@@ -1472,7 +1470,7 @@ function renderShell(){
   document.getElementById('app').innerHTML = `
     <div class="sidebar no-print">
       <div class="side-logo">${appBrandingHTML()}${activeSociete && SOCIETES[activeSociete] ? `<span class="side-soc">${esc(SOCIETES[activeSociete].nom)}</span>` : ''}</div>
-      <nav>${items.map(i=>navBtn(i,'')).join('')}</nav>
+      <nav>${items.filter(i=>i.cote!==false).map(i=>navBtn(i,'')).join('')}</nav>
       <div class="side-sep"></div>
       <nav>
         ${peutChangerDeModule() ? `<button onclick="switchModule()">${ICONS.switchModule}<span>Changer de module</span></button>` : ''}
@@ -1503,12 +1501,12 @@ function renderShell(){
       </div>
       <main id="main"></main>
       <div class="bottomnav no-print${items.length <= 1 ? ' bn-seul' : ''}">
-        ${items.map(i=>navBtn(i,'',true)).join('')}
+        ${items.filter(i=>i.bas!==false).map(i=>navBtn(i,'',true)).join('')}
       </div>
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : activeModule === 'gadh-achats' ? 'ach-accueil' : activeModule === 'gadh-ventes' ? 'ven-accueil' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : activeModule === 'gadh-commandes' ? 'gc-accueil' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
 }
 
 function nav(tab){
@@ -1553,8 +1551,7 @@ function nav(tab){
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
   else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
-  else if(tab.indexOf('ach-') === 0){ renderAchats(tab, main); }
-  else if(tab.indexOf('ven-') === 0){ renderVentes(tab, main); }
+  else if(tab.indexOf('gc-') === 0){ renderGC(tab, main); }
   else if(tab.indexOf('mgt-') === 0){ renderMgt(tab, main); }
   else if(tab.indexOf('fact-') === 0){ renderFact(tab, main); }
   else if(tab.indexOf('arr-') === 0){ renderArr(tab, main); }
@@ -3083,8 +3080,11 @@ window.onload = init;
 <script src="./facturation-percko-module.js"></script>
 <script src="./facturation-saisie-module.js"></script>
 <script src="./machines-module.js"></script>
-<script src="./gadh-achats-module.js"></script>
-<script src="./gadh-ventes-module.js"></script>
+<script src="./gadh-gc-calcul.js"></script>
+<script src="./gadh-gc-module.js"></script>
+<script src="./gadh-gc-ventes.js"></script>
+<script src="./gadh-gc-achats.js"></script>
+<script src="./gadh-gc-exports.js"></script>
 <script src="./notif-module.js"></script>
 <script src="./audit-module.js"></script>
 <script src="./mgt-crm-module.js"></script>
