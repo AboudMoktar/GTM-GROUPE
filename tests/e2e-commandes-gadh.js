@@ -76,7 +76,8 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const etape = (n, t) => console.log('\n' + n + '. ' + t);
   const proche = (a, x) => Math.abs(a - x) < 0.006;
   const confirmer = async (p) => { await p.click('[data-gc="confirmer"]'); await pause(p, 700); };
-  const D = (p) => p.evaluate(() => { const d = gcD(); return JSON.parse(JSON.stringify(d)); });
+  const CAP = process.env.CAPTURES;
+  const capture = async (pg, nom) => { if(CAP){ await pg.waitForTimeout(300); await pg.screenshot({path:path.join(CAP, nom + '.png'), fullPage:true}); } };
 
   // ================= Secrétaire GADH (téléphone) =================
   const S = await ouvrir('secretaire_gadh');
@@ -153,6 +154,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.setInputFiles('#gi-fichier', {name:'besoins-client.csv', mimeType:'text/csv', buffer:Buffer.from(csv, 'utf8')});
   await p.click('[data-gc="analyser-import"]'); await pause(p, 1200);
   const imp = await p.evaluate(() => gcStatsImport(gcImport.lignes));
+  await capture(p, '03-import');
   verif('Colonnes détectées ; 5 lignes : 2 reconnues, 1 inconnue, 1 doublon, 1 quantité en erreur', imp.total === 5 && imp.ok === 2 && imp.inconnu === 1 && imp.doublon === 1 && imp.erreur === 1, JSON.stringify(imp));
   await p.click('[data-gc="regrouper"]'); await pause(p, 500);
   verif('Doublons regroupés : tissu 550 m', await p.evaluate(() => gcImport.lignes.find(l => l.ref === 'TIS-001').qte === 550));
@@ -170,9 +172,11 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.click('[data-gc="nouvelle-version"]'); await pause(p, 900);
   verif('Nouvelle version : écran de saisie de la v2', await p.evaluate(() => activeTab === 'gc-edition' && gcEdit.doc.version === 2));
   await p.fill('#gel-qte-0', '450'); await p.dispatchEvent('#gel-qte-0', 'change'); await pause(p, 400);
+  await capture(p, '04-edition-offre');
   verif('Saisie : 450 m → palier 9 € appliqué automatiquement', await p.evaluate(() => gcEdit.doc.lignes[0].pu === 9));
   await p.click('[data-gc="enregistrer-doc"]'); await pause(p, 800);
   await p.click('[data-gc="comparer-version"]'); await pause(p, 400);
+  await capture(p, '04-comparaison');
   verif('Comparaison v1 → v2 : tissu modifié, écart −350 €', /Modifiée/.test(await p.innerText('.modal-sheet')) && /-350,00|−350,00/.test((await p.innerText('.modal-sheet')).replace(/\s/g, '')), (await p.innerText('.modal-sheet')).slice(0, 300));
   await p.evaluate(() => mgtFermer());
   offres = await nouveaux('gadh_gc_offres');
@@ -188,6 +192,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.click('[data-gc="offre-commande"]'); await pause(p, 300); await p.fill('#goc-date', souhaitee); await p.click('[data-gc="valider-commande-offre"]'); await pause(p, 900);
   let cmds = await nouveaux('gadh_gc_cmd_clients');
   const cc = cmds[0];
+  await capture(p, '06-commande');
   verif('Commande CC confirmée : tissu 450 × 9, fil 50 × 4 → 4 250 € HT, liée à l\'offre', cmds.length === 1 && cc.statut === 'confirmee' && cc.lignes[0].qte === 450 && cc.lignes[0].pu === 9 && cc.offreId === of.id && await p.evaluate((c) => GC.totaux(c).ht, cc) === 4250);
   verif('Offre liée à sa commande', (await nouveaux('gadh_gc_offres'))[0].commandeId === cc.id);
 
@@ -197,6 +202,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const bT = B.find(x => x.id === A1.id), bF = B.find(x => x.id === A2.id);
   verif('Tissu : 450 manquants + 20 (seuil) = 470 à commander chez Textiles Test', bT && bT.m === 450 && bT.r === 20 && bT.c === 470 && bT.f === F1, JSON.stringify(bT));
   verif('Fil : 30 en stock, 20 manquants', bF && bF.s === 30 && bF.m === 20 && bF.c === 20, JSON.stringify(bF));
+  await capture(p, '07-besoins');
   verif('Écran des besoins : urgences et dates « commander avant » affichées', /Commander avant le/.test(await p.innerText('#gc-body')));
 
   etape(8, 'Commandes fournisseurs générées depuis les besoins');
@@ -235,6 +241,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const st = await p.evaluate((id) => GC.stockArticle(gcD(), id), A1.id);
   verif('Stock tissu : physique 470, disponible 470, valeur 2 074 €', st.physique === 470 && st.disponible === 470 && st.valeur === 2074 && st.attente === 0, JSON.stringify(st));
   await p.evaluate(() => nav('gc-lots')); await pause(p);
+  await capture(p, '11-lots');
   verif('Écran des lots : valeur restante affichée (tissu 940 + 1 134, fil repris 60 → 2 134 €)', /1\s?134,00/.test(await p.innerText('#gc-body')) && /2\s?134,00/.test(await p.innerText('#gc-body')));
 
   etape(12, 'Réservation pour le client');
@@ -251,6 +258,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.click('[data-gc="valider-livraison"]'); await pause(p, 1000);
   let bls = await nouveaux('gadh_gc_livraisons');
   const bl1 = bls[0];
+  await capture(p, '13-livraison');
   verif('BL créé : 300 m (FIFO : 200 du 1er lot + 100 du 2e) et 30 bobines', bls.length === 1 && bl1.lignes[0].allocations.length === 2 && bl1.lignes[0].allocations[0].qte === 200 && bl1.lignes[0].allocations[1].qte === 100 && bl1.lignes[1].qte === 30);
   verif('Commande « livrée en partie » (statut automatique)', await p.evaluate((id) => GC.statutCmdC(gcD().cmdC.find(c => c.id === id), GC.livres(gcD())).cle, cc.id) === 'partielle');
   verif('Réservé restant : 150 m', await p.evaluate((id) => GC.reservations(gcD())[id + '|l1'], cc.id) === 150);
@@ -295,6 +303,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const R1 = await p.evaluate((id) => GC.coutLivraison(gcD().livraisons.find(b => b.id === id)), bl1.id);
   verif('BL 1 : CA 2 820, achat 1 300, frais 180, marge 1 340 ; taux de marque 47,52 %', R1.ca === 2820 && R1.achat === 1300 && R1.fraisLots + R1.fraisLivraison === 180 && R1.marge === 1340 && R1.tauxMarque === 47.52, JSON.stringify([R1.ca, R1.achat, R1.fraisLots, R1.fraisLivraison, R1.marge, R1.tauxMarque]));
   await p.evaluate(() => { gcFiltresRenta = {vue:'article', du:'', au:'', clientId:'', articleId:'', cmdId:''}; nav('gc-rentabilite'); }); await pause(p);
+  await capture(p, '17-rentabilite');
   verif('Écran rentabilité par article : total 4 250 € et marge 2 098 €', /4\s?250,00/.test(await p.innerText('#gc-body')) && /2\s?098,00/.test(await p.innerText('#gc-body')));
   // Frais connus après coup : aucun changement rétroactif
   await p.evaluate(() => { const r = gcD().receptions.find(x => !x.migre); gcEnregistrer('receptions', Object.assign({}, r, {frais:[{id:'x', libelle:'Transport', montant:150, methode:'quantite', statut:'reel'}]})); }); await pause(p, 300);
@@ -303,6 +312,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   etape(18, 'Tableau de bord');
   await p.evaluate(() => { gcFiltresAccueil = null; nav('gc-accueil'); }); await pause(p, 600);
   const acc = await p.innerText('#gc-body');
+  await capture(p, '18-accueil');
   verif('Indicateurs : CA, coûts réels, marge, valeur du stock, besoins', /Chiffre d'affaires livré/.test(acc) && /4\s?250,00/.test(acc) && /Coûts réels/.test(acc) && /Valeur du stock/.test(acc) && /Besoins d'approvisionnement/.test(acc));
   await p.selectOption('#gcf-client', 'k1'); await p.click('text=Appliquer'); await pause(p, 500);
   verif('Filtre client appliqué', await p.evaluate(() => gcFiltresAccueil.clientId === 'k1'));
@@ -311,6 +321,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.evaluate(() => { gcImportCat = null; nav('gc-import-catalogue'); }); await pause(p);
   const csvCat = 'Référence;Désignation;Unité;Prix achat;Prix vente;Seuil;Fournisseur\nTIS-001;Tissu coton;m;5;11;20;Textiles Test\nBOU-01;Bouton nacre;pièce;0,05;0,2;500;Mercerie Nouvelle\nBAD;;pièce;x;1;;\n';
   await p.setInputFiles('#gc-cat-fichier', {name:'catalogue.csv', mimeType:'text/csv', buffer:Buffer.from(csvCat, 'latin1')}); await pause(p, 800);
+  await capture(p, '19-import-catalogue');
   verif('Import catalogue : aperçu (1 mise à jour, 1 création, 1 ligne ignorée)', /1 création\(s\)/.test(await p.innerText('#gc-body')) && /1 mise\(s\) à jour/.test(await p.innerText('#gc-body')), (await p.innerText('#gc-body')).slice(0, 200));
   await p.click('[data-gc="valider-import-catalogue"]'); await pause(p, 900);
   arts = await liste('gadh_gc_articles');
@@ -366,11 +377,13 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   // Direction : lecture seule
   const DI = await ouvrir('direction', true);
   await DI.p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-commandes'); nav('gc-rentabilite'); }); await pause(DI.p, 800);
+  await capture(DI.p, '20-direction-rentabilite');
   verif('Direction : rentabilité consultable', /4\s?250,00/.test(await DI.p.innerText('#main')));
   verif('Direction : écriture refusée par Firebase', await ecriture(DI.p, 'gadh_gc_articles') === false);
   // Responsable TEK-TREND : accès complet + tableau de bord GADH
   const RT2 = await ouvrir('responsable', true);
   await RT2.p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-tableau'); }); await pause(RT2.p, 1200);
+  await capture(RT2.p, '20-tableau-gadh');
   verif('Tableau de bord GADH : section « Gestion des commandes »', /Gestion des commandes/.test(await RT2.p.innerText('#main')) && /CA livré du mois/.test(await RT2.p.innerText('#main')));
   verif('Responsable : écriture autorisée', await ecriture(RT2.p, 'gadh_gc_journal') === true);
   await admin.database().ref('/groupe1/gadh/gadh_gc_journal/essai').remove();

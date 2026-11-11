@@ -280,6 +280,7 @@ function gcStyle(){
     .gc-lignes td{border:0;padding:3px 0;display:flex;align-items:center;gap:8px;}
     .gc-lignes td[data-l]::before{content:attr(data-l);font-size:11.5px;color:var(--ink-soft);flex:0 0 38%;}
     .gc-lignes td.n{justify-content:space-between;}
+    .gc-lignes td > div{flex:1;min-width:0;text-align:right;}
     .gc-actions{width:100%;}
     .gc-actions .btn{flex:1 1 auto;}
   }

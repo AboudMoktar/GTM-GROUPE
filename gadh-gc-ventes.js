@@ -257,10 +257,10 @@ window.renderGcImport = function(main){
     <div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Ligne</th><th>Lu dans le fichier</th><th>Article du catalogue</th><th>Quantité</th><th>Unité</th><th>Contrôle</th><th>Ignorer</th></tr></thead><tbody>
     ${I.lignes.map((l, i) => `<tr style="${l.ignoree ? 'opacity:.5;' : ''}"><td data-l="Ligne">${l.n}${l.fusion ? '<br><span class="gc-sous">+ ' + l.fusion.slice(1).join(', ') + '</span>' : ''}</td>
       <td data-l="Fichier">${esc(l.ref || '')}${l.ref && l.designation ? ' · ' : ''}${esc(l.designation || '')}</td>
-      <td data-l="Article"><select onchange="gcImport.lignes[${i}].articleId = this.value; gcImportRecalculer(); nav('gc-import')">${gcOptsArticles(l.articleId, '— Aucun —')}</select>${!l.articleId ? `<button class="btn btn-ghost" style="padding:3px 9px;font-size:12px;margin-top:4px;" onclick="gcImportCreerArticle(${i})">Créer l'article</button>` : ''}</td>
+      <td data-l="Article"><div><select onchange="gcImport.lignes[${i}].articleId = this.value; gcImportRecalculer(); nav('gc-import')">${gcOptsArticles(l.articleId, '— Aucun —')}</select>${!l.articleId ? `<button class="btn btn-ghost" style="padding:3px 9px;font-size:12px;margin-top:4px;" onclick="gcImportCreerArticle(${i})">Créer l'article</button>` : ''}</div></td>
       <td data-l="Quantité"><input type="number" step="any" min="0" value="${gcAttr(l.qte)}" onchange="gcImport.lignes[${i}].qte = GC.num(this.value); gcImportRecalculer(); nav('gc-import')"></td>
       <td data-l="Unité">${esc(l.unite || '')}</td>
-      <td data-l="Contrôle">${gcBadge(GC_IMPORT_STATUTS[l.ignoree ? 'ignoree' : l.statut])}${l.alertes.length ? '<br><span class="gc-sous">' + esc(l.alertes.join(' ; ')) + '</span>' : ''}</td>
+      <td data-l="Contrôle"><div>${gcBadge(GC_IMPORT_STATUTS[l.ignoree ? 'ignoree' : l.statut])}${l.alertes.length ? '<br><span class="gc-sous">' + esc(l.alertes.join(' ; ')) + '</span>' : ''}</div></td>
       <td data-l="Ignorer"><input type="checkbox" ${l.ignoree ? 'checked' : ''} onchange="gcImport.lignes[${i}].ignoree = this.checked; gcImportRecalculer(); nav('gc-import')" style="width:auto;min-width:0;"></td></tr>`).join('')}
     </tbody></table></div></div>
     <div style="display:flex;gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="gcImport = null; nav('gc-demandes')">Abandonner</button><button class="btn btn-primary" style="flex:2;" data-gc="enregistrer-demande" onclick="gcSauverDemande()">Enregistrer la demande</button></div>`;
