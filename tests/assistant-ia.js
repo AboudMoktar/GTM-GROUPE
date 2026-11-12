@@ -10,6 +10,8 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const appels = []; let mode = 'ok';
   await p.route('https://generativelanguage.googleapis.com/**', async rt => {
     const req = rt.request(); appels.push({url: req.url(), cle: req.headers()['x-goog-api-key'], corps: JSON.parse(req.postData())});
+    if (mode === '503' && /gemini-3\.8-flash:/.test(req.url())) return rt.fulfill({status: 503, contentType: 'application/json', body: JSON.stringify({error: {message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'}})});
+    if (mode === '503tous') return rt.fulfill({status: 503, contentType: 'application/json', body: JSON.stringify({error: {message: 'This model is currently experiencing high demand.'}})});
     if (mode === '429') return rt.fulfill({status: 429, contentType: 'application/json', body: JSON.stringify({error: {message: 'quota'}})});
     if (mode === 'cle') return rt.fulfill({status: 400, contentType: 'application/json', body: JSON.stringify({error: {message: 'API key not valid. Please pass a valid API key.'}})});
     return rt.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({candidates: [{content: {parts: [{text: 'Il reste **30** pièces XL.\n\n| Taille | Reste |\n|---|---|\n| XL | 30 |\n\n- point 1\n- point 2'}]}}]})});
@@ -33,6 +35,12 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['réponse affichée : gras, tableau, liste', /<b>30<\/b>/.test(rep) && /<table class="ia-tab">/.test(rep) && /<li>point 1<\/li>/.test(rep)]);
   await p.fill('#ia-q', 'Et en L ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(400);
   r.push(['conversation suivie (question précédente renvoyée)', appels.length === 2 && appels[1].corps.contents.length === 3 && appels[1].corps.contents[1].role === 'model']);
+  // Gemini saturé (503) : nouvel essai, puis autre modèle automatiquement
+  mode = '503'; const n0 = appels.length; await p.fill('#ia-q', 'Saturé ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(3500);
+  const essais = appels.slice(n0).map(x => (x.url.match(/models\/([^:]+)/) || [])[1]);
+  r.push(['modèle saturé : réessai puis Flash-Lite, réponse affichée', essais.join(',') === 'gemini-3.8-flash,gemini-3.8-flash,gemini-3.5-flash-lite' && /<b>30<\/b>/.test((await p.locator('.ia-m.b').last().innerHTML()))]);
+  mode = '503tous'; await p.fill('#ia-q', 'Tous saturés ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(8000);
+  r.push(['tous saturés : message clair en français', /Gemini est surchargé en ce moment/.test(await p.textContent('#ia-msgs')) && !/high demand/.test(await p.textContent('#ia-msgs'))]);
   mode = '429'; await p.fill('#ia-q', 'Encore ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(400);
   r.push(['limite gratuite : message clair', /Limite gratuite de Gemini atteinte/.test(await p.textContent('#ia-msgs'))]);
   mode = 'cle'; await p.fill('#ia-q', 'Test ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(400);
