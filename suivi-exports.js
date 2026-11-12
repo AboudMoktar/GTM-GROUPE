@@ -117,10 +117,10 @@ function lireKg(v){ v = String(v === null || v === undefined ? "" : v).trim().re
 function dispoLigne(l, cl, saufCt){
   var ret = dispoRetour(l.lot, l.id, saufCt), R = regleColis(cl);
   if (estSpecial(l.client)) return ret;   /* FLÉCHÉS / VESTIAIRES : pour l'export choisi (NEOLYS ou ALLOGA) */
-  if (l.client === cl) return Math.min(ret, (R && R.cde) ? Math.max(0, l.qty - enCarton(l.lot, cl, l.id, saufCt)) : Infinity);
+  if (l.client === cl) return Math.min(ret, (R && R.cde) ? Math.max(0, l.qty - commandePrise(l.lot, cl, l.id, saufCt)) : Infinity);
   /* surplus d'un client limité à sa commande (ex. surplus ALLOGA sur un export NEOLYS) : ce qui dépasse sa commande */
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
-  return Math.max(0, ret - Math.max(0, l.qty - enCarton(l.lot, l.client, l.id, null)));
+  return Math.max(0, ret - Math.max(0, l.qty - commandePrise(l.lot, l.client, l.id, null)));
 }
 /* ---------- mouvements (contrôle + emballage par carton ; prêt + expédié à la validation) ---------- */
 function mvtsCarton(e, c){
@@ -431,7 +431,7 @@ function editeurCarton(v, e){
   groupes.sort(function(a, b){ return ["STD", "H", "TU"].indexOf(a.k) - ["STD", "H", "TU"].indexOf(b.k); });
   var mx = el("div", {class:"card"}, el("div", {class:"xp-head"}, el("div", {class:"mut", style:"font-weight:700", text:"Quantités du carton — commande " + E.lot}),
     dansCmd ? el("button", {class:"btn small sec", text:E.tous ? "Seulement les modèles de la commande" : "Afficher tous les modèles", onclick:function(){ E.tous = !E.tous; render(true); }}) : null));
-  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces revenues de la GADH pas encore mises en carton. Case rouge = plus que le retour GADH : c'est permis, les étapes d'avant (coupe → confection) sont alors complétées automatiquement à l'enregistrement du carton."}));
+  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces disponibles : revenues de la GADH, pas encore mises en carton ni déjà expédiées. Choisissez librement les modèles et les quantités. Case rouge = plus que le disponible : c'est permis, les étapes d'avant (coupe → confection) sont alors complétées automatiquement à l'enregistrement du carton."}));
   var majs = [];
   function recalc(){ totEl.textContent = fmt(total()); majs.forEach(function(f){ f(); }); }
   groupes.forEach(function(g){
@@ -444,8 +444,8 @@ function editeurCarton(v, e){
       var totRow = el("td", {class:"t"});
       g.tailles.forEach(function(z){
         if (m.sizes.indexOf(z) < 0){ tr.appendChild(el("td", {class:"x", text:"·"})); return; }
-        var l = ligneDe(m.sp || e.cl, E.lot, m.lib, z), reste = l ? Math.max(0, retourGadh(l.id) - totalEnCartons(l.lot, l.id, saufCt)) : null, it0 = itemDe(E.lot, m.lib, z, m.sp);
-        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", "data-sp":m.sp, value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + (m.sp ? " · " + m.sp : "") + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + ", reste " + reste : " — hors commande")});
+        var l = ligneDe(m.sp || e.cl, E.lot, m.lib, z), exped = l ? expHorsExports(l.id) : 0, reste = l ? dispoRetour(l.lot, l.id, saufCt) : null, it0 = itemDe(E.lot, m.lib, z, m.sp);
+        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", "data-sp":m.sp, value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + (m.sp ? " · " + m.sp : "") + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + (exped ? ", déjà expédié " + exped : "") + ", disponible " + reste : " — hors commande")});
         function marquer(){ var x = itemDe(E.lot, m.lib, z, m.sp), q = x ? x[1] : 0; inp.className = (q && l && q > reste) ? "trop" : q ? "plein" : ""; }
         inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
         inp.addEventListener("input", function(){
