@@ -14,7 +14,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const C = (id, n, it) => ({id, n, cl:'NEOLYS', d:'2026-11-04', it, kg:null});
     out.push(['carton dans la limite du retour accepté', essai(() => enregistrerCarton('PKT', C('C1', 1, [['LXS', 12], ['LS', 38]]))) === '']);
     const e2 = essai(() => enregistrerCarton('PKT', C('C2', 2, [['LXS', 10], ['LS', 40]])));
-    out.push(['carton au-delà du retour refusé (13 revenues, 12 déjà en carton)', /retour GADH 13, déjà en carton 12 — il reste 1 pièce/.test(e2)]);
+    out.push(['carton au-delà du retour refusé (13 revenues, 12 déjà en carton)', /retour GADH 13, déjà en carton ou expédié 12 — il reste 1 pièce/.test(e2)]);
     out.push(['rien d\'enregistré après le refus', S.cartons.PKT.length === 1 && !S.moves.some(m => m.ct === 'C2')]);
     out.push(['dernière pièce acceptée', essai(() => enregistrerCarton('PKT', C('C2', 2, [['LXS', 1], ['LS', 40]]))) === '']);
     out.push(['modification d\'un carton : son ancien contenu ne compte pas', essai(() => enregistrerCarton('PKT', C('C1', 1, [['LXS', 12], ['LS', 30]]))) === '']);

@@ -122,12 +122,13 @@ function dispoLigne(l, cl, saufCt){
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
   return Math.max(0, ret - Math.max(0, l.qty - commandePrise(l.lot, l.client, l.id, null)));
 }
-/* ---------- mouvements (contrôle + emballage par carton ; prêt + expédié à la validation) ---------- */
+/* ---------- mouvements (contrôle + emballage + prêt à expédier par carton ; expédié à la validation) ---------- */
 function mvtsCarton(e, c){
   var out = [];
   c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
     out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"ctl", qty:x[1], nc:0, note:"Contrôle (auto) · export N°" + e.n + " carton N°" + c.n, ct:c.id});
     out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"emb", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:c.id});
+    out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"pret", qty:x[1], nc:0, note:"Prêt à expédier · export N°" + e.n + " carton N°" + c.n, ct:c.id});
   });
   return out;
 }
@@ -164,13 +165,15 @@ function supprimerCartonExport(e, id){
   var anc = anciensDe(id); checkMoves([], anc);
   S.moves = S.moves.filter(function(m){ return !anc[m.id]; });
   e.cartons = e.cartons.filter(function(x){ return x.id !== id; });
-  e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); } });
+  e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : m.stage === "pret" ? "Prêt à expédier · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); } });
 }
 function validerExport(e){
   if (!e.cartons.length) throw new Error("L'export n'a aucun carton.");
   var nm = [];
-  e.cartons.forEach(function(c){ c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
-    nm.push({id:nid("M"), date:e.d, lineId:x[0], stage:"pret", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:e.id});
+  e.cartons.forEach(function(c){ var pret = S.moves.some(function(m){ return m.ct === c.id && m.stage === "pret"; });
+    c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
+    /* cartons enregistrés avant le « prêt à expédier » au carton : le prêt est ajouté ici */
+    if (!pret) nm.push({id:nid("M"), date:e.d, lineId:x[0], stage:"pret", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:e.id});
     nm.push({id:nid("M"), date:e.d, lineId:x[0], stage:"exp", qty:x[1], nc:0, note:"Expédié · export N°" + e.n + " · carton N°" + c.n, ct:e.id}); }); });
   checkMoves(nm, anciensDe(e.id));
   S.moves = S.moves.filter(function(m){ return m.ct !== e.id; }).concat(nm);
@@ -787,7 +790,7 @@ function suiviCommande(e, lot){
   var avD = {}; Object.keys(R).forEach(function(k){ Object.keys(R[k].ex).forEach(function(id){ if (id.indexOf("av:") === 0 && R[k].ex[id]) avD[id.slice(3)] = 1; }); });
   var cols = Object.keys(avD).map(function(d){ return {id:"av:" + d, d:d, av:true}; }).concat(exs.map(function(x){ return {id:x.id, d:x.d, x:x}; }))
     .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : (b.av ? 1 : 0) - (a.av ? 1 : 0) || (a.x && b.x ? a.x.n - b.x.n : 0); });
-  var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "En cours " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
+  var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "Prêt à expédier le " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
   return {exs:exs, R:R, avant:Object.keys(R).some(function(k){ return R[k].av; }), cols:cols,
     titreCol:function(c){ return c.av ? "Expédié " + (c.d ? dmyL(c.d).slice(0, 5) : "(sans date)") : titre(c.x); },
     titre:titre,

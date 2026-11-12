@@ -160,7 +160,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.click('text=Rouvrir l\'export'); await p.waitForTimeout(300);
   ({ex: E, mv} = await etat());
   r.push(['export rouvert : expédition annulée, retour dans « Exports en cours »', E[0].st === 'cours' && !mv.some(m => m.stage === 'exp') && await p.evaluate(() => ui.tab === 'exp')]);
-  r.push(['état de commande : export en cours signalé', await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.some(x => x && x.v === 'En cours 07/11'))]);
+  r.push(['état de commande : export en cours signalé', await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.some(x => x && x.v === 'Prêt à expédier le 07/11'))]);
   await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
   await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);
   await p.click('text=Supprimer l\'export'); await p.waitForTimeout(300);
@@ -189,7 +189,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['fiche de l\'export : étiquette FLÉCHÉS, pas « surplus »', await p.locator('.xp-carton .xp-tag.sp', {hasText: 'FLÉCHÉS'}).count() === 1 && !/surplus FLÉCHÉS/.test(await p.locator('#view').textContent())]);
   const fd = await p.evaluate(() => { const e = S.exports.find(x => x.id === 'X3'), c = pkExports.colisExport(e), it = c[0].items.find(x => x.sp === 'FLÉCHÉS');
     const g = pkExports.totalCommandeGrid(e, c, 'PK202611'), rf = g.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS');
-    const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.findIndex(v => /^En cours 09\/11/.test(v));
+    const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.findIndex(v => /^Prêt à expédier le 09\/11/.test(v));
     const rs = et.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR' && r.cells[2] && r.cells[2].v === 'S');
     return {it: it && it.lib + '|' + it.src, col: /Pharma Homme Col V Noir · Fléchés/.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
   r.push(['documents : « LIBELLÉ · FLÉCHÉS » pour le client de l\'export', fd.it === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS|NEOLYS' && fd.col && fd.tot === 10 && fd.tot2 === 'NEOLYS,NEOLYS']);
