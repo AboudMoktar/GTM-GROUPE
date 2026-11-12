@@ -136,7 +136,7 @@ Accès complet au module MGT, y compris les demandes SAV · consultation de la g
 
 ## Secrétaire MGT
 
-Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026). Rôle technique : `admin`. Sociétés : MGT. Administration des comptes : non. Journal d'audit : non.
+Factures, offres, planning, parc machines et SAV MGT, liés aux clients (validé le 01/11/2026, parc et SAV le 12/11/2026). Rôle technique : `admin`. Sociétés : MGT. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |

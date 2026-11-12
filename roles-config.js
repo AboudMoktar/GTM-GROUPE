@@ -125,8 +125,8 @@
     },
     secretaire_mgt: {
       label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true},
-      aide:'Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026)',
-      // Dans le CRM : Offres, Facturation et Planning complets ; Clients en consultation (voir mgt-crm-app.html, profil secretaire_mgt).
+      aide:'Factures, offres, planning, parc machines et SAV MGT, liés aux clients (validé le 01/11/2026, parc et SAV le 12/11/2026)',
+      // Dans le CRM : Offres, Facturation, Planning, Parc machines et SAV complets ; Clients en consultation (voir mgt-crm-app.html, profil secretaire_mgt).
       interface:{mgt:'*'},
       droits:{'mgt.crm_clients':'lcm', 'mgt.crm_suivi':'lcm', 'mgt.crm_reglages':'l', 'mgt.listing':'l', 'mgt.fichiers':TOUT}
     },
