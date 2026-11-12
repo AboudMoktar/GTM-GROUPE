@@ -8,8 +8,7 @@
 // à partir des données que le compte peut lire : rien ne sort de l'appareil.
 // Comprend les filtres écrits dans la question : commande (lot), client,
 // libellé (mots du nom : « gilet femme », « tee-shirt sport homme »…), taille.
-// Une question non reconnue renvoie null (l'assistant propose alors l'aide,
-// ou passe la main à Gemini si une clé est enregistrée).
+// Une question non reconnue renvoie null (l'assistant propose alors l'aide).
 // Fonction pure (utilisable dans le navigateur et dans les tests Node).
 // ============================================================
 (function(racine){
