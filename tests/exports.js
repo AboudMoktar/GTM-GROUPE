@@ -99,7 +99,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const ec = await p.evaluate(() => { const e = S.exports[0], g = pkExports.etatCommandeGrid(e, 'PK202610'), v = (r) => g.rows[r].cells.map(x => x ? x.v : '');
     const iS = g.rows.findIndex(r => r.cells[2] && r.cells[2].v === 'S'), iT = g.rows.length - 1;
     return {t0: v(0).join('|'), t1: v(1).join('|'), head: v(2).join('|'), s: v(iS).slice(1).join('|'), tot: v(iT).slice(3).join('|'), f: g.rows[iS].cells[12].f, gB: pkExports.etatCommandeGrid(e, 'PK202612'), noms: pkExports.feuillesDoc(e, 'etat').map(x => x.name).join('|')}; });
-  r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
+  r.push(['état des commandes au format de la commande', /^Commande: (NOVEMBRE|OCTOBRE)\|\|LOT\|ANNEE/.test(ec.t0) && /\|PK202610\|2026\|/.test(ec.t1) && ec.head === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés, prêts à expédier|Reste']);
   r.push(['état : quantités, exporté, reste (formule)', ec.s === 'LYNE PRO homme gris|S|20||||20|30||12||8' && ec.tot === '30|0|0|0|30|30||22|0|8' && /^MAX\(0,H\d+-SUM\(K\d+:L\d+\)\)$/.test(ec.f)]);
   const sur = await p.evaluate(() => { S.lines.push({id:'Z1', lot:'PKZ', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'S', qty:50, cc:0}, {id:'Z2', lot:'PKZ', year:2026, client:'NEOLYS', model:'M', lib:'LYNE PRO homme gris', size:'M', qty:100, cc:0});
     ['cp','gadh','asm','ret','conf','ctl','emb'].forEach((st, k) => S.moves.push({id:'MZ' + k, date:'2026-11-02', lineId:'Z1', stage:st, qty:55, nc:0, note:''}));
@@ -141,7 +141,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['Archive : liste des exports expédiés', await p.evaluate(() => ui.tab === 'arch') && await p.locator('.xp-li.fini').count() === 1]);
   await p.locator('.xp-li.fini').click(); await p.waitForTimeout(150);
   const ec2 = await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.map(x => x ? x.v : '').join('|'));
-  r.push(['état de commande (tout le lot) depuis le suivi', ec2 === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés|Reste']);
+  r.push(['état de commande (tout le lot) depuis le suivi', ec2 === 'Model|LIBELLE|Taille|NEOLYS|ALLOGA|FLÉCHÉS|VESTIAIRES|Total|Total|Statut|Exporté 07/11|Emballés, prêts à expédier|Reste']);
   await p.evaluate(() => { ui.tab = 'suivi'; ui.lot = 'PK202610'; ui.smode = 'q'; render(); }); await p.waitForTimeout(150);
   r.push(['boutons « État de commande » dans le suivi', await p.locator('.xp-etat').count() === 1 && await p.locator('.xp-etat button', {hasText: 'PDF'}).count() === 1]);
   await p.evaluate(() => { ui.tab = 'arch'; ui.amodeX = 'exp'; ui.xpa = {id: S.exports[0].id}; render(); }); await p.waitForTimeout(150);
@@ -160,7 +160,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.click('text=Rouvrir l\'export'); await p.waitForTimeout(300);
   ({ex: E, mv} = await etat());
   r.push(['export rouvert : expédition annulée, retour dans « Exports en cours »', E[0].st === 'cours' && !mv.some(m => m.stage === 'exp') && await p.evaluate(() => ui.tab === 'exp')]);
-  r.push(['état de commande : export en cours signalé', await p.evaluate(() => pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.some(x => x && x.v === 'Prêt à expédier le 07/11'))]);
+  r.push(['état de commande : export en cours compté dans « Emballés, prêts à expédier » (pas de colonne à part)', await p.evaluate(() => { const h = pkExports.etatCommandeGrid(null, 'PK202610').rows[2].cells.map(x => x ? x.v : ''); return h.indexOf('Emballés, prêts à expédier') > 0 && !h.some(v => /^Prêt à expédier le|^En cours/.test(String(v))); })]);
   await p.click('text=✔ Valider l\'export (Fini)'); await p.waitForTimeout(200);
   await p.click('text=✔ Oui, valider (pièces expédiées)'); await p.waitForTimeout(300);
   await p.click('text=Supprimer l\'export'); await p.waitForTimeout(300);
@@ -189,7 +189,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['fiche de l\'export : étiquette FLÉCHÉS, pas « surplus »', await p.locator('.xp-carton .xp-tag.sp', {hasText: 'FLÉCHÉS'}).count() === 1 && !/surplus FLÉCHÉS/.test(await p.locator('#view').textContent())]);
   const fd = await p.evaluate(() => { const e = S.exports.find(x => x.id === 'X3'), c = pkExports.colisExport(e), it = c[0].items.find(x => x.sp === 'FLÉCHÉS');
     const g = pkExports.totalCommandeGrid(e, c, 'PK202611'), rf = g.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS');
-    const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.findIndex(v => /^Prêt à expédier le 09\/11/.test(v));
+    const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.indexOf('Emballés, prêts à expédier');
     const rs = et.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR' && r.cells[2] && r.cells[2].v === 'S');
     return {it: it && it.lib + '|' + it.src, col: /Pharma Homme Col V Noir · Fléchés/.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
   r.push(['documents : « LIBELLÉ · FLÉCHÉS » pour le client de l\'export', fd.it === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS|NEOLYS' && fd.col && fd.tot === 10 && fd.tot2 === 'NEOLYS,NEOLYS']);

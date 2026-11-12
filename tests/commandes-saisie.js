@@ -82,7 +82,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   // suivi automatique (Statut, Emballés, Reste) et statut saisi par libellé
   await p.evaluate(() => { const l = findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M'); S.moves.push({id:'MX2', date:'2027-01-08', lineId:l.id, stage:'emb', qty:30, nc:0, note:''}); render(); });
   const sh = (await p.locator('table.cmdT tr.h2 th').allTextContents()).join('|');
-  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés\|Reste$/.test(sh)]);
+  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés, prêts à expédier\|Reste$/.test(sh)]);
   const rst = await p.evaluate(() => { const tr = document.querySelector('table.cmdT input[data-c="NEOLYS"][data-lib="PHARMA_HOMME COL V NOIR"][data-sz="M"]').closest('tr'); return [...tr.querySelectorAll('td.sv')].map(x => x.textContent).join('|'); });
   r.push(['emballés en attente et reste (160 commandés, 30 emballés)', rst === '30|130']);
   await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);

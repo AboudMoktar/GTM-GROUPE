@@ -796,7 +796,9 @@ function totalGridX(e, colis, sansLot){
 function suiviCommande(e, lot){
   var lignes = S.lines.filter(function(l){ return l.lot === lot; }), R = {};
   function ref(lib, z){ var k = lib + "|" + z; return R[k] || (R[k] = {ex:{}, av:0, emb:0, exp:0}); }
-  var exs = EX().filter(function(x){ return (!e || x.d < e.d || (x.d === e.d && x.n <= e.n)) && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); })
+  /* état de la commande (sans export) : une colonne par export validé ; les cartons des exports en cours sont
+     comptés dans « Emballés, prêts à expédier » (une seule colonne, 12/11/2026) */
+  var exs = EX().filter(function(x){ return (e ? (x.d < e.d || (x.d === e.d && x.n <= e.n)) : x.st === "fini") && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); })
     .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : a.n - b.n; });
   var idsX = {}; EX().forEach(function(x){ idsX[x.id] = 1; x.cartons.forEach(function(c){ idsX[c.id] = 1; }); });
   exs.forEach(function(x){ x.cartons.forEach(function(c){ c.it.forEach(function(y){ var i = infoItem(y); if (i.lot !== lot || !y[1]) return; var r = ref(i.lib, i.size); r.ex[x.id] = (r.ex[x.id] || 0) + y[1]; }); }); });
@@ -857,7 +859,7 @@ function etatCommandeGrid(e, lot, opt){
     gmerge(g, 0, cSt, 1, cR); }
   g.rows[0].h = 18; g.rows[1].h = 16;
   ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"])
-    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : ["Emballés", "Reste"])
+    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : ["Emballés, prêts à expédier", "Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = 28;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"};
