@@ -1810,7 +1810,7 @@ function vCmdSaisie(v, clients, cli, libs){
   var h1 = el("tr", {class:"h1"}, el("th", {colspan:String(nG + CL.length + 2), class:"cmdTitre", text:(libelleCommande(lotT || (E && E.lot) || "") ? "COMMANDE : " + libelleCommande(lotT || (E && E.lot) || "") : "COMMANDE") + "   ·   LOT " + (lotT || (E && E.lot) || "—")}));
   if (SV) h1.appendChild(el("th", {colspan:String(1 + nEx + 2), class:"cmdSuivi", text:"SUIVI (automatique)"}));
   var h2 = el("tr", {class:"h2"}, (TEL ? [] : ["Model"]).concat(["LIBELLE", "Taille"]).concat(CL).concat(["Total", "Total"]).map(function(h){ return el("th", {text:h}); }));
-  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); COLS.forEach(function(c){ h2.appendChild(el("th", {class:"sv" + (c.av ? " av" : ""), text:SV.titreCol(c)})); }); h2.appendChild(el("th", {class:"sv", text:"Emballés"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
+  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); COLS.forEach(function(c){ h2.appendChild(el("th", {class:"sv" + (c.av ? " av" : ""), text:SV.titreCol(c)})); }); h2.appendChild(el("th", {class:"sv", text:"Emballés, prêts à expédier"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
   t.appendChild(el("thead", null, h1, h2));
   var span = {}, prevM = null, curM = null;
   blocs.forEach(function(b, i){ if (b.li.model !== prevM){ curM = i; span[i] = 0; prevM = b.li.model; } span[curM] += b.sizes.length; });
