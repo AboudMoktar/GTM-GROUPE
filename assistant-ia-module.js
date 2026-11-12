@@ -66,6 +66,7 @@ function assistantBouton(){
 }
 
 /* ---------- résumé des données (ce que l'assistant « voit ») ---------- */
+function iaAujourdhui(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function iaDocsSuivi(){
   try { return (typeof suiviLireDocs === 'function') ? suiviLireDocs() : {}; } catch(e){ return {}; }
 }
@@ -239,6 +240,7 @@ const IA_CSS = `
 #ia-regl .av{background:#fff3cd;color:#4a3b00;border:1px solid #e7cf6a;border-radius:10px;padding:10px}
 #ia-regl .btns{display:flex;gap:8px;flex-wrap:wrap}#ia-regl .btns button{height:44px;padding:0 16px;border-radius:10px;border:1px solid #c9d1dc;background:var(--card,#fff);color:inherit;font-weight:700;cursor:pointer}
 #ia-regl .btns button.p{background:#1F3864;color:#fff;border-color:#1F3864}
+.ia-src{margin-top:6px;font-size:11.5px;opacity:.6}
 .ia-point{display:inline-block;animation:iaP 1s infinite}@keyframes iaP{50%{opacity:.3}}`;
 
 let iaCompte = null;
@@ -255,7 +257,7 @@ async function assistantOuvrir(){
     <button onclick="assistantReglages()" title="Réglages de l'assistant" aria-label="Réglages">⚙</button><button onclick="assistantFermer()" aria-label="Fermer">✕</button></div><div id="ia-corps" style="flex:1;display:flex;flex-direction:column;min-height:0"></div></div>`;
   f.addEventListener('click', ev => { if(ev.target === f) assistantFermer(); });
   document.body.appendChild(f);
-  if(iaCle()) iaVueChat(); else assistantReglages();
+  iaVueChat();   /* les questions fréquentes marchent sans clé : la clé Gemini est facultative */
 }
 function assistantFermer(){ const f = document.getElementById('ia-fond'); if(f) f.remove(); }
 
@@ -264,10 +266,10 @@ function iaVueChat(){
   corps.innerHTML = `<div id="ia-msgs"></div><div id="ia-sugg"></div>
     <div id="ia-saisie"><textarea id="ia-q" rows="1" placeholder="Posez votre question…" enterkeyhint="send"></textarea><button id="ia-envoi" aria-label="Envoyer">➤</button></div>`;
   const msgs = document.getElementById('ia-msgs');
-  if(!iaHisto.length) msgs.innerHTML = `<div class="ia-m b">Bonjour ! Je réponds à vos questions sur les commandes : où en sont les pièces, ce qui reste à produire, ce qui est prêt à expédier, les exports…</div>`;
-  iaHisto.forEach(m => iaAjouter(m.role === 'user' ? 'u' : 'b', m.text));
+  if(!iaHisto.length) msgs.innerHTML = `<div class="ia-m b">Bonjour ! Je réponds aux questions sur les commandes en calculant directement à partir de vos données : où en sont les pièces, ce qui reste à produire, ce qui est prêt à expédier, les exports… Touchez une question ci-dessous ou écrivez la vôtre (« aide » pour des exemples).</div>`;
+  iaHisto.forEach(m => iaAjouter(m.role === 'user' ? 'u' : 'b', m.text, m.src));
   const sugg = document.getElementById('ia-sugg');
-  if(!iaHisto.length) ['Où en est la commande ?', 'Qu\'est-ce qui reste à produire ?', 'Qu\'est-ce qui est prêt à expédier ?', 'Résumé de l\'export en cours'].forEach(s => {
+  if(!iaHisto.length) ['Où en est la commande ?', 'Qu\'est-ce qui reste à produire ?', 'Qu\'est-ce qui est prêt à expédier ?', 'Chez la GADH ?', 'Résumé de l\'export en cours', 'Livraison', 'Aide'].forEach(s => {
     const b = document.createElement('button'); b.textContent = s; b.onclick = () => iaEnvoyer(s); sugg.appendChild(b); });
   const q = document.getElementById('ia-q');
   q.addEventListener('input', () => { q.style.height = 'auto'; q.style.height = Math.min(120, q.scrollHeight) + 'px'; });
@@ -277,10 +279,11 @@ function iaVueChat(){
   msgs.scrollTop = msgs.scrollHeight;
   setTimeout(() => { try { q.focus(); } catch(e){} }, 50);
 }
-function iaAjouter(cls, texte){
+function iaSource(src){ return src === 'local' ? '<div class="ia-src">📊 Calculé à partir des données</div>' : src === 'gemini' ? '<div class="ia-src">🤖 Réponse de Gemini (à vérifier)</div>' : ''; }
+function iaAjouter(cls, texte, src){
   const msgs = document.getElementById('ia-msgs'); if(!msgs) return null;
   const d = document.createElement('div'); d.className = 'ia-m ' + cls;
-  if(cls === 'b') d.innerHTML = iaMiseEnForme(texte); else d.textContent = texte;
+  if(cls === 'b') d.innerHTML = iaMiseEnForme(texte) + iaSource(src); else d.textContent = texte;
   msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d;
 }
 async function iaEnvoyer(question){
@@ -292,9 +295,15 @@ async function iaEnvoyer(question){
   iaStatut = t => { if(att && att.isConnected) att.innerHTML = '<span class="ia-point">●●●</span>' + (t ? ' <span style="font-size:13px;opacity:.75">' + esc(t) + '</span>' : ''); };
   iaEnCours = true; if(btn) btn.disabled = true;
   try {
-    const rep = await iaDemander(question);
-    iaHisto.push({role:'user', text:question}, {role:'model', text:rep});
-    if(att) att.innerHTML = iaMiseEnForme(rep);
+    /* 1) questions fréquentes : réponse calculée ici, exacte, sans rien envoyer */
+    let rep = null, src = 'local';
+    try { rep = window.gtmReponses ? gtmReponses.repondre(question, iaDocsSuivi(), iaAujourdhui()) : null; } catch(e){ rep = null; }
+    /* 2) sinon Gemini, si une clé est enregistrée sur cet appareil */
+    if(rep == null && iaCle()){ rep = await iaDemander(question); src = 'gemini'; }
+    if(rep == null){ src = ''; rep = 'Je n\'ai pas compris cette question. ' + (window.gtmReponses ? gtmReponses.aide().replace(/^### Ce que je sais faire\n/, '') : '') +
+      '\n\n_Pour les questions libres, vous pouvez aussi activer Gemini (facultatif) dans ⚙._'; }
+    iaHisto.push({role:'user', text:question}, {role:'model', text:rep, src});
+    if(att) att.innerHTML = iaMiseEnForme(rep) + iaSource(src);
   } catch(e){
     if(att){ att.className = 'ia-m err'; att.textContent = '⚠ ' + (e && e.message || e); }
   } finally {
@@ -307,15 +316,16 @@ function assistantReglages(){
   const corps = document.getElementById('ia-corps'); if(!corps) return;
   const cle = iaCle(), mod = iaModele();
   corps.innerHTML = `<div id="ia-regl">
-    <b style="font-size:16px">Réglages de l'assistant</b>
-    <div>L'assistant utilise <b>Google Gemini</b>. Il faut une <b>clé API</b>, gratuite, à créer une fois sur
+    <b style="font-size:16px">Gemini (facultatif)</b>
+    <div>Les questions fréquentes marchent <b>sans clé</b> : les réponses sont calculées dans l'application. Gemini ne sert qu'aux questions libres que l'assistant ne reconnaît pas.</div>
+    <div>Pour l'activer, il faut une <b>clé API</b>, gratuite, à créer une fois sur
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (bouton « Create API key »), puis à coller ici.</div>
     ${cle ? '<div style="color:#11643a;font-weight:700">✓ Clé enregistrée sur cet appareil.</div>' : ''}
     <label>Clé API Gemini<input id="ia-cle" type="password" autocomplete="off" placeholder="AIza…" value="${esc(cle)}"></label>
     <label>Modèle<select id="ia-mod">${IA_MODELES.map(m => `<option value="${m[0]}"${m[0] === mod ? ' selected' : ''}>${esc(m[1])}</option>`).join('')}</select></label>
     <div class="av">🔒 La clé reste <b>uniquement sur cet appareil</b> : elle n'est ni dans l'application en ligne, ni dans la base. À saisir sur chaque téléphone ou ordinateur.<br><br>
       ⚠ À chaque question, un <b>résumé des commandes</b> (quantités par étape, exports) est envoyé à Google. En offre gratuite, <b>Google peut utiliser ces échanges pour améliorer ses modèles</b>.</div>
-    <div class="btns"><button class="p" id="ia-ok">Enregistrer</button>${cle ? '<button id="ia-suppr">Effacer la clé</button>' : ''}${cle ? '<button id="ia-retour">Retour</button>' : ''}${iaHisto.length ? '<button id="ia-vider">Nouvelle conversation</button>' : ''}</div>
+    <div class="btns"><button class="p" id="ia-ok">Enregistrer</button>${cle ? '<button id="ia-suppr">Effacer la clé</button>' : ''}<button id="ia-retour">Retour</button>${iaHisto.length ? '<button id="ia-vider">Nouvelle conversation</button>' : ''}</div>
   </div>`;
   document.getElementById('ia-ok').onclick = () => {
     const v = document.getElementById('ia-cle').value.trim();
