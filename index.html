@@ -1487,8 +1487,8 @@ function renderShell(){
             <span id="sync-time" class="sync-time"></span>
           </div>
           ${typeof notifCloche === 'function' ? notifCloche() : ''}
-          ${typeof assistantBouton === 'function' ? assistantBouton() : ''}
           <button class="theme-btn" onclick="themeBasculer()" aria-label="Thème"></button>
+          ${typeof assistantBouton === 'function' ? assistantBouton() : ''}
           <button class="user-menu-btn" onclick="menuUtilisateur(event)" aria-label="Menu du compte">
             <span class="user-avatar-ic">${ICONS.userAvatar}</span>
             <span class="uname">${esc(currentUser.nom)}</span>
