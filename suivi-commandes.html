@@ -4638,10 +4638,14 @@ function cartonsCards(lot, lines){
 function prochainNumero(lot, cl){ var n = 0; cartonsDe(lot).forEach(function(c){ if (c.cl === cl && c.n > n) n = c.n; }); return n + 1; }
 /* ancien carton retiré (ids) + nouveaux mouvements : emballage et contrôle du même nombre de pièces */
 function mouvementsCarton(c){
-  var out = [];
-  (c.it || []).forEach(function(x){ if (!x[1]) return;
-    out.push({id:nid("M"), date:c.d, lineId:x[0], stage:"ctl", qty:x[1], nc:0, note:"Contrôle (auto) · carton N°" + c.n, ct:c.id});
-    out.push({id:nid("M"), date:c.d, lineId:x[0], stage:"emb", qty:x[1], nc:0, note:"Carton N°" + c.n, ct:c.id});
+  /* pièces prises dans les pièces déjà contrôlées ; contrôle (auto) seulement pour ce qui manque */
+  var out = [], parL = {};
+  (c.it || []).forEach(function(x){ if (!x[1]) return; parL[x[0]] = (parL[x[0]] || 0) + x[1]; });
+  Object.keys(parL).forEach(function(id){
+    var ctl = 0, emb = 0; S.moves.forEach(function(m){ if (m.lineId !== id || (c.id && m.ct === c.id)) return; if (m.stage === "ctl") ctl += m.qty || 0; else if (m.stage === "emb") emb += (m.qty || 0) + (m.nc || 0); });
+    var manque = emb + parL[id] - ctl;
+    if (manque > 0) out.push({id:nid("M"), date:c.d, lineId:id, stage:"ctl", qty:manque, nc:0, note:"Contrôle (auto) · carton N°" + c.n, ct:c.id});
+    out.push({id:nid("M"), date:c.d, lineId:id, stage:"emb", qty:parL[id], nc:0, note:"Carton N°" + c.n, ct:c.id});
   });
   return out;
 }
@@ -4663,11 +4667,12 @@ function expHorsExports(lineId){
   var q = 0; S.moves.forEach(function(m){ if (m.lineId === lineId && m.stage === "exp" && !(m.ct && ids[m.ct])) q += m.qty || 0; });
   return Math.max(0, q);
 }
-/* pièces d'une ligne déjà prises : cartons des exports + (cartons d'emballage ou, si plus, expédié hors export).
-   Les cartons d'emballage partent par un passage « Expédition » : on ne les compte pas deux fois. */
+/* pièces d'une ligne déjà prises : toutes les pièces emballées (cartons d'export, cartons d'emballage, passages
+   « Emballée » de Flux), hors le carton en cours de modification. Les pièces expédiées sont passées par
+   l'emballage : elles y sont déjà comptées. */
 function piecesPrises(lot, lineId, saufId){
-  var anc = 0; ((S.cartons || {})[lot] || []).forEach(function(c){ if (c.id === saufId) return; (c.it || []).forEach(function(x){ if (x[0] === lineId) anc += x[1]; }); });
-  return enCartonExports(lineId, saufId, null) + Math.max(anc, expHorsExports(lineId));
+  var q = 0; S.moves.forEach(function(m){ if (m.lineId === lineId && m.stage === "emb" && !(saufId && m.ct === saufId)) q += (m.qty || 0) + (m.nc || 0); });
+  return Math.max(0, q, expHorsExports(lineId));
 }
 /* pièces d'une ligne déjà prises pour son client (limite de commande) : comme piecesPrises, cartons du client seulement */
 function commandePrise(lot, cl, lineId, saufId){ return Math.max(enCarton(lot, cl, lineId, saufId), enCartonExports(lineId, saufId, cl) + expHorsExports(lineId)); }

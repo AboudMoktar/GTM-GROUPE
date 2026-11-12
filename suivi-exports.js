@@ -122,12 +122,17 @@ function dispoLigne(l, cl, saufCt){
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
   return Math.max(0, ret - Math.max(0, l.qty - commandePrise(l.lot, l.client, l.id, null)));
 }
-/* ---------- mouvements (contrôle + emballé, prêt à expédier, par carton ; expédié à la validation) ---------- */
-function mvtsCarton(e, c){
-  var out = [];
-  c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
-    out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"ctl", qty:x[1], nc:0, note:"Contrôle (auto) · export N°" + e.n + " carton N°" + c.n, ct:c.id});
-    out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"emb", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:c.id});
+/* ---------- mouvements (emballée, prête à expédier, par carton ; expédié à la validation) ----------
+   Les pièces du carton sont prises dans les pièces déjà contrôlées. Le contrôle n'est ajouté (auto) que pour
+   ce qui manque : pièces mises en carton sans avoir été contrôlées avant. */
+function mvtsCarton(e, c, anc){
+  var out = [], parL = {}; anc = anc || {};
+  c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return; parL[x[0]] = (parL[x[0]] || 0) + x[1]; });
+  Object.keys(parL).forEach(function(id){
+    var ctl = 0, emb = 0; S.moves.forEach(function(m){ if (m.lineId !== id || anc[m.id]) return; if (m.stage === "ctl") ctl += m.qty || 0; else if (m.stage === "emb") emb += (m.qty || 0) + (m.nc || 0); });
+    var manque = emb + parL[id] - ctl;
+    if (manque > 0) out.push({id:nid("M"), date:e.d, lineId:id, stage:"ctl", qty:manque, nc:0, note:"Contrôle (auto) · export N°" + e.n + " carton N°" + c.n, ct:c.id});
+    out.push({id:nid("M"), date:e.d, lineId:id, stage:"emb", qty:parL[id], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:c.id});
   });
   return out;
 }
@@ -152,7 +157,7 @@ function remplirAmont(e, c, nm, anc){
   return out;
 }
 function enregistrerCartonExport(e, c){
-  var anc = anciensDe(c.id), nm = mvtsCarton(e, c);
+  var anc = anciensDe(c.id), nm = mvtsCarton(e, c, anc);
   nm = remplirAmont(e, c, nm, anc).concat(nm);
   checkMoves(nm, anc);
   S.moves = S.moves.filter(function(m){ return !anc[m.id]; }).concat(nm);
@@ -184,9 +189,29 @@ function supprimerExport(e){
   S.exports = EX().filter(function(x){ return x.id !== e.id; });
 }
 
+/* mouvements d'un carton d'export qui n'existe plus (ex. carton enregistré deux fois depuis deux écrans) :
+   ses pièces resteraient comptées « emballées » ; on les signale avec un bouton pour les retirer */
+function mvtsOrphelins(){
+  var ids = {}; EX().forEach(function(e){ ids[e.id] = 1; e.cartons.forEach(function(c){ ids[c.id] = 1; }); });
+  return S.moves.filter(function(m){ return m.ct && /^X/.test(m.ct) && !ids[m.ct]; });
+}
+function alerteOrphelins(v){
+  var o = mvtsOrphelins(); if (!o.length) return;
+  var q = 0; o.forEach(function(m){ if (m.stage === "emb") q += m.qty || 0; });
+  v.appendChild(el("div", {class:"msg err", style:"margin:0 0 10px"},
+    el("b", {text:"⚠ " + fmt(q) + " pièce(s) d'un carton qui n'existe plus restent comptées comme emballées. "}),
+    "Cela fausse le disponible et l'état de commande. ",
+    el("button", {class:"btn small", style:"margin-top:6px", text:"Retirer ces pièces", onclick:function(){
+      if (!confirm("Retirer les " + fmt(q) + " pièce(s) de ce carton disparu (emballage et contrôle automatique) ?")) return;
+      var ok = commit(function(){ var anc = {}; mvtsOrphelins().forEach(function(m){ anc[m.id] = 1; }); checkMoves([], anc); S.moves = S.moves.filter(function(m){ return !anc[m.id]; }); });
+      if (ok) toast("Pièces du carton disparu retirées");
+    }})));
+}
+
 /* ---------- vues ---------- */
 window.vExports = function(v){
   poserCss(); sxFermer();
+  alerteOrphelins(v);
   ui.xp = ui.xp || {};
   var e = ui.xp.id ? exportDe(ui.xp.id) : null;
   if (ui.xp.id && !e) ui.xp = {};
@@ -431,7 +456,7 @@ function editeurCarton(v, e){
   groupes.sort(function(a, b){ return ["STD", "H", "TU"].indexOf(a.k) - ["STD", "H", "TU"].indexOf(b.k); });
   var mx = el("div", {class:"card"}, el("div", {class:"xp-head"}, el("div", {class:"mut", style:"font-weight:700", text:"Quantités du carton — commande " + E.lot}),
     dansCmd ? el("button", {class:"btn small sec", text:E.tous ? "Seulement les modèles de la commande" : "Afficher tous les modèles", onclick:function(){ E.tous = !E.tous; render(true); }}) : null));
-  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces disponibles : revenues de la GADH, pas encore mises en carton ni déjà expédiées. Choisissez librement les modèles et les quantités. Case rouge = plus que le disponible : c'est permis, les étapes d'avant (coupe → confection) sont alors complétées automatiquement à l'enregistrement du carton."}));
+  mx.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin:4px 0 8px", text:"Chiffre gris dans une case = pièces disponibles : revenues de la GADH, pas encore emballées (en carton ou dans Flux) ni expédiées. Choisissez librement les modèles et les quantités. Case rouge = plus que le disponible : c'est permis, les étapes d'avant (coupe → confection) sont alors complétées automatiquement à l'enregistrement du carton."}));
   var majs = [];
   function recalc(){ totEl.textContent = fmt(total()); majs.forEach(function(f){ f(); }); }
   groupes.forEach(function(g){
@@ -444,8 +469,8 @@ function editeurCarton(v, e){
       var totRow = el("td", {class:"t"});
       g.tailles.forEach(function(z){
         if (m.sizes.indexOf(z) < 0){ tr.appendChild(el("td", {class:"x", text:"·"})); return; }
-        var l = ligneDe(m.sp || e.cl, E.lot, m.lib, z), exped = l ? expHorsExports(l.id) : 0, reste = l ? dispoRetour(l.lot, l.id, saufCt) : null, it0 = itemDe(E.lot, m.lib, z, m.sp);
-        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", "data-sp":m.sp, value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + (m.sp ? " · " + m.sp : "") + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + (exped ? ", déjà expédié " + exped : "") + ", disponible " + reste : " — hors commande")});
+        var l = ligneDe(m.sp || e.cl, E.lot, m.lib, z), pris = l ? piecesPrises(l.lot, l.id, saufCt) : 0, reste = l ? dispoRetour(l.lot, l.id, saufCt) : null, it0 = itemDe(E.lot, m.lib, z, m.sp);
+        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", "data-sp":m.sp, value:it0 ? String(it0[1]) : "", placeholder:reste ? String(reste) : "", title:nomDoc(m.lib) + (m.sp ? " · " + m.sp : "") + " · " + z + (l ? " — commandé " + l.qty + ", retour GADH " + retourGadh(l.id) + (pris ? ", déjà emballé ou expédié " + pris : "") + ", disponible " + reste : " — hors commande")});
         function marquer(){ var x = itemDe(E.lot, m.lib, z, m.sp), q = x ? x[1] : 0; inp.className = (q && l && q > reste) ? "trop" : q ? "plein" : ""; }
         inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
         inp.addEventListener("input", function(){
@@ -973,5 +998,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();
