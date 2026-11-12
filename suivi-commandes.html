@@ -3472,6 +3472,88 @@ function corrigerPassages(v, lot, rows, stage, prevS, names){
   v.appendChild(act());
 }
 
+/* --- renvoyer des pièces à une étape précédente (Flux) ---
+   Les pièces choisies quittent l'étape et doivent repasser par l'étape choisie (ex. emballées → à recontrôler).
+   Rien n'est effacé : un mouvement « Renvoi » (quantité négative) par étape retirée, noté dans le journal.
+   On ne renvoie que les pièces qui sont à cette étape (pas encore passées à la suivante), hors cartons d'export. */
+function piecesALEtape(l, stage){
+  var t = stageTotals()[l.id] || {}, n = ncTotals()[l.id] || {}, si = CHAIN.indexOf(stage), nx = si < CHAIN.length - 1 ? CHAIN[si + 1] : null;
+  var ids = {}; (S.exports || []).forEach(function(e){ ids[e.id] = 1; (e.cartons || []).forEach(function(c){ ids[c.id] = 1; }); });
+  function xp(st){ var q = 0; if (!st) return 0; S.moves.forEach(function(m){ if (m.lineId === l.id && m.stage === st && m.ct && ids[m.ct]) q += m.qty || 0; }); return q; }
+  var ici = (t[stage] || 0) - (nx ? (t[nx] || 0) + (n[nx] || 0) : 0), dansExport = Math.max(0, xp(stage) - xp(nx));
+  return {ici:Math.max(0, ici), export:Math.min(Math.max(0, ici), dansExport), libre:Math.max(0, ici - dansExport)};
+}
+function renvoisPassage(rows, stage, cible, vals){
+  var etapes = CHAIN.slice(CHAIN.indexOf(cible), CHAIN.indexOf(stage) + 1), out = [], err = "";
+  rows.forEach(function(l){ var q = vals[l.id] || 0; if (!q) return; var p = piecesALEtape(l, stage);
+    if (q > p.libre){ err = err || nomDoc(l.lib) + " " + l.size + " : " + fmt(p.libre) + " pièce(s) seulement peuvent être renvoyées" + (p.export ? " (" + fmt(p.export) + " dans un carton d'export : retirez-les d'abord du carton)" : "") + "."; return; }
+    etapes.forEach(function(k){ out.push({id:nid("M"), date:today(), lineId:l.id, stage:k, qty:-q, nc:0, note:"Renvoi : " + stageName(stage) + " → à refaire « " + stageName(cible) + " »"}); }); });
+  return {mv:out, err:err, etapes:etapes};
+}
+function renvoyerPassages(v, lot, rows, stage, names){
+  var si = CHAIN.indexOf(stage), F = ui.frv || (ui.frv = {}), cibles = CHAIN.slice(1, si + 1);
+  if (!ui.frc || cibles.indexOf(ui.frc) < 0) ui.frc = si > 1 ? CHAIN[si - 1] : stage;
+  var cible = ui.frc, tb = el("tbody"), inputs = [], pl = "", tot = {q:0}, items = [];
+  function fermer(){ ui.fren = null; ui.frv = {}; ui.frc = null; render(true); }
+  var c = el("div", {class:"card corr-card"},
+    el("h2", {text:"↩ Renvoyer des pièces — " + names[stage]}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Les pièces choisies quittent « " + names[stage] + " » et reviennent en attente : elles devront repasser par l'étape choisie. Rien n'est effacé, tout est noté dans le journal."}),
+    el("div", {style:"font-weight:700;margin:4px 0 6px", text:"Elles doivent repasser par :"}));
+  var ch = el("div", {class:"xp-cmd", style:"display:flex;flex-wrap:wrap;gap:6px"});
+  cibles.slice().reverse().forEach(function(k){ ch.appendChild(el("button", {class:"sx-chip" + (k === cible ? " on" : ""), text:(k === cible ? "✓ " : "") + names[k], onclick:function(){ ui.frc = k; render(true); }})); });
+  c.appendChild(ch);
+  var etapes = CHAIN.slice(CHAIN.indexOf(cible), si + 1).map(function(k){ return names[k]; });
+  c.appendChild(el("div", {class:"msg", style:"margin:10px 0 0", text:"Effet : " + (etapes.length > 1 ? "les étapes « " + etapes.join(" », « ") + " » sont retirées pour ces pièces." : "l'étape « " + etapes[0] + " » est retirée pour ces pièces : elles attendent de repasser à « " + etapes[0] + " ».")}));
+  v.appendChild(c);
+  rows.forEach(function(l){ var p = piecesALEtape(l, stage); if (!p.ici) return; items.push({l:l, p:p}); });
+  if (!items.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Aucune pièce à l'étape « " + names[stage] + " » à renvoyer."}), el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Fermer", onclick:fermer})))); return; }
+  var totEl = el("b");
+  function maj(){ var s2 = 0; items.forEach(function(it){ s2 += F[it.l.id] || 0; }); totEl.textContent = fmt(s2) + " pièce(s) à renvoyer"; }
+  items.forEach(function(it){
+    var l = it.l, lk = l.lib + "|" + l.client; if (lk !== pl){ pl = lk; tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"4", text:l.lib + " · " + l.client}))); }
+    var iv = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", "data-renvoi":l.id, value:F[l.id] ? String(F[l.id]) : "", placeholder:"0", max:String(it.p.libre)});
+    if (!it.p.libre){ iv.disabled = true; iv.placeholder = "—"; }
+    iv.addEventListener("input", function(){ var q = Math.max(0, num(iv.value)); if (q > it.p.libre){ q = it.p.libre; iv.value = q || ""; } if (q) F[l.id] = q; else delete F[l.id]; iv.classList.toggle("chg", !!q); maj(); });
+    iv.addEventListener("focus", function(){ try { iv.select(); } catch (e) {} });
+    iv.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var x = inputs.indexOf(iv); if (inputs[x + 1]) inputs[x + 1].focus(); else iv.blur(); } });
+    iv.classList.toggle("chg", !!F[l.id]); inputs.push(iv);
+    var tout = el("button", {class:"btn small sec", text:"Tout", onclick:function(){ F[l.id] = it.p.libre; iv.value = it.p.libre; iv.classList.add("chg"); maj(); }});
+    if (!it.p.libre) tout.disabled = true;
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:l.size}), el("td", {text:fmt(it.p.ici) + (it.p.export ? " (dont " + fmt(it.p.export) + " en carton d'export)" : "")}), el("td", {class:"fr"}, iv), el("td", null, tout)));
+  });
+  var t = el("table", {class:"flux corr"});
+  t.appendChild(el("thead", null, el("tr", null, [["Taille", "l"], ["À l'étape « " + names[stage] + " »", ""], ["À renvoyer", ""], ["", ""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(tb);
+  function renvoyer(){
+    var R = renvoisPassage(rows, stage, cible, F);
+    if (R.err){ toast(R.err); return; }
+    if (!R.mv.length){ toast("Indiquez les quantités à renvoyer."); return; }
+    try { checkMoves(R.mv); } catch (e) { toast(e.message); return; }
+    var nb = 0; Object.keys(F).forEach(function(k){ nb += F[k] || 0; });
+    var box = sxModal(); box.classList.add("corr-box");
+    box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"↩ Renvoyer " + fmt(nb) + " pièce(s) ?"}));
+    var rec = el("div", {class:"sx-cdet"});
+    rows.forEach(function(l){ if (F[l.id]) rec.appendChild(el("div", null, el("span", {text:nomDoc(l.lib) + " " + l.size}), el("b", {text:fmt(F[l.id])}))); });
+    box.appendChild(rec);
+    box.appendChild(el("p", {class:"mut", style:"margin:8px 0", text:"Elles quittent « " + names[stage] + " » et devront repasser par « " + names[cible] + " »."}));
+    box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, renvoyer", onclick:function(){
+      sxClose();
+      var ok = commit(function(){ checkMoves(R.mv); R.mv.forEach(function(m){ S.moves.push(m); }); ui.fren = null; ui.frv = {}; ui.frc = null; }, fmt(nb) + " pièce(s) renvoyée(s) : à refaire « " + names[cible] + " »");
+      if (!ok) render(true);
+    }}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
+  }
+  var act = function(){ return el("div", {class:"actions"}, el("button", {class:"btn", text:"↩ Renvoyer", onclick:renvoyer}),
+    el("button", {class:"btn sec", text:"Tout renvoyer", onclick:function(){ items.forEach(function(it){ if (it.p.libre) F[it.l.id] = it.p.libre; }); render(true); }}),
+    el("button", {class:"btn sec", text:"Vider", onclick:function(){ ui.frv = {}; render(true); }}),
+    el("button", {class:"btn sec", text:"Annuler", onclick:fermer})); };
+  var bar = el("div", {class:"card"}, el("div", {style:"font-size:18px;margin-bottom:6px"}, totEl), act());
+  v.appendChild(bar);
+  v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t));
+  v.appendChild(act());
+  maj();
+}
+
 /* --- dates des passages déjà enregistrés à une étape : modifiables (ex. expédition saisie après coup) ---
    Un passage = les mouvements de l'étape à une même date. Les pièces d'un export gardent la date de l'export
    (elle se change dans l'export : « Modifier les informations »). */
@@ -3554,7 +3636,7 @@ function vFlux(v){
   var ready = lotReady(lot), info = S.lots[lot] || {};
   var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
   var A = sumStates(rows, tot);
-  function goStage(k){ ui.stage = k; ui.fv = {}; ui.fcorr = null; ui.pend = null; render(); }
+  function goStage(k){ ui.stage = k; ui.fv = {}; ui.fcorr = null; ui.fren = null; ui.pend = null; render(); }
   var sc = el("div", {class:"seg"});
   [["*","Toutes les commandes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
   v.appendChild(sc);
@@ -3599,7 +3681,8 @@ function vFlux(v){
     el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note), el("label", {text:"Motif des NC"}, iMotif)),
     el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
   if (!ready) v.appendChild(el("div", {class:"msg err", style:"margin-bottom:10px"}, "Commande non validée : " + (VUE === "gadh" ? "TEK-TREND doit la valider avant les étapes. " : "validez-la dans l'onglet Commandes avant de lancer les étapes. "), VUE === "gadh" ? null : el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
-  if (ui.fcorr === stage) corrigerPassages(v, lot, rows, stage, prevS, names);
+  if (ui.fren === stage && VUE !== "gadh") renvoyerPassages(v, lot, rows, stage, names);
+  else if (ui.fcorr === stage) corrigerPassages(v, lot, rows, stage, prevS, names);
   else {
   var ncT = ncTotals(), inputs = [], pl = "", tb = el("tbody"), items = [], capped = stage !== "cp";
   rows.forEach(function(l){
@@ -3656,7 +3739,8 @@ function vFlux(v){
     VUE === "gadh" ? null : el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
     el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
     el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }}),
-    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
+    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
+    VUE === "gadh" || stage === "cp" ? null : el("button", {class:"btn sec", "data-renvoi-ouvrir":"1", text:"↩ Renvoyer à une étape précédente", onclick:function(){ ui.fren = stage; ui.frv = {}; ui.frc = null; ui.fcorr = null; ui.pend = null; render(true); }})));
   if (stage === "cp" && VUE !== "gadh"){
     var anyClosed = rows.some(function(l){ return l.cc; });
     v.appendChild(el("div", {class:"actions"},
@@ -3668,7 +3752,8 @@ function vFlux(v){
     v.appendChild(el("div", {class:"msg", style:"margin-bottom:10px;background:#fff3cd;border:1px solid #e7cf6a;color:#4a3b00"},
       el("b", {text:"Rien à saisir à cette étape : "}), "tout ce qui était disponible est déjà passé (colonne « Déjà passé »). Les cases sont bloquées. ",
       nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null,
-      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
+      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
+      VUE === "gadh" ? null : " ", VUE === "gadh" ? null : el("button", {class:"btn small sec", style:"margin-top:8px", text:"↩ Renvoyer à une étape précédente", onclick:function(){ ui.fren = stage; ui.frv = {}; ui.frc = null; ui.fcorr = null; ui.pend = null; render(true); }})));
     items.forEach(function(it){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; });
   } else {
     items.forEach(function(it){ if (capped && it.disp === 0){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; } });
