@@ -1,7 +1,7 @@
 // ============================================================
 // ASSISTANT GTM (chatbot) — réponses calculées dans l'application
 // ------------------------------------------------------------
-// Bouton 🤖 dans la barre du haut (et « Assistant » dans le menu du compte) :
+// Bouton « Assistant » (bulle) dans la barre du haut (et « Assistant » dans le menu du compte) :
 // questions en français sur les commandes. Les réponses sont calculées par
 // assistant-reponses.js en parcourant les données que le compte peut lire :
 // aucune IA externe, aucune clé, rien n'est envoyé hors de l'application.
@@ -21,11 +21,12 @@ let iaHisto = [];          // [{role:'user'|'model', text}]
 /* classe propre (pas « theme-btn » : ce bouton-là est masqué dans l'affichage habituel et son icône est remplacée) */
 (function(){
   const st = document.createElement('style'); st.id = 'ia-btn-css';
-  st.textContent = 'html body .topbar .user-chip .ia-btn{display:inline-flex !important;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:10px;background:rgba(127,140,160,.18) !important;font-size:21px;line-height:1;cursor:pointer;flex-shrink:0}';
+  st.textContent = 'html body .topbar .user-chip .ia-btn{display:inline-flex !important;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:10px;background:rgba(127,140,160,.18) !important;color:inherit;line-height:1;cursor:pointer;flex-shrink:0}html body .topbar .user-chip .ia-btn svg{display:block}';
   (document.head || document.documentElement).appendChild(st);
 })();
+const IA_ICONE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 6.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" fill="currentColor" stroke-width="1.2"/></svg>';
 function assistantBouton(){
-  return `<button class="ia-btn" onclick="assistantOuvrir()" aria-label="Assistant GTM" title="Assistant GTM">🤖</button>`;
+  return `<button class="ia-btn" onclick="assistantOuvrir()" aria-label="Assistant GTM" title="Assistant GTM">${IA_ICONE}</button>`;
 }
 
 /* ---------- résumé des données (ce que l'assistant « voit ») ---------- */
@@ -94,7 +95,7 @@ function assistantOuvrir(){
   if(u !== iaCompte){ iaHisto = []; iaCompte = u; }
   if(!document.getElementById('ia-css')){ const st = document.createElement('style'); st.id = 'ia-css'; st.textContent = IA_CSS; document.head.appendChild(st); }
   const f = document.createElement('div'); f.id = 'ia-fond';
-  f.innerHTML = `<div id="ia-box" role="dialog" aria-label="Assistant GTM"><div class="ia-tete"><span style="font-size:22px">🤖</span><b>Assistant GTM</b>
+  f.innerHTML = `<div id="ia-box" role="dialog" aria-label="Assistant GTM"><div class="ia-tete"><span style="display:inline-flex">${IA_ICONE}</span><b>Assistant GTM</b>
     <button onclick="assistantNouvelle()" title="Nouvelle conversation" aria-label="Nouvelle conversation">↺</button><button onclick="assistantFermer()" aria-label="Fermer">✕</button></div><div id="ia-corps" style="flex:1;display:flex;flex-direction:column;min-height:0"></div></div>`;
   f.addEventListener('click', ev => { if(ev.target === f) assistantFermer(); });
   document.body.appendChild(f);
@@ -143,4 +144,4 @@ window.assistantBouton = assistantBouton;
 window.assistantOuvrir = assistantOuvrir;
 window.assistantFermer = assistantFermer;
 window.assistantNouvelle = assistantNouvelle;
-window.gtmIA = {miseEnForme:iaMiseEnForme};
+window.gtmIA = {miseEnForme:iaMiseEnForme, icone:IA_ICONE};
