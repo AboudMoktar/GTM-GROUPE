@@ -10,7 +10,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.evaluate(() => {
     const L = (id, sz, q) => ({id, lot:'PK202611-1', year:2026, client:'NEOLYS', model:'M', lib:'Tee-shirt Sport homme noir', size:sz, qty:q, cc:0});
     S.lines.push(L('A', 'M', 100), L('B', 'L', 100), L('C', 'XL', 50));
-    const pas = {A: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:100, emb:100, pret:90, exp:90}, B: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:80, emb:60}};
+    const pas = {A: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:100, emb:100, exp:90}, B: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:80, emb:60}};
     let n = 0; Object.keys(pas).forEach(id => Object.keys(pas[id]).forEach(st => S.moves.push({id:'M' + (n++), date:'2026-11-05', lineId:id, stage:st, qty:pas[id][st], nc:0, note:''})));
     S.lots['PK202611-1'] = {ready:'2026-11-01'};
     ui.lot = 'PK202611-1'; ui.client = '*'; ui.tab = 'flux'; ui.fmode = 'detail'; ui.stage = 'emb'; render();
@@ -25,7 +25,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await champ('B', 'q').fill('55'); await champ('B', 'n').fill('3');
   r.push(['case changée signalée', /chg/.test(await champ('B', 'q').getAttribute('class'))]);
   await p.click('text=✔ Enregistrer les corrections >> nth=0'); await p.waitForTimeout(200);
-  r.push(['confirmation : avant → après', /Emballage · Tee-shirt Sport homme noir L/.test(await p.locator('.sx-cdet').textContent()) && /60 → 55 \+ 3 NC/.test(await p.locator('.sx-cdet').textContent())]);
+  r.push(['confirmation : avant → après', /Emballée, prête à expédier · Tee-shirt Sport homme noir L/.test(await p.locator('.sx-cdet').textContent()) && /60 → 55 \+ 3 NC/.test(await p.locator('.sx-cdet').textContent())]);
   await p.click('text=✔ Oui, enregistrer les corrections'); await p.waitForTimeout(250);
   r.push(['correction enregistrée (conformes et NC), notée dans le journal', (await T('B')).emb === 55 && (await N('B')).emb === 3 && await p.evaluate(() => S.moves.some(m => m.lineId === 'B' && m.note === 'Correction (Flux)' && m.qty === -5 && m.nc === 3))]);
   r.push(['retour à l\'étape après enregistrement', await p.locator('button[data-corr="1"]').count() === 1 && await p.evaluate(() => !ui.fcorr)]);
@@ -35,10 +35,10 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await champ('A', 'q').fill('85');
   await p.click('text=✔ Enregistrer les corrections >> nth=0'); await p.waitForTimeout(200);
   const conf = await p.locator('.sx-cdet').textContent();
-  r.push(['cascade : étapes suivantes baissées et montrées', /Emballage · Tee-shirt Sport homme noir M \(suit la correction\)100 → 85/.test(conf) && /Expédiée · Tee-shirt Sport homme noir M \(suit la correction\)90 → 85/.test(conf)]);
+  r.push(['cascade : étapes suivantes baissées et montrées', /Emballée, prête à expédier · Tee-shirt Sport homme noir M \(suit la correction\)100 → 85/.test(conf) && /Expédiée · Tee-shirt Sport homme noir M \(suit la correction\)90 → 85/.test(conf)]);
   await p.click('text=✔ Oui, enregistrer les corrections'); await p.waitForTimeout(250);
   const a = await T('A');
-  r.push(['cascade enregistrée', a.ctl === 85 && a.emb === 85 && a.pret === 85 && a.exp === 85 && a.conf === 100]);
+  r.push(['cascade enregistrée', a.ctl === 85 && a.emb === 85 && a.exp === 85 && a.conf === 100]);
   // hausse impossible au-delà de l'étape précédente
   await p.evaluate(() => { ui.stage = 'emb'; render(); }); await p.click('button[data-corr="1"]'); await p.waitForTimeout(150);
   await champ('B', 'q').fill('90'); await p.click('text=✔ Enregistrer les corrections >> nth=0'); await p.waitForTimeout(200);

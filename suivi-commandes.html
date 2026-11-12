@@ -499,13 +499,14 @@ const DEF_RULES=[["PHARMA-HOMME",100,5,400,10,20],["PHARMA-FEMME COL V",100,5,40
 "use strict";
 var SZ = ["XS","S","M","L","XL","XXL","XXXL","H1.P1","H1.P2","H1.P3","H1.P4","H2.P2","H2.P3","H2.P4","TU"];   /* TU = taille unique (exosquelette) ; H1.P1 … H2.P4 : tailles des sous-vêtements SV */
 /* Parcours : 1 Commande reçue · 2 Commande prête (validée) · puis 9 étapes avec quantités (cumul de pièces ayant atteint l'étape) */
-var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour TEK-TREND"],["conf","En confection"],["ctl","Contrôle"],["emb","Emballage"],["pret","Prêt à expédier"],["exp","Expédiée"]];
+var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour TEK-TREND"],["conf","En confection"],["ctl","Contrôle"],["emb","Emballée, prête à expédier"],["exp","Expédiée"]];
+/* « Emballage » et « Prêt à expédier » ne font qu'une étape (12/11/2026) : les anciens passages « pret » restent dans les données, sans effet. */
 var STG_KEYS = STAGES.map(function(x){ return x[0]; });
-var STAGE_SHORT = {cp:"Coupe", gadh:"GADH", asm:"Assemb.", ret:"Retour", conf:"Confec.", ctl:"Contrôle", emb:"Emball.", pret:"Prêt", exp:"Expéd."};
-var STAGE_HELP = {cp:"Quantités coupées par le centre de coupe (partielle ou complète). La coupe peut dépasser la commande (marge).", gadh:"Quantités coupées envoyées à la GADH.", asm:"Pièces reçues et lancées en assemblage à la GADH.", ret:"Pièces assemblées qui reviennent chez TEK-TREND (retour partiel possible).", conf:"Pièces passées en confection.", ctl:"Pièces passées au contrôle.", emb:"Pièces passées à l'emballage.", pret:"Pièces emballées prêtes à expédier (partiel ou complet).", exp:"Pièces expédiées au client PERCKO (partiel ou complet)."};
-var STAGE_STATUS = ["Commande coupée","Envoyée à la GADH","Assemblage à la GADH","Retour vers TEK-TREND","En confection","Contrôle","Emballage","Prêt à expédier","Expédiée"];
-var STATE_NAMES = ["À couper","Coupées","Envoyées à la GADH","En assemblage (GADH)","Retournées TEK-TREND","En confection","Contrôlées conformes","Emballées","Prêtes à expédier","Expédiées"];
-var STATE_COL = ["#9aa6ba","#d9a400","#e07b39","#b5651d","#6aa84f","#2a6f97","#5b8def","#7d5ba6","#2e9d57","#0f5132"];
+var STAGE_SHORT = {cp:"Coupe", gadh:"GADH", asm:"Assemb.", ret:"Retour", conf:"Confec.", ctl:"Contrôle", emb:"Emballée", exp:"Expéd."};
+var STAGE_HELP = {cp:"Quantités coupées par le centre de coupe (partielle ou complète). La coupe peut dépasser la commande (marge).", gadh:"Quantités coupées envoyées à la GADH.", asm:"Pièces reçues et lancées en assemblage à la GADH.", ret:"Pièces assemblées qui reviennent chez TEK-TREND (retour partiel possible).", conf:"Pièces passées en confection.", ctl:"Pièces passées au contrôle.", emb:"Pièces emballées, prêtes à expédier (partiel ou complet).", exp:"Pièces expédiées au client PERCKO (partiel ou complet)."};
+var STAGE_STATUS = ["Commande coupée","Envoyée à la GADH","Assemblage à la GADH","Retour vers TEK-TREND","En confection","Contrôle","Emballée, prête à expédier","Expédiée"];
+var STATE_NAMES = ["À couper","Coupées","Envoyées à la GADH","En assemblage (GADH)","Retournées TEK-TREND","En confection","Contrôlées conformes","Emballées, prêtes à expédier","Expédiées"];
+var STATE_COL = ["#9aa6ba","#d9a400","#e07b39","#b5651d","#6aa84f","#2a6f97","#5b8def","#7d5ba6","#0f5132"];
 /* état actuel d'une ligne : chaque pièce est dans l'état de la dernière étape atteinte */
 function stateVals(cut, s, n){
   n = n || {};
@@ -983,7 +984,7 @@ function stageDates(lot){
   return out;
 }
 /* tableau « Flux d'une commande » : même mise en forme que votre fichier (fusions Model / Total, colonne libellé colorée) */
-var SG_HEAD = ["Coupées","Envoyées à la GADH","Assemblage (GADH)","Retour TEK-TREND","En confection","Contrôlées","Emballées","Prêtes à expédier","Expédiées"];
+var SG_HEAD = ["Coupées","Envoyées à la GADH","Assemblage (GADH)","Retour TEK-TREND","En confection","Contrôlées","Emballées, prêtes à expédier","Expédiées"];
 var SG_BG = ["F2F2F2","FFE699","F8CBAD","F4B084","C6E0B4","BDD7EE","DDEBF7","D9D2E9","C6EFCE","A9D08E"];
 /* mode "q" : cumul par étape · "s" : situation (état actuel des pièces) · "d" : dates des étapes */
 function fluxGrid(lot, mode){
@@ -3598,7 +3599,7 @@ function datesPassagesCard(lot, rows, stage, names){
 /* --- 4. Flux : parcours de la commande, passage d'une étape à la suivante --- */
 function stagePrev(stage){ var i = STG_KEYS.indexOf(stage); return i > 0 ? STG_KEYS[i-1] : null; }
 function sumStates(lines, tot){
-  var ncT = ncTotals(), A = {q:0, cut:0, ord:0, rest:0, t:{}, sv:[], nc:{}, ncTot:0}, i; STG_KEYS.forEach(function(k){ A.t[k] = 0; A.nc[k] = 0; }); for (i = 0; i < 10; i++) A.sv.push(0);
+  var ncT = ncTotals(), A = {q:0, cut:0, ord:0, rest:0, t:{}, sv:[], nc:{}, ncTot:0}, i; STG_KEYS.forEach(function(k){ A.t[k] = 0; A.nc[k] = 0; }); for (i = 0; i <= STG_KEYS.length; i++) A.sv.push(0);
   lines.forEach(function(l){
     var t = tot[l.id] || {}, n = ncT[l.id] || {}, ord = cutQty(l.qty, l.model), eff = l.cc ? (t.cp || 0) + (n.cp || 0) : ord;
     A.q += l.qty; A.ord += ord; A.cut += eff; A.rest += Math.max(0, l.qty - (t.exp || 0));
@@ -3669,7 +3670,7 @@ function vFlux(v){
   v.appendChild(pc);
   if (stage === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
   if (stage === "ret" && VUE !== "gadh"){
-    v.appendChild(el("div", {class:"card"}, el("h2", {text:"Étape 7 — Retour TEK-TREND"}), pager(["env"].concat(STG_KEYS), stage, goStage, "Étape 7 / 12"),
+    v.appendChild(el("div", {class:"card"}, el("h2", {text:"Étape 7 — Retour TEK-TREND"}), pager(["env"].concat(STG_KEYS), stage, goStage, "Étape 7 / " + (STG_KEYS.length + 3)),
       el("p", {class:"mut", text:"Le retour des pièces assemblées se saisit uniquement depuis la GADH. La confection reprend automatiquement les mêmes quantités, taille par taille."})));
     v.appendChild(bonsCard(lot, "ret"));
     return;
@@ -3681,7 +3682,7 @@ function vFlux(v){
   var mOpts = [["", "— choisir —"]].concat(S.motifs.map(function(x){ return [x, x]; }));
   if (ui.fmotif && S.motifs.indexOf(ui.fmotif) < 0) ui.fmotif = "";
   var iMotif = sel(mOpts, ui.fmotif || "", "fMotif"); iMotif.addEventListener("change", function(){ ui.fmotif = iMotif.value; });
-  v.appendChild(el("div", {class:"card"}, el("h2", {text:(VUE === "gadh" ? "" : "Étape " + (si + 4) + " — ") + names[stage]}), (VUE === "gadh" ? null : pager(["env"].concat(STG_KEYS), stage, goStage, "Étape " + (si + 4) + " / 12")),
+  v.appendChild(el("div", {class:"card"}, el("h2", {text:(VUE === "gadh" ? "" : "Étape " + (si + 4) + " — ") + names[stage]}), (VUE === "gadh" ? null : pager(["env"].concat(STG_KEYS), stage, goStage, "Étape " + (si + 4) + " / " + (STG_KEYS.length + 3))),
     el("p", {class:"mut", style:"margin:4px 0 8px", text:STAGE_HELP[stage]}),
     el("div", {class:"row"}, el("label", {text:stage === "ret" ? "Date du retour (après assemblage)" : "Date"}, iDate), el("label", {text:"Référence"}, note), el("label", {text:"Motif des NC"}, iMotif)),
     el("p", {class:"mut", style:"margin-bottom:0", text:prevS ? "Disponible = pièces ayant atteint « " + names[prevS] + " » et pas encore passées ici. Modifiez pour un passage partiel." : "Disponible = commande coupe (quantité + marge) moins ce qui est déjà coupé."})));
@@ -3770,7 +3771,7 @@ function vFlux(v){
   v.appendChild(datesPassagesCard(lot, rows, stage, names));
   if (stage === "gadh" || stage === "ret") v.appendChild(bonsCard(lot, stage));
   if (VUE === "gadh" && stage === "ret") v.appendChild(bonsCard(lot, "gadh"));
-  if (VUE !== "gadh" && (stage === "emb" || stage === "pret" || stage === "exp")) cartonsCards(lot, rows).forEach(function(c){ v.appendChild(c); });
+  if (VUE !== "gadh" && (stage === "emb" || stage === "exp")) cartonsCards(lot, rows).forEach(function(c){ v.appendChild(c); });
   var jr = el("div", {class:"card"}, el("h2", {text:"Derniers mouvements"})), shown = 0;
   for (var i = S.moves.length - 1; i >= 0 && shown < 40; i--){
     (function(m){
@@ -5042,7 +5043,7 @@ function ouvrirToutValider(lot, cl, lib){
 function envoiCoupeCard(lot, ready){
   var envs = envoisCoupe(lot), ordre = ordreLot(lot), compl = complementCoupe(lot), deja = envs.length ? ordreEnvoye(lot) : 0;
   var c = el("div", {class:"card"}, el("h2", {text:"Étape 3 — Commande envoyée au centre de coupe"}),
-    pager(["env"].concat(STG_KEYS), "env", function(k){ ui.stage = k; ui.fv = {}; ui.pend = null; render(); }, "Étape 3 / 12"),
+    pager(["env"].concat(STG_KEYS), "env", function(k){ ui.stage = k; ui.fv = {}; ui.pend = null; render(); }, "Étape 3 / " + (STG_KEYS.length + 3)),
     el("p", {class:"mut", style:"margin:4px 0 8px", text:"Envoi de l'ordre de coupe (fiche PROGES : quantités avec marges et consommation de tissu) au centre de coupe. Si des pièces sont ajoutées à la commande après l'envoi, le complément est signalé ici pour être envoyé à son tour."}));
   if (!ready){
     c.appendChild(el("div", {class:"msg err"}, "Commande non validée : validez-la dans l'onglet Commandes avant de l'envoyer au centre de coupe. ", el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
@@ -5206,13 +5207,13 @@ function sortedUniqueKeep(a){ var seen = {}, o = []; a.forEach(function(x){ if (
    2) Une carte par article, une ligne par taille : la quantité à faire est déjà
       remplie ; on corrige avec − / + ; « Défaut » pour les pièces non conformes (motif en un toucher).
    3) Un seul gros bouton « Valider », une confirmation claire, puis l'étape suivante.
-   Les étapes intermédiaires « En assemblage » et « Prêt à expédier » se remplissent
-   automatiquement (au retour GADH et à l'expédition). Le mode détaillé reste disponible.
+   L'étape intermédiaire « En assemblage » se remplit
+   automatiquement (au retour GADH). Le mode détaillé reste disponible.
    ===================================================================== */
 var SX = [["env","Envoi coupe"],["cp","Coupe"],["gadh","Envoi GADH"],["ret","Retour GADH"],["conf","Confection"],["ctl","Contrôle"],["emb","Emballage"],["exp","Expédition"]];
 var SX_NOM = {}; SX.forEach(function(x){ SX_NOM[x[0]] = x[1]; });
 var SX_PREV = {cp:null, gadh:"cp", ret:"gadh", conf:"ret", ctl:"conf", emb:"ctl", exp:"emb"};
-var SX_AUTO = {ret:"asm", exp:"pret"};
+var SX_AUTO = {ret:"asm"};
 /* Côté TEK-TREND, ces étapes ne se saisissent pas : le retour est saisi par la GADH, la confection reprend
    les quantités retournées, le contrôle est rempli à l'emballage (cartons). */
 var SX_INFO = {ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici automatiquement.", conf:"Rempli automatiquement avec les quantités retournées par la GADH (même détail par taille).", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};

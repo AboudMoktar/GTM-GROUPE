@@ -11,7 +11,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.evaluate(() => {
     const L = (id, sz, q) => ({id, lot:'PK202611-1', year:2026, client:'NEOLYS', model:'M', lib:'Tee-shirt Sport homme noir', size:sz, qty:q, cc:0});
     S.lines.push(L('A', 'M', 100), L('B', 'L', 100), L('C', 'XL', 50));
-    const pas = {A: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:100, emb:100, pret:90, exp:90}, B: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:80, emb:60}, C: {cp:50, gadh:50, asm:50, ret:50, conf:50, ctl:50, emb:50}};
+    const pas = {A: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:100, emb:100, exp:90}, B: {cp:100, gadh:100, asm:100, ret:100, conf:100, ctl:80, emb:60}, C: {cp:50, gadh:50, asm:50, ret:50, conf:50, ctl:50, emb:50}};
     let n = 0; Object.keys(pas).forEach(id => Object.keys(pas[id]).forEach(st => S.moves.push({id:'M' + (n++), date:'2026-11-05', lineId:id, stage:st, qty:pas[id][st], nc:0, note:''})));
     /* 20 pièces C dans un carton d'export en cours : on ne peut pas les renvoyer */
     S.exports = [{id:'X1', n:1, cl:'NEOLYS', d:'2026-11-21', st:'cours', cartons:[{id:'XC1', n:1, kg:null, com:'', it:[['C', 20]]}]}];
@@ -33,12 +33,12 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['confirmation claire', /Renvoyer 19 pièce/.test(await p.locator('.sx-box').textContent()) && /repasser par « Contrôle »/.test(await p.locator('.sx-box').textContent())]);
   await p.click('text=✔ Oui, renvoyer'); await p.waitForTimeout(250);
   const a = await T('A'), bb = await T('B');
-  r.push(['renvoi au contrôle : contrôle et emballage baissés', bb.ctl === 65 && bb.emb === 45 && a.ctl === 96 && a.emb === 96 && a.pret === 90 && bb.conf === 100]);
-  r.push(['noté dans le journal', await p.evaluate(() => S.moves.filter(m => /^Renvoi : Emballage → à refaire « Contrôle »/.test(m.note)).length === 4)]);
+  r.push(['renvoi au contrôle : contrôle et emballage baissés', bb.ctl === 65 && bb.emb === 45 && a.ctl === 96 && a.emb === 96 && a.exp === 90 && bb.conf === 100]);
+  r.push(['noté dans le journal', await p.evaluate(() => S.moves.filter(m => /^Renvoi : Emballée, prête à expédier → à refaire « Contrôle »/.test(m.note)).length === 4)]);
   // renvoi en confection (chaîne)
   await p.click('button[data-renvoi-ouvrir]'); await p.waitForTimeout(150);
   await p.locator('.sx-chip', {hasText: 'En confection'}).click(); await p.waitForTimeout(150);
-  r.push(['effet annoncé : étapes retirées', /En confection », « Contrôle », « Emballage/.test(await p.locator('#view').textContent())]);
+  r.push(['effet annoncé : étapes retirées', /En confection », « Contrôle », « Emballée, prête à expédier/.test(await p.locator('#view').textContent())]);
   await p.locator('tr', {has: champ('B')}).locator('text=Tout').click();
   r.push(['bouton « Tout »', await champ('B').inputValue() === '45']);
   await p.getByRole('button', {name: '↩ Renvoyer', exact: true}).first().click(); await p.waitForTimeout(200); await p.click('text=✔ Oui, renvoyer'); await p.waitForTimeout(250);

@@ -122,13 +122,12 @@ function dispoLigne(l, cl, saufCt){
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
   return Math.max(0, ret - Math.max(0, l.qty - commandePrise(l.lot, l.client, l.id, null)));
 }
-/* ---------- mouvements (contrôle + emballage + prêt à expédier par carton ; expédié à la validation) ---------- */
+/* ---------- mouvements (contrôle + emballé, prêt à expédier, par carton ; expédié à la validation) ---------- */
 function mvtsCarton(e, c){
   var out = [];
   c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
     out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"ctl", qty:x[1], nc:0, note:"Contrôle (auto) · export N°" + e.n + " carton N°" + c.n, ct:c.id});
     out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"emb", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:c.id});
-    out.push({id:nid("M"), date:e.d, lineId:x[0], stage:"pret", qty:x[1], nc:0, note:"Prêt à expédier · export N°" + e.n + " carton N°" + c.n, ct:c.id});
   });
   return out;
 }
@@ -165,15 +164,13 @@ function supprimerCartonExport(e, id){
   var anc = anciensDe(id); checkMoves([], anc);
   S.moves = S.moves.filter(function(m){ return !anc[m.id]; });
   e.cartons = e.cartons.filter(function(x){ return x.id !== id; });
-  e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : m.stage === "pret" ? "Prêt à expédier · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); } });
+  e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); } });
 }
 function validerExport(e){
   if (!e.cartons.length) throw new Error("L'export n'a aucun carton.");
   var nm = [];
-  e.cartons.forEach(function(c){ var pret = S.moves.some(function(m){ return m.ct === c.id && m.stage === "pret"; });
+  e.cartons.forEach(function(c){
     c.it.forEach(function(x){ if (!x[1] || !x[0] || !lineById(x[0])) return;
-    /* cartons enregistrés avant le « prêt à expédier » au carton : le prêt est ajouté ici */
-    if (!pret) nm.push({id:nid("M"), date:e.d, lineId:x[0], stage:"pret", qty:x[1], nc:0, note:"Export N°" + e.n + " · carton N°" + c.n, ct:e.id});
     nm.push({id:nid("M"), date:e.d, lineId:x[0], stage:"exp", qty:x[1], nc:0, note:"Expédié · export N°" + e.n + " · carton N°" + c.n, ct:e.id}); }); });
   checkMoves(nm, anciensDe(e.id));
   S.moves = S.moves.filter(function(m){ return m.ct !== e.id; }).concat(nm);

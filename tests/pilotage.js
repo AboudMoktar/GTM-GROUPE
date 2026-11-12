@@ -14,7 +14,6 @@ async function donnees(p){
       L('T_M', 'NEOLYS', 'Sport-H-Re-Mi', 'Tee-shirt Sport homme noir', 'M', 270));
     const mv = {G_S:[50, 50, 50, 50, 50, 40, 40, 30], G_M:[135, 130, 130, 120, 120, 100, 100, 100], G_MA:[40, 40, 40, 40, 40, 40, 40, 40], R_XS:[100, 95, 95, 90, 90, 0, 0, 0], R_S:[220, 0, 0, 0, 0, 0, 0, 0], T_M:[0, 0, 0, 0, 0, 0, 0, 0]};
     const st = ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb', 'exp'];
-    Object.keys(mv).forEach(id => mv[id].splice(7, 0, mv[id][7])); st.splice(7, 0, 'pret');   /* prêt à expédier = expédié */
     Object.keys(mv).forEach((id, i) => mv[id].forEach((q, k) => { if (q) S.moves.push({id:'M' + i + '_' + k, date:'2026-12-0' + (1 + k), lineId:id, stage:st[k], qty:q, nc:0, note:''}); }));
     S.lots['PK202612-1'] = {ready:'2026-12-01', livraison:'2099-01-31'};
     ui.lot = 'PK202612-1'; ui.client = '*'; ui.tab = 'suivi'; ui.smode = null; ui.pil = null; render();
@@ -95,7 +94,7 @@ async function donnees(p){
   r.push(['confirmation : une date par étape modifiée', await p.locator('.sx-modal .ph-dates input[data-etape]').count() === 2]);
   await p.fill('.sx-modal input[data-etape="ctl"]', '2026-10-02'); await p.fill('.sx-modal input[data-etape="exp"]', '2026-10-05');
   await p.click('.sx-modal .sx-go'); await p.waitForTimeout(400);
-  r.push(['chaque étape enregistrée à sa date', await p.evaluate(() => S.moves.some(m => m.lineId === 'G_S' && m.stage === 'ctl' && m.date === '2026-10-02') && S.moves.some(m => m.lineId === 'G_S' && m.stage === 'exp' && m.date === '2026-10-05') && S.moves.some(m => m.lineId === 'G_S' && m.stage === 'pret' && m.date === '2026-10-05'))]);
+  r.push(['chaque étape enregistrée à sa date', await p.evaluate(() => S.moves.some(m => m.lineId === 'G_S' && m.stage === 'ctl' && m.date === '2026-10-02') && S.moves.some(m => m.lineId === 'G_S' && m.stage === 'exp' && m.date === '2026-10-05'))]);
   await cell('R_XS', 'ret').fill('95'); await cell('R_XS', 'ret').press('Enter'); await p.waitForTimeout(300);
   r.push(['Entrée : la case du dessous est prête', await p.evaluate(() => { const a = document.activeElement; return !!a && a.getAttribute('data-id') === 'R_S' && a.getAttribute('data-k') === 'ret'; })]);
   await valider();
