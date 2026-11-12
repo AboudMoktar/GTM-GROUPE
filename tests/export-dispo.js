@@ -23,7 +23,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['disponible = retour − déjà expédié', d.s === 50 && d.m === 50]);
   const cell = (sz) => p.locator('.xp-mx input[title^="Lyne Pro Homme Gris · ' + sz + ' "]');
   r.push(['chiffre gris = disponible', await cell('S').getAttribute('placeholder') === '50' && await cell('M').getAttribute('placeholder') === '50']);
-  r.push(['info : déjà expédié', /déjà expédié 30, disponible 50/.test(await cell('S').getAttribute('title'))]);
+  r.push(['info : déjà emballé ou expédié', /déjà emballé ou expédié 30, disponible 50/.test(await cell('S').getAttribute('title'))]);
   await cell('S').fill('70'); await cell('M').fill('20');
   r.push(['dépassement signalé en rouge', await cell('S').getAttribute('class') === 'trop' && await cell('M').getAttribute('class') === 'plein']);
   await p.locator('button', {hasText: 'Valider et carton suivant'}).click(); await p.waitForTimeout(500);
@@ -38,6 +38,30 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const etape = async (nom) => (await p.locator('.step', {hasText: nom}).first().locator('.qt').textContent()).replace(/\s/g, '');
   r.push(['parcours : Emballée, prête à expédier 90, Expédiée 30, plus d\'étape « Prêt à expédier » à part', await etape('Emballée') === '90' && await etape('Expédiée') === '30' && await p.locator('.step', {hasText: /^\d+Prêt à expédier/}).count() === 0]);
   r.push(['parcours : Contrôle et Confection exacts', await etape('Contrôle') === '0' && await etape('En confection') === '30']);
+  // pièces déjà contrôlées : le carton les prend, sans contrôle en plus ni étapes d'avant gonflées (cas Tee-shirt XL, 12/11)
+  const dc = await p.evaluate(() => {
+    S.lines.push({id:'XL', lot:'PK202611', year:2026, client:'NEOLYS', model:'M', lib:'Tee-shirt Sport homme noir', size:'XL', qty:190, cc:0});
+    ['cp', 'gadh', 'asm', 'ret', 'conf'].forEach((st, k) => S.moves.push({id:'x' + k, date:'2026-11-02', lineId:'XL', stage:st, qty:200, nc:0, note:''}));
+    S.moves.push({id:'xc', date:'2026-11-06', lineId:'XL', stage:'ctl', qty:190, nc:0, note:''});
+    const e = S.exports[0], av = JSON.stringify(stageTotals().XL);
+    [1, 2].forEach(n => commit(() => pkExports.enregistrerCartonExport(e, {id:'XLC' + n, n:10 + n, kg:null, com:'', it:[['XL', 90]]})));
+    const t = stageTotals().XL, d3 = dispoRetour('PK202611', 'XL', null);
+    /* 3e carton de 30 : 10 contrôlées restantes + 20 sans contrôle → contrôle auto de 20 seulement */
+    commit(() => pkExports.enregistrerCartonExport(e, {id:'XLC3', n:13, kg:null, com:'', it:[['XL', 30]]}));
+    const t3 = stageTotals().XL;
+    /* modifier le carton 1 (90 → 80) : rien d'autre ne bouge */
+    commit(() => pkExports.enregistrerCartonExport(e, {id:'XLC1', n:11, kg:null, com:'', it:[['XL', 80]]}));
+    return {t, d3, t3, t4:stageTotals().XL, av};
+  });
+  r.push(['2 cartons de 90 sur 190 contrôlées : contrôle 190, emballée 180, coupe et retour inchangés', dc.t.ctl === 190 && dc.t.emb === 180 && dc.t.cp === 200 && dc.t.ret === 200 && dc.t.conf === 200]);
+  r.push(['disponible ensuite : 200 − 180 = 20', dc.d3 === 20]);
+  r.push(['carton au-delà du contrôle : contrôle auto du manque seulement', dc.t3.ctl === 210 && dc.t3.emb === 210 && dc.t3.conf === 210 && dc.t3.ret === 210]);
+  r.push(['carton modifié : seules ses pièces changent', dc.t4.emb === 200 && dc.t4.ctl === 210]);
+  // carton fantôme (mouvements d'un carton qui n'existe plus) : signalé, retiré en un bouton
+  await p.evaluate(() => { S.moves.push({id:'og1', date:'2026-11-21', lineId:'XL', stage:'emb', qty:5, nc:0, note:'', ct:'XCfantome'}); ui.tab = 'exp'; ui.xp = {id:'X1'}; render(); });
+  r.push(['carton fantôme signalé', /5 pièce\(s\) d'un carton qui n'existe plus/.test(await p.locator('#view').textContent())]);
+  await p.click('text=Retirer ces pièces'); await p.waitForTimeout(300);
+  r.push(['carton fantôme retiré', await p.evaluate(() => !S.moves.some(m => m.ct === 'XCfantome') && pkExports.mvtsOrphelins().length === 0)]);
   r.push(['aucune erreur JavaScript', err.length === 0]);
   let ko = 0; r.forEach(x => { if (!x[1]) ko++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });
   console.log(ko ? ko + ' échec(s)' : 'ok   aucune erreur');
