@@ -13216,8 +13216,9 @@ var PROFILS_REGLABLES=[['secretaire_mgt','Secrétaire MGT'],['technico_mgt','Tec
 function grille(fn){var o={};MODS.forEach(function(m){o[m[0]]={};ACTS.forEach(function(a){o[m[0]][a[0]]=!!fn(m[0],a[0]);});});return o;}
 var TOUT=function(){return grille(function(){return true;});};
 var LECTURE=function(){return grille(function(m,a){return a==='view'||a==='export';});};
-/* Secrétaire MGT (validé le 01/11/2026) : factures, offres et planning en lecture et écriture ; clients en consultation (pour lier au client) ; rien d'autre. */
-var SECRETAIRE=function(){var plein={offres:1,billing:1,calendar:1};
+/* Secrétaire MGT (validé le 01/11/2026) : factures, offres et planning en lecture et écriture ; clients en consultation (pour lier au client) ; rien d'autre.
+   Parc machines et SAV / interventions : accès complet (validé le 12/11/2026). */
+var SECRETAIRE=function(){var plein={offres:1,billing:1,calendar:1,machines:1,sav:1};
   /* Listing (catalogue, prix d'achat compris) : consultation, pour ajouter des articles aux offres et factures (08/11/2026) */
   return grille(function(m,a){if(plein[m])return true;if(m==='clients'||m==='dashboard'||m==='stock')return a==='view';return false;});};
 /* Direction : consultation (comme les règles Firebase) ; Administrateur système : accès complet (il assure la maintenance, les règles Firebase l'autorisent). */
