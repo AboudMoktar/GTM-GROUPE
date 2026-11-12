@@ -362,14 +362,14 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   verif('Secrétaire GADH : aucun refus Firebase, aucune erreur', S.refus.length === 0 && S.erreurs.length === 0, JSON.stringify(S.refus.concat(S.erreurs)).slice(0, 400));
   const ecriture = (pg, cle) => pg.evaluate((c) => new Promise(r => { fbRootRef.child('gadh/' + c + '/essai').set('x').then(() => r(true)).catch(() => r(false)); setTimeout(() => r('délai'), 8000); }), cle);
 
-  // Technico MGT : consultation
+  // Technico MGT : gestion des commandes complète (12/11/2026), facturation GADH en consultation
   const T = await ouvrir('technico_mgt', true);
   verif('Technico MGT : module proposé dans GADH', await T.p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-commandes') >= 0));
   await T.p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-commandes'); nav('gc-commandes'); }); await pause(T.p, 800);
-  verif('Technico MGT : commandes visibles, aucun bouton de saisie', /CC-/.test(await T.p.innerText('#main')) && await T.p.locator('[data-gc="nouvelle-commande"]').count() === 0);
+  verif('Technico MGT : commandes visibles, bouton « Nouvelle commande »', /CC-/.test(await T.p.innerText('#main')) && await T.p.locator('[data-gc="nouvelle-commande"]').count() > 0);
   await T.p.evaluate((id) => gcOuvrir('gc-commande', id), cc.id); await pause(T.p);
-  verif('Technico MGT : fiche commande sans « Livrer »', await T.p.locator('[data-gc="livrer"]').count() === 0);
-  verif('Technico MGT : écriture refusée par Firebase', await ecriture(T.p, 'gadh_gc_cmd_clients') === false);
+  verif('Technico MGT : écriture acceptée par Firebase (commandes)', await ecriture(T.p, 'gadh_gc_cmd_clients') === true);
+  verif('Technico MGT : factures GADH toujours refusées par Firebase', await ecriture(T.p, 'gadh_factures') === false);
   // Responsable GADH : aucun accès
   const RG = await ouvrir('resp_gadh', true);
   verif('Responsable GADH : module non proposé', await RG.p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-commandes') < 0));
