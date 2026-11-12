@@ -7,6 +7,7 @@
     "cartons": "node cartons-retour.js",
     "affichage": "node affichage.js",
     "exports": "node exports.js",
+    "export-dispo": "node export-dispo.js",
     "stock-percko": "node stock-percko.js",
     "simulateur": "node lancer-simulateur.js",
     "emulateur": "firebase emulators:exec --only database --project demo-gtm-groupe \"node emulateur.js\"",

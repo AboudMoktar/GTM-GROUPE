@@ -4566,11 +4566,25 @@ function enCartonExports(lineId, saufId, cl){
   return q;
 }
 function retourGadh(lineId){ return (stageTotals()[lineId] || {}).ret || 0; }
-function dispoRetour(lot, lineId, saufId){ return Math.max(0, retourGadh(lineId) - totalEnCartons(lot, lineId, saufId)); }
+/* pièces d'une ligne expédiées en dehors des exports (passages « Expédition » saisis dans Flux ou Pilotage) */
+function expHorsExports(lineId){
+  var ids = {}; (S.exports || []).forEach(function(e){ ids[e.id] = 1; (e.cartons || []).forEach(function(c){ ids[c.id] = 1; }); });
+  var q = 0; S.moves.forEach(function(m){ if (m.lineId === lineId && m.stage === "exp" && !(m.ct && ids[m.ct])) q += m.qty || 0; });
+  return Math.max(0, q);
+}
+/* pièces d'une ligne déjà prises : cartons des exports + (cartons d'emballage ou, si plus, expédié hors export).
+   Les cartons d'emballage partent par un passage « Expédition » : on ne les compte pas deux fois. */
+function piecesPrises(lot, lineId, saufId){
+  var anc = 0; ((S.cartons || {})[lot] || []).forEach(function(c){ if (c.id === saufId) return; (c.it || []).forEach(function(x){ if (x[0] === lineId) anc += x[1]; }); });
+  return enCartonExports(lineId, saufId, null) + Math.max(anc, expHorsExports(lineId));
+}
+/* pièces d'une ligne déjà prises pour son client (limite de commande) : comme piecesPrises, cartons du client seulement */
+function commandePrise(lot, cl, lineId, saufId){ return Math.max(enCarton(lot, cl, lineId, saufId), enCartonExports(lineId, saufId, cl) + expHorsExports(lineId)); }
+function dispoRetour(lot, lineId, saufId){ return Math.max(0, retourGadh(lineId) - piecesPrises(lot, lineId, saufId)); }
 function erreurRetour(l, demande, lot, saufId){
-  var ret = retourGadh(l.id), deja = totalEnCartons(lot, l.id, saufId), dispo = Math.max(0, ret - deja);
+  var ret = retourGadh(l.id), deja = piecesPrises(lot, l.id, saufId), dispo = Math.max(0, ret - deja);
   if (demande <= dispo) return "";
-  return nomDoc(l.lib) + " taille " + l.size + " : retour GADH " + fmt(ret) + ", déjà en carton " + fmt(deja) + " — il reste " + fmt(dispo) + " pièce(s) à emballer" + (ret ? "" : " (saisissez d'abord le retour GADH)");
+  return nomDoc(l.lib) + " taille " + l.size + " : retour GADH " + fmt(ret) + ", déjà en carton ou expédié " + fmt(deja) + " — il reste " + fmt(dispo) + " pièce(s) à emballer" + (ret ? "" : " (saisissez d'abord le retour GADH)");
 }
 function verifierRetour(lot, cartons){
   var parL = {}; cartons.forEach(function(c){ (c.it || []).forEach(function(x){ if (x[1] > 0) parL[x[0]] = (parL[x[0]] || 0) + x[1]; }); });
@@ -4646,7 +4660,7 @@ function sxEmballage(v, lot, rows){
     var l0 = lineById(prevu.items[0].lineId); ui.ct.sel = [l0.client + "|" + l0.lib]; ui.ct.q = {}; ui.ct.q[l0.id] = prevu.items[0].q; ui.ct.nPrevu = prevu.n;
   }
   var E = ui.ct, t1 = !!(R && R.t1), n = edit ? edit.n : (E.nPrevu && !faitsN[E.nPrevu] ? E.nPrevu : prochainNumero(lot, cl));
-  function resteCde(l){ return (R && R.cde && l.client === cl) ? Math.max(0, l.qty - enCarton(lot, cl, l.id, editId)) : Infinity; }
+  function resteCde(l){ return (R && R.cde && l.client === cl) ? Math.max(0, l.qty - commandePrise(lot, cl, l.id, editId)) : Infinity; }
   /* reste à emballer : limité par la commande (règle du client) ET par le retour GADH */
   function reste(l){ return Math.min(resteCde(l), dispoRetour(lot, l.id, editId)); }
   var fmm = {}; FM.forEach(function(m){ fmm[m[0]] = m; });
