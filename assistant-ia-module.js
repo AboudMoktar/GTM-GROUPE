@@ -29,8 +29,27 @@ const IA_ETAPES = [['cp', 'coupé'], ['gadh', 'envoyé GADH'], ['asm', 'assembla
 let iaHisto = [];          // [{role:'user'|'model', text}]
 let iaEnCours = false;
 
-function iaLire(k, def){ try { return localStorage.getItem(k) || def; } catch(e){ return def; } }
-function iaEcrire(k, v){ try { if(v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch(e){} }
+/* Réglages gardés sur l'appareil : en mémoire, dans IndexedDB (base à part, jamais pleine à cause des données
+   de l'application) et, si possible, dans localStorage. localStorage seul ne suffisait pas : la copie locale des
+   données de l'application peut le remplir, et l'enregistrement de la clé échouait alors sans message. */
+const IA_MEM = {};
+function iaIdb(){
+  return new Promise((ok, ko) => { try { const r = indexedDB.open('gtm-assistant-ia', 1); r.onupgradeneeded = () => r.result.createObjectStore('reglages'); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); } catch(e){ ko(e); } });
+}
+function iaIdbEcrire(k, v){
+  return iaIdb().then(db => new Promise((ok, ko) => { const tx = db.transaction('reglages', 'readwrite'), st = tx.objectStore('reglages'); if(v) st.put(v, k); else st.delete(k); tx.oncomplete = () => { db.close(); ok(true); }; tx.onerror = () => { db.close(); ko(tx.error); }; }));
+}
+function iaIdbLire(k){
+  return iaIdb().then(db => new Promise(ok => { const rq = db.transaction('reglages').objectStore('reglages').get(k); rq.onsuccess = () => { db.close(); ok(rq.result || ''); }; rq.onerror = () => { db.close(); ok(''); }; })).catch(() => '');
+}
+function iaLire(k, def){ if(IA_MEM[k] !== undefined) return IA_MEM[k] || def; try { return localStorage.getItem(k) || def; } catch(e){ return def; } }
+/* renvoie une promesse : true si la valeur est bien gardée sur l'appareil (IndexedDB ou localStorage) */
+function iaEcrire(k, v){
+  IA_MEM[k] = v || '';
+  let ls = false; try { if(v) localStorage.setItem(k, v); else localStorage.removeItem(k); ls = true; } catch(e){}
+  return iaIdbEcrire(k, v).then(() => true, () => ls);
+}
+const iaPret = Promise.all([IA_CLE, IA_MODELE].map(k => iaIdbLire(k).then(v => { if(v && IA_MEM[k] === undefined) IA_MEM[k] = v; })));
 function iaCle(){ return iaLire(IA_CLE, ''); }
 function iaModele(){ const m = iaLire(IA_MODELE, IA_MODELES[0][0]); return m; }
 
@@ -202,7 +221,9 @@ const IA_CSS = `
 .ia-point{display:inline-block;animation:iaP 1s infinite}@keyframes iaP{50%{opacity:.3}}`;
 
 let iaCompte = null;
-function assistantOuvrir(){
+async function assistantOuvrir(){
+  if(document.getElementById('ia-fond')) return;
+  try { await iaPret; } catch(e){}
   if(document.getElementById('ia-fond')) return;
   /* conversation propre à chaque compte : changement de compte = nouvelle conversation */
   const u = (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.username || currentUser.nom) : '';
@@ -266,6 +287,7 @@ function assistantReglages(){
     <b style="font-size:16px">Réglages de l'assistant</b>
     <div>L'assistant utilise <b>Google Gemini</b>. Il faut une <b>clé API</b>, gratuite, à créer une fois sur
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (bouton « Create API key »), puis à coller ici.</div>
+    ${cle ? '<div style="color:#11643a;font-weight:700">✓ Clé enregistrée sur cet appareil.</div>' : ''}
     <label>Clé API Gemini<input id="ia-cle" type="password" autocomplete="off" placeholder="AIza…" value="${esc(cle)}"></label>
     <label>Modèle<select id="ia-mod">${IA_MODELES.map(m => `<option value="${m[0]}"${m[0] === mod ? ' selected' : ''}>${esc(m[1])}</option>`).join('')}</select></label>
     <div class="av">🔒 La clé reste <b>uniquement sur cet appareil</b> : elle n'est ni dans l'application en ligne, ni dans la base. À saisir sur chaque téléphone ou ordinateur.<br><br>
@@ -275,8 +297,10 @@ function assistantReglages(){
   document.getElementById('ia-ok').onclick = () => {
     const v = document.getElementById('ia-cle').value.trim();
     if(!v){ showToast('Collez la clé Gemini.'); return; }
-    iaEcrire(IA_CLE, v); iaEcrire(IA_MODELE, document.getElementById('ia-mod').value);
-    showToast('Assistant prêt'); iaVueChat();
+    Promise.all([iaEcrire(IA_CLE, v), iaEcrire(IA_MODELE, document.getElementById('ia-mod').value)]).then(r => {
+      if(r[0]){ showToast('Clé enregistrée sur cet appareil : plus besoin de la saisir.'); iaVueChat(); }
+      else { alert('La clé marche pour cette fois, mais ce navigateur refuse de la garder (mémoire du site pleine ou navigation privée). Il faudra la recoller à la prochaine ouverture.'); iaVueChat(); }
+    });
   };
   const s = document.getElementById('ia-suppr'); if(s) s.onclick = () => { if(!confirm('Effacer la clé Gemini de cet appareil ?')) return; iaEcrire(IA_CLE, ''); assistantReglages(); };
   const r = document.getElementById('ia-retour'); if(r) r.onclick = () => { iaEcrire(IA_MODELE, document.getElementById('ia-mod').value); iaVueChat(); };

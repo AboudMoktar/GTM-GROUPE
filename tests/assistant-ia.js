@@ -39,6 +39,19 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['clé refusée : message clair', /Clé Gemini refusée/.test(await p.textContent('#ia-msgs'))]);
   r.push(['texte de Gemini échappé (pas de HTML injecté)', await p.evaluate(() => !gtmIA.miseEnForme('<img src=x onerror=alert(1)>').includes('<img'))]);
   await p.click('text=✕'); r.push(['fermeture', await p.locator('#ia-fond').count() === 0]);
+  // mémoire du site pleine (copie locale des données) : la clé est quand même gardée, et retrouvée après réouverture
+  await p.evaluate(() => { localStorage.clear(); let t = 1000000, i = 0; while (t >= 16 && i < 2000){ try { localStorage.setItem('plein' + (i++), 'x'.repeat(t)); } catch(e){ t = Math.floor(t / 2); } } let plein = false; try { localStorage.setItem('gtm_essai', 'AIzaXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'); } catch(e){ plein = true; } window.__plein = plein; });
+  r.push(['essai : mémoire du site pleine', await p.evaluate(() => window.__plein)]);
+  await p.evaluate(() => { document.getElementById('barre').innerHTML = assistantBouton(); }); await p.click('.ia-btn'); await p.waitForTimeout(300);
+  r.push(['clé effacée de la mémoire pleine : réglages demandés', await p.locator('#ia-cle').count() === 1 || await p.locator('#ia-msgs').count() === 1]);
+  if (await p.locator('#ia-cle').count() === 0) await p.click('[aria-label="Réglages"]');
+  await p.fill('#ia-cle', 'AIzaGARDEE'); await p.click('#ia-ok'); await p.waitForTimeout(400);
+  await p.reload(); await p.waitForFunction(() => typeof assistantOuvrir === 'function');
+  await p.evaluate(() => { document.getElementById('barre').innerHTML = assistantBouton(); }); await p.click('.ia-btn'); await p.waitForTimeout(400);
+  r.push(['après réouverture : clé retrouvée, pas besoin de la ressaisir', await p.locator('#ia-msgs').count() === 1 && await p.locator('#ia-cle').count() === 0]);
+  mode = 'ok'; await p.fill('#ia-q', 'Bonjour ?'); await p.press('#ia-q', 'Enter'); await p.waitForTimeout(400);
+  r.push(['question envoyée avec la clé gardée', appels[appels.length - 1].cle === 'AIzaGARDEE']);
+  await p.evaluate(() => localStorage.clear());
   r.push(['aucune erreur JavaScript', err.length === 0]);
   let ko = 0; r.forEach(x => { if (!x[1]) ko++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });
   console.log(ko ? ko + ' échec(s)' : 'ok   aucune erreur');
