@@ -36,7 +36,7 @@ r.push(['chez la GADH : 60', /Chez la GADH \(envoyées, pas encore revenues\) : 
 r.push(['non conformes : 2 au contrôle', /Non conformes \(NC\) : 2 pièces/.test(q('Non conformes ?')) && /Contrôle : \*\*2\*\*/.test(q('Non conformes ?'))]);
 r.push(['livraison : en retard', /La date de livraison est dépassée/.test(q('Livraison ?'))]);
 r.push(['article inconnu : dit clairement', /aucun article qui corresponde à « pantalon »/.test(q('Reste à produire en pantalon'))]);
-r.push(['question libre non reconnue : null (aide ou Gemini)', R.repondre('Écris-moi un poème', docs, '2026-11-12') === null]);
+r.push(['question libre non reconnue : null (aide proposée)', R.repondre('Écris-moi un poème', docs, '2026-11-12') === null]);
 r.push(['bonjour : présentation et exemples', /^Bonjour !/.test(q('Bonjour'))]);
 r.push(['« tu » n\'est pas pris pour la taille TU', !/taille TU/.test(q('Est-ce que tu sais ce qui reste à produire ?'))]);
 let ko = 0; r.forEach(x => { if (!x[1]) ko++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });
