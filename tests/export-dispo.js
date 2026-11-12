@@ -29,6 +29,15 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.locator('button', {hasText: 'Valider et carton suivant'}).click(); await p.waitForTimeout(500);
   r.push(['dépassement permis : carton enregistré', await p.evaluate(() => S.exports[0].cartons.length === 1)]);
   r.push(['carton suivant : disponible recalculé', await cell('S').getAttribute('placeholder') === '' && await cell('M').getAttribute('placeholder') === '30']);
+  // pièces mises en carton : « Prêt à expédier » ; état de commande : « Prêt à expédier le jj/mm »
+  const st = await p.evaluate(() => { const t = stageTotals(); return {s:t.S1, m:t.M1, col:pkExports.etatCommandeGrid(null, 'PK202611').rows[2].cells.some(x => x && x.v === 'Prêt à expédier le 21/11')}; });
+  r.push(['carton enregistré : pièces « Prêt à expédier »', st.s.pret === 100 && st.s.emb === 100 && st.m.pret === 20 && st.m.emb === 20]);
+  r.push(['état de commande : colonne « Prêt à expédier le 21/11 »', st.col]);
+  // parcours : quantité exacte à chaque étape (une pièce comptée une seule fois)
+  await p.evaluate(() => { ui.lot = 'PK202611'; ui.client = '*'; ui.tab = 'flux'; ui.fmode = 'detail'; ui.stage = 'emb'; ui.xp = null; render(); });
+  const etape = async (nom) => (await p.locator('.step', {hasText: nom}).first().locator('.qt').textContent()).replace(/\s/g, '');
+  r.push(['parcours : Emballage 0, Prêt à expédier 90, Expédiée 30', await etape('Emballage') === '0' && await etape('Prêt à expédier') === '90' && await etape('Expédiée') === '30']);
+  r.push(['parcours : Contrôle et Confection exacts', await etape('Contrôle') === '0' && await etape('En confection') === '30']);
   r.push(['aucune erreur JavaScript', err.length === 0]);
   let ko = 0; r.forEach(x => { if (!x[1]) ko++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });
   console.log(ko ? ko + ' échec(s)' : 'ok   aucune erreur');

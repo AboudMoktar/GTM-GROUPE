@@ -3656,10 +3656,15 @@ function vFlux(v){
     pc.appendChild(step(3, "Commande envoyée au centre de coupe", dern ? "envoyée le " + dmy(dern.d) + (envs.length > 1 ? " (" + envs.length + " envois)" : "") + (compl ? " · complément de " + fmt(compl) + " pièce(s) à envoyer" : "") : (ready ? "fiche de coupe à envoyer au centre de coupe (PROGES)" : ""),
       !dern ? "todo" : compl ? "part" : "done", fmt(dern ? ordreEnvoye(lot) : 0) + " / " + fmt(ordre), function(){ goStage("env"); }, stage === "env", ordre ? Math.min(100, Math.round((dern ? ordreEnvoye(lot) : 0) / ordre * 100)) : 0));
   }
+  /* chaque étape : les pièces qui y sont en ce moment (une pièce n'est comptée qu'à sa dernière étape) ;
+     « Expédiée » : tout ce qui est parti. Le total des étapes = les pièces coupées. */
+  pc.appendChild(el("div", {class:"mut", style:"margin:-4px 0 8px;font-size:13px", text:"Chiffre de chaque étape = pièces qui sont à cette étape en ce moment. Une pièce passée à l'étape suivante n'est plus comptée ici."}));
   STAGES.forEach(function(s, i){
     if (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) return;
-    var t = A.t[s[0]], target = i === 0 ? A.cut : Math.max(A.q, A.t.cp || 0), pct = target ? Math.min(100, Math.round(t / target * 100)) : 0, cls = t <= 0 ? "todo" : t >= target ? "done" : "part";
-    pc.appendChild(step(i + 4, s[1], t > 0 ? (t >= target ? "complète" : "partielle") : "", cls, fmt(t) + " / " + fmt(target), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
+    var t = A.t[s[0]], ici = A.sv[i + 1] || 0, target = i === 0 ? A.cut : Math.max(A.q, A.t.cp || 0), pct = target ? Math.min(100, Math.round(ici / target * 100)) : 0;
+    var fini = t > 0 && t >= target, cls = ici > 0 ? "part" : fini ? "done" : "todo";
+    var sub = ici > 0 ? (s[0] === "exp" ? "pièces expédiées" : "pièces à cette étape") : fini ? "terminée" : t > 0 ? "aucune pièce en attente ici" : "";
+    pc.appendChild(step(i + 4, s[1], sub, cls, fmt(ici), (VUE === "gadh" && GADH_STG.indexOf(s[0]) < 0) ? null : function(){ goStage(s[0]); }, s[0] === stage, pct));
   });
   v.appendChild(pc);
   if (stage === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
