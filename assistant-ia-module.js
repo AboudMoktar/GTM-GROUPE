@@ -28,6 +28,7 @@ const IA_ETAPES = [['cp', 'coupé'], ['gadh', 'envoyé GADH'], ['asm', 'assembla
 
 let iaHisto = [];          // [{role:'user'|'model', text}]
 let iaEnCours = false;
+let iaStatut = null;       // affiche « j'essaie encore… » pendant les nouveaux essais
 
 /* Réglages gardés sur l'appareil : en mémoire, dans IndexedDB (base à part, jamais pleine à cause des données
    de l'application) et, si possible, dans localStorage. localStorage seul ne suffisait pas : la copie locale des
@@ -149,18 +150,38 @@ async function iaDemander(question){
   const ctx = iaContexte();
   const contents = iaHisto.slice(-12).map(m => ({role:m.role, parts:[{text:m.text}]})).concat([{role:'user', parts:[{text:question}]}]);
   const corps = {systemInstruction:{parts:[{text:iaConsignes(ctx.texte)}]}, contents, generationConfig:{temperature:0.2, maxOutputTokens:2048}};
-  let rep;
-  try {
-    rep = await fetch(IA_URL + encodeURIComponent(iaModele()) + ':generateContent', {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':cle}, body:JSON.stringify(corps)});
-  } catch(e){ throw new Error('Pas de connexion à Gemini (vérifiez internet).'); }
-  let data = null; try { data = await rep.json(); } catch(e){}
-  if(!rep.ok){
-    const msg = (data && data.error && data.error.message) || ('erreur ' + rep.status);
-    if(rep.status === 429) throw new Error('Limite gratuite de Gemini atteinte pour le moment : réessayez dans une minute (ou choisissez « Flash-Lite » dans ⚙).');
-    if(rep.status === 400 && /API key/i.test(msg)) throw new Error('Clé Gemini refusée : vérifiez-la dans ⚙ Réglages de l\'assistant.');
-    if(rep.status === 403) throw new Error('Clé Gemini non autorisée : vérifiez-la dans ⚙ (' + msg + ').');
-    if(rep.status === 404) throw new Error('Modèle « ' + iaModele() + ' » introuvable : choisissez-en un autre dans ⚙.');
-    throw new Error('Gemini : ' + msg);
+  /* Gemini peut être saturé (503 « forte demande »), limité (429) ou en panne passagère (500) : on réessaie,
+     puis on passe automatiquement aux autres modèles (le choix de ⚙ d'abord). */
+  const modeles = [iaModele()].concat(IA_MODELES.map(m => m[0])).filter((m, i, a) => a.indexOf(m) === i);
+  let data = null, derniere = '', quota = false;
+  essais: for(let i = 0; i < modeles.length; i++){
+    for(let essai = 0; essai < 2; essai++){
+      if(iaStatut) iaStatut(i || essai ? 'Gemini est très demandé, j\'essaie encore' + (i ? ' (autre modèle)' : '') + '…' : '');
+      let rep;
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null, minuteur = ctrl ? setTimeout(() => ctrl.abort(), 60000) : null;
+      try {
+        rep = await fetch(IA_URL + encodeURIComponent(modeles[i]) + ':generateContent', {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':cle}, body:JSON.stringify(corps), signal:ctrl ? ctrl.signal : undefined});
+      } catch(e){
+        clearTimeout(minuteur);
+        if(e && e.name === 'AbortError'){ derniere = 'Gemini met trop de temps à répondre.'; continue essais; }
+        throw new Error('Pas de connexion à Gemini (vérifiez internet).');
+      }
+      clearTimeout(minuteur);
+      data = null; try { data = await rep.json(); } catch(e){}
+      if(rep.ok) break essais;
+      const msg = (data && data.error && data.error.message) || ('erreur ' + rep.status);
+      if(rep.status === 400 && /API key/i.test(msg)) throw new Error('Clé Gemini refusée : vérifiez-la dans ⚙ Réglages de l\'assistant.');
+      if(rep.status === 403) throw new Error('Clé Gemini non autorisée : vérifiez-la dans ⚙ (' + msg + ').');
+      if(rep.status === 404){ derniere = 'Modèle « ' + modeles[i] + ' » introuvable.'; continue essais; }
+      if(rep.status === 429){ quota = true; derniere = msg; continue essais; }
+      if(rep.status === 503 || rep.status === 500 || rep.status === 502 || rep.status === 504){ derniere = msg; if(essai === 0){ await new Promise(r => setTimeout(r, 2000)); continue; } continue essais; }
+      throw new Error('Gemini : ' + msg);
+    }
+  }
+  if(iaStatut) iaStatut('');
+  if(!data || !data.candidates){
+    if(quota) throw new Error('Limite gratuite de Gemini atteinte pour le moment : réessayez dans une minute.');
+    throw new Error('Gemini est surchargé en ce moment (tous les modèles ont été essayés). Réessayez dans quelques minutes.' + (/introuvable|trop de temps/.test(derniere) ? ' (' + derniere + ')' : ''));
   }
   const c = data && data.candidates && data.candidates[0];
   const texte = c && c.content && (c.content.parts || []).map(p => p.text || '').join('').trim();
@@ -252,6 +273,7 @@ function iaVueChat(){
   q.addEventListener('input', () => { q.style.height = 'auto'; q.style.height = Math.min(120, q.scrollHeight) + 'px'; });
   q.addEventListener('keydown', ev => { if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); iaEnvoyer(q.value); } });
   document.getElementById('ia-envoi').onclick = () => iaEnvoyer(q.value);
+  if(iaEnCours){ document.getElementById('ia-envoi').disabled = true; }
   msgs.scrollTop = msgs.scrollHeight;
   setTimeout(() => { try { q.focus(); } catch(e){} }, 50);
 }
@@ -267,6 +289,7 @@ async function iaEnvoyer(question){
   if(q){ q.value = ''; q.style.height = 'auto'; } if(sugg) sugg.innerHTML = '';
   iaAjouter('u', question);
   const att = iaAjouter('b', ''); if(att) att.innerHTML = '<span class="ia-point">●●●</span>';
+  iaStatut = t => { if(att && att.isConnected) att.innerHTML = '<span class="ia-point">●●●</span>' + (t ? ' <span style="font-size:13px;opacity:.75">' + esc(t) + '</span>' : ''); };
   iaEnCours = true; if(btn) btn.disabled = true;
   try {
     const rep = await iaDemander(question);
@@ -275,7 +298,7 @@ async function iaEnvoyer(question){
   } catch(e){
     if(att){ att.className = 'ia-m err'; att.textContent = '⚠ ' + (e && e.message || e); }
   } finally {
-    iaEnCours = false; if(btn) btn.disabled = false;
+    iaEnCours = false; iaStatut = null; const b2 = document.getElementById('ia-envoi'); if(b2) b2.disabled = false; if(btn) btn.disabled = false;
     const msgs = document.getElementById('ia-msgs'); if(msgs) msgs.scrollTop = msgs.scrollHeight;
   }
 }
