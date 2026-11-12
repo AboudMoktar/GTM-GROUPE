@@ -427,7 +427,7 @@ window.menuUtilisateur = (e) => {
   const role = typeof profilLabel === 'function' ? profilLabel(currentUser) : roleLabel(currentUser.role);
   const item = (icone, texte, action, cls) => `<button class="${cls || ''}" onclick="menuUtilisateurFermer(); ${action}">${icone}<span>${texte}</span></button>`;
   m.innerHTML = `<div class="um-tete"><div class="um-nom">${esc(currentUser.nom)}</div><div class="um-role">${esc(role)}</div></div>
-    ${typeof assistantOuvrir === 'function' ? item('<span style="font-size:16px;">🤖</span>', 'Assistant', 'assistantOuvrir()') : ''}
+    ${typeof assistantOuvrir === 'function' ? item(window.gtmIA && gtmIA.icone ? gtmIA.icone.replace('width="22" height="22"', 'width="18" height="18"') : '', 'Assistant', 'assistantOuvrir()') : ''}
     ${item('<span style="font-size:16px;">🔑</span>', 'Changer mon mot de passe', 'profilsMonCompte()')}
     ${window.gtmAffichage ? item('<span style="font-size:16px;">🖥️</span>', 'Affichage de cet écran', 'gtmAffichageChoisir()') : ''}
     ${typeof peutChangerDeModule === 'function' && peutChangerDeModule() ? item(ICONS.switchModule, 'Changer de module', 'switchModule()') : ''}
