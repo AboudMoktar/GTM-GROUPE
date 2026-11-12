@@ -186,6 +186,8 @@ const SCENARIOS = [
   ['Achats GADH : Secrétaire GADH crée un fournisseur', 'u_secr_gadh', 'ecrire', T + 'gadh/gadh_achat_fournisseurs', {fo1:{nom:'Tissus Sfax'}, fo2:{nom:'Accessoires Tunis'}}, true],
   ['Achats GADH : Secrétaire GADH enregistre une sortie de stock', 'u_secr_gadh', 'ecrire', T + 'gadh/gadh_achat_mouvements', {mv1:{qte:30}, mv2:{type:'sortie', qte:5}}, true],
   ['Achats GADH : Secrétaire GADH efface tous les bons', 'u_secr_gadh', 'supprimer', T + 'gadh/gadh_achat_bons', null, false],
+  ['Gestion des commandes GADH : Technico MGT enregistre une commande client', 'u_technico', 'ecrire', T + 'gadh/gadh_gc_cmd_clients', {c1:{numero:'CC-1'}}, true],
+  ['Gestion des commandes GADH : Technico MGT lit le catalogue (requête)', 'u_technico', 'requete', T + 'gadh', pref('gadh_gc_'), true],
   ['Achats GADH : Technico MGT lit les bons', 'u_technico', 'lire', T + 'gadh/gadh_achat_bons', null, true],
   ['Achats GADH : Technico MGT lit le stock (requête)', 'u_technico', 'requete', T + 'gadh', pref('gadh_achat'), true],
   ['Achats GADH : Technico MGT modifie un bon', 'u_technico', 'ecrire', T + 'gadh/gadh_achat_bons', {}, false],

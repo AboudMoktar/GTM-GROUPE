@@ -119,14 +119,14 @@ Ressources humaines, facturation et gestion des commandes GADH (achats, stock, v
 
 ## Technico-commercial MGT
 
-Accès complet au module MGT, y compris les demandes SAV · consultation de la gestion des commandes GADH. Rôle technique : `admin`. Sociétés : MGT, GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
+Accès complet au module MGT, y compris les demandes SAV · gestion des commandes GADH complète (12/11/2026) · facturation GADH en consultation. Rôle technique : `admin`. Sociétés : MGT, GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | — | — | — |
 | GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
 | GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | — | — | — |
-| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | — | — | — |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | oui | oui | oui (sauf collections protégées) |
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |

@@ -118,10 +118,10 @@
     },
     technico_mgt: {
       label:'Technico-commercial MGT', role:'admin', groupe:false, societes:{mgt:true, gadh:true},
-      aide:'Accès complet au module MGT, y compris les demandes SAV · consultation de la gestion des commandes GADH',
+      aide:'Accès complet au module MGT, y compris les demandes SAV · gestion des commandes GADH complète (12/11/2026) · facturation GADH en consultation',
       interface:{mgt:'*', gadh:{'gadh-commandes':'*'}},
       // Lecture de la facturation GADH : état des factures de vente et reste à encaisser.
-      droits:{'mgt.*':TOUT, 'gadh.commandes':'l', 'gadh.achats':'l', 'gadh.ventes':'l', 'gadh.facturation':'l'}
+      droits:{'mgt.*':TOUT, 'gadh.commandes':TOUT, 'gadh.achats':'l', 'gadh.ventes':'l', 'gadh.facturation':'l'}
     },
     secretaire_mgt: {
       label:'Secrétaire MGT', role:'admin', groupe:false, societes:{mgt:true},
