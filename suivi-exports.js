@@ -634,9 +634,14 @@ function grilleHtml(g){
         var r2 = m ? m[2] : ri, c2 = m ? m[3] : ci, hh = 0, ww = 0, k;
         for (k = ri; k <= r2; k++) hh += U.rh[k]; for (k = ci; k <= c2; k++) ww += U.cw[k];
         var f = Math.min((st.sz || 10) * U.sc * 0.92, (st.sz || 10) * 0.95), uneLigne = r2 === ri || hh < 2.4 * f;
-        if (uneLigne){ f = Math.min(f, U.rh[ri] * 0.78 * (r2 - ri + 1)); if (txt) f = Math.max(3, Math.min(f, (ww - 6) / largeur(txt.split("\n").join(" "), !!st.b))); }
+        var lgs = txt.split("\n");
+        if (lgs.length > 1 && st.wrap){   /* titre sur plusieurs lignes (ex. « Emballés, / prêts à expédier / le 21/11 ») */
+          f = Math.min(f, hh * 0.86 / lgs.length); var lmax = 0; lgs.forEach(function(x){ lmax = Math.max(lmax, largeur(x, !!st.b)); });
+          f = Math.max(3, Math.min(f, (ww - 6) / lmax)); uneLigne = false;
+        }
+        else if (uneLigne){ f = Math.min(f, U.rh[ri] * 0.78 * (r2 - ri + 1)); if (txt) f = Math.max(3, Math.min(f, (ww - 6) / largeur(txt.split("\n").join(" "), !!st.b))); }
         taille = f.toFixed(2) + "pt";
-        plus = "padding:0 1.2mm!important;line-height:1.05!important;overflow:hidden;" + (uneLigne ? "white-space:nowrap;" : "white-space:normal;");
+        plus = "padding:0 1.2mm!important;line-height:1.05!important;overflow:hidden;" + (uneLigne ? "white-space:nowrap;" : txt.indexOf("\n") >= 0 ? "white-space:pre-line;" : "white-space:normal;");
       }
       var css = (st.bd ? "border:" + (st.bd === "m" ? "1.5px" : "1px") + " solid #000;" : "border:0;") + (st.bg ? "background:#" + st.bg + ";" : "") + (st.fg ? "color:#" + st.fg + "!important;" : "") + (st.b ? "font-weight:bold;" : "") + "text-align:" + (st.al === "l" ? "left" : st.al === "r" ? "right" : "center") + ";" + (taille ? "font-size:" + taille + "!important;" : "") + plus;
       h += "<td" + (m ? ' rowspan="' + (m[2] - m[0] + 1) + '" colspan="' + (m[3] - m[1] + 1) + '"' : "") + ' style="' + css + '">' + hx(txt) + "</td>";
@@ -815,7 +820,11 @@ function suiviCommande(e, lot){
   var cols = Object.keys(avD).map(function(d){ return {id:"av:" + d, d:d, av:true}; }).concat(exs.map(function(x){ return {id:x.id, d:x.d, x:x}; }))
     .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : (b.av ? 1 : 0) - (a.av ? 1 : 0) || (a.x && b.x ? a.x.n - b.x.n : 0); });
   var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "Prêt à expédier le " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
-  return {exs:exs, R:R, avant:Object.keys(R).some(function(k){ return R[k].av; }), cols:cols,
+  /* date prévue d'expédition des pièces emballées : celle des exports en cours qui contiennent cette commande
+     (suit la date de l'export quand elle change) */
+  var prevus = sortedUnique(EX().filter(function(x){ return x.st !== "fini" && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); }).map(function(x){ return x.d; })).sort();
+  var titreEmb = "Emballés,\nprêts à expédier" + (!e && prevus.length ? "\nle " + prevus.map(function(d){ return dmyL(d).slice(0, 5); }).join(" / ") : "");
+  return {exs:exs, R:R, avant:Object.keys(R).some(function(k){ return R[k].av; }), cols:cols, titreEmb:titreEmb, prevus:prevus,
     titreCol:function(c){ return c.av ? "Expédié " + (c.d ? dmyL(c.d).slice(0, 5) : "(sans date)") : titre(c.x); },
     titre:titre,
     /* pièces d'une référence : exportées (ou expédiées avant), emballées en attente d'export, reste */
@@ -848,7 +857,7 @@ function etatCommandeGrid(e, lot, opt){
   var refs = Object.keys(R).map(function(k){ return R[k]; }).sort(function(a, b){ return ((a.lib in lo ? lo[a.lib] : 999) - (b.lib in lo ? lo[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : sizeIdx(a.size) - sizeIdx(b.size)); });
   /* colonnes */
   var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cE = cSt + 1, cEmb = cE + cols.length, cR = cEmb + 1, L = colName;
-  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [10, 9]), rows:[], merges:[], plein:true, onePage:true};
+  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [15, 9]), rows:[], merges:[], plein:true, onePage:true};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
   var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = opt.annee || (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
   gset(g, 0, 0, "Commande: " + (typeof libelleCommande === "function" && libelleCommande(lot) ? libelleCommande(lot) : mois), Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
@@ -859,9 +868,9 @@ function etatCommandeGrid(e, lot, opt){
     gmerge(g, 0, cSt, 1, cR); }
   g.rows[0].h = 18; g.rows[1].h = 16;
   ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"])
-    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : ["Emballés, prêts à expédier", "Reste"])
+    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : [SV.titreEmb, "Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
-  g.rows[2].h = 28;
+  g.rows[2].h = CM ? 28 : 40;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"};
   refs.forEach(function(x){
     var rr = r + 1, col = couleurLib(x.lib), mod = modelOf(x.lib) || x.lib;
