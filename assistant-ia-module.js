@@ -35,8 +35,14 @@ function iaCle(){ return iaLire(IA_CLE, ''); }
 function iaModele(){ const m = iaLire(IA_MODELE, IA_MODELES[0][0]); return m; }
 
 /* ---------- bouton dans la barre du haut ---------- */
+/* classe propre (pas « theme-btn » : ce bouton-là est masqué dans l'affichage habituel et son icône est remplacée) */
+(function(){
+  const st = document.createElement('style'); st.id = 'ia-btn-css';
+  st.textContent = 'html body .topbar .user-chip .ia-btn{display:inline-flex !important;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:10px;background:rgba(127,140,160,.18) !important;font-size:21px;line-height:1;cursor:pointer;flex-shrink:0}';
+  (document.head || document.documentElement).appendChild(st);
+})();
 function assistantBouton(){
-  return `<button class="theme-btn ia-btn" onclick="assistantOuvrir()" aria-label="Assistant IA" title="Assistant IA" style="font-size:18px;line-height:1;">🤖</button>`;
+  return `<button class="ia-btn" onclick="assistantOuvrir()" aria-label="Assistant IA" title="Assistant IA">🤖</button>`;
 }
 
 /* ---------- résumé des données (ce que l'assistant « voit ») ---------- */
