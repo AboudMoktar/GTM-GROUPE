@@ -145,6 +145,7 @@ function factNavItems(){
 // Bouton de navigation à allumer pour un écran secondaire.
 function navParent(tab){
   if(typeof MGT_PARENT !== 'undefined' && MGT_PARENT[tab]) return MGT_PARENT[tab];
+  if(typeof gcNavParent === 'function' && tab.indexOf('gc-') === 0) return gcNavParent(tab);
   if(tab === 'fact-edit' || (tab === 'fact-params' && activeModule === 'mgt')) return 'fact-liste';
   return null;
 }
@@ -273,6 +274,8 @@ function factOrigineLabel(o){
   if(o.type === 'ticket') return 'SAV ' + (o.label || '');
   if(o.type === 'contrat') return 'Contrat de maintenance';
   if(o.type === 'suivi') return 'Suivi du ' + mgtDate(o.du) + ' au ' + mgtDate(o.au);
+  if(o.type === 'livraison') return 'Livraison ' + (o.label || '');
+  if(o.type === 'vente') return 'Vente ' + (o.numero || '');
   return '';
 }
 function factModifier(fn, redessiner){

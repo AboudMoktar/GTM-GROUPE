@@ -4,7 +4,7 @@ Générée automatiquement depuis `roles-config.js`, la même source que les rè
 
 « Supprimer » = effacer la clé entière (une collection). Retirer un élément d'une collection est une modification.
 
-Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`, `mgt_crm_clients`, `mgt_crm_history`, `gadh_achat_fournisseurs`, `gadh_achat_articles`, `gadh_achat_bons`, `gadh_achat_mouvements`, `gadh_vente_devis`, `gadh_vente_commandes`, `gadh_vente_livraisons`.
+Collections dont la suppression entière est réservée aux rôles complets : `employees`, `factures`, `fact_clients`, `gadh_employees`, `gadh_factures`, `gadh_fact_clients`, `cmd_commandes`, `suivi_index`, `mgt_crm_clients`, `mgt_crm_history`, `mgt_crm_listing`, `gadh_achat_fournisseurs`, `gadh_achat_articles`, `gadh_achat_bons`, `gadh_achat_mouvements`, `gadh_vente_devis`, `gadh_vente_commandes`, `gadh_vente_livraisons`, `gadh_gc_articles`, `gadh_gc_fournisseurs`, `gadh_gc_tarifs`, `gadh_gc_demandes`, `gadh_gc_offres`, `gadh_gc_cmd_clients`, `gadh_gc_cmd_fournisseurs`, `gadh_gc_receptions`, `gadh_gc_livraisons`, `gadh_gc_mouvements`, `gadh_gc_journal`, `gadh_gc_sauvegardes`.
 
 ## Administrateur / Développeur
 
@@ -26,14 +26,16 @@ Accès complet aux trois sociétés · gestion des comptes · configuration · s
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | oui | oui | oui |
-| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
-| GADH TUNISIA | Ventes | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui |
+| GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
+| GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | oui | oui | oui |
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |
+| MGT | MGT | Listing : catalogue d'articles et prix (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | oui | oui | oui |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
@@ -57,8 +59,9 @@ Accès complet à TEK-TREND et GADH TUNISIA. Rôle technique : `admin`. Sociét�
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | oui | oui | oui |
-| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
-| GADH TUNISIA | Ventes | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui |
+| GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui |
+| GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | oui | oui | oui |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | oui | oui | oui |
@@ -101,30 +104,33 @@ Pièces de production et commandes reçues par GADH. Rôle technique : `admin`. 
 
 ## Secrétaire GADH
 
-Ressources humaines, facturation, achats, ventes et stock GADH. Rôle technique : `admin`. Sociétés : GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
+Ressources humaines, facturation et gestion des commandes GADH (achats, stock, ventes, livraisons, rentabilité). Rôle technique : `admin`. Sociétés : GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | oui | oui | oui (sauf collections protégées) |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | oui | oui | oui (sauf collections protégées) |
-| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui (sauf collections protégées) |
-| GADH TUNISIA | Ventes | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui (sauf collections protégées) |
+| GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | oui | oui | oui (sauf collections protégées) |
+| GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | oui | oui | oui (sauf collections protégées) |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | oui | oui | oui (sauf collections protégées) |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |
 
 ## Technico-commercial MGT
 
-Accès complet au module MGT, y compris les demandes SAV · consultation des achats et des ventes GADH. Rôle technique : `admin`. Sociétés : MGT, GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
+Accès complet au module MGT, y compris les demandes SAV · consultation de la gestion des commandes GADH. Rôle technique : `admin`. Sociétés : MGT, GADH TUNISIA. Administration des comptes : non. Journal d'audit : non.
 
 | Société | Module | Fonctionnalité (données) | Lire | Créer | Modifier | Supprimer |
 | --- | --- | --- | --- | --- | --- | --- |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | — | — | — |
-| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
-| GADH TUNISIA | Ventes | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | — | — | — |
+| GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
+| GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | — | — | — |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | — | — | — |
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | oui | oui | oui |
+| MGT | MGT | Listing : catalogue d'articles et prix (CRM) | oui | oui | oui | oui |
 | MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | oui | oui | oui |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
@@ -137,6 +143,7 @@ Factures, offres et planning MGT, liés aux clients (validé le 01/11/2026). Rô
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | oui | oui | — |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | oui | oui | — |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | — | — | — |
+| MGT | MGT | Listing : catalogue d'articles et prix (CRM) | oui | — | — | — |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | oui | oui | oui |
 
 ## Direction (lecture seule)
@@ -159,14 +166,16 @@ Lecture seule sur les trois sociétés · aucune modification. Rôle technique :
 | GADH TUNISIA | RH GADH | Salariés, pointages, absences, horaires | oui | — | — | — |
 | GADH TUNISIA | Facturation | Factures GADH, clients, paramètres, compteurs | oui | — | — | — |
 | GADH TUNISIA | Machines | Machines et arrêts GADH | oui | — | — | — |
-| GADH TUNISIA | Achats et stock | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
-| GADH TUNISIA | Ventes | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | — | — | — |
+| GADH TUNISIA | Achats et stock (ancien module, données conservées) | Fournisseurs, articles, bons d'achat, paiements, stock (matières, accessoires, machines) | oui | — | — | — |
+| GADH TUNISIA | Ventes (ancien module, données conservées) | Devis, commandes clients, bons de livraison (les factures et encaissements sont dans Facturation) | oui | — | — | — |
+| GADH TUNISIA | Gestion des commandes | Catalogue, fournisseurs, tarifs, demandes de prix, offres, commandes clients et fournisseurs, réceptions, stock par lots, livraisons, coûts et rentabilité, journal, sauvegardes de migration | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |
 | MGT | MGT | Clients : fiches, offres, planning, factures et lettrage (CRM) | oui | — | — | — |
 | MGT | MGT | Historique des actions et étiquettes (CRM) | oui | — | — | — |
 | MGT | MGT | Réglages et droits par profil du CRM | oui | — | — | — |
+| MGT | MGT | Listing : catalogue d'articles et prix (CRM) | oui | — | — | — |
 | MGT | MGT | Toutes les autres données MGT (SAV, parc, tâches internes…) | oui | — | — | — |
 | MGT | MGT | Fichiers joints (PDF, photos) | oui | — | — | — |
 
