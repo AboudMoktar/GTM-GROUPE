@@ -111,10 +111,10 @@ const profilsSocieteSelectOrigine = window.renderSocieteSelect;
 window.renderSocieteSelect = function(){
   profilsSocieteSelectOrigine();
   if(!canManageAccounts()) return;
-  const zone = document.querySelector('.login-card div[style*="flex-direction:column"]');
-  if(zone) zone.insertAdjacentHTML('beforeend', `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#3A4556;" onclick="ouvrirAdmin()">
-    <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.params}</span>
-    <span><span style="display:block;">Administration</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Comptes, sessions, maintenance</span></span></button>`);
+  const zone = document.querySelector('.login-card .choix-liste');
+  if(zone) zone.insertAdjacentHTML('beforeend', `<button class="btn btn-primary choix-fort" style="background:#334155 !important;" onclick="ouvrirAdmin()">
+    ${ICONS.params}
+    <span>Administration<small>Comptes, sessions, maintenance</small></span></button>`);
 };
 
 // Champ mot de passe avec bouton « afficher ».

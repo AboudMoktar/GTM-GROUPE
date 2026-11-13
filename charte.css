@@ -240,6 +240,29 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
 .mod-ico{width:72px !important;}
 .mod-ico svg{width:24px !important;height:24px !important;}
 .soc-fleche{color:var(--ink-faint) !important;font-size:22px !important;}
+/* Écrans de choix (société, module) — 13/11/2026 : carte plus étroite, lignes plus serrées, texte plus foncé et plus lisible
+   (écrans anciens ou peu contrastés) */
+.login-wrap .login-card.choix{max-width:470px !important;padding:22px 20px 18px !important;border-color:#aab4c3 !important;}
+.choix .choix-liste{display:flex;flex-direction:column;gap:8px;}
+.choix h2{font-size:18px !important;font-weight:800 !important;color:#0b1220 !important;margin:0 0 2px !important;}
+.choix .choix-qui{text-align:center;color:#334155;font-size:13px;font-weight:600;margin:0 0 14px;}
+.choix .logo-wrap{margin-bottom:12px !important;}
+.choix .soc-card{border:1.5px solid #aab4c3 !important;border-radius:12px !important;min-height:56px;}
+.choix .soc-card:hover,.choix .soc-card:focus-visible{border-color:var(--m,var(--accent)) !important;background:#f5f8fc !important;outline:none;}
+.choix .soc-bande{width:6px !important;}
+.choix .soc-txt{padding:8px 6px 8px 12px !important;gap:1px !important;}
+.choix .soc-nom{font-size:16px !important;font-weight:800 !important;color:#0b1220 !important;line-height:1.2;}
+.choix .soc-sous{font-size:13px !important;font-weight:500 !important;color:#334155 !important;line-height:1.3 !important;}
+.choix .mod-ico{width:52px !important;}
+.choix .mod-ico svg{width:24px !important;height:24px !important;stroke-width:2.2;}
+.choix .soc-logo{width:92px !important;padding:8px 8px !important;border-right:1px solid #c9d1dc !important;}
+.choix .soc-logo img{max-height:40px !important;max-width:76px !important;}
+.choix .soc-fleche{color:#334155 !important;font-size:24px !important;font-weight:700;padding:0 12px 0 2px !important;}
+.choix .choix-fort{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:9px 14px !important;border-radius:12px !important;text-align:left;justify-content:flex-start !important;font-size:16px !important;font-weight:800 !important;background:#111827 !important;color:#fff !important;}
+.choix .choix-fort small{display:block;font-size:13px;font-weight:500;color:#e5e7eb;}
+.choix .choix-fort svg{width:24px;height:24px;flex-shrink:0;}
+.choix .choix-bas{display:flex;gap:8px;margin-top:14px;}
+.choix .choix-bas .btn{flex:1;min-height:42px;font-size:14px !important;font-weight:700 !important;color:#0b1220 !important;border:1.5px solid #aab4c3 !important;}
 .login-wrap .logo-text .tek,.login-wrap .logo-text .trend{color:var(--ink) !important;-webkit-text-fill-color:var(--ink) !important;}
 .login-wrap .logo-sub{color:var(--ink-faint) !important;}
 

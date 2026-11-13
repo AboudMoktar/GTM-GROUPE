@@ -5487,6 +5487,23 @@ html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeLabel{color:#18212f!impor
 html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeSub{color:#5c6878!important}
 html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeIcon{background:#fff0e9!important;color:#ef3f08!important;border-color:#f3b39c!important}
 html[data-mgt-theme="light"] #mgtHomeDashboard .mgtKpiCard,html[data-mgt-theme="light"] #mgtHomeDashboard .mgtChartCard{background:#fff!important;box-shadow:0 5px 18px rgba(25,35,50,.07)}
+/* Accueil MGT — 13/11/2026 : grille plus étroite, tuiles plus compactes, libellés plus gros et plus foncés (ordinateur) */
+@media(min-width:721px){
+#mgtHomeDashboard .mgtHomeInner{width:min(880px,100%)}
+#mgtHomeDashboard .mgtHomeTop{margin-bottom:14px;padding-bottom:10px}
+html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeTop{border-bottom:2px solid #c3ccd8}
+#mgtHomeDashboard .mgtHomeSub{font-size:14px;font-weight:700}
+#mgtHomeDashboard .mgtHomeGrid{gap:12px}
+#mgtHomeDashboard .mgtHomeCard{min-height:112px;padding:14px 10px 12px;gap:8px;border-width:1.5px;border-radius:14px}
+#mgtHomeDashboard .mgtHomeIcon{width:50px;height:50px;flex-basis:50px;border-radius:13px;border-width:1.5px}
+#mgtHomeDashboard .mgtHomeIcon svg{width:28px;height:28px;stroke-width:2.2}
+#mgtHomeDashboard .mgtHomeLabel{font-size:16px;font-weight:800}
+#mgtHomeDashboard .mgtHomeCount{top:8px;right:8px;min-width:24px;height:24px;font-size:13px}
+html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeCard{border-color:#aab4c3!important}
+html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeLabel{color:#0b1220!important}
+html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeSub{color:#334155!important}
+html[data-mgt-theme="light"] #mgtHomeDashboard .mgtHomeIcon{border-color:#ef8f6c!important}
+}
 @media(max-width:1150px){#mgtHomeDashboard .mgtHomeKpis{grid-template-columns:repeat(2,minmax(0,1fr))}#mgtHomeDashboard .mgtHomeChart{grid-template-columns:1fr}}
 @media(max-width:1050px){#mgtHomeDashboard .mgtHomeGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}
 @media(max-width:720px){#mgtHomeDashboard{padding:12px 12px 22px}#mgtHomeDashboard .mgtHomeTop{margin-bottom:14px;padding-bottom:12px;flex-direction:column;align-items:flex-start;gap:4px}#mgtHomeDashboard .mgtHomeTitle{font-size:20px}#mgtHomeDashboard .mgtHomeSub{font-size:11px}#mgtHomeDashboard .mgtHomeKpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}#mgtHomeDashboard .mgtKpiCard{min-height:68px;padding:10px 11px;gap:9px}#mgtHomeDashboard .mgtKpiIcon{flex-basis:36px;width:36px;height:36px;border-radius:10px}#mgtHomeDashboard .mgtKpiIcon svg{width:19px;height:19px}#mgtHomeDashboard .mgtKpiBody strong{font-size:16px}#mgtHomeDashboard .mgtKpiBody span{font-size:10px}#mgtHomeDashboard .mgtHomeChart{margin-bottom:16px;gap:9px}#mgtHomeDashboard .mgtChartCard{padding:12px 13px}#mgtHomeDashboard .mgtBars{height:84px}#mgtHomeDashboard .mgtHomeGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#mgtHomeDashboard .mgtHomeCard{min-height:126px;padding:14px 9px 13px;border-radius:14px;gap:9px}#mgtHomeDashboard .mgtHomeIcon{width:54px;height:54px;flex-basis:54px;border-radius:14px}#mgtHomeDashboard .mgtHomeIcon svg{width:31px;height:31px}#mgtHomeDashboard .mgtHomeLabel{font-size:12px}}
