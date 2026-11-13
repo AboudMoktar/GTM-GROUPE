@@ -523,6 +523,55 @@ let gcImportCat = null;
 const GC_CHAMPS_CAT = {ref:['ref', 'reference', 'code', 'code article', 'sku'], designation:['designation', 'libelle', 'description', 'produit', 'article', 'nom'], categorie:['categorie', 'famille', 'type'], unite:['unite', 'u', 'um'],
   prixAchat:['prix achat', 'prix d achat', 'pa', 'cout', 'prix fournisseur'], prixVente:['prix vente', 'prix de vente', 'pv', 'tarif', 'prix'], seuil:['seuil', 'stock mini', 'stock minimum', 'mini'], fournisseur:['fournisseur', 'fournisseur principal']};
 const GC_LIB_CAT = {ref:'Référence', designation:'Désignation', categorie:'Catégorie', unite:'Unité', prixAchat:'Prix d\'achat', prixVente:'Prix de vente', seuil:'Seuil', fournisseur:'Fournisseur'};
+// Feuilles « Fournisseurs » et « Clients » du classeur complet (modèle téléchargeable).
+const GC_CHAMPS_FOUR = {nom:['nom', 'fournisseur', 'raison sociale', 'societe'], contact:['contact', 'interlocuteur'], tel:['telephone', 'tel', 'gsm', 'mobile'], email:['e mail', 'email', 'mail', 'courriel'], mf:['matricule fiscal', 'mf', 'matricule'], rib:['rib', 'iban'],
+  conditions:['conditions de paiement', 'conditions', 'paiement'], delai:['delai habituel jours', 'delai', 'delai jours'], categories:['categories fournies', 'categories', 'categorie'], adresse:['adresse'], notes:['notes', 'note', 'remarque', 'remarques']};
+const GC_CHAMPS_CLI = {nom:['nom', 'client', 'raison sociale', 'societe'], mf:['matricule fiscal', 'mf', 'matricule'], contact:['contact', 'interlocuteur'], tel:['telephone', 'tel', 'gsm', 'mobile'], email:['e mail', 'email', 'mail', 'courriel'], conditions:['conditions de paiement', 'conditions', 'paiement'], adresse:['adresse']};
+const GC_MODELE = {
+  Articles:['Référence', 'Désignation', 'Catégorie', 'Unité', 'Prix d\'achat', 'Prix de vente', 'Seuil', 'Fournisseur'],
+  Fournisseurs:['Nom', 'Contact', 'Téléphone', 'E-mail', 'Matricule fiscal', 'RIB', 'Conditions de paiement', 'Délai habituel (jours)', 'Catégories fournies', 'Adresse', 'Notes'],
+  Clients:['Nom', 'Matricule fiscal', 'Contact', 'Téléphone', 'E-mail', 'Conditions de paiement', 'Adresse']
+};
+// Modèle Excel vide à remplir : une feuille par type de fiche + un mode d'emploi.
+window.gcModeleImport = async () => {
+  try {
+    await chargerBib('xlsx');
+    const wb = XLSX.utils.book_new();
+    Object.keys(GC_MODELE).forEach(n => { const ws = XLSX.utils.aoa_to_sheet([GC_MODELE[n]]); ws['!cols'] = GC_MODELE[n].map(h => ({wch:Math.max(16, h.length + 4)})); XLSX.utils.book_append_sheet(wb, ws, n); });
+    const aide = XLSX.utils.aoa_to_sheet([['Mode d\'emploi'], [''],
+      ['1. Remplissez les feuilles Articles, Fournisseurs et Clients : une ligne par fiche, sans toucher à la première ligne (les titres).'],
+      ['2. Une feuille peut rester vide si vous n\'en avez pas besoin.'],
+      ['3. Articles : la Référence et la Désignation sont obligatoires. Le Fournisseur doit porter le même nom que dans la feuille Fournisseurs.'],
+      ['4. Fournisseurs et Clients : le Nom est obligatoire.'],
+      ['5. Prix et quantités : des chiffres seulement (exemple : 12,5).'],
+      ['6. Dans l\'application : GADH > Gestion des commandes > Catalogue et tiers > Importer, puis choisissez ce fichier.'],
+      ['7. Un aperçu s\'affiche : rien n\'est enregistré avant d\'appuyer sur « Importer ».'],
+      ['8. Une fiche qui existe déjà (même référence ou même nom) est mise à jour, pas créée en double.']]);
+    aide['!cols'] = [{wch:120}];
+    XLSX.utils.book_append_sheet(wb, aide, 'Mode d\'emploi');
+    gcTelecharger('modele-import-gadh.xlsx', XLSX.write(wb, {type:'array', bookType:'xlsx'}), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    showToast('Modèle Excel enregistré');
+  } catch(e){ console.error(e); showToast('Modèle indisponible : ' + (e.message || e) + (navigator.onLine === false ? ' (connexion internet nécessaire)' : '')); }
+};
+// Contrôle des lignes d'une feuille de tiers : type = 'four' ou 'cli'.
+function gcAnalyseTiers(type){
+  const I = gcImportCat && gcImportCat[type]; if(!I) return [];
+  const champs = Object.keys(type === 'four' ? GC_CHAMPS_FOUR : GC_CHAMPS_CLI), out = [], vus = {};
+  const existants = type === 'four' ? gcD().fournisseurs.map(f => [f.id, f]) : Object.entries(gcClients());
+  I.lignes.forEach((r, i) => {
+    const v = {}; champs.forEach(ch => { if(I.colonnes[ch] !== undefined){ const t = String(r[I.colonnes[ch]] == null ? '' : r[I.colonnes[ch]]).trim(); if(t !== '') v[ch] = t; } });
+    if(!Object.keys(v).length) return;
+    const x = {n:i + 2, v, alertes:[]}, k = GC.norm(v.nom || '');
+    if(!v.nom) x.alertes.push('Nom manquant');
+    if(v.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) x.alertes.push('E-mail invalide');
+    if(v.delai !== undefined && (isNaN(GC.num(v.delai)) || GC.num(v.delai) < 0 || /[a-z]/i.test(v.delai.replace(/jours?|j/gi, '')))) x.alertes.push('Délai invalide');
+    if(k){ if(vus[k]) x.alertes.push('Doublon de la ligne ' + vus[k]); else vus[k] = x.n; }
+    const ex = k ? existants.find(([id, f]) => f && GC.norm(f.nom) === k) : null;
+    x.id = ex ? ex[0] : ''; x.action = ex ? 'maj' : 'creation'; x.ok = !x.alertes.length;
+    out.push(x);
+  });
+  return out;
+}
 // Lecture d'un fichier Excel ou CSV → tableau de lignes (la 1re ligne = en-têtes).
 async function gcLireFichier(file){
   const nom = (file.name || '').toLowerCase();
@@ -533,9 +582,10 @@ async function gcLireFichier(file){
     return {lignes:GC.parserCSV(t), feuille:''};
   }
   await chargerBib('xlsx');
-  const wb = XLSX.read(await file.arrayBuffer(), {type:'array'}), feuille = wb.SheetNames[0];
-  const lignes = XLSX.utils.sheet_to_json(wb.Sheets[feuille], {header:1, raw:false, defval:''}).filter(r => r.some(x => String(x).trim() !== ''));
-  return {lignes, feuille};
+  const wb = XLSX.read(await file.arrayBuffer(), {type:'array'}), feuilles = {};
+  wb.SheetNames.forEach(n => { feuilles[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:false, defval:''}).filter(r => r.some(x => String(x).trim() !== '')); });
+  const feuille = wb.SheetNames[0];
+  return {lignes:feuilles[feuille], feuille, feuilles};
 }
 function gcDetecter(entetes, syn){
   const E = entetes.map(GC.norm), m = {};
@@ -546,9 +596,16 @@ function gcDetecter(entetes, syn){
 window.gcImportCatFichier = async (input) => {
   const f = input.files && input.files[0]; if(!f) return;
   try {
-    const r = await gcLireFichier(f);
-    if(r.lignes.length < 2){ showToast('Fichier vide ou sans ligne de données'); return; }
-    gcImportCat = {fichier:f.name, entetes:r.lignes[0].map(String), lignes:r.lignes.slice(1), colonnes:gcDetecter(r.lignes[0].map(String), GC_CHAMPS_CAT)};
+    const r = await gcLireFichier(f), F = r.feuilles || {};
+    // classeur complet (modèle) : feuilles « Articles », « Fournisseurs », « Clients » ; sinon la 1re feuille = articles
+    const feuilleDe = (mot) => Object.keys(F).find(n => GC.norm(n).indexOf(mot) === 0);
+    const nF = feuilleDe('fournisseur'), nC = feuilleDe('client'), nA = feuilleDe('article');
+    const art = nA ? F[nA] : ((nF || nC) && Object.keys(F).length ? (Object.keys(F).filter(n => n !== nF && n !== nC && GC.norm(n).indexOf('mode') !== 0).map(n => F[n])[0] || []) : r.lignes);
+    const tiers = (L, syn) => L && L.length > 1 ? {entetes:L[0].map(String), lignes:L.slice(1), colonnes:gcDetecter(L[0].map(String), syn)} : null;
+    const four = tiers(nF && F[nF], GC_CHAMPS_FOUR), cli = tiers(nC && F[nC], GC_CHAMPS_CLI);
+    if(art.length < 2 && !four && !cli){ showToast('Fichier vide ou sans ligne de données'); return; }
+    const ent = art.length ? art[0].map(String) : [];
+    gcImportCat = {fichier:f.name, entetes:ent, lignes:art.slice(1), colonnes:gcDetecter(ent, GC_CHAMPS_CAT), four, cli};
     nav('gc-import-catalogue');
   } catch(e){ console.error(e); showToast('Lecture impossible : ' + (e.message || e) + (navigator.onLine === false ? ' (hors ligne : utilisez un fichier CSV)' : '')); }
 };
@@ -573,23 +630,45 @@ function gcAnalyseCat(){
 }
 function renderGcImportCatalogue(main){
   const ed = gcPeut();
-  const b = gcSection(main, gcRetour('gc-catalogue', 'Importer le catalogue'), '');
+  const b = gcSection(main, gcRetour('gc-catalogue', 'Importer articles, fournisseurs et clients'), '');
   if(!ed){ b.innerHTML = '<div class="card">Consultation seulement.</div>'; return; }
   if(!gcImportCat){
     b.innerHTML = `<div class="card"><p style="margin-top:0;">Fichier Excel (.xlsx, .xls) ou CSV, avec une ligne d'en-têtes. Colonnes reconnues : ${Object.values(GC_LIB_CAT).join(', ')}.</p>
       <p class="gc-sous">Les articles existants (même référence) sont mis à jour ; les autres sont créés. Rien n'est enregistré avant votre validation.</p>
-      <input type="file" id="gc-cat-fichier" accept=".xlsx,.xls,.csv,.txt" onchange="gcImportCatFichier(this)"></div>`;
+      <input type="file" id="gc-cat-fichier" accept=".xlsx,.xls,.csv,.txt" onchange="gcImportCatFichier(this)"></div>
+      <div class="card"><h3 class="gc-h3">Tout créer avec un seul fichier Excel</h3>
+      <p style="margin:0 0 8px;">Le modèle contient trois feuilles : <b>Articles</b>, <b>Fournisseurs</b> et <b>Clients</b>. Remplissez-les (une ligne par fiche), puis choisissez le fichier ci-dessus : tout est créé en une fois.</p>
+      <button class="btn btn-primary" data-gc="modele-import" onclick="gcModeleImport()">Télécharger le modèle Excel</button></div>`;
     return;
   }
-  const I = gcImportCat, L = gcAnalyseCat(), okN = L.filter(x => x.ok).length;
-  b.innerHTML = `<div class="card"><b>${esc(I.fichier)}</b> · ${L.length} ligne(s) · <span style="color:var(--good);">${L.filter(x => x.ok && x.action === 'creation').length} création(s)</span> · ${L.filter(x => x.ok && x.action === 'maj').length} mise(s) à jour · <span style="color:var(--bad);">${L.length - okN} en erreur (ignorées)</span>
+  const I = gcImportCat, L = gcAnalyseCat(), TF = gcAnalyseTiers('four'), TC = gcAnalyseTiers('cli'), okN = L.filter(x => x.ok).length + TF.filter(x => x.ok).length + (gcPeutClients() ? TC.filter(x => x.ok).length : 0);
+  const blocTiers = (T, titre, permis) => !T.length ? '' : `<div class="card" data-gc-tiers="${titre}"><b>${titre}</b> · ${T.length} ligne(s) · <span style="color:var(--good);">${T.filter(x => x.ok && x.action === 'creation').length} création(s)</span> · ${T.filter(x => x.ok && x.action === 'maj').length} mise(s) à jour · <span style="color:var(--bad);">${T.filter(x => !x.ok).length} en erreur (ignorées)</span>${permis ? '' : '<div style="color:var(--bad);margin-top:6px;">Votre profil ne permet pas de modifier les clients : cette feuille sera ignorée.</div>'}
+    <div class="gct-scroll" style="margin-top:8px;"><table class="gct-t"><thead><tr><th>Ligne</th><th>Action</th><th>Nom</th><th>Téléphone</th><th>E-mail</th><th>Contrôle</th></tr></thead><tbody>
+    ${T.map(x => `<tr><td data-l="Ligne">${x.n}</td><td data-l="Action">${x.ok ? (x.action === 'maj' ? 'Mise à jour' : 'Création') : '<b style="color:var(--bad);">Ignorée</b>'}</td><td data-l="Nom">${esc(x.v.nom || '')}</td><td data-l="Téléphone">${esc(x.v.tel || '')}</td><td data-l="E-mail">${esc(x.v.email || '')}</td><td data-l="Contrôle">${x.alertes.length ? esc(x.alertes.join(' · ')) : 'OK'}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  b.innerHTML = blocTiers(TF, 'Fournisseurs', true) + blocTiers(TC, 'Clients', gcPeutClients()) + (!L.length && !I.entetes.length ? '' : `<div class="card"><b>${esc(I.fichier)}</b> · ${L.length} ligne(s) · <span style="color:var(--good);">${L.filter(x => x.ok && x.action === 'creation').length} création(s)</span> · ${L.filter(x => x.ok && x.action === 'maj').length} mise(s) à jour · <span style="color:var(--bad);">${L.length - okN} en erreur (ignorées)</span>
     <div class="gc-form" style="margin-top:10px;">${Object.keys(GC_CHAMPS_CAT).map(ch => `<div class="field"><label>${GC_LIB_CAT[ch]}</label><select onchange="gcImportCat.colonnes['${ch}'] = this.value === '' ? undefined : Number(this.value); nav('gc-import-catalogue')">${gcOpts(I.entetes.map((e, i) => [i, e || ('Colonne ' + (i + 1))]), I.colonnes[ch], '— Non importée —')}</select></div>`).join('')}</div></div>
     <div class="gct-scroll"><table class="gct-t"><thead><tr><th>Ligne</th><th>Action</th><th>Réf.</th><th>Désignation</th><th>Unité</th><th class="n">Prix achat</th><th class="n">Prix vente</th><th>Contrôle</th></tr></thead><tbody>
     ${L.map(x => `<tr><td data-l="Ligne">${x.n}</td><td data-l="Action">${x.ok ? (x.action === 'maj' ? 'Mise à jour' : 'Création') : '<b style="color:var(--bad);">Ignorée</b>'}</td><td data-l="Réf.">${esc(x.ref)}</td><td data-l="Désignation">${esc(x.designation)}</td><td data-l="Unité">${esc(x.unite)}</td><td class="n" data-l="Prix achat">${esc(x.prixAchat)}</td><td class="n" data-l="Prix vente">${esc(x.prixVente)}</td><td data-l="Contrôle" style="color:${x.alertes.length ? 'var(--bad)' : 'var(--good)'};">${esc(x.alertes.join(' ; ') || 'OK')}</td></tr>`).join('')}
-    </tbody></table></div>
-    <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-ghost" style="flex:1;" onclick="gcImportCat=null; nav('gc-import-catalogue')">Autre fichier</button><button class="btn btn-primary" style="flex:2;" ${okN ? '' : 'disabled'} data-gc="valider-import-catalogue" onclick="gcValiderImportCat()">Importer ${okN} article(s)</button></div>`;
+    </tbody></table></div>`) + `
+    <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-ghost" style="flex:1;" onclick="gcImportCat=null; nav('gc-import-catalogue')">Autre fichier</button><button class="btn btn-primary" style="flex:2;" ${okN ? '' : 'disabled'} data-gc="valider-import-catalogue" onclick="gcValiderImportCat()">Importer ${okN} fiche(s)</button></div>`;
 }
 window.gcValiderImportCat = () => gcOperation(() => {
+  // 1. tiers du classeur complet, avant les articles (qui s'y rattachent par le nom du fournisseur)
+  const TF = gcAnalyseTiers('four').filter(x => x.ok), TC = gcPeutClients() ? gcAnalyseTiers('cli').filter(x => x.ok) : [];
+  if(TF.length){
+    const D0 = gcD(), R0 = D0.reglages;
+    gcEnregistrer('fournisseurs', TF.map(x => { const anc = x.id ? D0.fournisseurs.find(f => f.id === x.id) : null, v = Object.assign({}, x.v);
+      if(v.delai !== undefined) v.delai = GC.num(v.delai);
+      return Object.assign({}, anc || {id:GC.nouvelId('fo'), actif:true, delai:Number(R0.delaiDefaut) || 7, conditions:''}, v); }));
+    gcCacheD = null;
+  }
+  if(TC.length){
+    const l = Object.assign({}, gcClients());
+    TC.forEach(x => { const nid = x.id || (typeof mgtId === 'function' ? mgtId('k') : GC.nouvelId('k')); l[nid] = Object.assign({}, l[nid] || {}, x.v); });
+    setJSON('gadh_fact_clients', l); gcCacheD = null;
+  }
+  const resumeTiers = (TF.length ? ', ' + TF.length + ' fournisseur(s) (' + TF.filter(x => x.action === 'creation').length + ' création(s))' : '') + (TC.length ? ', ' + TC.length + ' client(s) (' + TC.filter(x => x.action === 'creation').length + ' création(s))' : '');
   const L = gcAnalyseCat().filter(x => x.ok), D = gcD(), R = D.reglages, ctx = gcCtx(), nouveauxF = [], articles = [];
   const fourDe = (x) => {
     if(!x.fournisseur) return undefined;
@@ -609,9 +688,9 @@ window.gcValiderImportCat = () => gcOperation(() => {
     articles.push(n);
   });
   if(nouveauxF.length) gcEnregistrer('fournisseurs', nouveauxF);
-  gcEnregistrer('articles', articles);
-  gcJournal('Import', 'Catalogue', {id:'', numero:gcImportCat.fichier}, articles.length + ' article(s) (' + L.filter(x => x.action === 'creation').length + ' création(s))' + (nouveauxF.length ? ', ' + nouveauxF.length + ' fournisseur(s) créé(s)' : ''));
-  gcImportCat = null; showToast(articles.length + ' article(s) importé(s)'); nav('gc-catalogue');
+  if(articles.length) gcEnregistrer('articles', articles);
+  gcJournal('Import', 'Catalogue', {id:'', numero:gcImportCat.fichier}, articles.length + ' article(s) (' + L.filter(x => x.action === 'creation').length + ' création(s))' + (nouveauxF.length ? ', ' + nouveauxF.length + ' fournisseur(s) créé(s)' : '') + resumeTiers);
+  gcImportCat = null; showToast(articles.length + ' article(s)' + (TF.length ? ', ' + TF.length + ' fournisseur(s)' : '') + (TC.length ? ', ' + TC.length + ' client(s)' : '') + ' importé(s)'); nav('gc-catalogue');
 });
 
 // ============================================================
@@ -679,7 +758,7 @@ function gcStatsFournisseur(D, fid){
 }
 function renderGcFournisseurs(main){
   const D = gcD(), ed = gcPeut();
-  const b = gcSection(main, 'Fournisseurs', (ed ? `<button class="btn btn-primary" data-gc="nouveau-fournisseur" onclick="gcFormFournisseur()">+ Fournisseur</button>` : '') + gcBoutonsExport('fournisseurs'));
+  const b = gcSection(main, 'Fournisseurs', (ed ? `<button class="btn btn-primary" data-gc="nouveau-fournisseur" onclick="gcFormFournisseur()">+ Fournisseur</button><button class="btn btn-ghost" onclick="nav('gc-import-catalogue')">Importer</button>` : '') + gcBoutonsExport('fournisseurs'));
   const st = {}; D.fournisseurs.forEach(f => { st[f.id] = gcStatsFournisseur(D, f.id); });
   b.innerHTML = gcTable({id:'fournisseurs', lignes:() => gcD().fournisseurs, tri:0, texte:f => [f.nom, f.contact, f.tel, f.email, f.categories].join(' '),
     filtres:[{id:'statut', label:'Statut', defaut:'actifs', options:[['actifs', 'Actifs'], ['archives', 'Archivés'], ['', 'Tous']], test:(f, v) => v === 'actifs' ? !f.archive : !!f.archive}],
@@ -747,7 +826,7 @@ function renderGcClients(main){
   const D = gcD(), liv = GC.livres(D), RT = GC.rentabilite(D, {}), parC = {};
   RT.parClient.forEach(x => { parC[x.cle] = x; });
   const lignes = Object.entries(gcClients()).filter(([, c]) => c).map(([id, c]) => Object.assign({id}, c));
-  const b = gcSection(main, 'Clients', (gcPeutClients() ? `<button class="btn btn-primary" data-gc="nouveau-client" onclick="gcFormClient()">+ Client</button>` : '') + gcBoutonsExport('clients'));
+  const b = gcSection(main, 'Clients', (gcPeutClients() ? `<button class="btn btn-primary" data-gc="nouveau-client" onclick="gcFormClient()">+ Client</button>${gcPeut() ? `<button class="btn btn-ghost" onclick="nav('gc-import-catalogue')">Importer</button>` : ''}` : '') + gcBoutonsExport('clients'));
   b.innerHTML = `<div class="gc-sous" style="margin:0 0 8px;">Clients communs avec la Facturation GADH (une seule liste, pas de doublon).</div>` + gcTable({id:'clients', lignes, tri:0, texte:c => [c.nom, c.mf, c.email, c.tel, c.contact].join(' '),
     colonnes:[{titre:'Client', val:c => c.nom || ''}, {titre:'Matricule fiscal', val:c => c.mf || ''}, {titre:'Contact', val:c => [c.contact, c.tel, c.email].filter(Boolean).join(' · ')},
       {titre:'Commandes en cours', num:true, tri:c => D.cmdC.filter(x => x.clientId === c.id && GC.CMDC_OUVERTE[GC.statutCmdC(x, liv).cle]).length, html:c => String(D.cmdC.filter(x => x.clientId === c.id && GC.CMDC_OUVERTE[GC.statutCmdC(x, liv).cle]).length)},
