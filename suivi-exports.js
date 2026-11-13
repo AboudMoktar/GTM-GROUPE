@@ -671,8 +671,9 @@ function colisageHtml(e, colis, sansLot){
   var corps = colis.map(function(c){
     var cles = [], par = {};
     c.items.forEach(function(x){ var k = sansLot ? x.lib : x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
-    return cles.map(function(k, i){ var p = par[k], s = 0; tailles.forEach(function(t){ s += p.q[t] || 0; });
-      return '<tr>' + (i === 0 ? '<td rowspan="' + cles.length + '">' + c.n + '</td>' : '') + '<td>' + hx(sansLot ? "PERCKO" : p.lot) + '</td><td class="gauche">' + hx(nomDoc(p.lib)) + '</td>' + tailles.map(function(t){ return "<td>" + (p.q[t] || "") + "</td>"; }).join("") + '<td><b>' + s + '</b></td></tr>'; }).join("");
+    var totC = 0; cles.forEach(function(k){ tailles.forEach(function(t){ totC += par[k].q[t] || 0; }); });
+    return cles.map(function(k, i){ var p = par[k];
+      return '<tr>' + (i === 0 ? '<td rowspan="' + cles.length + '">' + c.n + '</td>' : '') + '<td>' + hx(sansLot ? "PERCKO" : p.lot) + '</td><td class="gauche">' + hx(nomDoc(p.lib)) + '</td>' + tailles.map(function(t){ return "<td>" + (p.q[t] || "") + "</td>"; }).join("") + (i === 0 ? '<td rowspan="' + cles.length + '"><b>' + totC + '</b></td>' : '') + '</tr>'; }).join("");
   }).join("");
   return '<div class="col-entete"><div>Expéditeur : <b>' + hx(ex.nom) + '</b>' + ex.lignes.map(function(l){ return "<br>" + hx(l); }).join("") + ' <b>' + hx(ex.pays) + '</b><br>Date d\'export : le ' + dmyL(e.d) + '</div><div>' + destHtml(e.cl) + '</div></div>' +
     '<div class="col-info">Export N°' + e.n + ' · ' + hx(e.nat || e.cl) + (sansLot ? '' : ' · commandes ' + hx(lotsExport(e).join(", "))) + '</div>' +
@@ -753,12 +754,13 @@ function colisageGridX(e, colis, sansLot){
   colis.forEach(function(c){
     var cles = [], par = {};
     c.items.forEach(function(x){ var k = sansLot ? x.lib : x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
-    var top = r;
-    cles.forEach(function(k, j){ var p = par[k], s = 0;
+    var top = r, totC = 0; cles.forEach(function(k){ tailles.forEach(function(t){ totC += par[k].q[t] || 0; }); });
+    cles.forEach(function(k, j){ var p = par[k];
       gset(g, r, 0, j ? "" : String(c.n), Cc); gset(g, r, 1, sansLot ? "PERCKO" : p.lot, Cc); gset(g, r, 2, nomDoc(p.lib), {sz:10, al:"l", bd:"t"});
-      tailles.forEach(function(t, kk){ var q = p.q[t] || 0; s += q; gset(g, r, 3 + kk, q || "", Cc); });
-      gset(g, r, last, s, {b:1, sz:10, al:"c", bd:"t"}); r++; });
-    if (cles.length > 1) gmerge(g, top, 0, r - 1, 0);
+      tailles.forEach(function(t, kk){ var q = p.q[t] || 0; gset(g, r, 3 + kk, q || "", Cc); });
+      /* total du carton (une seule case pour tout le carton) */
+      gset(g, r, last, j ? "" : totC, {b:1, sz:10, al:"c", bd:"t"}); r++; });
+    if (cles.length > 1){ gmerge(g, top, 0, r - 1, 0); gmerge(g, top, last, r - 1, last); }
   });
   var T = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"};
   gset(g, r, 0, "Total t-shirt pour export", {b:1, sz:10, al:"l", bd:"t", bg:"EEEEEE"}); gset(g, r, 1, "", T); gset(g, r, 2, "", T); gmerge(g, r, 0, r, 2);

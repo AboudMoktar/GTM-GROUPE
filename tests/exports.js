@@ -81,6 +81,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['reste à emballer de la commande à jour', await p.evaluate(() => dispoRetour('PK202610', 'A_S', null) === 0 && dispoRetour('PK202610', 'A_M', null) === 0)]);
   // 6. documents
   const html = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e); return {col: pkExports.colisageHtml(e, c), tot: pkExports.totalHtml(e, c), D: pkExports.totalDonneesExport(e, c)}; });
+  const tc = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e), multi = c.find(x => new Set(x.items.map(i => i.lib + '|' + i.lot)).size > 1);
+    if (!multi) return {ok: false, raison: 'aucun carton à plusieurs lignes'};
+    const g = pkExports.colisageGridX(e, c), last = g.cols.length - 1, row = g.rows.findIndex(rw => rw && rw.cells && rw.cells[0] && String(rw.cells[0].v) === String(multi.n) && rw.cells[2] && rw.cells[2].v);
+    const m = g.merges.find(x => x[0] === row && x[1] === last && x[3] === last), h = pkExports.colisageHtml(e, c);
+    return {ok: row >= 0 && g.rows[row].cells[last].v === multi.q && !!m && m[2] > row, html: new RegExp('<td rowspan="\\d+"><b>' + multi.q + '</b></td>').test(h)}; });
+  r.push(['colisage : total par carton (une case pour tout le carton, écran/PDF/Excel et HTML)', tc.ok && tc.html]);
+  const fe = await p.evaluate(() => { const st = [...document.querySelectorAll('style')].map(x => x.textContent).join(''); return /\.etq-dest\{flex:0 1 auto;margin-left:auto/.test(st) || /etq-dest\{flex:0 1 auto;margin-left:auto/.test(document.documentElement.innerHTML); });
+  r.push(['fiches cartons : destinataire calé à droite', fe]);
   r.push(['colisage : commande de chaque ligne', /PK202610/.test(html.col) && /PK202612/.test(html.col) && /Date d'export : le 07\/11\/2026/.test(html.col)]);
   const gt = await p.evaluate(() => { const e = S.exports[0], c = pkExports.colisExport(e), tot = (g) => { const r = g.rows[g.rows.length - 1]; return [r.cells[0].v, r.cells[3].v]; };
     const gA = pkExports.totalCommandeGrid(e, c, 'PK202610'), head = gA.rows[3].cells.map(x => x.v).join('|'), lyneS = gA.rows.find(r => r.cells[1] && r.cells[1].v === 'LYNE PRO homme gris' && r.cells[2].v === 'S');
