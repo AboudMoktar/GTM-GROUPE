@@ -153,7 +153,7 @@ window.renderGcEdition = function(main){
     const a = gcArticle(l.articleId), pal = a && t !== 'achat' ? GC.prixPalier(a, qe[l.articleId]) : null;
     return `<tr>
       <td data-l="Article" style="min-width:180px;">${simple
-        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">`
+        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">${!l.articleId && l.designation ? `<div class="gc-sous" data-gc="article-nouveau" style="margin-top:3px;color:var(--warn, #b45309);">Nouvel article : il sera ajouté au catalogue.</div>` : ''}`
         : `<select id="gel-art-${i}" onchange="gcEditArticle(${i})">${optsArt(l.articleId)}</select>
         <input id="gel-designation-${i}" placeholder="Désignation" value="${gcAttr(l.designation)}" style="margin-top:4px;" onchange="gcEditChange(false)">`}</td>
       <td data-l="Unité" class="gc-av"><input id="gel-unite-${i}" value="${gcAttr(l.unite)}" style="max-width:90px;" onchange="gcEditChange(false)"></td>
@@ -177,7 +177,7 @@ window.renderGcEdition = function(main){
     <div class="card"><div class="gc-form">${tiers}${champs}</div></div>
     <div class="card"><h3 class="gc-h3">Articles</h3><div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Article</th><th class="gc-av">Unité</th><th>Quantité</th><th>Prix unitaire HT</th>${t === 'achat' ? '' : '<th class="gc-av">Remise %</th>'}<th class="n">Montant HT</th><th></th></tr></thead><tbody>${lignes}</tbody></table></div>
       <button class="btn btn-ghost" style="margin-top:8px;" data-gc="ajouter-ligne" onclick="gcEditAjouterLigne()">+ Ligne</button>
-      ${simple ? '<div class="gc-sous" style="margin-top:6px;">Tapez les premières lettres : l\'article connu est proposé avec son prix. Un article inconnu reste une ligne libre.</div>' : ''}
+      ${simple ? '<div class="gc-sous" style="margin-top:6px;">Tapez les premières lettres : l\'article connu est proposé avec son prix. Un article inconnu est ajouté au catalogue à l\'enregistrement.</div>' : ''}
       ${t !== 'achat' ? '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit les paliers de l\'article, calculés sur la quantité totale engagée dans ce document (cochez « prix manuel » pour le fixer).</div>' : '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit le tarif négocié valable du fournisseur (quantité, date), sinon le prix d\'achat de l\'article.</div>'}</div>
     ${ech}
     <div class="card"><div class="gc-av"><div class="gc-form">
@@ -234,6 +234,17 @@ window.gcSauverDoc = () => gcOperation(() => {
   if(aCreer){
     if(t === 'achat'){ const f = {id:GC.nouvelId('fo'), nom:nomNouveau, actif:true, delai:Number(gcReglages().delaiDefaut) || 7, conditions:''}; gcEnregistrer('fournisseurs', f); gcJournal('Création', 'Fournisseur', f); d.fournisseurId = f.id; }
     else { const l = Object.assign({}, gcClients()), nid = typeof mgtId === 'function' ? mgtId('k') : GC.nouvelId('k'); l[nid] = {nom:nomNouveau}; setJSON('gadh_fact_clients', l); gcCacheD = null; gcJournal('Création', 'Client', {id:nid, numero:nomNouveau}); d.clientId = nid; }
+  }
+  // Saisie simple : un article tapé qui n'existe pas est ajouté au catalogue (désignation, unité, prix saisi).
+  if(gcSaisieSimple()){
+    const crees = [], tous = D.articles.slice();
+    d.lignes.forEach(l => {
+      if(l.articleId) return;
+      const k = GC.norm(l.designation); let a = tous.find(x => !x.archive && GC.norm(x.designation) === k);
+      if(!a){ a = {id:GC.nouvelId('ar'), ref:'', designation:l.designation, unite:l.unite || 'pièce', suiviStock:true, actif:true, paliers:[], histoPrix:[]}; a[t === 'achat' ? 'prixAchat' : 'prixVente'] = GC.num(l.pu); crees.push(a); tous.push(a); }
+      l.articleId = a.id; if(!l.unite) l.unite = a.unite || ''; l.puManuel = true;
+    });
+    if(crees.length){ gcEnregistrer('articles', crees); crees.forEach(a => gcJournal('Création', 'Article', {id:a.id, numero:a.designation}, 'créé depuis une saisie simple')); }
   }
   if(gcEdit.nouveau) d.numero = GC.numeroSuivant(D[T.cle], T.prefixe, d.date);
   if(t === 'achat') d.lignes.forEach(l => { const a = gcArticle(l.articleId); if(a && !l.ref) l.ref = a.ref || ''; });

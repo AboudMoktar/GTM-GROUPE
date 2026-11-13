@@ -34,7 +34,7 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   await p.click('[data-gc="ajouter-ligne"]');
   await p.fill('#gel-designation-1', 'Service exemple'); await p.dispatchEvent('#gel-designation-1', 'change');
   await p.fill('#gel-pu-1', '15'); await p.dispatchEvent('#gel-pu-1', 'change');
-  ok(await p.evaluate(() => gcEdit.doc.lignes[1].articleId === '' && gcEdit.doc.lignes[1].designation === 'Service exemple'), 'article inconnu : ligne libre');
+  ok(await p.locator('[data-gc="article-nouveau"]').count() === 1 && await p.evaluate(() => gcD().articles.length) === 1, 'article inconnu : création annoncée, rien créé avant l\'enregistrement');
   // client inconnu → annoncé, créé à l'enregistrement
   await p.fill('#ge-tiers-nom', 'Client Tout Neuf'); await p.dispatchEvent('#ge-tiers-nom', 'change');
   ok(await p.locator('[data-gc="tiers-nouveau"]').count() === 1, 'client inconnu : création annoncée');
@@ -43,6 +43,8 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   const r = await p.evaluate(() => { const D = gcD(), c = D.cmdC[0], cl = gcClients(); return {n:D.cmdC.length, client:c && (cl[c.clientId] || {}).nom, nbCli:Object.keys(cl).length, lignes:c && c.lignes.length, ht:c && GC.totaux(c).ht, numero:c && c.numero, tab:activeTab}; });
   ok(r.n === 1 && r.client === 'Client Tout Neuf' && r.nbCli === 2, 'commande enregistrée, nouveau client créé avec son nom');
   ok(r.lignes === 2 && Math.abs(r.ht - 155) < 1e-6 && !!r.numero, 'lignes et total corrects (20 × 7 + 1 × 15 = 155), numéro attribué');
+  const na = await p.evaluate(() => { const D = gcD(), a = D.articles.find(x => x.designation === 'Service exemple'), c = D.cmdC[0]; return {n:D.articles.length, pv:a && a.prixVente, lie:a && c.lignes[1].articleId === a.id, pu:c.lignes[1].pu}; });
+  ok(na.n === 2 && na.pv === 15 && na.lie && na.pu === 15, 'article inconnu : ajouté au catalogue avec le prix saisi et rattaché à la ligne');
   // client existant tapé (casse différente) → pas de doublon
   await p.evaluate(() => gcNouveauDoc('commande'));
   await p.fill('#ge-tiers-nom', 'client exemple un'); await p.dispatchEvent('#ge-tiers-nom', 'change');
@@ -70,6 +72,12 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   await p.click('[data-gc="enregistrer-doc"]'); await p.waitForTimeout(300);
   const a = await p.evaluate(() => { const D = gcD(), c = D.cmdF[0]; return {n:D.cmdF.length, four:c && (D.fournisseurs.find(f => f.id === c.fournisseurId) || {}).nom, pu:c && c.lignes[0].pu, art:c && c.lignes[0].articleId}; });
   ok(a.n === 1 && a.four === 'Fournisseur Tout Neuf' && a.art === 'ar1' && a.pu === 4.5, 'commande fournisseur : fournisseur créé, article reconnu au prix d\'achat');
+  // même nom retapé (casse et accents différents) : reconnu, pas de doublon au catalogue
+  await p.evaluate(() => gcNouveauDoc('commande', {clientId:'k1'}));
+  await p.fill('#gel-designation-0', 'SERVICE  EXEMPLE'); await p.dispatchEvent('#gel-designation-0', 'change');
+  ok(await p.locator('[data-gc="article-nouveau"]').count() === 0 && await p.evaluate(() => gcEdit.doc.lignes[0].pu === 15), 'article déjà créé : reconnu avec son prix, pas de doublon');
+  await p.click('[data-gc="enregistrer-doc"]'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => gcD().articles.length) === 2, 'catalogue : toujours 2 articles');
   // téléphone
   await p.setViewportSize({width:390, height:844});
   await p.evaluate(() => gcNouveauDoc('commande'));
