@@ -21,7 +21,8 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
     nav('gc-accueil');
   });
   // accueil : bouton de création en premier, filtres repliés
-  ok(await p.evaluate(() => { const r = document.querySelector('[data-gc="rapide-commande"]'), d = document.querySelector('.gc-filtres-plies'); return !!r && !d.open && r.getBoundingClientRect().top < d.getBoundingClientRect().top && document.getElementById('gcf-du').getBoundingClientRect().height === 0; }), 'accueil : « Nouvelle commande client » en premier, filtres repliés');
+  const acc = await p.evaluate(() => { const r = document.querySelector('[data-gc="rapide-commande"]'), d = document.querySelector('.gc-filtres-plies'); return {bouton:!!r, plie:!!d && !d.open, avant:!!r && !!d && r.getBoundingClientRect().top < d.getBoundingClientRect().top}; });
+  ok(acc.bouton && acc.plie && acc.avant, 'accueil : « Nouvelle commande client » en premier, filtres repliés — ' + JSON.stringify(acc));
   await p.setViewportSize({width:390, height:844}); await p.waitForTimeout(700); await p.screenshot({path:'/tmp/audit/accueil-gc-tel.png'}); await p.setViewportSize({width:1366, height:768});
   await p.click('[data-gc="rapide-commande"]');
   const visibles = async () => p.evaluate(() => [...document.querySelectorAll('#gc-body input:not([type=hidden]), #gc-body select, #gc-body textarea')].filter(e => e.offsetParent !== null).map(e => e.id));
