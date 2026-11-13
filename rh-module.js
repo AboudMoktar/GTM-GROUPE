@@ -1206,15 +1206,15 @@ function renderRHSynthese(container){
   const emps = activeEmployees();
 
   container.innerHTML = `
-    <div class="card" style="padding:10px 12px;">
-      <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div class="card syn-filtres" style="padding:10px 12px;">
+      <div class="syn-periodes" style="display:flex;gap:6px;margin-bottom:8px;">
         ${[['jour','Jour'],['semaine','7 jours'],['mois','Ce mois'],['perso','Personnalisé']].map(([k,l]) =>
           `<button class="btn ${rhStatsPeriod===k?'btn-primary':'btn-ghost'}" style="flex:1;padding:7px 4px;font-size:11.5px;" onclick="rhStatsPeriod='${k}'; nav('rh-synthese')">${l}</button>`
         ).join('')}
       </div>
       ${rhStatsPeriod==='jour' ? `<input type="date" value="${rhStatsDate||getTodayISO()}" max="${getTodayISO()}" onchange="rhStatsDate=this.value; nav('rh-synthese')">` : ''}
       ${rhStatsPeriod==='mois' ? `<input type="month" value="${rhMonthKey||currentMonthKey()}" onchange="rhMonthKey=this.value; nav('rh-synthese')">` : ''}
-      ${rhStatsPeriod==='perso' ? `<div style="display:flex;gap:8px;">
+      ${rhStatsPeriod==='perso' ? `<div class="syn-perso" style="display:flex;gap:8px;">
         <div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">Du</label><input type="date" value="${rhStatsStart||getTodayISO()}" max="${getTodayISO()}" onchange="rhStatsStart=this.value; nav('rh-synthese')"></div>
         <div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">Au</label><input type="date" value="${rhStatsEnd||getTodayISO()}" max="${getTodayISO()}" onchange="rhStatsEnd=this.value; nav('rh-synthese')"></div>
       </div>` : ''}
@@ -1222,7 +1222,7 @@ function renderRHSynthese(container){
         <option value="">Tous les employés</option>
         ${emps.map(([id,e]) => `<option value="${id}" ${rhStatsEmpId===id?'selected':''}>${esc(e.nom)}</option>`).join('')}
       </select></div>
-      <p style="font-size:10.5px;color:var(--ink-faint);margin:8px 0 0;">Période : ${rhStatsPeriodLabel()}</p>
+      <p class="syn-note" style="font-size:10.5px;color:var(--ink-faint);margin:8px 0 0;">Période : ${rhStatsPeriodLabel()}</p>
       ${(currentUser.role==='admin' && rhStatsPeriod==='mois') ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="exportRHReport('${rhMonthKey||currentMonthKey()}')">${ICONS.idBadge} Télécharger le rapport (Excel, mois en cours)</button>` : ''}
     </div>
 
@@ -1248,6 +1248,7 @@ function rhStatsGlobalHTML(emps, start, end){
   const nbJoursPeriode = Math.max(1, rows[0]?rows[0].s.days.length:1);
   const tauxPresenceMoy = emps.length>0 ? Math.round(tot.present/(emps.length*nbJoursPeriode)*100) : 0;
   return `
+    <div class="syn-kpis">
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div class="kpi-mini tint-green"><div class="kpi-mini-val">${tot.present}</div><div class="kpi-mini-lbl">Présences (total)</div></div>
       <div class="kpi-mini"><div class="kpi-mini-val">${tot.retard}</div><div class="kpi-mini-lbl">Jours en retard</div></div>
@@ -1258,9 +1259,11 @@ function rhStatsGlobalHTML(emps, start, end){
       <div class="kpi-mini tint-gold"><div class="kpi-mini-val">${tot.heures.toFixed(1)}h</div><div class="kpi-mini-lbl">Heures travaillées</div></div>
       <div class="kpi-mini"><div class="kpi-mini-val">${tauxPresenceMoy}%</div><div class="kpi-mini-lbl">Taux présence moy.</div></div>
     </div>
-    ${monthBase!=null ? `<div class="kpi-mini-grid" style="grid-template-columns:1fr;">
+    ${monthBase!=null ? `<div class="kpi-mini-grid syn-seul" style="grid-template-columns:1fr;">
       <div class="kpi-mini" style="cursor:default;"><div class="kpi-mini-val" style="color:${totSupp>0?'var(--warn)':'inherit'};">${totSupp.toFixed(1)}h</div><div class="kpi-mini-lbl">Heures supplémentaires (total, mois)</div></div>
     </div>` : ''}
+    </div>
+
 
     <div class="card">
       <h3 style="margin-top:0;font-size:13px;">Taux de présence par employé</h3>
@@ -1280,16 +1283,17 @@ function rhStatsGlobalHTML(emps, start, end){
       </div>
     </div>
 
-    <div class="card">
+    <div class="card syn-detail">
       <h3 style="margin-top:0;font-size:13px;">Détail par employé</h3>
       ${rows.map(r => `
         <div class="session-row" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;" onclick="rhFicheEmpId='${r.id}'; nav('rh-fiche')">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="syn-nom" style="display:flex;justify-content:space-between;align-items:center;">
             <b style="font-size:13px;">${esc(r.e.nom)}</b>
-            <span style="font-family:var(--mono);font-weight:800;font-size:13px;">${r.s.heuresTravaillees.toFixed(1)}h</span>
+            <span class="syn-heures-tel" style="font-family:var(--mono);font-weight:800;font-size:13px;">${r.s.heuresTravaillees.toFixed(1)}h</span>
           </div>
-          ${r.e.departement ? `<div style="font-size:10px;color:var(--ink-faint);">${esc(r.e.departement)}</div>` : ''}
-          <div style="font-size:10.5px;color:var(--ink-soft);">Présences ${r.s.counts.present||0} · Retards ${r.s.joursRetard} · Autorisations ${r.s.nbAutorisations} · Abs. justif. ${r.s.absencesJustifiees} · Abs. non justif. ${r.s.absencesNonJustifiees}</div>
+          <div class="syn-dep" style="font-size:10px;color:var(--ink-faint);">${esc(r.e.departement||'')}</div>
+          <div class="syn-heures syn-heures-pc" style="font-family:var(--mono);font-weight:800;font-size:13px;">${r.s.heuresTravaillees.toFixed(1)}h</div>
+          <div class="syn-chiffres" style="font-size:10.5px;color:var(--ink-soft);">Présences ${r.s.counts.present||0} · Retards ${r.s.joursRetard} · Autorisations ${r.s.nbAutorisations} · Abs. justif. ${r.s.absencesJustifiees} · Abs. non justif. ${r.s.absencesNonJustifiees}</div>
         </div>
       `).join('')}
     </div>

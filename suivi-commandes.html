@@ -475,6 +475,49 @@ table.sheet td.mdl{font-size:12px}
   nav button.on::before{top:auto;bottom:0;left:8px;right:8px;height:2px;border-radius:2px 2px 0 0}
   .sx-bar{margin:12px 0 0;border-radius:var(--radius)}
 }
+/* ===== Affichage multiplateforme (présentation seule ; compatible Chrome 109 / Windows 7) ===== */
+/* les onglets ne débordent plus : ils se resserrent, puis défilent si la place manque encore */
+#tabs{overflow-x:auto;scrollbar-width:thin}
+@media (min-width:1024px) and (max-width:1279px){
+  #tabs{padding:0 16px;gap:0}
+  nav button,nav.n8 button{padding:12px 9px;gap:6px;font-size:13.5px}
+  header{padding:12px 20px}
+  #view{padding:18px 20px 32px}
+}
+/* ordinateur : pas de texte sous 12 px dans les tableaux de saisie et les documents */
+@media (min-width:1024px){
+  table.sheet th{font-size:12px}
+  .dc-f{font-size:12px}
+  .kp span,.kp small{font-size:12px}
+  .ph-frise .ph-et span,.ph-tout{font-size:12px}
+}
+/* grands écrans : la largeur sert au contenu et le texte grandit */
+@media (min-width:1500px){
+  #view>*{max-width:1640px}
+  table{font-size:15px}
+  th{font-size:13px}
+  nav button,nav.n8 button{font-size:15px;padding:13px 16px}
+}
+@media (min-width:1900px){
+  #view>*{max-width:1960px}
+  body{font-size:16px}
+  table{font-size:16px}
+  th{font-size:14px}
+  nav button,nav.n8 button{font-size:16px;padding:14px 18px}
+  .pill,.bar .bp{font-size:13.5px}
+}
+/* grilles « Excel » (fiche de commande, saisies) : agrandies pour occuper l'écran.
+   zoom est reconnu par Chrome (toutes versions, dont 109), Edge et Safari ; un navigateur
+   qui ne le connaît pas (Firefox ESR 115) garde simplement la taille d'origine. */
+@supports (zoom:1.2){
+  @media (min-width:1320px){ .xlwrap > table.xl{zoom:1.12} }
+  @media (min-width:1420px){ .xlwrap > table.xl{zoom:1.22} }
+  @media (min-width:1570px){ .xlwrap > table.xl{zoom:1.35} }
+  @media (min-width:1670px){ .xlwrap > table.xl{zoom:1.45} }
+  @media (min-width:2020px){ .xlwrap > table.xl{zoom:1.75} }
+  @media (min-width:2250px){ .xlwrap > table.xl{zoom:1.95} }
+}
+@media print{ .xlwrap > table.xl{zoom:1 !important} }
 </style>
 <script>
 (function(){var r=document.documentElement;function sync(){try{var P=window.parent.document.documentElement;var w=P.getAttribute('data-soc')||'';if((r.getAttribute('data-soc')||'')!==w){w?r.setAttribute('data-soc',w):r.removeAttribute('data-soc');}var t=P.getAttribute('data-theme');if(t&&r.getAttribute('data-theme')!==t)r.setAttribute('data-theme',t);}catch(e){}}sync();setInterval(sync,500);})();
