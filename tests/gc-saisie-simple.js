@@ -18,8 +18,12 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
     activeSociete = 'gadh'; activeModule = 'gadh-commandes'; renderShell();
     gcEnregistrer('articles', [{id:'ar1', ref:'ART-001', designation:'Tissu maille exemple', unite:'m', prixVente:7, prixAchat:4.5, actif:true, suiviStock:true, paliers:[], histoPrix:[]}]);
     setJSON('gadh_fact_clients', {k1:{nom:'Client Exemple Un'}}); gcCacheD = null;
-    gcNouveauDoc('commande');
+    nav('gc-accueil');
   });
+  // accueil : bouton de création en premier, filtres repliés
+  ok(await p.evaluate(() => { const r = document.querySelector('[data-gc="rapide-commande"]'), d = document.querySelector('.gc-filtres-plies'); return !!r && !d.open && r.getBoundingClientRect().top < d.getBoundingClientRect().top && document.getElementById('gcf-du').getBoundingClientRect().height === 0; }), 'accueil : « Nouvelle commande client » en premier, filtres repliés');
+  await p.setViewportSize({width:390, height:844}); await p.waitForTimeout(700); await p.screenshot({path:'/tmp/audit/accueil-gc-tel.png'}); await p.setViewportSize({width:1366, height:768});
+  await p.click('[data-gc="rapide-commande"]');
   const visibles = async () => p.evaluate(() => [...document.querySelectorAll('#gc-body input:not([type=hidden]), #gc-body select, #gc-body textarea')].filter(e => e.offsetParent !== null).map(e => e.id));
   let v = await visibles();
   ok(await p.evaluate(() => document.getElementById('gc-body').classList.contains('gc-simple')), 'la saisie simple est l\'écran par défaut');

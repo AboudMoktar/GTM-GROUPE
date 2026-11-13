@@ -244,6 +244,10 @@ function gcStyle(){
   .gc-chiffre b{font-size:16px;}
   .gc-chiffre.bad b{color:var(--bad);} .gc-chiffre.warn b{color:var(--warn);} .gc-chiffre.good b{color:var(--good);}
   .gc-simple .gc-av{display:none !important;}
+  .gc-rapide{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .gc-rapide .btn{flex:1 1 200px;min-height:52px;font-size:15px;}
+  .gc-rapide .btn-primary{flex:2 1 260px;font-size:16px;}
+  .gc-filtres-plies > summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink-soft);list-style-position:inside;}
   .gc-mode{display:inline-flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
   .gc-mode button{border:0;background:var(--surface);color:var(--ink-soft);padding:9px 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
   .gc-mode button.on{background:var(--accent, #0f766e);color:#fff;}
@@ -345,15 +349,20 @@ function renderGcAccueil(main){
   const mois = I.RT.parMois.slice(-6).map(x => ({lib:x.cle.split('-').reverse().join('/'), ca:x.ca, cout:x.cout, marge:x.marge}));
   const topA = I.RT.parArticle.slice().sort((a, b) => b.marge - a.marge).slice(0, 6).map(x => ({lib:x.libelle, marge:x.marge}));
   const topC = I.RT.parClient.slice(0, 6).map(x => ({lib:gcNomClient(x.cle), ca:x.ca}));
+  const defaut = gcFiltresDefaut(), filtre = ['du', 'au', 'clientId', 'fournisseurId', 'articleId', 'statut'].some(k => (F[k] || '') !== (defaut[k] || ''));
   b.innerHTML = `
-    <div class="card"><div class="gc-filtres">
+    ${gcPeut() ? `<div class="gc-rapide" data-gc="actions-rapides">
+      <button class="btn btn-primary" data-gc="rapide-commande" onclick="gcNouveauDoc('commande')">+ Nouvelle commande client</button>
+      <button class="btn btn-ghost" data-gc="rapide-achat" onclick="gcNouveauDoc('achat')">+ Commande fournisseur</button>
+      <button class="btn btn-ghost" data-gc="rapide-offre" onclick="gcNouveauDoc('offre')">+ Offre</button></div>` : ''}
+    <details class="card gc-filtres-plies" ${filtre ? 'open' : ''}><summary>Filtrer le tableau de bord${filtre ? ' · filtre actif' : ''}</summary><div class="gc-filtres" style="margin-top:10px;">
       <label>Du<input type="date" id="gcf-du" value="${F.du}"></label><label>Au<input type="date" id="gcf-au" value="${F.au}"></label>
       <label>Client<select id="gcf-client">${gcOptsClients(F.clientId, 'Tous')}</select></label>
       <label>Fournisseur<select id="gcf-four">${gcOptsFour(F.fournisseurId, 'Tous')}</select></label>
       <label>Article<select id="gcf-art">${gcOptsArticles(F.articleId, 'Tous')}</select></label>
       <label>Statut des commandes<select id="gcf-statut">${gcOpts([['confirmee', 'À livrer'], ['partielle', 'Livrées en partie'], ['retard', 'En retard']], F.statut, 'Toutes en cours')}</select></label>
       <button class="btn btn-primary" onclick="gcAccueilFiltrer()">Appliquer</button><button class="btn btn-ghost" onclick="gcFiltresAccueil=null; nav('gc-accueil')">Réinitialiser</button>
-    </div></div>
+    </div></details>
     <div class="dd-boites">
       ${ddBoite(I.cmdOuv.length, 'Commandes clients en cours · ' + gcE(I.cmdOuv.reduce((s, c) => s + I.resteCmd(c), 0)) + ' à livrer', I.cmdOuv.length ? 'warn' : 'nul', lien('gc-commandes'))}
       ${ddBoite(I.cfOuv.length, 'Commandes fournisseurs en cours' + (I.cfRetard.length ? ' · ' + I.cfRetard.length + ' en retard' : ''), I.cfRetard.length ? 'bad' : 'nul', lien('gc-achats'))}
