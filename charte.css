@@ -242,7 +242,7 @@ html[data-theme="dark"] .login-wrap{background:#0B1220 !important;}
 .soc-fleche{color:var(--ink-faint) !important;font-size:22px !important;}
 /* Écrans de choix (société, module) — 13/11/2026 : carte plus étroite, lignes plus serrées, texte plus foncé et plus lisible
    (écrans anciens ou peu contrastés) */
-.login-wrap .login-card.choix{max-width:470px !important;padding:22px 20px 18px !important;border-color:#aab4c3 !important;}
+.login-wrap .login-card.choix{max-width:560px !important;padding:24px 26px 20px !important;border-color:#aab4c3 !important;}
 .choix .choix-liste{display:flex;flex-direction:column;gap:8px;}
 .choix h2{font-size:18px !important;font-weight:800 !important;color:#0b1220 !important;margin:0 0 2px !important;}
 .choix .choix-qui{text-align:center;color:#334155;font-size:13px;font-weight:600;margin:0 0 14px;}
