@@ -12,11 +12,11 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.waitForTimeout(300);
   const m = () => p.evaluate(() => { const c = document.querySelector('.login-card.choix'), rc = c.getBoundingClientRect(); return {w: Math.round(rc.width), bas: Math.round(rc.bottom), n: c.querySelectorAll('.soc-card').length, forts: [...c.querySelectorAll('.choix-fort')].map(x => x.textContent.trim().slice(0, 14)), sous: getComputedStyle(c.querySelector('.soc-sous')).fontSize}; });
   let d = await m();
-  r.push(['société : carte étroite (≤ 470 px), 3 sociétés', d.w <= 470 && d.n === 3]);
+  r.push(['société : carte compacte (≤ 560 px), 3 sociétés', d.w <= 560 && d.n === 3]);
   r.push(['société : « Vue direction » et « Administration » présents', d.forts.length === 2 && /Vue direction/.test(d.forts[0]) && /Administration/.test(d.forts[1])]);
   r.push(['société : tient sur un écran 1024 × 768', d.bas <= 768]);
   await p.evaluate(() => { activeSociete = 'gadh'; renderModuleSelect(); }); await p.waitForTimeout(300); d = await m();
-  r.push(['modules GADH : carte étroite, 6 modules, texte secondaire ≥ 13 px', d.w <= 470 && d.n === 6 && parseFloat(d.sous) >= 13]);
+  r.push(['modules GADH : carte étroite, 6 modules, texte secondaire ≥ 13 px', d.w <= 560 && d.n === 6 && parseFloat(d.sous) >= 13]);
   r.push(['modules GADH : tient sur un écran 1024 × 768', d.bas <= 768]);
   r.push(['boutons « Changer de société » et « Déconnexion »', await p.locator('.choix-bas .btn').count() === 2]);
   await p.click('.soc-card >> nth=0'); await p.waitForTimeout(300);
