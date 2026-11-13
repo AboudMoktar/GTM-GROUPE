@@ -49,11 +49,15 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await cellule('PHARMA_HOMME COL V NOIR', 'M').fill('150'); await cellule('PHARMA_HOMME COL V NOIR', 'M').press('Enter');
   await cellule('PHARMA_HOMME COL V NOIR', 'L').fill('0'); await cellule('PHARMA_HOMME COL V NOIR', 'L').press('Enter'); await p.waitForTimeout(100);
   await p.fill('#mLiv', '2027-02-15'); await p.dispatchEvent('#mLiv', 'change');
+  r.push(['date de saisie : champ présent, aujourd\'hui par défaut, pas de futur', await p.evaluate(() => { const i = document.getElementById('mRec'); return !!i && i.value === today() && i.max === today(); })]);
+  await p.fill('#mRec', '2026-01-05'); await p.dispatchEvent('#mRec', 'change');
   await p.click('.cm-barre button:has-text("Valider")'); await p.waitForTimeout(150);
   const m2 = await txt('.sx-modal');
-  r.push(['message : chaque modification (avant → après), total, livraison', /3 modification\(s\) · total 290 → 240 pièces/.test(m2) && /120 → 150 \(\+30\)/.test(m2) && /80 → 0 \(-80\)/.test(m2) && /Livraison prévue : — → 15\/02\/27/.test(m2)]);
+  r.push(['message : date de saisie modifiée', /Date de saisie : .* → 05\/01/.test(m2)]);
+  r.push(['message : chaque modification (avant → après), total, livraison', /total 290 → 240 pièces/.test(m2) && /120 → 150 \(\+30\)/.test(m2) && /80 → 0 \(-80\)/.test(m2) && /Livraison prévue : — → 15\/02\/27/.test(m2)]);
   await p.click('.sx-modal .sx-go'); await p.waitForTimeout(250);
-  r.push(['modifications enregistrées', await p.evaluate(() => findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M').qty === 150 && !findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'L') && S.lots.PK202701.livraison === '2027-02-15')]);
+  r.push(['modifications enregistrées', await p.evaluate(() => findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M').qty === 150 && !findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'L') && S.lots.PK202701.livraison === '2027-02-15' && S.lots.PK202701.received === '2026-01-05')]);
+  r.push(['date de saisie affichée sur la commande', /saisie le 05\/01/.test(await txt('#view'))]);
   // mois de la commande : automatique (lot) ou choisi ; en-tête « COMMANDE : NOVEMBRE -1 »
   r.push(['mois lu dans le lot : « NOVEMBRE -1 »', await p.evaluate(() => libelleCommande('PK202611-1') === 'NOVEMBRE -1' && libelleCommande('PK202701') === 'JANVIER')]);
   await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);

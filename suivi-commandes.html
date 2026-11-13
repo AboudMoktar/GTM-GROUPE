@@ -1754,6 +1754,10 @@ function vCmdSaisie(v, clients, cli, libs){
     iYear.addEventListener("change", function(){ E.year = num(iYear.value); compter(); });
     var iLiv = el("input", {id:"mLiv", type:"date", value:liv});
     iLiv.addEventListener("change", function(){ E.liv = iLiv.value || ""; compter(); });
+    /* date de saisie de la commande (« Commande reçue le … ») : aujourd'hui par défaut, modifiable, jamais dans le futur */
+    var recCur = E.rec !== undefined ? E.rec : (E.nouveau ? today() : (S.lots[ui.lot] || {}).received || "");
+    var iRec = el("input", {id:"mRec", type:"date", value:recCur, max:today()});
+    iRec.addEventListener("change", function(){ var d = iRec.value || ""; if (d > today()){ toast("La date de saisie ne peut pas être dans le futur."); d = today(); iRec.value = d; } E.rec = d; compter(); });
     /* mois de la commande : automatique (lu dans le lot) ou choisi */
     var moisCur = E.mois !== undefined ? E.mois : (E.nouveau ? "" : String((S.lots[ui.lot] || {}).mois || "")), auto = lotMonthAuto(lotV);
     var iMois = el("select", {id:"mMois"});
@@ -1762,12 +1766,12 @@ function vCmdSaisie(v, clients, cli, libs){
     iMois.value = moisCur;
     iMois.addEventListener("change", function(){ E.mois = iMois.value; render(true); });
     var mEff = moisCur ? +moisCur : (auto ? auto.m : 0), suf = lotSuffixe(lotV);
-    head.appendChild(el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"MOIS"}, iMois), el("label", {text:"ANNEE"}, iYear), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)));
+    head.appendChild(el("div", {class:"row"}, el("label", {text:"LOT / REF"}, iLot), el("label", {text:"MOIS"}, iMois), el("label", {text:"ANNEE"}, iYear), el("label", {text:"DATE DE SAISIE"}, iRec), el("label", {text:"LIVRAISON PRÉVUE"}, iLiv)));
     head.appendChild(el("div", {class:"mut", style:"margin-top:6px", text:mEff ? "En-tête de la commande : COMMANDE : " + MOIS[mEff - 1] + (suf ? " -" + suf : "") + (moisCur ? " (mois choisi)" : " (mois lu dans le lot)") : "Astuce : le chiffre après l'année dans le lot est le n° du mois (PK202611-1 = novembre 2026, commande n° 1). Sinon, choisissez le mois."}));
   } else if (existe){
     var lmx = lotMonth(ui.lot), totx = 0; S.lines.forEach(function(l){ if (l.lot === ui.lot) totx += l.qty; });
     head.appendChild(el("h2", {style:"margin:0 0 4px", text:"📋 Commande " + ui.lot}));
-    head.appendChild(el("div", {class:"mut", text:(lmx ? "Commande : " + libelleCommande(ui.lot) + " · " : "") + "Année " + yr0 + " · " + fmt(totx) + " pièces" + ((S.lots[ui.lot] || {}).livraison ? " · livraison prévue le " + dmy(S.lots[ui.lot].livraison) : "") + (lotReady(ui.lot) ? " · validée" : " · à valider")}));
+    head.appendChild(el("div", {class:"mut", text:(lmx ? "Commande : " + libelleCommande(ui.lot) + " · " : "") + "Année " + yr0 + " · " + fmt(totx) + " pièces" + ((S.lots[ui.lot] || {}).received ? " · saisie le " + dmy(S.lots[ui.lot].received) : "") + ((S.lots[ui.lot] || {}).livraison ? " · livraison prévue le " + dmy(S.lots[ui.lot].livraison) : "") + (lotReady(ui.lot) ? " · validée" : " · à valider")}));
     if (!RO) head.appendChild(el("div", {class:"cm-act"},
       el("button", {class:"btn", text:"✏️ Modifier", onclick:function(){ ui.cmdEd = {lot:ui.lot, q:{}}; render(); }}),
       el("button", {class:"btn bad", text:"🗑 Supprimer", onclick:function(){ supprimerCommande(ui.lot); }}),
@@ -1909,6 +1913,7 @@ function vCmdSaisie(v, clients, cli, libs){
     if (!E.nouveau && E.year !== undefined && E.year !== yr0) out.push({info:"Année : " + yr0 + " → " + E.year});
     Object.keys(E.st || {}).forEach(function(lib){ var av = ((S.lots[ui.lot] || {}).statuts || {})[lib] || ""; if (!E.nouveau && E.st[lib] !== av) out.push({info:"Statut " + lib + " : « " + (av || "—") + " » → « " + (E.st[lib] || "—") + " »"}); });
     if (E.mois !== undefined && String(E.mois || "") !== (E.nouveau ? "" : String((S.lots[ui.lot] || {}).mois || ""))){ var am = lotMonthAuto(E.nouveau ? E.lot : ui.lot), nomM = function(v){ return v ? MOIS[+v - 1] + " (choisi)" : (am ? MOIS[am.m - 1] + " (lu dans le lot)" : "—"); }; out.push({info:"Mois : " + nomM(E.nouveau ? "" : (S.lots[ui.lot] || {}).mois) + " → " + nomM(E.mois)}); }
+    if (!E.nouveau && E.rec !== undefined && E.rec !== ((S.lots[ui.lot] || {}).received || "")) out.push({info:"Date de saisie : " + (((S.lots[ui.lot] || {}).received) ? dmy(S.lots[ui.lot].received) : "—") + " → " + (E.rec ? dmy(E.rec) : "—")});
     if (!E.nouveau && E.liv !== undefined && E.liv !== ((S.lots[ui.lot] || {}).livraison || "")) out.push({info:"Livraison prévue : " + (((S.lots[ui.lot] || {}).livraison) ? dmy(S.lots[ui.lot].livraison) : "—") + " → " + (E.liv ? dmy(E.liv) : "—")});
     return out;
   }
@@ -1946,6 +1951,7 @@ function vCmdSaisie(v, clients, cli, libs){
         q.forEach(function(c){ setLine(lot, year, c.c, c.lib, c.z, c.n); });
         if (Ed.year !== undefined) S.lines.forEach(function(l){ if (l.lot === lot) l.year = Ed.year; });
         if (Ed.liv !== undefined){ ensureLot(lot); S.lots[lot].livraison = Ed.liv || ""; }
+        if (Ed.rec !== undefined && Ed.rec && Ed.rec <= today()){ ensureLot(lot); S.lots[lot].received = Ed.rec; }
         if (Ed.mois !== undefined){ ensureLot(lot); if (Ed.mois) S.lots[lot].mois = +Ed.mois; else delete S.lots[lot].mois; }
         Object.keys(Ed.st || {}).forEach(function(lib){ ensureLot(lot); var st = S.lots[lot].statuts = S.lots[lot].statuts || {}; if (Ed.st[lib]) st[lib] = Ed.st[lib]; else delete st[lib]; });
       }, null);
