@@ -1203,11 +1203,11 @@ function renderModuleSelect(){
   const mods = modulesDeSociete(activeSociete);
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
-      <div class="login-card login-large">
+      <div class="login-card login-large choix">
         ${societeLogoHTML(activeSociete)}
-        <h2 style="text-align:center;margin:0 0 4px;font-size:18px;">Quel module voulez-vous ouvrir ?</h2>
-        <p style="text-align:center;color:var(--ink-soft);font-size:12.5px;margin:0 0 20px;">Connecté en tant que ${esc(currentUser.nom)}</p>
-        <div style="display:flex;flex-direction:column;gap:12px;">
+        <h2 style="text-align:center;">Quel module voulez-vous ouvrir ?</h2>
+        <p class="choix-qui">Connecté en tant que ${esc(currentUser.nom)}</p>
+        <div class="choix-liste">
           ${[
             ['tek-dashboard', ICONS.stats, 'Tableau de bord', 'Rendement, chaîne, RH, commandes en un coup d\'œil'],
             ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
@@ -1227,8 +1227,10 @@ function renderModuleSelect(){
             <span class="soc-fleche">›</span>
           </button>`).join('')}
         </div>
-        ${peutChangerDeSociete() ? `<button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="switchSociete()">Changer de société</button>` : ''}
-        <button class="btn btn-ghost" style="width:100%;margin-top:${peutChangerDeSociete() ? '8' : '18'}px;" onclick="logout()">Déconnexion</button>
+        <div class="choix-bas">
+          ${peutChangerDeSociete() ? `<button class="btn btn-ghost" onclick="switchSociete()">← Changer de société</button>` : ''}
+          <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
+        </div>
       </div>
     </div>
   `;

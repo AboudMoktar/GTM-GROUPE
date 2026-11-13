@@ -129,7 +129,7 @@ function peutChangerDeSociete(){ return isGroupe() || userSocietes().length > 1;
 
 function societeLogoHTML(soc){
   const S = SOCIETES[soc]; if(!S) return '';
-  return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;">${societeLogo(soc, 78, societeMot(soc), 260)}<div style="width:64px;height:4px;border-radius:2px;background:${societeBande(soc, 90)};"></div></div>`;
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:12px;">${societeLogo(soc, 64, societeMot(soc), 260)}<div style="width:64px;height:4px;border-radius:2px;background:${societeBande(soc, 90)};"></div></div>`;
 }
 
 
@@ -154,17 +154,17 @@ function renderSocieteSelect(){
   const soc = userSocietes();
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
-      <div class="login-card" style="max-width:560px;">
-        <div class="logo-wrap" style="margin-bottom:20px;">
+      <div class="login-card choix">
+        <div class="logo-wrap">
           <div class="logo-text" style="font-size:26px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
           <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
         </div>
-        <h2 style="text-align:center;margin:0 0 4px;font-size:18px;">Quelle société voulez-vous ouvrir ?</h2>
-        <p style="text-align:center;color:var(--ink-soft);font-size:12.5px;margin:0 0 20px;">Connecté en tant que ${esc(currentUser.nom)}</p>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          ${isGroupe() ? `<button class="btn btn-primary" style="padding:16px;font-size:15px;justify-content:flex-start;gap:12px;text-align:left;background:#1C2430;" onclick="openDirection()">
-            <span style="width:24px;height:24px;flex-shrink:0;">${ICONS.crown}</span>
-            <span><span style="display:block;">Vue direction</span><span style="display:block;font-size:11px;font-weight:500;opacity:.8;">Les trois tableaux de bord sur un seul écran</span></span>
+        <h2 style="text-align:center;">Quelle société voulez-vous ouvrir ?</h2>
+        <p class="choix-qui">Connecté en tant que ${esc(currentUser.nom)}</p>
+        <div class="choix-liste">
+          ${isGroupe() ? `<button class="btn btn-primary choix-fort" onclick="openDirection()">
+            ${ICONS.crown}
+            <span>Vue direction<small>Les trois tableaux de bord sur un seul écran</small></span>
           </button>` : ''}
           ${soc.map(k => `<button class="soc-card" style="--m:${SOCIETES[k].marque[0]};" onclick="chooseSociete('${k}')">
             <span class="soc-bande" style="background:${societeBande(k)};"></span>
@@ -173,7 +173,7 @@ function renderSocieteSelect(){
             <span class="soc-fleche">›</span>
           </button>`).join('')}
         </div>
-        <button class="btn btn-ghost" style="width:100%;margin-top:18px;" onclick="logout()">Déconnexion</button>
+        <div class="choix-bas"><button class="btn btn-ghost" onclick="logout()">Déconnexion</button></div>
       </div>
     </div>
   `;

@@ -41,7 +41,8 @@
     "assistant-ia": "node assistant-ia.js",
     "assistant-ia-entete": "node assistant-ia-entete.js",
     "assistant-reponses": "node assistant-reponses.js",
-    "tissu-fige": "node tissu-fige.js"
+    "tissu-fige": "node tissu-fige.js",
+    "ecrans-choix": "node ecrans-choix.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
