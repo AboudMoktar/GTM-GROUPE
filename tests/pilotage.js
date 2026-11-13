@@ -28,7 +28,7 @@ async function donnees(p){
   r.push(['Pilotage : première vue de l\'onglet Suivi', await p.locator('.seg button.on', {hasText: 'Pilotage'}).count() === 1 && await p.locator('.ph-t').count() === 1]);
   r.push(['en-tête : lot, année, état', /PK202612-1/.test(await txt('.ph-titre')) && /2026/.test(await txt('.ph-head')) && /En cours/.test(await txt('.ph-etat'))]);
   const kpi = await p.$$eval('.ph-kpi', ks => ks.map(k => k.querySelector('small').textContent + '=' + k.querySelector('b').textContent.replace(/\s/g, '')));
-  r.push(['chiffres clés (commandée, coupée … expédiée, reste, avancement)', kpi.length === 10 && kpi[0] === 'Qté commandée=800pcs' && kpi[1] === 'Qté coupée=545pcs' && kpi[7] === 'Expédiée=170pcs' && kpi[8] === 'Reste à produire=630pcs' && kpi[9] === 'Avancement=21,3%']);
+  r.push(['chiffres clés (commandée, coupée … expédiée, reste, avancement)', kpi.length === 9 && kpi[0] === 'Qté commandée=800pcs' && kpi[1] === 'Qté coupée=545pcs' && kpi[6] === 'Expédiée=170pcs' && kpi[7] === 'Reste à produire=630pcs' && kpi[8] === 'Avancement=21,3%']);
   r.push(['pas de colonne « Qté finie »', !/fini/i.test(await txt('.ph-t thead'))]);
   const D = await p.evaluate(() => { const L = pkPilotage.lignesPilotage('PK202612-1'), g = L.find(x => x.id === 'G_S'); return {n: L.length, g, T: pkPilotage.sommer(L), coul: pkPilotage.couleurDe('PHARMA_FEMME COL V ROSE POUDRE').t}; });
   r.push(['une ligne par référence × taille × client', D.n === 6]);
@@ -36,9 +36,9 @@ async function donnees(p){
   r.push(['couleur lue dans le libellé', D.coul === 'ROSE POUDRE' || D.coul === 'ROSE']);
   const val = (td) => (td.querySelector('.v') || td).textContent.trim();
   const st = await p.$$eval('.ph-t tr.st', rs => rs.map(x => [...x.children].map(td => (td.querySelector('.v') || td).textContent.trim())));
-  r.push(['sous-total par modèle', st.length === 3 && st[0][1] === 'Sous-total PHARMA-HOMME' && st[0][2] === '220' && st[0][9] === '170' && st[0][10] === '50']);
+  r.push(['sous-total par modèle', st.length === 3 && st[0][1] === 'Sous-total PHARMA-HOMME' && st[0][2] === '220' && st[0][8] === '170' && st[0][9] === '50']);
   const tg = await p.$$eval('.ph-t tr.tg td', ts => ts.map(td => (td.querySelector('.v') || td).textContent.trim()));
-  r.push(['total général', tg[1] === 'TOTAL GÉNÉRAL' && tg[2] === '800' && tg[9] === '170' && tg[10] === '630' && /21,3/.test(tg[11])]);
+  r.push(['total général', tg[1] === 'TOTAL GÉNÉRAL' && tg[2] === '800' && tg[8] === '170' && tg[9] === '630' && /21,3/.test(tg[10])]);
   r.push(['modèle affiché une fois par groupe', await p.locator('.ph-t td.mod').count() === 3]);
   // recherche
   await p.fill('.ph-outils input[type=search]', 'rose'); await p.waitForTimeout(150);
@@ -75,7 +75,7 @@ async function donnees(p){
   await p.evaluate(() => { S.lots['PK202612-1'].livraison = '2099-01-31'; render(); }); await p.waitForTimeout(150);
   const cell = (id, k) => p.locator('.ph-in[data-id="' + id + '"][data-k="' + k + '"]');
   const tot = (id, k) => p.evaluate(([id, k]) => (stageTotals()[id] || {})[k] || 0, [id, k]);
-  r.push(['cases de saisie : commande et toutes les étapes', await p.locator('.ph-in').count() === 6 * 8]);
+  r.push(['cases de saisie : commande et toutes les étapes', await p.locator('.ph-in').count() === 6 * 7]);
   const valider = async (pg) => { pg = pg || p; await pg.click('.ph-attente button:has-text("Valider")'); await pg.waitForTimeout(150); await pg.click('.sx-modal .sx-go'); await pg.waitForTimeout(300); };
   await cell('T_M', 'cp').fill('280'); await cell('T_M', 'cp').press('Enter'); await p.waitForTimeout(300);
   r.push(['saisie : en attente (case orange, barre « Valider »), rien d\'enregistré', await tot('T_M', 'cp') === 0 && await p.locator('.ph-t td.e.chg').count() === 1 && /1 modification\(s\) en attente/.test(await txt('.ph-attente'))]);
@@ -98,7 +98,7 @@ async function donnees(p){
   await cell('R_XS', 'ret').fill('95'); await cell('R_XS', 'ret').press('Enter'); await p.waitForTimeout(300);
   r.push(['Entrée : la case du dessous est prête', await p.evaluate(() => { const a = document.activeElement; return !!a && a.getAttribute('data-id') === 'R_S' && a.getAttribute('data-k') === 'ret'; })]);
   await valider();
-  r.push(['retour GADH : confection automatique', await tot('R_XS', 'ret') === 95 && await tot('R_XS', 'conf') === 95]);
+  r.push(['retour GADH = en confection (une seule étape)', await tot('R_XS', 'ret') === 95 && await p.locator('.ph-t thead th', {hasText: /^Confection$/}).count() === 0]);
   await cell('G_S', 'fr').fill('60'); await cell('G_S', 'fr').press('Enter'); await p.waitForTimeout(300); await valider();
   r.push(['quantité commandée modifiée', await p.evaluate(() => lineById('G_S').qty === 60)]);
   // « Tout » par modèle
@@ -133,7 +133,7 @@ async function donnees(p){
   r.push(['GADH : pilotage avec réception et retour', await g.locator('.ph-t').count() === 1 && /Encore à la GADH/.test(await g.locator('.ph-kpis').textContent()) && !/Expédiée/.test(await g.locator('.ph-t thead').textContent())]);
   r.push(['GADH : seul le retour se saisit', await g.locator('.ph-in').count() === 6 && await g.locator('.ph-in[data-k="ret"]').count() === 6]);
   await g.locator('.ph-in[data-id="R_XS"][data-k="ret"]').fill('95'); await g.locator('.ph-in[data-id="R_XS"][data-k="ret"]').press('Enter'); await g.waitForTimeout(300); await valider(g);
-  r.push(['GADH : retour saisi dans le tableau', await g.evaluate(() => (stageTotals().R_XS || {}).ret === 95 && (stageTotals().R_XS || {}).conf === 95)]);
+  r.push(['GADH : retour saisi dans le tableau', await g.evaluate(() => (stageTotals().R_XS || {}).ret === 95)]);
   const gt = g.locator('.ph-t tr.st', {hasText: 'PHARMA-FEMME'}).locator('.ph-tout');
   r.push(['GADH : « Tout » pour retourner tout le modèle', await gt.count() === 0 || /Tout/.test(await gt.first().textContent())]);
   if (DOSSIER) await g.screenshot({path: DOSSIER + '/gadh.png', fullPage: false});

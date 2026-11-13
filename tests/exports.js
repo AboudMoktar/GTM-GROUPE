@@ -209,13 +209,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const e = {id:'X9', n:9, d:'2026-11-10', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', cartons:[]}; S.exports.push(e);
     const c = {id:'XC9', n:1, kg:null, com:'', it:[['V1', 20, 'PK202613', 'LYNE PRO homme gris', 'S'], ['V2', 35, 'PK202613', 'LYNE PRO homme gris', 'M']]};
     pkExports.enregistrerCartonExport(e, c);
-    const T = () => { const t = stageTotals(); return ['V1', 'V2'].map(id => ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb'].map(k => (t[id] || {})[k] || 0).join(',')).join(' | '); };
+    const T = () => { const t = stageTotals(); return ['V1', 'V2'].map(id => ['cp', 'gadh', 'asm', 'ret', 'ctl', 'emb'].map(k => (t[id] || {})[k] || 0).join(',')).join(' | '); };
     const apres = T(), notes = S.moves.filter(m => m.lineId === 'V1' && /rempli automatiquement/.test(m.note)).length;
     pkExports.supprimerCartonExport(e, 'XC9'); const sup = T();
     return {apres, notes, sup};
   });
-  r.push(['export direct : étapes vides remplies (coupe → confection)', am.apres === '20,20,20,20,20,20,20 | 40,35,35,35,35,35,35' && am.notes === 5]);
-  r.push(['étapes remplies gardées si le carton est supprimé', am.sup === '20,20,20,20,20,0,0 | 40,35,35,35,35,0,0']);
+  r.push(['export direct : étapes vides remplies (coupe → retour/confection)', am.apres === '20,20,20,20,20,20 | 40,35,35,35,35,35' && am.notes === 4]);
+  r.push(['étapes remplies gardées si le carton est supprimé', am.sup === '20,20,20,20,0,0 | 40,35,35,35,0,0']);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);

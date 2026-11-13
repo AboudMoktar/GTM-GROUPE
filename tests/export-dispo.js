@@ -38,7 +38,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.evaluate(() => { ui.lot = 'PK202611'; ui.client = '*'; ui.tab = 'flux'; ui.fmode = 'detail'; ui.stage = 'emb'; ui.xp = null; render(); });
   const etape = async (nom) => (await p.locator('.step', {hasText: nom}).first().locator('.qt').textContent()).replace(/\s/g, '');
   r.push(['parcours : Emballée, prête à expédier 90, Expédiée 30, plus d\'étape « Prêt à expédier » à part', await etape('Emballée') === '90' && await etape('Expédiée') === '30' && await p.locator('.step', {hasText: /^\d+Prêt à expédier/}).count() === 0]);
-  r.push(['parcours : Contrôle et Confection exacts', await etape('Contrôle') === '0' && await etape('En confection') === '30']);
+  r.push(['parcours : Contrôle et Confection exacts', await etape('Contrôle') === '0' && await etape('Retour GADH, en confection') === '30']);
   // pièces déjà contrôlées : le carton les prend, sans contrôle en plus ni étapes d'avant gonflées (cas Tee-shirt XL, 12/11)
   const dc = await p.evaluate(() => {
     S.lines.push({id:'XL', lot:'PK202611', year:2026, client:'NEOLYS', model:'M', lib:'Tee-shirt Sport homme noir', size:'XL', qty:190, cc:0});
@@ -54,9 +54,9 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     commit(() => pkExports.enregistrerCartonExport(e, {id:'XLC1', n:11, kg:null, com:'', it:[['XL', 80]]}));
     return {t, d3, t3, t4:stageTotals().XL, av};
   });
-  r.push(['2 cartons de 90 sur 190 contrôlées : contrôle 190, emballée 180, coupe et retour inchangés', dc.t.ctl === 190 && dc.t.emb === 180 && dc.t.cp === 200 && dc.t.ret === 200 && dc.t.conf === 200]);
+  r.push(['2 cartons de 90 sur 190 contrôlées : contrôle 190, emballée 180, coupe et retour inchangés', dc.t.ctl === 190 && dc.t.emb === 180 && dc.t.cp === 200 && dc.t.ret === 200]);
   r.push(['disponible ensuite : 200 − 180 = 20', dc.d3 === 20]);
-  r.push(['carton au-delà du contrôle : contrôle auto du manque seulement', dc.t3.ctl === 210 && dc.t3.emb === 210 && dc.t3.conf === 210 && dc.t3.ret === 210]);
+  r.push(['carton au-delà du contrôle : contrôle auto du manque seulement', dc.t3.ctl === 210 && dc.t3.emb === 210 && dc.t3.ret === 210]);
   r.push(['carton modifié : seules ses pièces changent', dc.t4.emb === 200 && dc.t4.ctl === 210]);
   // carton fantôme (mouvements d'un carton qui n'existe plus) : signalé, retiré en un bouton
   await p.evaluate(() => { S.moves.push({id:'og1', date:'2026-11-21', lineId:'XL', stage:'emb', qty:5, nc:0, note:'', ct:'XCfantome'}); ui.tab = 'exp'; ui.xp = {id:'X1'}; render(); });

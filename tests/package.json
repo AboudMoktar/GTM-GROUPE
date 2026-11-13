@@ -30,7 +30,7 @@
     "centres-coupe": "node centres-coupe.js",
     "commandes-saisie": "node commandes-saisie.js",
     "flux-corrections": "node flux-corrections.js",
-    "flux-renvoi": "node flux-renvoi.js",
+    "flux-deplacer": "node flux-deplacer.js",
     "gc-calcul": "node gc-calcul.js",
     "mgt-rappels": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-rappels.js\"",
     "mgt-listing": "node ../outils/generer-regles.js && cp ../database.rules.v2.json regles-emulateur.json && firebase emulators:exec --config firebase-fonctions.json --only auth,database --project demo-gtm-groupe \"node mgt-listing.js\"",

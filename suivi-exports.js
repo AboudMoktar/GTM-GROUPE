@@ -141,7 +141,7 @@ function anciensDe(id){ var o = {}; S.moves.forEach(function(m){ if (m.ct === id
    étapes jamais saisies) : remplies automatiquement jusqu'au contrôle, de la confection vers la coupe
    (chaque étape au moins égale à la suivante + ses NC). Ces mouvements restent même si le carton est
    ensuite modifié ou supprimé : les pièces ont bien été coupées et confectionnées. */
-var AMONT = ["cp", "gadh", "asm", "ret", "conf"];
+var AMONT = ["cp", "gadh", "asm", "ret"];
 function remplirAmont(e, c, nm, anc){
   var t = {}, n = {}, ids = {}, out = [];
   function add(m){ var a = t[m.lineId] = t[m.lineId] || {}, b = n[m.lineId] = n[m.lineId] || {}; a[m.stage] = (a[m.stage] || 0) + (m.qty || 0); b[m.stage] = (b[m.stage] || 0) + (m.nc || 0); }
