@@ -108,6 +108,19 @@ window.gcEditDesignation = (i) => {
   if(a){ if(h) h.value = a.id; gcEditArticle(i); return; }
   if(h) h.value = ''; gcEditChange(false);
 };
+// Garde-fou contre les doublons : article du catalogue dont le nom ressemble à ce qui est tapé
+// (une ou deux lettres d'écart, ou l'un contenu dans l'autre). Proposé, jamais imposé.
+function gcArticleProche(txt){
+  const k = GC.norm(txt); if(k.length < 4) return null;
+  const ecart = (a, b) => { if(Math.abs(a.length - b.length) > 2) return 9; let p = []; for(let j = 0; j <= b.length; j++) p[j] = j;
+    for(let i = 1; i <= a.length; i++){ const c = [i]; for(let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; } return p[b.length]; };
+  let mieux = null, score = 9;
+  gcD().articles.forEach(a => { if(a.archive || a.actif === false) return; const n = GC.norm(a.designation); if(!n || n === k) return;
+    const e = (n.indexOf(k) >= 0 || k.indexOf(n) >= 0) && Math.min(n.length, k.length) >= 4 ? 1.5 : ecart(k, n);
+    if(e <= 2 && e < score){ score = e; mieux = a; } });
+  return mieux;
+}
+window.gcEditUtiliserArticle = (i, id) => { const h = document.getElementById('gel-art-' + i); if(h) h.value = id; gcEditArticle(i); };
 window.gcEditChange = (recalc) => { gcLireEdition(); if(recalc !== false) gcRecalculerPrix(); nav('gc-edition'); };
 window.gcEditArticle = (i) => {
   gcLireEdition();
@@ -153,7 +166,7 @@ window.renderGcEdition = function(main){
     const a = gcArticle(l.articleId), pal = a && t !== 'achat' ? GC.prixPalier(a, qe[l.articleId]) : null;
     return `<tr>
       <td data-l="Article" style="min-width:180px;">${simple
-        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">${!l.articleId && l.designation ? `<div class="gc-sous" data-gc="article-nouveau" style="margin-top:3px;color:var(--warn, #b45309);">Nouvel article : il sera ajouté au catalogue.</div>` : ''}`
+        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">${!l.articleId && l.designation ? (() => { const pr = gcArticleProche(l.designation); return (pr ? `<div class="gc-sous" data-gc="article-proche" style="margin-top:3px;">Déjà au catalogue : <b>${esc(pr.designation)}</b> <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="gcEditUtiliserArticle(${i}, '${gcJs(pr.id)}')">Utiliser</button></div>` : '') + `<div class="gc-sous" data-gc="article-nouveau" style="margin-top:3px;color:var(--warn, #b45309);">${pr ? 'Sinon, nouvel' : 'Nouvel'} article : il sera ajouté au catalogue.</div>`; })() : ''}`
         : `<select id="gel-art-${i}" onchange="gcEditArticle(${i})">${optsArt(l.articleId)}</select>
         <input id="gel-designation-${i}" placeholder="Désignation" value="${gcAttr(l.designation)}" style="margin-top:4px;" onchange="gcEditChange(false)">`}</td>
       <td data-l="Unité" class="gc-av"><input id="gel-unite-${i}" value="${gcAttr(l.unite)}" style="max-width:90px;" onchange="gcEditChange(false)"></td>

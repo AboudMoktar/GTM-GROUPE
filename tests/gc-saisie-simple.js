@@ -78,6 +78,14 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   ok(await p.locator('[data-gc="article-nouveau"]').count() === 0 && await p.evaluate(() => gcEdit.doc.lignes[0].pu === 15), 'article déjà créé : reconnu avec son prix, pas de doublon');
   await p.click('[data-gc="enregistrer-doc"]'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => gcD().articles.length) === 2, 'catalogue : toujours 2 articles');
+  // faute de frappe : l'article proche est proposé, un clic le reprend
+  await p.evaluate(() => gcNouveauDoc('commande', {clientId:'k1'}));
+  await p.fill('#gel-designation-0', 'Tisu maille exemple'); await p.dispatchEvent('#gel-designation-0', 'change');
+  ok(/Tissu maille exemple/.test(await p.locator('[data-gc="article-proche"]').innerText()), 'faute de frappe : l\'article du catalogue est proposé');
+  await p.click('[data-gc="article-proche"] button');
+  ok(await p.evaluate(() => gcEdit.doc.lignes[0].articleId === 'ar1' && gcEdit.doc.lignes[0].pu === 7) && await p.locator('[data-gc="article-nouveau"]').count() === 0, '« Utiliser » : article du catalogue repris avec son prix');
+  await p.fill('#gel-designation-0', 'Fermeture éclair'); await p.dispatchEvent('#gel-designation-0', 'change');
+  ok(await p.locator('[data-gc="article-proche"]').count() === 0 && await p.locator('[data-gc="article-nouveau"]').count() === 1, 'nom vraiment différent : aucune proposition, création annoncée');
   // téléphone
   await p.setViewportSize({width:390, height:844});
   await p.evaluate(() => gcNouveauDoc('commande'));
