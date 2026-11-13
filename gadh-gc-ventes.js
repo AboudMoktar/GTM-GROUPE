@@ -108,6 +108,19 @@ window.gcEditDesignation = (i) => {
   if(a){ if(h) h.value = a.id; gcEditArticle(i); return; }
   if(h) h.value = ''; gcEditChange(false);
 };
+// Garde-fou contre les doublons : article du catalogue dont le nom ressemble à ce qui est tapé
+// (une ou deux lettres d'écart, ou l'un contenu dans l'autre). Proposé, jamais imposé.
+function gcArticleProche(txt){
+  const k = GC.norm(txt); if(k.length < 4) return null;
+  const ecart = (a, b) => { if(Math.abs(a.length - b.length) > 2) return 9; let p = []; for(let j = 0; j <= b.length; j++) p[j] = j;
+    for(let i = 1; i <= a.length; i++){ const c = [i]; for(let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; } return p[b.length]; };
+  let mieux = null, score = 9;
+  gcD().articles.forEach(a => { if(a.archive || a.actif === false) return; const n = GC.norm(a.designation); if(!n || n === k) return;
+    const e = (n.indexOf(k) >= 0 || k.indexOf(n) >= 0) && Math.min(n.length, k.length) >= 4 ? 1.5 : ecart(k, n);
+    if(e <= 2 && e < score){ score = e; mieux = a; } });
+  return mieux;
+}
+window.gcEditUtiliserArticle = (i, id) => { const h = document.getElementById('gel-art-' + i); if(h) h.value = id; gcEditArticle(i); };
 window.gcEditChange = (recalc) => { gcLireEdition(); if(recalc !== false) gcRecalculerPrix(); nav('gc-edition'); };
 window.gcEditArticle = (i) => {
   gcLireEdition();
@@ -153,7 +166,7 @@ window.renderGcEdition = function(main){
     const a = gcArticle(l.articleId), pal = a && t !== 'achat' ? GC.prixPalier(a, qe[l.articleId]) : null;
     return `<tr>
       <td data-l="Article" style="min-width:180px;">${simple
-        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">`
+        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">${!l.articleId && l.designation ? (() => { const pr = gcArticleProche(l.designation); return (pr ? `<div class="gc-sous" data-gc="article-proche" style="margin-top:3px;">Déjà au catalogue : <b>${esc(pr.designation)}</b> <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="gcEditUtiliserArticle(${i}, '${gcJs(pr.id)}')">Utiliser</button></div>` : '') + `<div class="gc-sous" data-gc="article-nouveau" style="margin-top:3px;color:var(--warn, #b45309);">${pr ? 'Sinon, nouvel' : 'Nouvel'} article : il sera ajouté au catalogue.</div>`; })() : ''}`
         : `<select id="gel-art-${i}" onchange="gcEditArticle(${i})">${optsArt(l.articleId)}</select>
         <input id="gel-designation-${i}" placeholder="Désignation" value="${gcAttr(l.designation)}" style="margin-top:4px;" onchange="gcEditChange(false)">`}</td>
       <td data-l="Unité" class="gc-av"><input id="gel-unite-${i}" value="${gcAttr(l.unite)}" style="max-width:90px;" onchange="gcEditChange(false)"></td>
@@ -177,7 +190,7 @@ window.renderGcEdition = function(main){
     <div class="card"><div class="gc-form">${tiers}${champs}</div></div>
     <div class="card"><h3 class="gc-h3">Articles</h3><div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Article</th><th class="gc-av">Unité</th><th>Quantité</th><th>Prix unitaire HT</th>${t === 'achat' ? '' : '<th class="gc-av">Remise %</th>'}<th class="n">Montant HT</th><th></th></tr></thead><tbody>${lignes}</tbody></table></div>
       <button class="btn btn-ghost" style="margin-top:8px;" data-gc="ajouter-ligne" onclick="gcEditAjouterLigne()">+ Ligne</button>
-      ${simple ? '<div class="gc-sous" style="margin-top:6px;">Tapez les premières lettres : l\'article connu est proposé avec son prix. Un article inconnu reste une ligne libre.</div>' : ''}
+      ${simple ? '<div class="gc-sous" style="margin-top:6px;">Tapez les premières lettres : l\'article connu est proposé avec son prix. Un article inconnu est ajouté au catalogue à l\'enregistrement.</div>' : ''}
       ${t !== 'achat' ? '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit les paliers de l\'article, calculés sur la quantité totale engagée dans ce document (cochez « prix manuel » pour le fixer).</div>' : '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit le tarif négocié valable du fournisseur (quantité, date), sinon le prix d\'achat de l\'article.</div>'}</div>
     ${ech}
     <div class="card"><div class="gc-av"><div class="gc-form">
@@ -234,6 +247,17 @@ window.gcSauverDoc = () => gcOperation(() => {
   if(aCreer){
     if(t === 'achat'){ const f = {id:GC.nouvelId('fo'), nom:nomNouveau, actif:true, delai:Number(gcReglages().delaiDefaut) || 7, conditions:''}; gcEnregistrer('fournisseurs', f); gcJournal('Création', 'Fournisseur', f); d.fournisseurId = f.id; }
     else { const l = Object.assign({}, gcClients()), nid = typeof mgtId === 'function' ? mgtId('k') : GC.nouvelId('k'); l[nid] = {nom:nomNouveau}; setJSON('gadh_fact_clients', l); gcCacheD = null; gcJournal('Création', 'Client', {id:nid, numero:nomNouveau}); d.clientId = nid; }
+  }
+  // Saisie simple : un article tapé qui n'existe pas est ajouté au catalogue (désignation, unité, prix saisi).
+  if(gcSaisieSimple()){
+    const crees = [], tous = D.articles.slice();
+    d.lignes.forEach(l => {
+      if(l.articleId) return;
+      const k = GC.norm(l.designation); let a = tous.find(x => !x.archive && GC.norm(x.designation) === k);
+      if(!a){ a = {id:GC.nouvelId('ar'), ref:'', designation:l.designation, unite:l.unite || 'pièce', suiviStock:true, actif:true, paliers:[], histoPrix:[]}; a[t === 'achat' ? 'prixAchat' : 'prixVente'] = GC.num(l.pu); crees.push(a); tous.push(a); }
+      l.articleId = a.id; if(!l.unite) l.unite = a.unite || ''; l.puManuel = true;
+    });
+    if(crees.length){ gcEnregistrer('articles', crees); crees.forEach(a => gcJournal('Création', 'Article', {id:a.id, numero:a.designation}, 'créé depuis une saisie simple')); }
   }
   if(gcEdit.nouveau) d.numero = GC.numeroSuivant(D[T.cle], T.prefixe, d.date);
   if(t === 'achat') d.lignes.forEach(l => { const a = gcArticle(l.articleId); if(a && !l.ref) l.ref = a.ref || ''; });
