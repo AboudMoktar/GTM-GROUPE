@@ -243,6 +243,11 @@ function gcStyle(){
   .gc-chiffre span{display:block;font-size:11.5px;color:var(--ink-soft);}
   .gc-chiffre b{font-size:16px;}
   .gc-chiffre.bad b{color:var(--bad);} .gc-chiffre.warn b{color:var(--warn);} .gc-chiffre.good b{color:var(--good);}
+  .gc-simple .gc-av{display:none !important;}
+  .gc-mode{display:inline-flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+  .gc-mode button{border:0;background:var(--surface);color:var(--ink-soft);padding:9px 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+  .gc-mode button.on{background:var(--accent, #0f766e);color:#fff;}
+  .gc-simple .gc-lignes input{font-size:15px;padding:10px;}
   .gc-lignes{width:100%;border-collapse:collapse;font-size:13px;}
   .gc-lignes th{text-align:left;font-size:11.5px;color:var(--ink-soft);padding:6px;border-bottom:1px solid var(--border);}
   .gc-lignes td{padding:6px;border-bottom:1px solid var(--border-soft, var(--border));vertical-align:middle;}

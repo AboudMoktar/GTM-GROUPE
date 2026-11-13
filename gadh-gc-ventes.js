@@ -47,6 +47,7 @@ function gcLireEdition(){
   if(!gcEdit) return;
   const d = gcEdit.doc, t = gcEdit.type, v = (id) => { const e = document.getElementById(id); return e ? e.value : undefined; };
   ['date', 'validite', 'dateSouhaitee', 'datePrevue', 'conditions', 'reference', 'commentaires', 'note', 'referenceClient'].forEach(k => { const x = v('ge-' + k); if(x !== undefined) d[k] = x.trim ? x.trim() : x; });
+  if(v('ge-tiers-nom') !== undefined) gcEdit.tiersNom = v('ge-tiers-nom').trim();
   if(v('ge-client') !== undefined) d.clientId = v('ge-client');
   if(v('ge-four') !== undefined) d.fournisseurId = v('ge-four');
   if(v('ge-type') !== undefined) d.type = v('ge-type');
@@ -76,6 +77,37 @@ function gcRecalculerPrix(){
     d.lignes = d.lignes.map(l => (!l.articleId || l.puManuel) ? l : Object.assign({}, l, {pu:GC.tarifAchat(D, l.articleId, d.fournisseurId, q[l.articleId], d.date).prix}));
   } else d.lignes = GC.appliquerPaliers(d.lignes, D.articles);
 }
+// ---------- Saisie simple : l'essentiel seulement (tiers, date, articles, quantités, prix) ----------
+// Les autres champs restent dans la page (masqués) : rien n'est perdu en changeant de mode.
+function gcDocAvance(d, t){
+  return (t === 'commande' && d.type === 'annuelle') || GC.num(d.remise) > 0 || GC.num(d.fraisPrevus) > 0 || GC.liste(d.lignes).some(l => GC.num(l.remise) > 0);
+}
+function gcSaisieSimple(){
+  if(!gcEdit) return false;
+  if(gcEdit.complet === undefined){ let m = ''; try { m = localStorage.getItem('gc_saisie') || ''; } catch(e){} gcEdit.complet = m === 'complete' || gcDocAvance(gcEdit.doc, gcEdit.type); }
+  return !gcEdit.complet;
+}
+window.gcEditMode = (complet) => { gcLireEdition();
+  if(!complet && gcDocAvance(gcEdit.doc, gcEdit.type)){ showToast('Ce document utilise des options (remise, frais, échéances) : elles restent affichées'); nav('gc-edition'); return; }
+  gcEdit.complet = !!complet; try { localStorage.setItem('gc_saisie', complet ? 'complete' : 'simple'); } catch(e){} nav('gc-edition'); };
+// Tiers tapé au clavier : reconnu par son nom ; inconnu = créé à l'enregistrement (nom seul).
+function gcTiersParNom(type, nom){
+  const k = GC.norm(nom); if(!k) return '';
+  if(type === 'achat'){ const f = gcD().fournisseurs.find(x => !x.archive && GC.norm(x.nom) === k); return f ? f.id : ''; }
+  const c = Object.entries(gcClients()).find(([, x]) => x && !x.archive && GC.norm(x.nom) === k); return c ? c[0] : '';
+}
+window.gcEditTiers = () => {
+  const nom = (document.getElementById('ge-tiers-nom') || {}).value || '', id = gcTiersParNom(gcEdit.type, nom);
+  const h = document.getElementById(gcEdit.type === 'achat' ? 'ge-four' : 'ge-client'); if(h) h.value = id;
+  gcEditChange(gcEdit.type === 'achat');
+};
+// Article tapé au clavier : reconnu (référence, désignation ou les deux) = prix et unité repris ; sinon ligne libre.
+window.gcEditDesignation = (i) => {
+  const txt = (document.getElementById('gel-designation-' + i) || {}).value || '', k = GC.norm(txt), h = document.getElementById('gel-art-' + i);
+  const a = k ? gcD().articles.find(x => !x.archive && x.actif !== false && (GC.norm(gcLibArticle(x)) === k || GC.norm(x.designation) === k || (x.ref && GC.norm(x.ref) === k))) : null;
+  if(a){ if(h) h.value = a.id; gcEditArticle(i); return; }
+  if(h) h.value = ''; gcEditChange(false);
+};
 window.gcEditChange = (recalc) => { gcLireEdition(); if(recalc !== false) gcRecalculerPrix(); nav('gc-edition'); };
 window.gcEditArticle = (i) => {
   gcLireEdition();
@@ -99,29 +131,37 @@ window.renderGcEdition = function(main){
   const t = gcEdit.type, d = gcEdit.doc, T = GC_DOCS[t], D = gcD(), tot = t === 'achat' ? gcTotauxCF(d) : GC.totaux(d);
   const titre = (gcEdit.nouveau ? 'Nouvelle ' : 'Modifier : ') + T.titre.toLowerCase() + (d.numero ? ' ' + esc(d.numero) : '');
   const b = gcSection(main, gcRetour(gcEdit.nouveau ? T.liste : T.fiche, titre), '');
-  const qe = GC.qtesEngagees(d.lignes);
-  const tiers = t === 'achat'
+  const qe = GC.qtesEngagees(d.lignes), simple = gcSaisieSimple(), av = (h) => `<div class="gc-av">${h}</div>`;
+  const nomTiers = t === 'achat' ? ((D.fournisseurs.find(f => f.id === d.fournisseurId) || {}).nom || gcEdit.tiersNom || '') : ((gcClients()[d.clientId] || {}).nom || gcEdit.tiersNom || '');
+  const idTiers = t === 'achat' ? d.fournisseurId : d.clientId, nouveauTiers = !idTiers && nomTiers;
+  const tiersSimple = `<div class="field"><label>${t === 'achat' ? 'Fournisseur' : 'Client'} *</label><input id="ge-tiers-nom" list="gc-dl-tiers" autocomplete="off" placeholder="Tapez le nom" value="${gcAttr(nomTiers)}" onchange="gcEditTiers()">
+    <input type="hidden" id="${t === 'achat' ? 'ge-four' : 'ge-client'}" value="${gcAttr(idTiers)}">
+    <datalist id="gc-dl-tiers">${(t === 'achat' ? D.fournisseurs.filter(f => !f.archive).map(f => f.nom) : Object.values(gcClients()).filter(c => c && !c.archive).map(c => c.nom)).filter(Boolean).sort((a, b) => a.localeCompare(b)).map(n => `<option value="${gcAttr(n)}"></option>`).join('')}</datalist>
+    ${nouveauTiers ? `<div class="gc-sous" data-gc="tiers-nouveau" style="margin-top:3px;color:var(--warn, #b45309);">Nouveau ${t === 'achat' ? 'fournisseur' : 'client'} : il sera créé à l'enregistrement.</div>` : ''}</div>`;
+  const tiers = simple ? tiersSimple : t === 'achat'
     ? `<div class="field"><label>Fournisseur *</label><div style="display:flex;gap:6px;"><select id="ge-four" onchange="gcEditChange()">${gcOptsFour(d.fournisseurId, '— Choisir —')}</select><button class="btn btn-ghost" style="padding:6px 12px;" title="Nouveau fournisseur" onclick="gcLireEdition(); window.gcApresFournisseur = (f) => { gcEdit.doc.fournisseurId = f.id; nav('gc-edition'); }; gcFormFournisseur()">+</button></div></div>`
     : `<div class="field"><label>Client *</label><div style="display:flex;gap:6px;"><select id="ge-client" onchange="gcEditChange(false)">${gcOptsClients(d.clientId, '— Choisir —')}</select>${gcPeutClients() ? `<button class="btn btn-ghost" style="padding:6px 12px;" title="Nouveau client" onclick="gcLireEdition(); window.gcApresClient = (id) => { gcEdit.doc.clientId = id; nav('gc-edition'); }; gcFormClient()">+</button>` : ''}</div></div>`;
   const champs = t === 'offre'
-    ? `${mgtChamp('Date', 'ge-date', d.date, 'date')}${mgtChamp('Valable jusqu\'au', 'ge-validite', d.validite, 'date')}${mgtChamp('Référence client', 'ge-referenceClient', d.referenceClient)}`
+    ? `${mgtChamp('Date', 'ge-date', d.date, 'date')}${av(mgtChamp('Valable jusqu\'au', 'ge-validite', d.validite, 'date'))}${av(mgtChamp('Référence client', 'ge-referenceClient', d.referenceClient))}`
     : t === 'commande'
     ? `${mgtChamp('Date de commande', 'ge-date', d.date, 'date')}${mgtChamp('Livraison souhaitée', 'ge-dateSouhaitee', d.dateSouhaitee, 'date')}
-       <div class="field"><label>Type</label><select id="ge-type" onchange="gcEditChange(false)">${gcOpts([['ponctuelle', 'Ponctuelle'], ['annuelle', 'Annuelle / récurrente (échéances)']], d.type)}</select></div>
-       ${mgtChamp('Référence / document client (n° de commande…)', 'ge-reference', d.reference)}`
-    : `${mgtChamp('Date de commande', 'ge-date', d.date, 'date')}${mgtChamp('Livraison prévue', 'ge-datePrevue', d.datePrevue, 'date')}${mgtChamp('Référence (devis fournisseur…)', 'ge-reference', d.reference)}`;
+       ${av(`<div class="field"><label>Type</label><select id="ge-type" onchange="gcEditChange(false)">${gcOpts([['ponctuelle', 'Ponctuelle'], ['annuelle', 'Annuelle / récurrente (échéances)']], d.type)}</select></div>`)}
+       ${av(mgtChamp('Référence / document client (n° de commande…)', 'ge-reference', d.reference))}`
+    : `${mgtChamp('Date de commande', 'ge-date', d.date, 'date')}${mgtChamp('Livraison prévue', 'ge-datePrevue', d.datePrevue, 'date')}${av(mgtChamp('Référence (devis fournisseur…)', 'ge-reference', d.reference))}`;
   const optsArt = (val) => gcOptsArticles(val, '— Ligne libre —', a => t !== 'achat' || GC.suiviStock(a) || true);
   const lignes = d.lignes.map((l, i) => {
     const a = gcArticle(l.articleId), pal = a && t !== 'achat' ? GC.prixPalier(a, qe[l.articleId]) : null;
     return `<tr>
-      <td data-l="Article" style="min-width:180px;"><select id="gel-art-${i}" onchange="gcEditArticle(${i})">${optsArt(l.articleId)}</select>
-        <input id="gel-designation-${i}" placeholder="Désignation" value="${gcAttr(l.designation)}" style="margin-top:4px;" onchange="gcEditChange(false)"></td>
-      <td data-l="Unité"><input id="gel-unite-${i}" value="${gcAttr(l.unite)}" style="max-width:90px;" onchange="gcEditChange(false)"></td>
+      <td data-l="Article" style="min-width:180px;">${simple
+        ? `<input type="hidden" id="gel-art-${i}" value="${gcAttr(l.articleId)}"><input id="gel-designation-${i}" list="gc-dl-art" autocomplete="off" placeholder="Tapez l'article" value="${gcAttr(l.designation)}" onchange="gcEditDesignation(${i})">`
+        : `<select id="gel-art-${i}" onchange="gcEditArticle(${i})">${optsArt(l.articleId)}</select>
+        <input id="gel-designation-${i}" placeholder="Désignation" value="${gcAttr(l.designation)}" style="margin-top:4px;" onchange="gcEditChange(false)">`}</td>
+      <td data-l="Unité" class="gc-av"><input id="gel-unite-${i}" value="${gcAttr(l.unite)}" style="max-width:90px;" onchange="gcEditChange(false)"></td>
       <td data-l="Quantité"><input id="gel-qte-${i}" type="number" step="any" min="0" value="${gcAttr(l.qte)}" onchange="gcEditChange()"></td>
       <td data-l="Prix unitaire HT"><input id="gel-pu-${i}" type="number" step="any" min="0" value="${gcAttr(l.pu)}" onchange="document.getElementById('gel-man-${i}').checked = true; gcEditChange()">
-        <label style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--ink-soft);margin-top:3px;"><input type="checkbox" id="gel-man-${i}" ${l.puManuel ? 'checked' : ''} onchange="gcEditChange()" style="width:auto;min-width:0;"> prix manuel</label>
-        ${pal && pal.palier !== null && !l.puManuel ? `<span class="gc-tag">palier ≥ ${gcQ(pal.min)}</span>` : ''}${t === 'achat' && a && !l.puManuel ? `<span class="gc-tag">${GC.tarifAchat(D, a.id, d.fournisseurId, qe[a.id], d.date).source === 'tarif' ? 'tarif négocié' : 'prix article'}</span>` : ''}</td>
-      ${t === 'achat' ? '' : `<td data-l="Remise %"><input id="gel-remise-${i}" type="number" step="any" min="0" max="100" value="${gcAttr(l.remise)}" style="max-width:80px;" onchange="gcEditChange(false)"></td>`}
+        <label class="gc-av" style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--ink-soft);margin-top:3px;"><input type="checkbox" id="gel-man-${i}" ${l.puManuel ? 'checked' : ''} onchange="gcEditChange()" style="width:auto;min-width:0;"> prix manuel</label>
+        ${pal && pal.palier !== null && !l.puManuel ? `<span class="gc-tag gc-av">palier ≥ ${gcQ(pal.min)}</span>` : ''}${t === 'achat' && a && !l.puManuel ? `<span class="gc-tag gc-av">${GC.tarifAchat(D, a.id, d.fournisseurId, qe[a.id], d.date).source === 'tarif' ? 'tarif négocié' : 'prix article'}</span>` : ''}</td>
+      ${t === 'achat' ? '' : `<td data-l="Remise %" class="gc-av"><input id="gel-remise-${i}" type="number" step="any" min="0" max="100" value="${gcAttr(l.remise)}" style="max-width:80px;" onchange="gcEditChange(false)"></td>`}
       <td class="n" data-l="Montant HT">${gcE(GC.montantLigne(l))}</td>
       <td><button class="btn btn-ghost" style="padding:5px 9px;" onclick="gcEditRetirerLigne(${i})" title="Retirer">✕</button></td></tr>`;
   }).join('');
@@ -131,28 +171,37 @@ window.renderGcEdition = function(main){
     ${GC.liste(d.echeances).length ? `<div style="overflow-x:auto;"><table class="gc-lignes" style="min-width:${260 + d.lignes.length * 110}px;"><thead><tr><th>Date</th>${d.lignes.map(l => `<th class="n">${esc(l.designation || '—')}</th>`).join('')}<th></th></tr></thead><tbody>
       ${d.echeances.map((e, j) => `<tr><td data-l="Date"><input type="date" id="gee-date-${j}" value="${gcAttr(e.date)}" onchange="gcEditChange(false)"></td>${d.lignes.map((l, i) => `<td data-l="${gcAttr(l.designation)}"><input type="number" step="any" min="0" id="gee-q-${j}-${i}" value="${gcAttr((e.qtes || {})[l.lid || ('i' + i)] || 0)}" onchange="gcEditChange(false)"></td>`).join('')}<td><button class="btn btn-ghost" style="padding:5px 9px;" onclick="gcEditRetirerEcheance(${j})">✕</button></td></tr>`).join('')}
       <tr><td><b>Total prévu</b></td>${d.lignes.map((l, i) => { const s = d.echeances.reduce((x, e) => x + GC.num((e.qtes || {})[l.lid || ('i' + i)]), 0); return `<td class="n"><b style="color:${s > GC.num(l.qte) + 1e-9 ? 'var(--bad)' : 'inherit'};">${gcQ(s)} / ${gcQ(l.qte)}</b></td>`; }).join('')}<td></td></tr></tbody></table></div>` : '<div class="gc-sous">Définissez la première date, le nombre d\'échéances et la périodicité, puis « Répartir les quantités ». Chaque quantité reste modifiable.</div>'}</div>` : '';
-  b.innerHTML = `<div class="card"><div class="gc-form">${tiers}${champs}</div></div>
-    <div class="card"><h3 class="gc-h3">Articles</h3><div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Article</th><th>Unité</th><th>Quantité</th><th>Prix unitaire HT</th>${t === 'achat' ? '' : '<th>Remise %</th>'}<th class="n">Montant HT</th><th></th></tr></thead><tbody>${lignes}</tbody></table></div>
+  b.className = simple ? 'gc-simple' : '';
+  b.innerHTML = `<div class="gc-mode" data-gc="mode-saisie"><button class="${simple ? 'on' : ''}" data-gc="mode-simple" onclick="gcEditMode(false)">Saisie simple</button><button class="${simple ? '' : 'on'}" data-gc="mode-complet" onclick="gcEditMode(true)">Toutes les options</button></div>
+    <datalist id="gc-dl-art">${D.articles.filter(a => !a.archive && a.actif !== false).map(a => gcLibArticle(a)).sort((a, b) => a.localeCompare(b)).map(n => `<option value="${gcAttr(n)}"></option>`).join('')}</datalist>
+    <div class="card"><div class="gc-form">${tiers}${champs}</div></div>
+    <div class="card"><h3 class="gc-h3">Articles</h3><div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Article</th><th class="gc-av">Unité</th><th>Quantité</th><th>Prix unitaire HT</th>${t === 'achat' ? '' : '<th class="gc-av">Remise %</th>'}<th class="n">Montant HT</th><th></th></tr></thead><tbody>${lignes}</tbody></table></div>
       <button class="btn btn-ghost" style="margin-top:8px;" data-gc="ajouter-ligne" onclick="gcEditAjouterLigne()">+ Ligne</button>
-      ${t !== 'achat' ? '<div class="gc-sous" style="margin-top:6px;">Le prix suit les paliers de l\'article, calculés sur la quantité totale engagée dans ce document (cochez « prix manuel » pour le fixer).</div>' : '<div class="gc-sous" style="margin-top:6px;">Le prix suit le tarif négocié valable du fournisseur (quantité, date), sinon le prix d\'achat de l\'article.</div>'}</div>
+      ${simple ? '<div class="gc-sous" style="margin-top:6px;">Tapez les premières lettres : l\'article connu est proposé avec son prix. Un article inconnu reste une ligne libre.</div>' : ''}
+      ${t !== 'achat' ? '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit les paliers de l\'article, calculés sur la quantité totale engagée dans ce document (cochez « prix manuel » pour le fixer).</div>' : '<div class="gc-sous gc-av" style="margin-top:6px;">Le prix suit le tarif négocié valable du fournisseur (quantité, date), sinon le prix d\'achat de l\'article.</div>'}</div>
     ${ech}
-    <div class="card"><div class="gc-form">
+    <div class="card"><div class="gc-av"><div class="gc-form">
       ${t !== 'achat' ? mgtChamp('Remise globale (%)', 'ge-remise', d.remise, 'number', 'step="any" min="0" max="100" onchange="gcEditChange(false)"') : mgtChamp('Frais prévus (transport…) €', 'ge-fraisPrevus', d.fraisPrevus, 'number', 'step="any" min="0" onchange="gcEditChange(false)"')}
       ${mgtChamp('TVA (%)', 'ge-tva', d.tva, 'number', 'step="any" min="0" onchange="gcEditChange(false)"')}</div>
       ${t === 'offre' ? `<div class="field"><label>Conditions commerciales</label><textarea id="ge-conditions" rows="3">${esc(d.conditions || '')}</textarea></div>` : t === 'commande'
         ? `${mgtChamp('Conditions de paiement', 'ge-conditions', d.conditions)}<div class="field"><label>Commentaires</label><textarea id="ge-commentaires" rows="2">${esc(d.commentaires || '')}</textarea></div>`
-        : `<div class="field"><label>Note</label><textarea id="ge-note" rows="2">${esc(d.note || '')}</textarea></div>`}
-      <div class="gc-chiffres" style="margin-top:6px;">${t === 'achat' ? `<div class="gc-chiffre"><span>Total HT</span><b>${gcE(tot.ht)}</b></div><div class="gc-chiffre"><span>TVA</span><b>${gcE(tot.tva)}</b></div><div class="gc-chiffre"><span>Frais</span><b>${gcE(tot.frais)}</b></div><div class="gc-chiffre good"><span>Total TTC</span><b>${gcE(tot.ttc)}</b></div>`
-        : `<div class="gc-chiffre"><span>Brut HT</span><b>${gcE(tot.brut)}</b></div><div class="gc-chiffre"><span>Remises</span><b>${gcE(tot.remises)}</b></div><div class="gc-chiffre"><span>Total HT</span><b>${gcE(tot.ht)}</b></div><div class="gc-chiffre"><span>TVA</span><b>${gcE(tot.tva)}</b></div><div class="gc-chiffre good"><span>Total TTC</span><b>${gcE(tot.ttc)}</b></div>`}</div></div>
+        : `<div class="field"><label>Note</label><textarea id="ge-note" rows="2">${esc(d.note || '')}</textarea></div>`}</div>
+      <div class="gc-chiffres" style="margin-top:6px;">${t === 'achat' ? `<div class="gc-chiffre"><span>Total HT</span><b>${gcE(tot.ht)}</b></div><div class="gc-chiffre"><span>TVA</span><b>${gcE(tot.tva)}</b></div><div class="gc-chiffre gc-av"><span>Frais</span><b>${gcE(tot.frais)}</b></div><div class="gc-chiffre good"><span>Total TTC</span><b>${gcE(tot.ttc)}</b></div>`
+        : `<div class="gc-chiffre gc-av"><span>Brut HT</span><b>${gcE(tot.brut)}</b></div><div class="gc-chiffre gc-av"><span>Remises</span><b>${gcE(tot.remises)}</b></div><div class="gc-chiffre"><span>Total HT</span><b>${gcE(tot.ht)}</b></div><div class="gc-chiffre"><span>TVA</span><b>${gcE(tot.tva)}</b></div><div class="gc-chiffre good"><span>Total TTC</span><b>${gcE(tot.ttc)}</b></div>`}</div></div>
     <div style="display:flex;gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="const r = gcEdit.nouveau ? '${T.liste}' : '${T.fiche}'; gcEdit = null; nav(r)">Abandonner</button>
       <button class="btn btn-primary" style="flex:2;" data-gc="enregistrer-doc" onclick="gcSauverDoc()">Enregistrer</button></div>`;
 };
 window.gcSauverDoc = () => gcOperation(() => {
   gcLireEdition();
   const t = gcEdit.type, T = GC_DOCS[t], D = gcD(), d = gcEdit.doc;
-  d.lignes = d.lignes.filter(l => l.articleId || l.designation || GC.num(l.qte) > 0);
-  if(t === 'achat' && !d.fournisseurId){ showToast('Choisissez le fournisseur'); return; }
-  if(t !== 'achat' && !d.clientId){ showToast('Choisissez le client'); return; }
+  d.lignes = d.lignes.filter(l => l.articleId || l.designation || (!gcSaisieSimple() && GC.num(l.qte) > 0));
+  // Saisie simple : un nom tapé qui existe déjà est repris ; un nom nouveau sera créé (après tous les contrôles).
+  const nomNouveau = gcSaisieSimple() ? (gcEdit.tiersNom || '') : '';
+  if(nomNouveau && !(t === 'achat' ? d.fournisseurId : d.clientId)){ const ex = gcTiersParNom(t, nomNouveau); if(ex){ if(t === 'achat') d.fournisseurId = ex; else d.clientId = ex; } }
+  const aCreer = nomNouveau && !(t === 'achat' ? d.fournisseurId : d.clientId);
+  if(aCreer && t !== 'achat' && !gcPeutClients()){ showToast('Client inconnu : choisissez un client de la liste'); return; }
+  if(t === 'achat' && !d.fournisseurId && !aCreer){ showToast(gcSaisieSimple() ? 'Indiquez le fournisseur' : 'Choisissez le fournisseur'); return; }
+  if(t !== 'achat' && !d.clientId && !aCreer){ showToast(gcSaisieSimple() ? 'Indiquez le client' : 'Choisissez le client'); return; }
   if(!d.date){ showToast('La date est obligatoire'); return; }
   if(!d.lignes.length){ showToast('Ajoutez au moins une ligne'); return; }
   for(const l of d.lignes){
@@ -181,6 +230,10 @@ window.gcSauverDoc = () => gcOperation(() => {
         if(r > 0 && (!nl || nl.articleId !== l.articleId || GC.num(nl.qte) + 1e-9 < r)){ showToast('« ' + l.designation + ' » a ' + gcQ(r) + ' réservé(s) : libérez la réservation avant de réduire ou retirer la ligne'); return; }
       }
     }
+  }
+  if(aCreer){
+    if(t === 'achat'){ const f = {id:GC.nouvelId('fo'), nom:nomNouveau, actif:true, delai:Number(gcReglages().delaiDefaut) || 7, conditions:''}; gcEnregistrer('fournisseurs', f); gcJournal('Création', 'Fournisseur', f); d.fournisseurId = f.id; }
+    else { const l = Object.assign({}, gcClients()), nid = typeof mgtId === 'function' ? mgtId('k') : GC.nouvelId('k'); l[nid] = {nom:nomNouveau}; setJSON('gadh_fact_clients', l); gcCacheD = null; gcJournal('Création', 'Client', {id:nid, numero:nomNouveau}); d.clientId = nid; }
   }
   if(gcEdit.nouveau) d.numero = GC.numeroSuivant(D[T.cle], T.prefixe, d.date);
   if(t === 'achat') d.lignes.forEach(l => { const a = gcArticle(l.articleId); if(a && !l.ref) l.ref = a.ref || ''; });
