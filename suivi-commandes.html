@@ -247,6 +247,14 @@ button.step{cursor:pointer}
 .sx-tile.auto{border-style:dashed;box-shadow:none;background:var(--sub)}
 .sx-tile .aut{font-size:12px;font-weight:700;color:var(--mut)}
 .sx-chip.on{background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+/* Déplacer des pièces (Flux) */
+.dp-onglets{margin-bottom:10px;flex-wrap:wrap}
+.dp-lab{font-weight:800;margin:10px 0 6px}
+.dp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.dp-chips .sx-chip b{font-weight:800;opacity:.85}
+.dp-art{width:100%;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 10px;font:inherit;font-size:15px;background:var(--card);color:var(--ink);margin-bottom:8px}
+.dp-ligne{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px;font-size:15px}
+.dp-date{min-height:42px;border:1px solid var(--line);border-radius:10px;padding:0 8px;font:inherit;background:var(--card);color:var(--ink)}
 .sx-szc{display:inline-flex;flex-direction:column;align-items:center;min-width:72px;line-height:1.15;padding:8px 12px}
 .sx-szc b{font-size:20px}.sx-szc span{font-size:12px;font-weight:600;opacity:.8}
 .sx-szc.vide{opacity:.45}
@@ -499,14 +507,16 @@ const DEF_RULES=[["PHARMA-HOMME",100,5,400,10,20],["PHARMA-FEMME COL V",100,5,40
 "use strict";
 var SZ = ["XS","S","M","L","XL","XXL","XXXL","H1.P1","H1.P2","H1.P3","H1.P4","H2.P2","H2.P3","H2.P4","TU"];   /* TU = taille unique (exosquelette) ; H1.P1 … H2.P4 : tailles des sous-vêtements SV */
 /* Parcours : 1 Commande reçue · 2 Commande prête (validée) · puis 9 étapes avec quantités (cumul de pièces ayant atteint l'étape) */
-var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour TEK-TREND"],["conf","En confection"],["ctl","Contrôle"],["emb","Emballée, prête à expédier"],["exp","Expédiée"]];
-/* « Emballage » et « Prêt à expédier » ne font qu'une étape (12/11/2026) : les anciens passages « pret » restent dans les données, sans effet. */
+var STAGES = [["cp","Coupée"],["gadh","Envoyée à la GADH"],["asm","En assemblage (GADH)"],["ret","Retour GADH, en confection"],["ctl","Contrôle"],["emb","Emballée, prête à expédier"],["exp","Expédiée"]];
+/* « Emballage » et « Prêt à expédier » ne font qu'une étape (12/11/2026), de même que « Retour TEK-TREND » et « En confection »
+   (13/11/2026 : les pièces revenues de la GADH partent directement en confection). Les anciens passages « pret » et « conf »
+   restent dans les données, sans effet. */
 var STG_KEYS = STAGES.map(function(x){ return x[0]; });
-var STAGE_SHORT = {cp:"Coupe", gadh:"GADH", asm:"Assemb.", ret:"Retour", conf:"Confec.", ctl:"Contrôle", emb:"Emballée", exp:"Expéd."};
-var STAGE_HELP = {cp:"Quantités coupées par le centre de coupe (partielle ou complète). La coupe peut dépasser la commande (marge).", gadh:"Quantités coupées envoyées à la GADH.", asm:"Pièces reçues et lancées en assemblage à la GADH.", ret:"Pièces assemblées qui reviennent chez TEK-TREND (retour partiel possible).", conf:"Pièces passées en confection.", ctl:"Pièces passées au contrôle.", emb:"Pièces emballées, prêtes à expédier (partiel ou complet).", exp:"Pièces expédiées au client PERCKO (partiel ou complet)."};
-var STAGE_STATUS = ["Commande coupée","Envoyée à la GADH","Assemblage à la GADH","Retour vers TEK-TREND","En confection","Contrôle","Emballée, prête à expédier","Expédiée"];
-var STATE_NAMES = ["À couper","Coupées","Envoyées à la GADH","En assemblage (GADH)","Retournées TEK-TREND","En confection","Contrôlées conformes","Emballées, prêtes à expédier","Expédiées"];
-var STATE_COL = ["#9aa6ba","#d9a400","#e07b39","#b5651d","#6aa84f","#2a6f97","#5b8def","#7d5ba6","#0f5132"];
+var STAGE_SHORT = {cp:"Coupe", gadh:"GADH", asm:"Assemb.", ret:"Confection", ctl:"Contrôle", emb:"Emballée", exp:"Expéd."};
+var STAGE_HELP = {cp:"Quantités coupées par le centre de coupe (partielle ou complète). La coupe peut dépasser la commande (marge).", gadh:"Quantités coupées envoyées à la GADH.", asm:"Pièces reçues et lancées en assemblage à la GADH.", ret:"Pièces assemblées revenues de la GADH : elles partent directement en confection (retour partiel possible).", ctl:"Pièces passées au contrôle.", emb:"Pièces emballées, prêtes à expédier (partiel ou complet).", exp:"Pièces expédiées au client PERCKO (partiel ou complet)."};
+var STAGE_STATUS = ["Commande coupée","Envoyée à la GADH","Assemblage à la GADH","Retour GADH, en confection","Contrôle","Emballée, prête à expédier","Expédiée"];
+var STATE_NAMES = ["À couper","Coupées","Envoyées à la GADH","En assemblage (GADH)","En confection (revenues de la GADH)","Contrôlées conformes","Emballées, prêtes à expédier","Expédiées"];
+var STATE_COL = ["#9aa6ba","#d9a400","#e07b39","#b5651d","#2a6f97","#5b8def","#7d5ba6","#0f5132"];
 /* état actuel d'une ligne : chaque pièce est dans l'état de la dernière étape atteinte */
 function stateVals(cut, s, n){
   n = n || {};
@@ -984,7 +994,7 @@ function stageDates(lot){
   return out;
 }
 /* tableau « Flux d'une commande » : même mise en forme que votre fichier (fusions Model / Total, colonne libellé colorée) */
-var SG_HEAD = ["Coupées","Envoyées à la GADH","Assemblage (GADH)","Retour TEK-TREND","En confection","Contrôlées","Emballées, prêtes à expédier","Expédiées"];
+var SG_HEAD = ["Coupées","Envoyées à la GADH","Assemblage (GADH)","Retour GADH, en confection","Contrôlées","Emballées, prêtes à expédier","Expédiées"];
 var SG_BG = ["F2F2F2","FFE699","F8CBAD","F4B084","C6E0B4","BDD7EE","DDEBF7","D9D2E9","C6EFCE","A9D08E"];
 /* mode "q" : cumul par étape · "s" : situation (état actuel des pièces) · "d" : dates des étapes */
 function fluxGrid(lot, mode){
@@ -1058,7 +1068,7 @@ function rapportDonnees(lot){
     return (rangModele[A.model] - rangModele[B.model]) || (A.model < B.model ? -1 : A.model > B.model ? 1 : 0) || ia - ib || (A.client < B.client ? -1 : A.client > B.client ? 1 : 0); });
   return {lot:lot, year:year, tailles:tailles, groupes:ordre.map(function(k){ return groupes[k]; }), fmm:fmm, info:S.lots[lot] || {}};
 }
-function rapportEtapes(){ return VUE === "gadh" ? ["gadh","asm","ret"] : ["cp","gadh","ret","conf","ctl","emb","exp"]; }
+function rapportEtapes(){ return VUE === "gadh" ? ["gadh","asm","ret"] : ["cp","gadh","ret","ctl","emb","exp"]; }
 function rapportEntete(g, nc, titre, D){
   var T = {b:1, sz:14, al:"l"}, I = {sz:9.5, al:"r", fg:"404040"};
   var mi = Math.max(1, Math.floor(nc / 2) - 1);
@@ -3622,8 +3632,12 @@ function validateLot(lot){
   if (ok){ toast("Commande validée : consommations calculées"); ui.tab = "fiche"; ui.fiche = "c"; render(); }
 }
 function vFlux(v){
-  if ((ui.fmode || (ui.fmode = fluxMode())) !== "detail") return vFluxSimple(v);
-  v.appendChild(el("div", {style:"text-align:right;margin-bottom:6px"}, el("button", {class:"btn sec small", text:"← Revenir au mode simple", onclick:function(){ setFluxMode("simple"); ui.sxOpen = false; render(); }})));
+  var md = ui.fmode || (ui.fmode = fluxMode());
+  if (VUE === "gadh" && md === "deplacer") md = ui.fmode = "simple";
+  if (md === "deplacer") return vDeplacer(v);
+  if (md !== "detail") return vFluxSimple(v);
+  if (VUE === "gadh") v.appendChild(el("div", {style:"text-align:right;margin-bottom:6px"}, el("button", {class:"btn sec small", text:"← Revenir au mode simple", onclick:function(){ setFluxMode("simple"); ui.sxOpen = false; render(); }})));
+  else fluxOnglets(v);
   var lot = ui.lot, lines = filtered(lot, "*");
   if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
   if (VUE === "gadh" && ui.stage === "env") ui.stage = "ret";
@@ -3745,8 +3759,7 @@ function vFlux(v){
     VUE === "gadh" ? null : el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
     el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
     el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }}),
-    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
-    VUE === "gadh" || stage === "cp" ? null : el("button", {class:"btn sec", "data-renvoi-ouvrir":"1", text:"↩ Renvoyer à une étape précédente", onclick:function(){ ui.fren = stage; ui.frv = {}; ui.frc = null; ui.fcorr = null; ui.pend = null; render(true); }})));
+    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
   if (stage === "cp" && VUE !== "gadh"){
     var anyClosed = rows.some(function(l){ return l.cc; });
     v.appendChild(el("div", {class:"actions"},
@@ -3758,8 +3771,7 @@ function vFlux(v){
     v.appendChild(el("div", {class:"msg", style:"margin-bottom:10px;background:#fff3cd;border:1px solid #e7cf6a;color:#4a3b00"},
       el("b", {text:"Rien à saisir à cette étape : "}), "tout ce qui était disponible est déjà passé (colonne « Déjà passé »). Les cases sont bloquées. ",
       nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null,
-      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
-      VUE === "gadh" ? null : " ", VUE === "gadh" ? null : el("button", {class:"btn small sec", style:"margin-top:8px", text:"↩ Renvoyer à une étape précédente", onclick:function(){ ui.fren = stage; ui.frv = {}; ui.frc = null; ui.fcorr = null; ui.pend = null; render(true); }})));
+      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
     items.forEach(function(it){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; });
   } else {
     items.forEach(function(it){ if (capped && it.disp === 0){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; } });
@@ -5215,13 +5227,13 @@ function sortedUniqueKeep(a){ var seen = {}, o = []; a.forEach(function(x){ if (
    L'étape intermédiaire « En assemblage » se remplit
    automatiquement (au retour GADH). Le mode détaillé reste disponible.
    ===================================================================== */
-var SX = [["env","Envoi coupe"],["cp","Coupe"],["gadh","Envoi GADH"],["ret","Retour GADH"],["conf","Confection"],["ctl","Contrôle"],["emb","Emballage"],["exp","Expédition"]];
+var SX = [["env","Envoi coupe"],["cp","Coupe"],["gadh","Envoi GADH"],["ret","Retour GADH, confection"],["ctl","Contrôle"],["emb","Emballage"],["exp","Expédition"]];
 var SX_NOM = {}; SX.forEach(function(x){ SX_NOM[x[0]] = x[1]; });
-var SX_PREV = {cp:null, gadh:"cp", ret:"gadh", conf:"ret", ctl:"conf", emb:"ctl", exp:"emb"};
+var SX_PREV = {cp:null, gadh:"cp", ret:"gadh", ctl:"ret", emb:"ctl", exp:"emb"};
 var SX_AUTO = {ret:"asm"};
 /* Côté TEK-TREND, ces étapes ne se saisissent pas : le retour est saisi par la GADH, la confection reprend
    les quantités retournées, le contrôle est rempli à l'emballage (cartons). */
-var SX_INFO = {ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici automatiquement.", conf:"Rempli automatiquement avec les quantités retournées par la GADH (même détail par taille).", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};
+var SX_INFO = {ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici et partent directement en confection.", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};
 function sxEstAuto(st){ return VUE !== "gadh" && !!SX_INFO[st]; }
 var SX_COL = {env:"#6b7a90", cp:"#c48a00", gadh:"#e07b39", ret:"#5a9a3f", conf:"#2a6f97", ctl:"#4d7fe0", emb:"#7d5ba6", exp:"#0f6b45"};
 var SX_ICO = {
@@ -5239,13 +5251,13 @@ var SX_AIDE = {
   cp:"Comptez les pièces coupées reçues du centre de coupe.",
   gadh:"Comptez les pièces envoyées à la GADH.",
   ret:"Comptez les pièces revenues de la GADH, assemblées.",
-  conf:"Comptez les pièces sorties de la confection.",
   ctl:"Comptez les pièces contrôlées. Une pièce avec un défaut : touchez « Défaut ».",
   emb:"Comptez les pièces mises en carton.",
   exp:"Comptez les pièces chargées pour l'expédition."
 };
-function fluxMode(){ try { return localStorage.getItem("pk_fmode") || "simple"; } catch (e) { return "simple"; } }
-function setFluxMode(m){ try { localStorage.setItem("pk_fmode", m); } catch (e) {} ui.fmode = m; ui.fv = {}; ui.pend = null; }
+/* mode de Flux mémorisé sur l'appareil ; par défaut « Déplacer des pièces » (TEK-TREND) ou « simple » (GADH) */
+function fluxMode(){ var d = VUE === "gadh" ? "simple" : "deplacer"; try { return localStorage.getItem("pk_fmode2") || d; } catch (e) { return d; } }
+function setFluxMode(m){ try { localStorage.setItem("pk_fmode2", m); } catch (e) {} ui.fmode = m; ui.fv = {}; ui.pend = null; }
 function sxIcon(st, col){ var s = el("span", {class:"ic", style:"background:" + (col || SX_COL[st])}); s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + SX_ICO[st] + "</svg>"; return s; }
 /* pièces disponibles à une étape, par ligne de commande */
 function sxItems(stage, rows){
@@ -5267,18 +5279,164 @@ function sxAutoMoves(stage, nm, date){
   var t0 = stageTotals(), n0 = ncTotals(), add = {}, out = [];
   nm.forEach(function(m){ add[m.lineId] = (add[m.lineId] || 0) + (m.qty || 0) + (m.nc || 0); });
   Object.keys(add).forEach(function(id){ var used = ((t0[id] || {})[stage] || 0) + ((n0[id] || {})[stage] || 0) + add[id], have = (t0[id] || {})[auto] || 0; if (have < used) out.push({id:nid("M"), date:date, lineId:id, stage:auto, qty:used - have, nc:0, note:(auto === "asm" ? "Assemblage" : "Prêt à expédier") + " (auto)"}); });
-  if (stage === "ret") out = out.concat(confAuto(nm, date));
   return out;
 }
-/* la confection reprend les quantités (conformes) retournées par la GADH, taille par taille */
-function confAuto(nm, date){
-  return nm.filter(function(m){ return m.stage === "ret" && m.qty > 0; }).map(function(m){ return {id:nid("M"), date:date || m.date, lineId:m.lineId, stage:"conf", qty:m.qty, nc:0, note:"Confection (auto, retour GADH)"}; });
-}
+/* « Retour GADH » et « Confection » ne font plus qu'une étape (13/11/2026) : plus de passage « conf » automatique */
+function confAuto(){ return []; }
 function sxFermer(){ Array.prototype.forEach.call(document.querySelectorAll(".sx-modal"), function(m){ m.remove(); }); }
 /* tant qu'une fenêtre est ouverte, les mises à jour venant d'autres appareils ne redessinent pas l'écran (ui.pend) */
 function sxClose(){ ui.pend = null; sxFermer(); }
 function sxModal(){ sxFermer(); ui.pend = ui.pend || {modal:true}; var box = el("div", {class:"sx-box"}), m = el("div", {class:"sx-modal"}, box); m.addEventListener("click", function(e){ if (e.target === m){ ui.pend = null; sxFermer(); } }); document.body.appendChild(m); return box; }
 function sxOuvrir(st){ ui.stage = st; ui.sxOpen = true; ui.fv = {}; ui.pend = null; render(); }
+
+/* =====================================================================
+   DÉPLACER DES PIÈCES (13/11/2026) — un seul écran pour faire passer des pièces d'un statut à un autre,
+   en avant ou en arrière : on choisit « De » (où sont les pièces), « Vers » (où elles vont), puis les
+   quantités par article et taille. Les étapes entre les deux sont ajoutées (en avant) ou retirées (en
+   arrière), à la date choisie, avec la note « Déplacé : … → … ». Rien n'est effacé : tout reste au journal.
+   Les pièces d'un carton d'export (emballées ou exportées) ne se déplacent pas ici : on passe par Exports.
+   ===================================================================== */
+var DP_ST = [
+  {k:"pas", nom:"Pas encore coupées", court:"À couper", passe:[]},
+  {k:"cp", nom:"Coupées", court:"Coupées", passe:["cp"]},
+  {k:"gadh", nom:"Chez la GADH", court:"GADH", passe:["cp", "gadh"]},
+  {k:"ret", nom:"En confection", court:"Confection", passe:["cp", "gadh", "asm", "ret"]},
+  {k:"ctl", nom:"Contrôlées", court:"Contrôlées", passe:["cp", "gadh", "asm", "ret", "ctl"]},
+  {k:"emb", nom:"Emballées, prêtes à expédier", court:"Emballées", passe:["cp", "gadh", "asm", "ret", "ctl", "emb"]},
+  {k:"exp", nom:"Expédiées", court:"Expédiées", passe:["cp", "gadh", "asm", "ret", "ctl", "emb", "exp"]}
+];
+function dpIdx(k){ for (var i = 0; i < DP_ST.length; i++) if (DP_ST[i].k === k) return i; return -1; }
+/* pièces d'une ligne à un statut : {ici, bloque (cartons d'export), libre} */
+function dpIci(l, k){
+  var t = stageTotals()[l.id] || {}, n = ncTotals()[l.id] || {}, g = function(x){ return t[x] || 0; }, gn = function(x){ return (t[x] || 0) + (n[x] || 0); };
+  var ici = k === "pas" ? Math.max(0, l.qty - g("cp")) : k === "cp" ? g("cp") - gn("gadh") : k === "gadh" ? g("gadh") - gn("ret") : k === "ret" ? g("ret") - gn("ctl") :
+    k === "ctl" ? g("ctl") - gn("emb") : k === "emb" ? g("emb") - gn("exp") : g("exp");
+  ici = Math.max(0, ici);
+  var bloque = 0;
+  if (k === "emb" || k === "exp"){
+    var ids = {}; (S.exports || []).forEach(function(e){ ids[e.id] = 1; (e.cartons || []).forEach(function(c){ ids[c.id] = 1; }); });
+    var xp = function(st){ var q = 0; S.moves.forEach(function(m){ if (m.lineId === l.id && m.stage === st && m.ct && ids[m.ct]) q += m.qty || 0; }); return q; };
+    bloque = Math.min(ici, Math.max(0, k === "emb" ? xp("emb") - xp("exp") : xp("exp")));
+  }
+  return {ici:ici, bloque:bloque, libre:k === "pas" ? Infinity : Math.max(0, ici - bloque)};
+}
+/* mouvements pour déplacer q pièces d'une ligne de « de » vers « vers » */
+function dpMouvements(l, q, de, vers, date){
+  var a = DP_ST[dpIdx(de)], b = DP_ST[dpIdx(vers)], av = dpIdx(vers) > dpIdx(de), out = [];
+  var etapes = av ? b.passe.filter(function(x){ return a.passe.indexOf(x) < 0; }) : a.passe.filter(function(x){ return b.passe.indexOf(x) < 0; });
+  if (!av) etapes = etapes.slice().reverse();
+  etapes.forEach(function(st){ out.push({id:nid("M"), date:date, lineId:l.id, stage:st, qty:av ? q : -q, nc:0, note:"Déplacé : " + a.nom + " → " + b.nom}); });
+  return out;
+}
+function vDeplacer(v){
+  sxFermer();
+  var lot = ui.lot, lines = filtered(lot, "*");
+  fluxOnglets(v);
+  if (!lines.length){ v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune commande dans ce lot. Ajoutez-en une dans l'onglet Commandes."}))); return; }
+  if (!ui.fcli) ui.fcli = "*";
+  var clients = sortedUnique(lines.map(function(l){ return l.client; }));
+  if (ui.fcli !== "*" && clients.indexOf(ui.fcli) < 0) ui.fcli = "*";
+  var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
+  var D = ui.dp || (ui.dp = {de:"ret", vers:"ctl", art:"*", vals:{}, date:today()});
+  if (clients.length > 1){
+    var sc = el("div", {class:"seg"});
+    [["*", "Tous les clients"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; D.vals = {}; render(true); }})); });
+    v.appendChild(sc);
+  }
+  var tot = {}; DP_ST.forEach(function(s){ tot[s.k] = 0; });
+  rows.forEach(function(l){ DP_ST.forEach(function(s){ if (s.k !== "pas") tot[s.k] += dpIci(l, s.k).ici; }); tot.pas += dpIci(l, "pas").ici; });
+  var c = el("div", {class:"card dp-card"},
+    el("h2", {text:"⇄ Déplacer des pièces"}),
+    el("p", {class:"mut", style:"margin:0 0 8px", text:"Choisissez où sont les pièces, puis où elles vont — en avant ou en arrière. Les étapes entre les deux sont ajoutées ou retirées automatiquement."}),
+    el("div", {class:"dp-lab", text:"1. De (où sont les pièces) :"}));
+  var chDe = el("div", {class:"dp-chips"});
+  DP_ST.forEach(function(s){ chDe.appendChild(el("button", {class:"sx-chip" + (s.k === D.de ? " on" : ""), "data-de":s.k, onclick:function(){ D.de = s.k; if (D.vers === s.k) D.vers = DP_ST[Math.min(DP_ST.length - 1, dpIdx(s.k) + 1)].k; if (D.vers === s.k) D.vers = DP_ST[dpIdx(s.k) - 1].k; D.vals = {}; D.art = "*"; render(true); }},
+    el("span", {text:(s.k === D.de ? "✓ " : "") + s.court}), el("b", {text:" " + fmt(tot[s.k])}))); });
+  c.appendChild(chDe);
+  c.appendChild(el("div", {class:"dp-lab", text:"2. Vers (où elles vont) :"}));
+  var chV = el("div", {class:"dp-chips"});
+  DP_ST.forEach(function(s){ if (s.k === D.de) return; chV.appendChild(el("button", {class:"sx-chip" + (s.k === D.vers ? " on" : ""), "data-vers":s.k, text:(s.k === D.vers ? "✓ " : "") + (dpIdx(s.k) < dpIdx(D.de) ? "↩ " : "") + s.court, onclick:function(){ D.vers = s.k; render(true); }})); });
+  c.appendChild(chV);
+  var av = dpIdx(D.vers) > dpIdx(D.de), a = DP_ST[dpIdx(D.de)], b = DP_ST[dpIdx(D.vers)];
+  var etapes = (av ? b.passe.filter(function(x){ return a.passe.indexOf(x) < 0; }) : a.passe.filter(function(x){ return b.passe.indexOf(x) < 0; })).filter(function(x){ return x !== "asm"; }).map(function(x){ return stageName(x); });
+  c.appendChild(el("div", {class:"msg", style:"margin:10px 0 0", text:(av ? "➜ En avant : « " + a.nom + " » → « " + b.nom + " ». Étape(s) ajoutée(s) : " : "↩ En arrière : « " + a.nom + " » → « " + b.nom + " ». Étape(s) retirée(s) : ") + etapes.join(", ") + "."}));
+  v.appendChild(c);
+  /* articles qui ont des pièces au statut « De » */
+  var items = [];
+  rows.forEach(function(l){ var p = dpIci(l, D.de); if (p.ici > 0 || (D.de === "pas" && l.qty > 0)) items.push({l:l, p:p}); });
+  var arts = sortedUnique(items.map(function(it){ return it.l.lib; }));
+  if (D.art !== "*" && arts.indexOf(D.art) < 0) D.art = "*";
+  if (!items.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"xp-vide", text:"Aucune pièce au statut « " + a.nom + " »" + (ui.fcli !== "*" ? " pour " + ui.fcli : "") + "."}))); return; }
+  var sel = el("select", {class:"dp-art", onchange:function(){ D.art = sel.value; render(true); }});
+  sel.appendChild(el("option", {value:"*", text:"Tous les articles (" + arts.length + ")"}));
+  arts.forEach(function(x){ var q = 0; items.forEach(function(it){ if (it.l.lib === x) q += it.p.ici; }); sel.appendChild(el("option", {value:x, text:nomDoc(x) + " · " + fmt(q)})); });
+  sel.value = D.art;
+  var vis = items.filter(function(it){ return D.art === "*" || it.l.lib === D.art; });
+  var totEl = el("b"), dateIn = el("input", {type:"date", value:D.date || today(), max:today(), class:"dp-date", onchange:function(){ D.date = dateIn.value || today(); }});
+  function maj(){ var n = 0; Object.keys(D.vals).forEach(function(k){ n += D.vals[k] || 0; }); totEl.textContent = fmt(n) + " pièce(s) à déplacer"; }
+  var barre = el("div", {class:"card dp-barre"},
+    el("div", {class:"dp-lab", text:"3. Quantités par article et taille :"}), sel,
+    el("div", {class:"dp-ligne"}, el("label", null, "Date ", dateIn), totEl),
+    el("div", {class:"actions"}, el("button", {class:"btn", "data-dp-go":"1", text:"⇄ Déplacer", onclick:function(){ dpValider(lot, rows, D); }}),
+      el("button", {class:"btn sec", text:"Tout", onclick:function(){ vis.forEach(function(it){ var m = it.p.libre === Infinity ? it.p.ici : it.p.libre; if (m) D.vals[it.l.id] = m; }); render(true); }}),
+      el("button", {class:"btn sec", text:"Vider", onclick:function(){ D.vals = {}; render(true); }})));
+  v.appendChild(barre);
+  var tb = el("tbody"), pl = "", inputs = [];
+  vis.forEach(function(it){
+    var l = it.l, k = l.lib + "|" + l.client;
+    if (k !== pl){ pl = k; var grp = vis.filter(function(x){ return x.l.lib === l.lib && x.l.client === l.client; });
+      tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"3", text:nomDoc(l.lib) + (clients.length > 1 ? " · " + l.client : "")}),
+        el("td", null, el("button", {class:"btn small sec", text:"Tout", onclick:function(){ grp.forEach(function(x){ var m = x.p.libre === Infinity ? x.p.ici : x.p.libre; if (m) D.vals[x.l.id] = m; }); render(true); }})))); }
+    var max = it.p.libre;
+    var iv = el("input", {type:"number", inputmode:"numeric", min:"0", class:"ed", "data-dp":l.id, value:D.vals[l.id] ? String(D.vals[l.id]) : "", placeholder:"0"});
+    if (max !== Infinity) iv.setAttribute("max", String(max));
+    if (!max){ iv.disabled = true; iv.placeholder = "—"; }
+    iv.addEventListener("input", function(){ var q = Math.max(0, num(iv.value)); if (max !== Infinity && q > max){ q = max; iv.value = q || ""; } if (q) D.vals[l.id] = q; else delete D.vals[l.id]; iv.classList.toggle("chg", !!q); maj(); });
+    iv.addEventListener("focus", function(){ try { iv.select(); } catch (e) {} });
+    iv.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); var x = inputs.indexOf(iv); if (inputs[x + 1]) inputs[x + 1].focus(); else iv.blur(); } });
+    iv.classList.toggle("chg", !!D.vals[l.id]); inputs.push(iv);
+    var tout = el("button", {class:"btn small sec", text:"Tout", onclick:function(){ var m = max === Infinity ? it.p.ici : max; if (!m) return; D.vals[l.id] = m; iv.value = m; iv.classList.add("chg"); maj(); }});
+    if (!max) tout.disabled = true;
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:l.size}),
+      el("td", {text:fmt(it.p.ici) + (it.p.bloque ? " (dont " + fmt(it.p.bloque) + " en carton d'export)" : "")}), el("td", {class:"fr"}, iv), el("td", null, tout)));
+  });
+  var t = el("table", {class:"flux corr"});
+  t.appendChild(el("thead", null, el("tr", null, [["Taille", "l"], ["Ici", ""], ["À déplacer", ""], ["", ""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(tb);
+  v.appendChild(el("div", {class:"tw", style:"max-height:62vh"}, t));
+  maj();
+}
+function dpValider(lot, rows, D){
+  var mv = [], err = "", nb = 0, det = [], d8 = D.date || today();
+  if (d8 > today()){ toast("La date ne peut pas être dans le futur."); return; }
+  rows.forEach(function(l){ var q = D.vals[l.id] || 0; if (!q) return; var p = dpIci(l, D.de);
+    if (q > p.libre){ err = err || nomDoc(l.lib) + " " + l.size + " : " + fmt(p.libre) + " pièce(s) seulement" + (p.bloque ? " (" + fmt(p.bloque) + " dans un carton d'export : passez par Exports)" : "") + "."; return; }
+    nb += q; det.push([l, q]); mv = mv.concat(dpMouvements(l, q, D.de, D.vers, d8)); });
+  if (err){ toast(err); return; }
+  if (!mv.length){ toast("Indiquez les quantités à déplacer."); return; }
+  try { checkMoves(mv); } catch (e) { toast(e.message); return; }
+  var a = DP_ST[dpIdx(D.de)], b = DP_ST[dpIdx(D.vers)];
+  var box = sxModal(); box.classList.add("corr-box");
+  box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"⇄ Déplacer " + fmt(nb) + " pièce(s) ?"}));
+  box.appendChild(el("p", {style:"text-align:center;margin:4px 0 8px"}, "« " + a.nom + " » → « ", el("b", {text:b.nom}), " » · le " + dmyL(d8)));
+  var rec = el("div", {class:"sx-cdet"});
+  det.forEach(function(x){ rec.appendChild(el("div", null, el("span", {text:nomDoc(x[0].lib) + " " + x[0].size}), el("b", {text:fmt(x[1])}))); });
+  box.appendChild(rec);
+  box.appendChild(el("button", {class:"sx-go", style:"width:100%", "data-dp-oui":"1", text:"✔ Oui, déplacer", onclick:function(){
+    sxClose();
+    var ok = commit(function(){ checkMoves(mv); mv.forEach(function(m){ S.moves.push(m); }); D.vals = {}; }, fmt(nb) + " pièce(s) déplacée(s) : « " + a.nom + " » → « " + b.nom + " »");
+    if (!ok) render(true);
+  }}));
+  box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
+}
+/* onglets de Flux (vue TEK-TREND) : Déplacer des pièces · Saisie par étape · Détaillé */
+function fluxOnglets(v){
+  if (VUE === "gadh") return;
+  var sc = el("div", {class:"seg dp-onglets"});
+  [["deplacer", "⇄ Déplacer des pièces"], ["simple", "Saisie par étape"], ["detail", "Détaillé (dates, défauts)"]].forEach(function(x){
+    sc.appendChild(el("button", {class:x[0] === ui.fmode ? "on" : "", "data-fmode":x[0], text:x[1], onclick:function(){ setFluxMode(x[0]); ui.sxOpen = false; render(); }})); });
+  v.appendChild(sc);
+}
 
 function vFluxSimple(v){
   sxFermer();
@@ -5291,7 +5449,9 @@ function vFluxSimple(v){
   var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
   if (ui.stage === "asm") ui.stage = "ret";
   if (ui.stage === "pret") ui.stage = "exp";
+  if (ui.stage === "conf") ui.stage = "ret";
   if (G){ ui.stage = "ret"; ui.sxOpen = true; }
+  if (!G) fluxOnglets(v);
   if (clients.length > 1){
     var sc = el("div", {class:"seg"});
     [["*", "Toutes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
@@ -5425,7 +5585,6 @@ function modifierEtape(st, vals, motif, date){
     if (nv < 0) throw new Error("Quantité négative impossible.");
     var d = nv - cur; if (!d) return;
     mv.push({id:nid("M"), date:d8, lineId:id, stage:st, qty:d, nc:0, note:note});
-    if (st === "ret"){ var c = (tot[id] || {}).conf || 0, dc = d > 0 ? d : Math.max(-c, d); if (dc) mv.push({id:nid("M"), date:d8, lineId:id, stage:"conf", qty:dc, nc:0, note:"Confection (auto, modification du retour)"}); }
   });
   if (!mv.length) throw new Error("Aucune quantité modifiée.");
   var auto = sxAutoMoves(st, mv.filter(function(m){ return m.stage === st && m.qty > 0; }), d8).filter(function(m){ return m.stage !== "conf"; });

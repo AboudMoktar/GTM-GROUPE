@@ -14,8 +14,8 @@
 (function(racine){
 'use strict';
 
-const ETAPES = ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb', 'exp'];
-const NOM_ETAPE = {cp:'Coupe', gadh:'Envoi GADH', asm:'Assemblage GADH', ret:'Retour TEK-TREND', conf:'Confection', ctl:'Contrôle', emb:'Emballage', exp:'Expédition'};
+const ETAPES = ['cp', 'gadh', 'asm', 'ret', 'ctl', 'emb', 'exp'];   /* « ret » = revenue de la GADH, en confection */
+const NOM_ETAPE = {cp:'Coupe', gadh:'Envoi GADH', asm:'Assemblage GADH', ret:'Retour GADH / confection', ctl:'Contrôle', emb:'Emballage', exp:'Expédition'};
 const TAILLES_CONNUES = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', 'XXXL', 'TU'];
 const MOTS_VIDES = new Set(('a au aux avec ce ces cette combien comment de des du en est et il ils je la le les leur leurs ma me mes moi mon ne nous on ou où par pas pour qu que quel quelle quelles quels qui sa se ses son sont sur ta te tes ton tu un une vos votre vous y ' +
   'il elle ya t encore deja deja bien tout tous toute toutes quoi donne donner dis dire montre montrer voir affiche afficher liste lister peux peut fait faire faut ' +
@@ -50,7 +50,7 @@ function donnees(docs){
   });
   lignes.forEach(l => {
     const g = k => l.t[k] || 0, p = v => Math.max(0, v);
-    l.a = {pasCoupe:p(l.qty - g('cp')), coupe:p(g('cp') - g('gadh')), gadh:p(g('gadh') - g('ret')), retour:p(g('ret') - g('conf')), conf:p(g('conf') - g('ctl')),
+    l.a = {pasCoupe:p(l.qty - g('cp')), coupe:p(g('cp') - g('gadh')), gadh:p(g('gadh') - g('ret')), retour:0, conf:p(g('ret') - g('ctl')),
       ctl:p(g('ctl') - g('emb')), pret:p(g('emb') - g('exp')), exp:g('exp')};
     l.resteLivrer = p(l.qty - g('exp'));
     l.resteProduire = p(l.qty - g('emb'));

@@ -74,8 +74,7 @@ function poserCss(){ if (document.getElementById('ph-css')) return; var st = doc
 var ETAPES_TEK = [
   ["cp", "Qté coupée", "Coupe", "#22a06b"],
   ["gadh", "Passée à l'assemblage (GADH)", "Assemblage GADH", "#e8830c"],
-  ["ret", "Revenue chez TEK-TREND", "Retour TEK-TREND", "#c2410c"],
-  ["conf", "En confection", "Confection", "#7c3aed"],
+  ["ret", "Revenue de la GADH, en confection", "Retour GADH / confection", "#c2410c"],
   ["ctl", "Contrôlée", "Contrôle", "#0e7490"],
   ["emb", "Emballée", "Emballage", "#15803d"],
   ["exp", "Expédiée", "Expédition", "#2563eb"]
