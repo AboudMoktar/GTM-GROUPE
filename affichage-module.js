@@ -20,6 +20,8 @@
   function appliquer(){
     var r = document.documentElement; if(!r) return;
     if(lire().contraste) r.setAttribute('data-affichage', 'renforce'); else r.removeAttribute('data-affichage');
+    /* ancien ordinateur : effets graphiques coûteux coupés (voir multiplateforme.css) */
+    if(ancienSysteme()) r.setAttribute('data-ancien', '1');
   }
   var R = 'html[data-affichage="renforce"]';
   var CLAIR = R + ':not([data-theme="dark"]):not([data-mgt-theme="dark"])';
