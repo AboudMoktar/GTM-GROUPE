@@ -104,6 +104,10 @@ function groupes(lot){
       ].concat(X().factureGrid && typeof HOST !== "undefined" && HOST && HOST.apercuFacture ? [{t:"Facture", o:"portrait", vide:"Aucune pièce à facturer dans cet export.",
         s:e.st === "fini" ? "Facture de l'export, au prix du tarif" : "Disponible avant la validation de l'export : calculée depuis les cartons, ou la facture préparée si elle existe",
         nom:X().titreFichier ? X().titreFichier(e, "Facture") : nomFichier("Facture_export_" + e.n),
+        /* aperçu et PDF : au modèle papier TEK-TREND (identique à la facture imprimée) ; Excel : le même contenu en tableau */
+        sansOri:true,
+        apercu:function(){ if (HOST.apercuFactureModele) HOST.apercuFactureModele(X().demandeFacture(e), ""); },
+        pdf:function(){ if (HOST.apercuFactureModele) HOST.apercuFactureModele(X().demandeFacture(e), "pdf"); },
         grilles:function(){ var g = X().factureGrid(e); return g ? [{name:"Facture", grid:g}] : []; },
         plus:{t:"✏️ Modifier", titre:"Ouvre la facture dans Facturation pour la modifier ou l'émettre", fn:function(){ X().facturerExport(e); }}}] : [])});
     });
