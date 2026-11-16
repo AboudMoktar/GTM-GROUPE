@@ -894,6 +894,7 @@ function suiviCommande(e, lot){
   var parId = {}; lignes.forEach(function(l){ parId[l.id] = l; });
   S.moves.forEach(function(m){ var l = parId[m.lineId]; if (!l) return; var r;
     if (m.stage === "emb"){ r = ref(l.lib, l.size); r.emb += m.qty; }
+    else if (m.stage === "ctl"){ r = ref(l.lib, l.size); r.ctl = (r.ctl || 0) + m.qty; }
     else if (m.stage === "exp"){ r = ref(l.lib, l.size); r.exp += m.qty; if (!idsX[m.ct]){ r.av += m.qty; var kd = "av:" + (m.date || ""); r.ex[kd] = (r.ex[kd] || 0) + m.qty; } } });
   var dates = {}; exs.forEach(function(x){ var d = dmyL(x.d).slice(0, 5); dates[d] = (dates[d] || 0) + 1; });
   /* colonnes du suivi, par date : expéditions faites hors export (« Expédié jj/mm », date du passage) et exports (« Exporté jj/mm ») */
@@ -913,8 +914,10 @@ function suiviCommande(e, lot){
     titre:titre,
     /* pièces d'une référence : exportées (ou expédiées avant), emballées en attente d'export, reste */
     chiffres:function(lib, z, tot){ var r = R[lib + "|" + z] || {ex:{}, av:0, emb:0, exp:0}, sx = r.av; exs.forEach(function(x){ sx += r.ex[x.id] || 0; });
-      /* reste à produire = total − (expédié + emballé), jamais négatif */
-      var emb = Math.max(0, r.emb - Math.max(r.exp, sx)); return {exporte:sx, emballe:emb, reste:Math.max(0, tot - sx - emb)}; }};
+      /* contrôlées = passées au contrôle et pas encore emballées ;
+         reste à produire = total − (expédié + emballé + contrôlé), jamais négatif (16/11/2026) */
+      var emb = Math.max(0, r.emb - Math.max(r.exp, sx)), ctl = Math.max(0, (r.ctl || 0) - Math.max(r.emb, r.exp, sx));
+      return {exporte:sx, emballe:emb, controle:ctl, reste:Math.max(0, tot - sx - emb - ctl)}; }};
 }
 /* colonnes de la commande : clients NEOLYS, ALLOGA, produits FLÉCHÉS, VESTIAIRES, puis les autres */
 function clientsColonnes(lot, client){
@@ -940,8 +943,8 @@ function etatCommandeGrid(e, lot, opt){
   var statuts = ((S.lots[lot] || {}).statuts) || {};
   var refs = Object.keys(R).map(function(k){ return R[k]; }).sort(function(a, b){ return ((a.lib in lo ? lo[a.lib] : 999) - (b.lib in lo ? lo[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : sizeIdx(a.size) - sizeIdx(b.size)); });
   /* colonnes */
-  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cE = cSt + 1, cEmb = cE + cols.length, cR = cEmb + 1, L = colName;
-  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [15, 9]), rows:[], merges:[], plein:true, onePage:true};
+  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cE = cSt + 1, cEmb = cE + cols.length, cCtl = cEmb + 1, cR = cCtl + 1, L = colName;
+  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [15, 12, 9]), rows:[], merges:[], plein:true, onePage:true};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
   var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = opt.annee || (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
   gset(g, 0, 0, "Commande: " + (typeof libelleCommande === "function" && libelleCommande(lot) ? libelleCommande(lot) : mois), Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
@@ -952,7 +955,7 @@ function etatCommandeGrid(e, lot, opt){
     gmerge(g, 0, cSt, 1, cR); }
   g.rows[0].h = 18; g.rows[1].h = 16;
   ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"])
-    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : [SV.titreEmb, "Reste"])
+    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : [SV.titreEmb, "Contrôlés,\nà emballer", "Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = CM ? 28 : 40;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"};
@@ -971,9 +974,10 @@ function etatCommandeGrid(e, lot, opt){
       gset(g, r, cSt, "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
       cols.forEach(function(c, i){ var v = rx.ex[c.id] || 0; gset(g, r, cE + i, v || "", c.av ? C : {b:1, sz:10, al:"c", bd:"t"}); });
       gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
+      gset(g, r, cCtl, ch.controle || "", {b:1, sz:10, al:"c", bd:"t"});
       var s1 = cE;
       gset(g, r, cR, ch.reste, {b:1, sz:10, al:"c", bd:"t"});
-      g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + "))";
+      g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cCtl) + rr + "))";
     }
     g.rows[r].h = 15; r++;
   });
@@ -988,9 +992,9 @@ function etatCommandeGrid(e, lot, opt){
     var sv = 0; for (var i2 = 3; i2 < fin; i2++){ var cv = g.rows[i2].cells[k]; if (cv && typeof cv.v === "number") sv += cv.v; }
     gset(g, r, k, sv, k === cR || (CM && k === cTL) ? {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE", fg:"C00000"} : TT); g.rows[r].cells[k].f = "SUM(" + L(k) + deb + ":" + L(k) + fin + ")";
   }
-  /* TOTAL du reste : Total − (Expédié + Emballé) sur les totaux (les lignes, elles, s'arrêtent à 0) */
-  if (!CM){ var s0 = cE, tE = 0; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
-    g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cEmb) + (r + 1) + "))"; }
+  /* TOTAL du reste : Total − (Expédié + Emballé + Contrôlé) sur les totaux (les lignes, elles, s'arrêtent à 0) */
+  if (!CM){ var s0 = cE, tE = 0; for (k = s0; k <= cCtl; k++) tE += g.rows[r].cells[k].v || 0;
+    g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cCtl) + (r + 1) + "))"; }
   g.rows[r].h = 18; g.sticky = 3;
   return g;
 }
