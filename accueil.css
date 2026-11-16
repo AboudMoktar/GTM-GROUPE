@@ -1,198 +1,264 @@
 /* ============================================================
    GTM GROUPE — Écrans d'accueil (choix de la société, choix du module)
-   Style « Industrial Corporate Premium » : bleu nuit structurant, bleu électrique pour l'action,
-   fond gris très clair, cartes blanches à bords fins.
+   Reproduit la maquette validée par la direction : bandeau bleu nuit à gauche, cartes société à vague colorée,
+   cartes module à pastille colorée, boutons en pilule.
    - Présentation seule : aucune règle métier, aucun droit ne dépend de ce fichier.
    - Les trois logos sont les fichiers officiels du projet, affichés entiers (object-fit:contain), jamais recolorés.
    - Palette propre à ces écrans, identique en thème clair et sombre.
-   - Compatible Chrome 109 (Windows 7) et Firefox ESR 115 : flex, grid, variables ; ni color-mix(), ni :has().
+   - Compatible Chrome 109 (Windows 7) et Firefox ESR 115 : flex, grid, variables, dégradés ;
+     ni color-mix(), ni :has(), ni masques, ni requêtes de conteneur.
    ============================================================ */
 .gtmh{
-  --nuit:#0B1F3A; --principal:#0D3E6D; --electrique:#1677E8; --turquoise:#14B8A6; --rose:#E91E63; --orange:#F59E0B;
-  --fond:#F5F7FB; --carte:#FFFFFF; --encre:#0B1F3A; --encre2:#44546A; --trait:#D5DCE8; --trait-fort:#B4BFD0;
-  --gtmh:var(--electrique);
-  position:relative; display:flex; min-height:100vh; width:100%; background:var(--fond); color:var(--encre);
-  font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:15px; line-height:1.4; text-align:left;
-  -webkit-font-smoothing:antialiased;
+  --nuit:#0B1F3A; --principal:#0D3E6D; --electrique:#1677E8; --fond:#F5F7FB; --carte:#FFFFFF;
+  --encre:#0B1F3A; --encre2:#33445E; --trait:#D8E1EE;
+  position:relative; display:flex; width:100%; min-height:100vh; background:var(--fond); color:var(--encre);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:15px; line-height:1.35; text-align:left;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
 }
 .gtmh *,.gtmh *::before,.gtmh *::after{box-sizing:border-box;}
-.gtmh button{font:inherit; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
-.gtmh svg{flex:0 0 auto;}
+.gtmh button{font:inherit; color:inherit; cursor:pointer; border:0; background:none; margin:0; -webkit-tap-highlight-color:transparent;}
+.gtmh button:focus-visible{outline:3px solid var(--electrique); outline-offset:3px;}
+.gtmh svg{flex:0 0 auto; display:block;}
+.gtmh h1{margin:0; text-align:center; font-size:30px; font-weight:800; letter-spacing:-.3px; color:var(--nuit);}
 
-/* ---------- Colonne de gauche (bleu nuit) ---------- */
-.gtmh-cote{flex:0 0 284px; display:flex; flex-direction:column; background:var(--nuit); color:#fff; padding:26px 18px 18px; position:relative; overflow:hidden;}
-.gtmh-cote-photo{background:var(--nuit) url('./hero-bg.jpg') 78% bottom / cover no-repeat;}
-.gtmh-cote-photo::before{content:''; position:absolute; left:0; top:0; right:0; bottom:0; background:linear-gradient(180deg,rgba(11,31,58,.97) 0%,rgba(11,31,58,.88) 45%,rgba(11,31,58,.62) 100%);}
-.gtmh-cote > *{position:relative;}
-.gtmh-gtm{display:flex; align-items:center; gap:12px; padding:0 6px;}
-.gtmh-gtm img{width:48px; height:48px; border-radius:11px; display:block; flex:0 0 auto; box-shadow:0 2px 8px rgba(0,0,0,.35);}
-.gtmh-gtm b{display:block; font-size:21px; font-weight:800; letter-spacing:.4px; line-height:1.1;}
-.gtmh-gtm span{display:block; margin-top:4px; font-size:9.5px; font-weight:600; letter-spacing:.3px; white-space:nowrap; color:#9FB4D0; text-transform:uppercase;}
-.gtmh-devise{margin-top:26px; padding:0 6px; font-size:15px; line-height:1.5; color:#C9D6E8; max-width:220px;}
-.gtmh-nav{margin-top:28px; display:flex; flex-direction:column; gap:4px; min-height:0;}
-.gtmh-nav-titre{margin:14px 10px 6px; font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#7F97B8;}
-.gtmh-nav-titre:first-child{margin-top:0;}
-.gtmh-lien{display:flex; align-items:center; gap:11px; width:100%; min-height:44px; padding:9px 12px; border:0; border-radius:10px; background:transparent; color:#D6E0EE !important; font-size:15px; font-weight:600; text-align:left; transition:background .15s,color .15s;}
-.gtmh-lien svg{width:19px; height:19px; opacity:.9;}
-.gtmh-lien .gtmh-pastille{flex:0 0 auto; width:9px; height:9px; border-radius:50%; background:var(--gtmh); box-shadow:0 0 0 3px rgba(255,255,255,.10);}
-.gtmh-lien:hover{background:rgba(255,255,255,.09); color:#fff !important;}
-.gtmh-lien.actif{background:var(--electrique); color:#fff !important; box-shadow:0 4px 12px rgba(22,119,232,.35);}
-.gtmh-lien.actif .gtmh-pastille{background:#fff; box-shadow:none;}
-.gtmh-cote-bas{margin-top:auto; padding-top:16px; display:flex; flex-direction:column; gap:4px; border-top:1px solid rgba(255,255,255,.14);}
-.gtmh-date{display:block; padding:4px 12px 0; font-size:12.5px; color:#9FB4D0;}
-.gtmh-date::first-letter{text-transform:uppercase;}
+/* ---------- Nom du groupe (texte + arc) ---------- */
+.gtmh-wm{position:relative; display:inline-flex; flex-direction:column; align-items:center; line-height:1; color:var(--nuit); padding-top:24px;}
+.gtmh-wm b{display:block; font-size:34px; font-weight:800; letter-spacing:.5px;}
+.gtmh-wm .gtmh-wm-groupe{font-size:34px;}
+.gtmh-wm-arc{position:absolute; left:-4%; top:0; width:108%; height:24px;}
+.gtmh-entete .gtmh-wm{flex-direction:row; gap:12px;}
+.gtmh-wm.clair{color:#fff; align-items:center; padding-top:30px;}
+.gtmh-wm.clair b{font-size:76px; letter-spacing:1px;}
+.gtmh-wm.clair .gtmh-wm-groupe{font-size:36px; font-weight:600; letter-spacing:7px; margin-top:6px; margin-right:-7px;}
+.gtmh-wm.clair .gtmh-wm-arc{left:-30%; top:-6px; width:150%; height:70px;}
 
-/* ---------- Zone principale ---------- */
-.gtmh-zone{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; min-height:100vh;}
-.gtmh-barre{flex:0 0 auto; display:flex; align-items:center; gap:12px; min-height:64px; padding:10px 32px; background:var(--carte); border-bottom:1px solid var(--trait);}
-.gtmh-fil{display:flex; align-items:center; gap:10px; min-width:0; white-space:nowrap; font-size:15px; font-weight:700; color:var(--principal);}
-.gtmh-fil .gtmh-sep{color:var(--trait-fort); font-weight:400;}
-.gtmh-fil button{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border:1.5px solid var(--trait); border-radius:10px; background:var(--carte); color:var(--principal) !important; transition:border-color .15s,background .15s;}
-.gtmh-fil button:hover{border-color:var(--electrique); background:#EEF5FE;}
-.gtmh-fil svg{width:19px; height:19px;}
-.gtmh-barre-droite{margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:10px;}
-.gtmh-user{display:flex; align-items:center; gap:10px; padding:5px 14px 5px 5px; border:1.5px solid var(--trait); border-radius:999px; background:var(--fond); font-weight:700; font-size:14.5px; color:var(--encre); max-width:320px;}
-.gtmh-user i{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:var(--principal); color:#fff; font-style:normal; font-weight:800; font-size:14px;}
-.gtmh-user span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.gtmh-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:8px 16px; border:1.5px solid var(--trait-fort); border-radius:10px; background:var(--carte); color:var(--encre) !important; font-size:14.5px; font-weight:700; transition:border-color .15s,background .15s,color .15s;}
-.gtmh-btn svg{width:18px; height:18px;}
-.gtmh-btn:hover{border-color:var(--electrique); color:var(--electrique) !important; background:#EEF5FE;}
-.gtmh-centre{flex:1 1 auto; display:flex; flex-direction:column; padding:28px 32px 30px; min-height:0;}
-.gtmh h1{margin:0; font-size:28px; font-weight:800; letter-spacing:-.3px; color:var(--encre); text-align:center;}
-.gtmh-qui{margin:6px 0 22px; text-align:center; font-size:15.5px; color:var(--encre2);}
-.gtmh-qui b{color:var(--encre);}
+/* ---------- Boutons communs ---------- */
+.gtmh-pill{display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:46px; padding:10px 22px; border-radius:12px !important;
+  background:linear-gradient(180deg,#FFFFFF,#EEF3FA) !important; color:var(--nuit) !important; font-size:16.5px !important; font-weight:700 !important;
+  border:1px solid #CBD7E8 !important; box-shadow:0 2px 0 rgba(11,31,58,.04),0 6px 14px rgba(11,31,58,.10); transition:transform .15s,box-shadow .15s;}
+.gtmh-pill svg{width:22px; height:22px;}
+.gtmh-pill:hover{transform:translateY(-1px); box-shadow:0 10px 20px rgba(11,31,58,.16);}
+.gtmh-pill.fonce{background:linear-gradient(180deg,#1A4F8F,#0B2A55) !important; color:#fff !important; border-color:#0B2A55 !important;}
+.gtmh-avatar{display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:50% !important;
+  background:linear-gradient(180deg,#1C5AA6,#0B2F63) !important; color:#fff !important; font-weight:800 !important; font-size:19px !important; box-shadow:0 0 0 3px rgba(22,119,232,.18);}
+.gtmh .notif-btn{position:relative; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:50%; background:transparent !important; color:var(--nuit) !important; border:0 !important; box-shadow:none !important;}
+.gtmh .notif-btn svg{width:30px !important; height:30px !important;}
+.gtmh .notif-btn:hover{background:rgba(22,119,232,.10) !important;}
+.gtmh .notif-btn .notif-count{top:2px; right:2px; min-width:19px; height:19px; border-radius:10px; font-size:11px; border:2px solid #fff; background:#E11D48 !important;}
 
-/* ---------- Cartes (base commune) ---------- */
-.gtmh-carte{position:relative; display:flex; text-align:left; width:100%; background:var(--carte); color:var(--encre) !important; border:1.5px solid var(--trait); border-radius:16px; box-shadow:0 1px 2px rgba(11,31,58,.05),0 6px 18px rgba(11,31,58,.05); overflow:hidden; transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}
-.gtmh-carte:hover{transform:translateY(-3px); border-color:var(--gtmh); box-shadow:0 2px 4px rgba(11,31,58,.06),0 16px 34px rgba(11,31,58,.13);}
-.gtmh-carte:active{transform:translateY(-1px);}
-.gtmh button:focus-visible{outline:3px solid var(--electrique); outline-offset:2px;}
-.gtmh-aller{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#EEF5FE; color:var(--electrique); transition:background .16s,color .16s,transform .16s;}
-.gtmh-aller svg{width:19px; height:19px;}
-.gtmh-carte:hover .gtmh-aller{background:var(--electrique); color:#fff; transform:translateX(3px);}
+/* ============================================================
+   ÉCRAN 1 — CHOIX DE LA SOCIÉTÉ
+   ============================================================ */
+.gtmh-soc{background:#E9F0FA;}
+.gtmh-hero{position:absolute; left:0; top:0; bottom:0; width:31%; color:#fff;
+  background:linear-gradient(180deg,#0B3A78 0%,#0D4A93 46%,rgba(13,74,147,.6) 68%,rgba(11,31,58,.2) 100%),url('./hero-bg.jpg') 88% 100% / auto 58% no-repeat,#0D4A93;}
+.gtmh-hero::after{content:''; position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(180deg,rgba(13,74,147,0) 0%,rgba(11,31,58,.35) 100%);}
+.gtmh-hero-txt{position:relative; z-index:1; width:78%; margin-top:7vh; display:flex; flex-direction:column; align-items:center;}
+.gtmh-slogan{margin:34px 0 0; text-align:center; font-size:22px; font-style:italic; font-weight:600; line-height:1.4; color:#EAF2FF; text-shadow:0 2px 6px rgba(0,0,0,.25);}
+.gtmh-scene{position:relative; z-index:2; flex:1 1 auto; display:flex; flex-direction:column; min-height:100vh; margin-left:23%;
+  border-top-left-radius:13vw 100%; padding:18px 28px 22px 6vw;
+  background:radial-gradient(70% 55% at 100% 100%,#D3E3F8 0%,rgba(211,227,248,0) 70%),radial-gradient(60% 40% at 100% 0%,#DCE8F8 0%,rgba(220,232,248,0) 70%),linear-gradient(180deg,#F7FAFE,#EEF4FC);
+  box-shadow:-6px 0 0 #3B8BEA,-14px 0 26px rgba(4,20,48,.35);}
+.gtmh-haut{position:relative; display:flex; align-items:flex-start; min-height:92px;}
+.gtmh-haut::before{content:''; flex:1 1 0; min-width:0;}
+.gtmh-entete{flex:0 0 auto;}
+.gtmh-entete{display:flex; flex-direction:column; align-items:center;}
+.gtmh-entete-soc{margin-top:8px; font-size:16px; font-weight:600; letter-spacing:2.2px; color:var(--nuit);}
+.gtmh-entete-soc i{font-style:normal; padding:0 10px; color:#7D8DA6;}
+.gtmh-soc .gtmh-actions{flex:1 1 0; min-width:-webkit-max-content; min-width:max-content; display:flex; justify-content:flex-end; align-items:center; gap:14px; padding-left:16px;}
+.gtmh-soc .gtmh-centre{flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; align-items:stretch; min-height:0; padding:4px 0 10px;}
+.gtmh-qui{display:flex; align-items:center; justify-content:center; gap:9px; margin:8px 0 20px; font-size:17px; color:var(--nuit);}
+.gtmh-qui svg{width:21px; height:21px;}
+.gtmh-qui b{font-weight:600;}
+.gtmh-societes{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; min-height:260px; max-height:430px;}
+.gtmh-societes[data-n="1"]{grid-template-columns:minmax(0,440px); justify-content:center;}
+.gtmh-societes[data-n="2"]{grid-template-columns:repeat(2,minmax(0,420px)); justify-content:center;}
+.gtmh-scarte{position:relative; display:flex !important; flex-direction:column; align-items:center; text-align:center; width:100%; padding:16px 16px 0 !important; overflow:hidden;
+  border:3px solid var(--c1) !important; border-radius:20px !important; background:linear-gradient(180deg,#FFFFFF 0%,#FFFFFF 50%,var(--clair) 100%) !important;
+  box-shadow:0 8px 22px rgba(11,31,58,.14),inset 0 0 0 1px rgba(255,255,255,.8); transition:transform .16s,box-shadow .16s;}
+.gtmh-scarte:hover{transform:translateY(-4px); box-shadow:0 18px 36px rgba(11,31,58,.22);}
+.gtmh-scarte .gtmh-logo{flex:1 1 auto; display:flex; align-items:center; justify-content:center; width:100%; min-height:70px; padding:0 10px;}
+.gtmh-logo img{display:block; width:auto !important; height:auto !important; max-width:100% !important; max-height:100px !important; object-fit:contain;}
+.gtmh-scarte .gtmh-logo img{max-height:130px !important; max-width:92% !important;}
+.gtmh-scarte .gtmh-nom{display:block; margin-top:8px; font-size:24px; font-weight:800; letter-spacing:-.2px; color:var(--nuit);}
+.gtmh-scarte .gtmh-sous{display:block; margin-top:4px; font-size:16.5px; color:var(--encre2); min-height:2.5em;}
+.gtmh-vague{position:relative; flex:0 0 auto; display:block; width:calc(100% + 32px); height:92px; margin:6px -16px 0;}
+.gtmh-vague-svg{position:absolute; left:0; top:0; width:100%; height:100%;}
+.gtmh-vague-ico{position:absolute; left:26px; bottom:14px; color:#fff;}
+.gtmh-vague-ico svg{width:50px; height:42px;}
+.gtmh-aller{position:absolute; right:20px; bottom:16px; display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:50%;
+  background:#fff; color:var(--c2); box-shadow:0 3px 8px rgba(0,0,0,.18); transition:transform .16s;}
+.gtmh-aller svg{width:22px; height:22px;}
+.gtmh-scarte:hover .gtmh-aller{transform:translateX(3px);}
+.gtmh-soc .gtmh-pied{display:flex; justify-content:center; margin-top:20px;}
+.gtmh-deco{min-width:240px; border-radius:16px !important;}
 
-/* ---------- Écran 1 : sociétés ---------- */
-.gtmh-societes{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; min-height:250px; max-height:480px;}
-.gtmh-societes[data-n="1"]{grid-template-columns:minmax(0,520px); justify-content:center;}
-.gtmh-modules[data-n="1"],.gtmh-modules[data-n="2"]{max-height:260px;} .gtmh-modules[data-n="3"]{max-height:300px;}
-.gtmh-societes[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
-.gtmh-soc-carte{flex-direction:column; padding:0;}
-.gtmh-soc-carte::before{content:''; display:block; flex:0 0 5px; background:var(--gtmh);}
-.gtmh-logo{flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:22px 26px 16px; min-height:120px; background:#fff;}
-.gtmh-logo img{display:block; width:auto !important; height:auto !important; max-width:100% !important; max-height:150px !important; object-fit:contain;}
-.gtmh-soc-pied{flex:0 0 auto; display:flex; align-items:center; gap:14px; padding:16px 22px 18px; border-top:1px solid var(--trait); background:#FAFBFD;}
-.gtmh-soc-txt{flex:1 1 auto; min-width:0;}
-.gtmh-nom{display:block; font-size:21px; font-weight:800; letter-spacing:-.2px; color:var(--encre);}
-.gtmh-sous{display:block; margin-top:3px; font-size:15px; color:var(--encre2);}
-.gtmh-groupe{flex:0 0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-top:22px;}
-.gtmh-groupe[data-n="1"]{grid-template-columns:minmax(0,1fr);}
-.gtmh-groupe-titre{margin:26px 0 0; font-size:12px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:var(--encre2);}
-.gtmh-groupe-titre + .gtmh-groupe{margin-top:10px;}
-.gtmh-tuile{align-items:center; gap:16px; padding:16px 20px; min-height:84px;}
-.gtmh-tuile .gtmh-ico{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:13px; background:#EEF5FE; color:var(--electrique);}
-.gtmh-tuile .gtmh-ico svg{width:26px; height:26px;}
-.gtmh-tuile .gtmh-nom{font-size:18px;}
-.gtmh-tuile .gtmh-sous{font-size:14.5px;}
-.gtmh-tuile.fort{background:var(--nuit); border-color:var(--nuit); color:#fff !important;}
-.gtmh-tuile.fort .gtmh-nom{color:#fff;} .gtmh-tuile.fort .gtmh-sous{color:#B9C8DD;}
-.gtmh-tuile.fort .gtmh-ico{background:rgba(255,255,255,.12); color:#fff;}
-.gtmh-tuile.fort .gtmh-aller{background:var(--electrique); color:#fff;}
-.gtmh-tuile.fort:hover{border-color:var(--electrique);}
-
-/* ---------- Écran 2 : modules ---------- */
-.gtmh-bandeau{flex:0 0 auto; display:flex; align-items:center; gap:22px; padding:16px 24px; margin-bottom:22px; background:var(--carte); border:1.5px solid var(--trait); border-left:6px solid var(--gtmh); border-radius:16px;}
-.gtmh-bandeau .gtmh-logo{flex:0 0 auto; min-height:0; padding:0; width:190px; height:84px;}
-.gtmh-bandeau .gtmh-logo img{max-height:84px !important;}
-.gtmh-bandeau-txt{min-width:0; padding-left:22px; border-left:1px solid var(--trait);}
-.gtmh-bandeau-txt b{display:block; font-size:24px; font-weight:800; letter-spacing:-.2px;}
-.gtmh-bandeau-txt span{display:block; margin-top:2px; font-size:15.5px; color:var(--encre2);}
-.gtmh-mod .gtmh-qui{margin-bottom:18px;}
-.gtmh-modules{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:minmax(118px,1fr); gap:20px; max-height:560px;}
-.gtmh-mod-carte{align-items:center; gap:18px; padding:18px 20px;}
-.gtmh-mod-carte .gtmh-mod-ico{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:66px; height:66px; border-radius:16px; background:#EEF5FE; color:var(--gtmh);}
-.gtmh-mod-carte .gtmh-mod-ico svg{width:32px !important; height:32px !important;}
-.gtmh-mod-carte .gtmh-mod-ico img{width:40px !important; height:auto !important;}
-.gtmh-mod-txt{flex:1 1 auto; min-width:0;}
-.gtmh-mod-carte .gtmh-nom{font-size:19.5px; line-height:1.2;}
-.gtmh-mod-carte .gtmh-sous{font-size:14.5px; line-height:1.35;}
-.gtmh-bas{display:none;}
+/* ============================================================
+   ÉCRAN 2 — CHOIX DU MODULE
+   ============================================================ */
+.gtmh-mod{background:linear-gradient(135deg,#0E3C77,#164E97 45%,#0D3E6D); padding:10px;}
+.gtmh-cote{position:relative; flex:0 0 250px; display:flex; flex-direction:column; align-items:stretch; padding:18px 16px; margin-right:10px; border-radius:14px; overflow:hidden; color:#fff;
+  background:radial-gradient(120% 50% at 0% 0%,rgba(59,139,234,.35) 0%,rgba(59,139,234,0) 60%),linear-gradient(180deg,#0D2E5C,#0A2348 60%,#0B1F3A);}
+.gtmh-cote .gtmh-wm{align-self:center; padding-top:22px;}
+.gtmh-cote .gtmh-wm b{font-size:46px;}
+.gtmh-cote .gtmh-wm .gtmh-wm-groupe{font-size:24px; letter-spacing:4.5px; margin-right:-4.5px; margin-top:4px;}
+.gtmh-cote .gtmh-wm-arc{height:50px;}
+.gtmh-nav{margin-top:30px; display:flex; flex-direction:column; gap:6px;}
+.gtmh-lien{display:flex !important; align-items:center; gap:14px; width:100%; min-height:48px; padding:10px 14px !important; border-radius:9px !important; color:#fff !important; font-size:17px !important; font-weight:700 !important; text-align:left; transition:background .15s;}
+.gtmh-lien svg{width:24px; height:24px;}
+.gtmh-lien:hover{background:rgba(255,255,255,.10) !important;}
+.gtmh-lien.actif{background:linear-gradient(180deg,#2389F5,#1468D8) !important; box-shadow:0 6px 14px rgba(22,119,232,.40);}
+.gtmh-trait{width:86%; margin:14px auto; border:0; border-top:2px solid rgba(255,255,255,.35);}
+.gtmh-zone{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; border-radius:14px; overflow:hidden; background:linear-gradient(180deg,#FFFFFF,#F4F8FD);}
+.gtmh-barre{flex:0 0 auto; display:flex; align-items:center; gap:12px; min-height:62px; padding:8px 26px; border-bottom:1px solid #E3EAF4; background:#fff;}
+.gtmh-fil{display:flex; align-items:center; gap:14px; min-width:0; white-space:nowrap; font-size:18px; font-weight:700; color:var(--nuit);}
+.gtmh-fil i{font-style:normal; color:#6B7A92; font-weight:400;}
+.gtmh-fil span{overflow:hidden; text-overflow:ellipsis;}
+.gtmh-maison{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px !important; color:var(--nuit) !important;}
+.gtmh-maison svg{width:28px; height:28px;}
+button.gtmh-maison:hover{background:#EEF4FC !important;}
+.gtmh-barre .gtmh-actions{margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:18px;}
+.gtmh-compte{display:inline-flex !important; align-items:center; gap:10px; padding:4px 8px 4px 4px !important; border-radius:24px !important; color:var(--nuit) !important; font-weight:700 !important; font-size:16.5px !important;}
+.gtmh-compte:hover{background:#EEF4FC !important;}
+.gtmh-compte .gtmh-avatar{width:38px; height:38px; font-size:17px !important;}
+.gtmh-compte > svg{width:18px; height:18px;}
+.gtmh-compte-nom{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.gtmh-mod .gtmh-centre{flex:1 1 auto; display:flex; flex-direction:column; min-height:0; padding:16px 22px 18px;}
+.gtmh-bandeau{position:relative; flex:0 0 auto; display:flex; align-items:center; min-height:120px; padding:12px 0; overflow:hidden; border-radius:12px;
+  background:linear-gradient(90deg,#F2F7FD 0%,#E6EFFB 50%,#D9E7F8 100%); border:1px solid #DCE6F3;}
+.gtmh-photo{position:absolute; right:0; top:0; bottom:0; width:42%; background:url('./hero-bg.jpg') 92% 62% / auto 210% no-repeat; opacity:.55;}
+.gtmh-photo::before{content:''; position:absolute; left:0; top:0; bottom:0; width:70%; background:linear-gradient(90deg,#E3EDFA 0%,rgba(227,237,250,0) 100%);}
+.gtmh-bandeau .gtmh-logo{position:relative; flex:0 0 36%; display:flex; justify-content:center; align-items:center; height:96px; padding:0 20px;}
+.gtmh-bandeau .gtmh-logo img{max-height:92px !important;}
+.gtmh-bandeau-txt{position:relative; min-width:0; padding:4px 0 4px 40px; border-left:2px solid var(--nuit);}
+.gtmh-bandeau-txt b{display:block; font-size:34px; font-weight:800; letter-spacing:-.3px; color:var(--nuit); line-height:1.1;}
+.gtmh-bandeau-txt span{display:block; margin-top:5px; font-size:19px; color:var(--nuit);}
+.gtmh-mod h1{margin:16px 0 14px; font-size:28px;}
+.gtmh-modules{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:minmax(96px,1fr); gap:16px 20px; max-height:420px;}
+.gtmh-modules[data-n="1"],.gtmh-modules[data-n="2"],.gtmh-modules[data-n="3"]{max-height:140px;}
+.gtmh-mcarte{position:relative; display:flex !important; align-items:center; gap:18px; width:100%; padding:12px 18px 12px 20px !important; text-align:left; overflow:hidden;
+  border:1px solid #DDE6F2 !important; border-radius:14px !important; background:#fff !important; box-shadow:0 4px 12px rgba(11,31,58,.08); transition:transform .16s,box-shadow .16s,border-color .16s;}
+.gtmh-mcarte::before{content:''; position:absolute; right:0; top:0; bottom:0; width:60%; background:linear-gradient(90deg,rgba(255,255,255,0),var(--m1)); opacity:.13;}
+.gtmh-mcarte:hover{transform:translateY(-3px); border-color:var(--m1) !important; box-shadow:0 14px 26px rgba(11,31,58,.15);}
+.gtmh-mod-ico{position:relative; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:76px; height:76px; border-radius:50%; color:#fff;
+  background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.35) 0%,rgba(255,255,255,0) 45%),linear-gradient(160deg,var(--m1),var(--m2));
+  box-shadow:0 6px 14px rgba(11,31,58,.18),inset 0 -3px 6px rgba(0,0,0,.12);}
+.gtmh-mod-ico svg{width:38px; height:38px;}
+.gtmh-mod-txt{position:relative; flex:1 1 auto; min-width:0;}
+.gtmh-mcarte .gtmh-nom{display:block; font-size:21px; font-weight:800; line-height:1.15; color:var(--nuit);}
+.gtmh-mcarte .gtmh-sous{display:block; margin-top:4px; font-size:16px; line-height:1.3; color:var(--encre2);}
+.gtmh-chevron{position:relative; flex:0 0 auto; color:var(--m2);}
+.gtmh-chevron svg{width:26px; height:26px;}
+.gtmh-mcarte:hover .gtmh-chevron{transform:translateX(3px);}
+.gtmh-mod .gtmh-pied{flex:0 0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:18px;}
+.gtmh-mod .gtmh-pied .gtmh-pill{min-width:220px;}
 
 /* ---------- Grands écrans ---------- */
-@media (min-width:1500px){
-  .gtmh-cote{flex-basis:300px; padding:30px 22px 22px;}
-  .gtmh-centre{padding:34px 44px 36px;}
-  .gtmh h1{font-size:32px;} .gtmh-qui{font-size:17px;}
-  .gtmh-nom{font-size:24px;} .gtmh-sous{font-size:16.5px;}
-  .gtmh-logo img{max-height:160px !important;}
-  .gtmh-mod-carte .gtmh-mod-ico{width:78px; height:78px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:38px !important; height:38px !important;}
-  .gtmh-mod-carte .gtmh-nom{font-size:22.5px;} .gtmh-mod-carte .gtmh-sous{font-size:16px;}
-  .gtmh-modules{max-height:640px; gap:24px;} .gtmh-societes{max-height:540px; gap:26px;}
-  .gtmh-lien{font-size:16px; min-height:48px;}
+@media (min-width:1600px){
+  .gtmh h1{font-size:34px;}
+  .gtmh-societes{max-height:500px; gap:30px;} .gtmh-scarte .gtmh-logo img{max-height:160px !important;}
+  .gtmh-scarte .gtmh-nom{font-size:27px;} .gtmh-scarte .gtmh-sous{font-size:18px;}
+  .gtmh-cote{flex-basis:290px;}
+  .gtmh-modules{max-height:600px; gap:20px 26px;} .gtmh-mcarte .gtmh-nom{font-size:23px;} .gtmh-mcarte .gtmh-sous{font-size:17px;}
+  .gtmh-mod-ico{width:86px; height:86px;} .gtmh-mod-ico svg{width:42px; height:42px;}
+  .gtmh-bandeau{min-height:150px;} .gtmh-bandeau .gtmh-logo{height:120px;} .gtmh-bandeau .gtmh-logo img{max-height:116px !important;}
+  .gtmh-mod h1{margin:22px 0 18px; font-size:32px;}
 }
 @media (min-width:2200px){
-  .gtmh-cote{flex-basis:340px;}
-  .gtmh-centre{padding:44px 64px;}
-  .gtmh h1{font-size:38px;} .gtmh-qui{font-size:19px;}
-  .gtmh-nom{font-size:28px;} .gtmh-sous{font-size:19px;}
-  .gtmh-mod-carte .gtmh-nom{font-size:26px;} .gtmh-mod-carte .gtmh-sous{font-size:18.5px;}
-  .gtmh-modules{max-height:820px;} .gtmh-societes{max-height:680px;}
-  .gtmh-logo img{max-height:210px !important;}
+  .gtmh{font-size:18px;}
+  .gtmh-societes{max-height:600px;} .gtmh-scarte .gtmh-logo img{max-height:210px !important;}
+  .gtmh-modules{max-height:540px;} .gtmh-mcarte .gtmh-nom{font-size:27px;} .gtmh-mcarte .gtmh-sous{font-size:19.5px;}
+  .gtmh-wm.clair b{font-size:96px;}
 }
-/* ---------- Petits écrans d'ordinateur (hauteur 720 / 768) ---------- */
-@media (min-width:900px) and (max-height:790px){
-  .gtmh-barre{min-height:56px; padding-top:7px; padding-bottom:7px;}
-  .gtmh-centre{padding-top:18px; padding-bottom:18px;}
-  .gtmh h1{font-size:25px;} .gtmh-qui{margin-bottom:14px;}
-  .gtmh-bandeau{padding:10px 20px; margin-bottom:14px;} .gtmh-bandeau .gtmh-logo{height:62px;} .gtmh-bandeau .gtmh-logo img{max-height:62px !important;}
-  .gtmh-societes{min-height:220px; gap:18px;} .gtmh-logo{padding:14px 20px 10px; min-height:96px;} .gtmh-logo img{max-height:104px !important;}
-  .gtmh-soc-pied{padding:12px 18px 13px;}
-  .gtmh-groupe{margin-top:16px; gap:18px;} .gtmh-groupe-titre{margin-top:16px;} .gtmh-tuile{min-height:70px; padding:11px 18px;}
-  .gtmh-modules{gap:14px; grid-auto-rows:minmax(100px,1fr);}
-  .gtmh-nav{margin-top:18px;} .gtmh-cote{padding-top:18px;}
+/* ---------- Écrans d'ordinateur peu hauts (720 / 768) ---------- */
+@media (min-width:900px) and (max-height:800px){
+  .gtmh-scene{padding-top:12px; padding-bottom:14px;}
+  .gtmh-haut{min-height:78px;} .gtmh-wm b,.gtmh-wm .gtmh-wm-groupe{font-size:30px;} .gtmh-entete-soc{font-size:14.5px; margin-top:6px;}
+  .gtmh h1{font-size:27px;} .gtmh-qui{margin:6px 0 14px; font-size:16px;}
+  .gtmh-societes{min-height:240px;} .gtmh-vague{height:80px;} .gtmh-scarte .gtmh-logo img{max-height:118px !important;}
+  .gtmh-soc .gtmh-pied{margin-top:14px;} .gtmh-scarte .gtmh-sous{min-height:0;}
+  .gtmh-wm.clair b{font-size:64px;} .gtmh-wm.clair .gtmh-wm-groupe{font-size:30px;}
+  .gtmh-cote .gtmh-wm b{font-size:40px;} .gtmh-cote .gtmh-wm .gtmh-wm-groupe{font-size:21px;}
+  .gtmh-barre{min-height:54px;}
+  .gtmh-mod .gtmh-centre{padding-top:12px; padding-bottom:12px;}
+  .gtmh-bandeau{min-height:100px; padding:8px 0;} .gtmh-bandeau .gtmh-logo{height:80px;} .gtmh-bandeau .gtmh-logo img{max-height:78px !important;}
+  .gtmh-bandeau-txt b{font-size:29px;} .gtmh-bandeau-txt span{font-size:17px;}
+  .gtmh-mod h1{margin:10px 0 10px; font-size:25px;}
+  .gtmh-modules{gap:12px 16px; grid-auto-rows:minmax(86px,1fr);}
+  .gtmh-mod-ico{width:66px; height:66px;} .gtmh-mod-ico svg{width:33px; height:33px;}
+  .gtmh-mod .gtmh-pied{margin-top:12px;} .gtmh-pill{min-height:42px;}
 }
-@media (min-width:900px) and (max-width:1180px){
-  .gtmh-cote{flex-basis:232px; padding-left:12px; padding-right:12px;}
-  .gtmh-centre,.gtmh-barre{padding-left:20px; padding-right:20px;}
-  .gtmh-mod-carte{gap:12px; padding:14px;} .gtmh-mod-carte .gtmh-mod-ico{width:54px; height:54px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:27px !important; height:27px !important;}
-  .gtmh-mod-carte .gtmh-nom{font-size:17.5px;} .gtmh-mod-carte .gtmh-sous{font-size:13.5px;}
-  .gtmh-societes,.gtmh-groupe{gap:14px;} .gtmh-nom{font-size:19px;}
-  .gtmh-aller{width:32px; height:32px;}
+/* ---------- Ordinateurs étroits (1024 à 1279 px) ---------- */
+@media (min-width:900px) and (max-width:1279px){
+  .gtmh-hero{width:27%;} .gtmh-scene{margin-left:19%; padding-left:6vw; padding-right:20px;}
+  .gtmh-wm.clair b{font-size:56px;} .gtmh-wm.clair .gtmh-wm-groupe{font-size:26px; letter-spacing:5px;} .gtmh-slogan{font-size:18px;}
+  .gtmh-haut{flex-direction:column; align-items:center; min-height:0;} .gtmh-haut::before{display:none;}
+  .gtmh-soc .gtmh-actions{flex:0 0 auto; padding:0; margin-top:8px;}
+  .gtmh-pill{font-size:15px !important; padding:8px 14px;}
+  .gtmh-societes{gap:16px;} .gtmh-scarte .gtmh-nom{font-size:20px;} .gtmh-scarte .gtmh-sous{font-size:14.5px;}
+  .gtmh-cote{flex-basis:210px; padding:16px 10px;} .gtmh-lien{font-size:15.5px !important; padding:9px 10px !important; gap:10px;}
+  .gtmh-cote .gtmh-wm b{font-size:38px;} .gtmh-cote .gtmh-wm .gtmh-wm-groupe{font-size:20px; letter-spacing:3.5px;}
+  .gtmh-mod .gtmh-centre{padding-left:16px; padding-right:16px;}
+  .gtmh-modules{gap:12px;} .gtmh-mcarte{gap:12px; padding:10px 12px !important;}
+  .gtmh-mod-ico{width:58px; height:58px;} .gtmh-mod-ico svg{width:30px; height:30px;}
+  .gtmh-mcarte .gtmh-nom{font-size:17.5px;} .gtmh-mcarte .gtmh-sous{font-size:14px;}
+  .gtmh-bandeau-txt b{font-size:26px;} .gtmh-bandeau-txt{padding-left:24px;}
 }
-/* ---------- Tablettes et téléphones : la colonne devient un bandeau, les cartes s'empilent ---------- */
+/* ---------- Tablettes et téléphones ---------- */
 @media (max-width:899px){
-  .gtmh{flex-direction:column;}
-  .gtmh-cote{flex:0 0 auto; flex-direction:row; align-items:center; padding:12px 16px; background-image:none;}
-  .gtmh-cote-photo::before{display:none;}
-  .gtmh-gtm img{width:40px; height:40px;} .gtmh-gtm b{font-size:18px;}
-  .gtmh-nav,.gtmh-cote-bas,.gtmh-devise{display:none;}
-  .gtmh-zone{min-height:0;}
-  .gtmh-barre{padding:8px 14px; min-height:56px;}
-  .gtmh-centre{padding:18px 14px 22px;}
-  .gtmh h1{font-size:23px;} .gtmh-qui{font-size:15px; margin-bottom:16px;}
-  .gtmh-societes{flex:0 0 auto; min-height:0; max-height:none; gap:14px;}
-  .gtmh-societes .gtmh-logo{min-height:150px; padding:16px;} .gtmh-societes .gtmh-logo img{max-height:118px !important;}
-  .gtmh-soc-pied{padding:12px 14px;} .gtmh-soc-pied .gtmh-aller{display:none;}
-  .gtmh-modules{flex:0 0 auto; grid-template-columns:repeat(2,minmax(0,1fr)); max-height:none; gap:12px; grid-auto-rows:auto;}
-  .gtmh-groupe{gap:14px;}
-  .gtmh-bandeau{padding:12px 16px; gap:14px; margin-bottom:16px;} .gtmh-bandeau .gtmh-logo{width:130px; height:62px;} .gtmh-bandeau .gtmh-logo img{max-height:62px !important;}
-  .gtmh-bandeau-txt{padding-left:14px;} .gtmh-bandeau-txt b{font-size:19px;}
-  .gtmh-bas{display:flex; gap:10px; margin-top:18px;} .gtmh-bas .gtmh-btn{flex:1; min-height:50px; font-size:15.5px;}
-  .gtmh-carte:hover{transform:none;}
+  .gtmh{flex-direction:column; overflow:visible;}
+  .gtmh-hero{position:relative; width:auto; height:auto; padding:14px 16px 18px; background:linear-gradient(180deg,#0B3A78,#0D4A93);}
+  .gtmh-hero::after{display:none;}
+  .gtmh-hero-txt{width:auto; margin:0; flex-direction:row; justify-content:center; gap:18px;}
+  .gtmh-wm.clair{padding-top:14px;} .gtmh-wm.clair b{font-size:40px;} .gtmh-wm.clair .gtmh-wm-groupe{font-size:19px; letter-spacing:4px; margin-right:-4px;}
+  .gtmh-wm.clair .gtmh-wm-arc{height:40px; top:-4px;}
+  .gtmh-slogan{margin:8px 0 0; font-size:15px; text-align:left;}
+  .gtmh-scene{margin:0; min-height:0; border-radius:0; box-shadow:none; padding:14px 14px 22px;}
+  .gtmh-soc .gtmh-centre{justify-content:flex-start; flex:0 0 auto;}
+  .gtmh-haut{flex-direction:column; align-items:center; min-height:0;} .gtmh-haut::before{display:none;}
+  .gtmh-entete .gtmh-wm{display:none;} .gtmh-entete-soc{margin:0; font-size:13px; letter-spacing:1px;}
+  .gtmh-soc .gtmh-actions{flex:0 0 auto; min-width:0; padding:0; margin-top:10px; flex-wrap:wrap; justify-content:center; gap:10px;}
+  .gtmh-scarte .gtmh-sous{min-height:0;}
+  .gtmh h1{font-size:23px; margin-top:14px;}
+  .gtmh-qui{font-size:15px; margin-bottom:14px;}
+  .gtmh-societes,.gtmh-societes[data-n="2"]{flex:0 0 auto; min-height:0; max-height:none; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;}
+  .gtmh-scarte{min-height:250px;} .gtmh-scarte .gtmh-nom{font-size:19px;} .gtmh-scarte .gtmh-sous{font-size:14px;}
+  .gtmh-vague{height:76px;} .gtmh-vague-ico{left:16px;} .gtmh-vague-ico svg{width:40px; height:34px;} .gtmh-aller{right:12px; width:36px; height:36px;}
+  .gtmh-soc .gtmh-pied .gtmh-pill{width:100%;}
+  .gtmh-mod{padding:0;}
+  .gtmh-cote{flex:0 0 auto; margin:0; border-radius:0; flex-direction:row; align-items:center; padding:8px 14px 10px;}
+  .gtmh-cote .gtmh-wm{padding-top:12px;} .gtmh-cote .gtmh-wm b{font-size:28px;} .gtmh-cote .gtmh-wm .gtmh-wm-groupe{font-size:14px; letter-spacing:3px; margin-right:-3px;}
+  .gtmh-cote .gtmh-wm-arc{height:30px;}
+  .gtmh-nav{margin:0 0 0 auto; flex-direction:row; gap:4px; flex-wrap:wrap; justify-content:flex-end;}
+  .gtmh-nav .gtmh-trait,.gtmh-nav .gtmh-lien span{display:none;}
+  .gtmh-lien{width:auto; min-height:44px; padding:8px 10px !important;}
+  .gtmh-zone{border-radius:0;}
+  .gtmh-barre{padding:6px 12px; min-height:56px;}
+  .gtmh-compte-nom{max-width:120px;}
+  .gtmh-mod .gtmh-centre{padding:12px;}
+  .gtmh-bandeau{min-height:0;} .gtmh-bandeau .gtmh-logo{flex-basis:38%; height:70px; padding:0 10px;} .gtmh-bandeau .gtmh-logo img{max-height:68px !important;}
+  .gtmh-bandeau-txt{padding-left:16px;} .gtmh-bandeau-txt b{font-size:22px;} .gtmh-bandeau-txt span{font-size:15px;}
+  .gtmh-modules{flex:0 0 auto; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:auto; max-height:none; gap:12px;}
+  .gtmh-mcarte{min-height:96px;}
+  .gtmh-mod .gtmh-pied .gtmh-pill{min-width:0; flex:1;}
+  .gtmh-scarte:hover,.gtmh-mcarte:hover{transform:none;}
 }
 @media (max-width:640px){
-  .gtmh-societes,.gtmh-societes[data-n="2"],.gtmh-modules,.gtmh-groupe{grid-template-columns:minmax(0,1fr);}
-  .gtmh-soc-carte{flex-direction:row; align-items:stretch;}
-  .gtmh-soc-carte::before{flex:0 0 6px;}
-  .gtmh-soc-carte .gtmh-logo{flex:0 0 118px; min-height:92px; padding:10px 12px;} .gtmh-soc-carte .gtmh-logo img{max-height:68px !important;}
-  .gtmh-soc-pied .gtmh-aller{display:inline-flex;}
-  .gtmh-soc-pied{flex:1 1 auto; border-top:0; border-left:1px solid var(--trait); padding:12px 14px;}
-  .gtmh-nom{font-size:19px;} .gtmh-mod-carte{padding:14px;} .gtmh-mod-carte .gtmh-mod-ico{width:54px; height:54px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:27px !important; height:27px !important;}
-  .gtmh-user span{max-width:110px;} .gtmh-fil .gtmh-racine,.gtmh-fil .gtmh-sep{display:none;} .gtmh-fil span{overflow:hidden; text-overflow:ellipsis;} .gtmh-barre .gtmh-btn span{display:none;} .gtmh-barre .gtmh-btn{padding:8px 11px;}
-  .gtmh-bandeau .gtmh-logo{width:104px;}
+  .gtmh-hero-txt{flex-direction:column; gap:0;} .gtmh-slogan{text-align:center;}
+  .gtmh-societes,.gtmh-societes[data-n="2"],.gtmh-modules{grid-template-columns:minmax(0,1fr);}
+  .gtmh-scarte{min-height:0;} .gtmh-scarte .gtmh-logo{min-height:84px;} .gtmh-scarte .gtmh-logo img{max-height:80px !important;}
+  .gtmh-vague{height:64px;}
+  .gtmh-pill span{white-space:nowrap;} .gtmh-soc .gtmh-actions .gtmh-pill{padding:8px 12px; font-size:14.5px !important;}
+  .gtmh-cote .gtmh-wm{display:none;} .gtmh-nav{margin:0; justify-content:flex-start; width:100%;}
+  .gtmh-compte-nom{display:none;}
+  .gtmh-bandeau{flex-direction:column; align-items:center; text-align:center; padding:10px;}
+  .gtmh-bandeau .gtmh-logo{flex:0 0 auto; width:100%;} .gtmh-bandeau-txt{padding:8px 0 0; border-left:0; border-top:2px solid var(--nuit); margin-top:6px;}
+  .gtmh-photo{width:60%; opacity:.25;}
+  .gtmh-mod-ico{width:58px; height:58px;} .gtmh-mod-ico svg{width:30px; height:30px;}
+  .gtmh-mcarte .gtmh-nom{font-size:18.5px;} .gtmh-mcarte .gtmh-sous{font-size:14.5px;}
+  .gtmh-mod .gtmh-pied{flex-direction:column; align-items:stretch;} .gtmh-mod .gtmh-pied > span:empty{display:none;}
 }
-/* contraste renforcé (écrans anciens / peu contrastés) : traits et textes secondaires plus marqués */
-html[data-affichage="renforce"] .gtmh{--trait:#9AA8BD; --trait-fort:#7A8BA3; --encre2:#22324A;}
-html[data-affichage="renforce"] .gtmh-carte{border-width:2px;}
-@media print{ .gtmh-cote,.gtmh-barre{display:none;} }
-/* Les cartes de module restent en bleu électrique (action principale) ; la couleur de la société ne marque que le bandeau. */
-.gtmh-mod-carte{--gtmh:var(--electrique);}
+/* contraste renforcé (écrans anciens / peu contrastés) */
+html[data-affichage="renforce"] .gtmh{--encre2:#1E2C44;}
+html[data-affichage="renforce"] .gtmh-mcarte{border-width:2px !important; border-color:#9AA8BD !important;}
+@media print{ .gtmh-hero,.gtmh-cote,.gtmh-barre{display:none;} }

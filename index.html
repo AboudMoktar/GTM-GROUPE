@@ -1201,50 +1201,67 @@ window.addEventListener('message', (ev) => {
 });
 function peutChangerDeModule(){ return modulesDeSociete(activeSociete).length > 1 || peutChangerDeSociete(); }
 function renderModuleSelect(){
-  // Présentation « Industrial Corporate Premium » (accueil.css) : colonne de navigation + cartes des modules.
+  // Écran des modules (maquette GTM GROUPE, styles dans accueil.css) : colonne de navigation + cartes des modules.
   // La liste des modules, leurs droits (modulesDeSociete) et leurs actions (chooseModule) sont inchangés.
   const mods = modulesDeSociete(activeSociete);
-  const S = SOCIETES[activeSociete] || SOCIETES.tek;
   const socCle = (activeSociete in SOCIETES) ? activeSociete : 'tek';
+  const S = SOCIETES[socCle], C = GTMH_SOC[socCle] || GTMH_SOC.tek;
+  const icoSoc = {tek:GTMH_ICO.machine, gadh:GTMH_ICO.usine, mgt:GTMH_ICO.cle};
+  const changer = peutChangerDeSociete();
   document.getElementById('app').innerHTML = `
-    <div class="gtmh gtmh-mod" style="--gtmh:${gtmhAccent(socCle)};">
-      ${gtmhCote(socCle)}
+    <div class="gtmh gtmh-mod">
+      <aside class="gtmh-cote">
+        ${gtmhNomGroupe(true, 'gtmhArcCote')}
+        <nav class="gtmh-nav">
+          ${userSocietes().map(k => `<button class="gtmh-lien${k === socCle ? ' actif' : ''}" title="${SOCIETES[k].nom}" onclick="chooseSociete('${k}')">${k === socCle ? GTMH_ICO.maison : (icoSoc[k] || GTMH_ICO.usine)}<span>${SOCIETES[k].nom}</span></button>`).join('')}
+          ${isGroupe() || gtmhPeutAdmin() ? '<hr class="gtmh-trait">' : ''}
+          ${isGroupe() ? `<button class="gtmh-lien" title="Vue direction" onclick="openDirection()">${GTMH_ICO.stats}<span>Vue direction</span></button>` : ''}
+          ${gtmhPeutAdmin() ? `<button class="gtmh-lien" title="Administration" onclick="ouvrirAdmin()">${GTMH_ICO.reglages}<span>Administration</span></button>` : ''}
+        </nav>
+      </aside>
       <div class="gtmh-zone">
-        ${gtmhBarre((peutChangerDeSociete() ? `<button onclick="switchSociete()" title="Changer de société" aria-label="Changer de société">${GTMH_ICO.grille}</button>` : '') + `<span class="gtmh-racine">GTM GROUPE</span><span class="gtmh-sep">›</span><span>${S.nom}</span>`)}
+        <header class="gtmh-barre">
+          <div class="gtmh-fil">${changer ? `<button class="gtmh-maison" onclick="switchSociete()" title="Accueil : choix de la société" aria-label="Accueil">${GTMH_ICO.maison}</button>` : `<span class="gtmh-maison">${GTMH_ICO.maison}</span>`}<i>/</i><span>${S.nom}</span></div>
+          <div class="gtmh-actions">
+            ${gtmhCloche()}
+            <button class="gtmh-compte" onclick="menuUtilisateur(event)" aria-label="Menu du compte"><span class="gtmh-avatar">${gtmhInitiale()}</span><span class="gtmh-compte-nom">${esc(currentUser.nom)}</span>${GTMH_ICO.bas}</button>
+          </div>
+        </header>
         <main class="gtmh-centre">
-          <div class="gtmh-bandeau">
-            ${gtmhLogo(socCle)}
-            <div class="gtmh-bandeau-txt"><b>${S.nom}</b><span>${S.sous}</span></div>
+          <div class="gtmh-bandeau" style="--c1:${C.c1};">
+            <span class="gtmh-photo" aria-hidden="true"></span>
+            <span class="gtmh-logo">${gtmhLogo(socCle)}</span>
+            <span class="gtmh-bandeau-txt"><b>${S.nom}</b><span>${C.activite}</span></span>
           </div>
           <h1>Quel module voulez-vous ouvrir ?</h1>
-          <p class="gtmh-qui">Connecté en tant que <b>${esc(currentUser.nom)}</b></p>
           <div class="gtmh-modules" data-n="${mods.length}">
           ${[
-            ['tek-dashboard', ICONS.stats, 'Tableau de bord', 'Rendement, chaîne, RH, commandes en un coup d\'œil'],
-            ['rendement', ICONS.dashboard, 'Gestion Rendement', 'Production, saisie, statistiques'],
-            ['chaine', ICONS.team, 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
-            ['rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
-            ['gadh-tableau', ICONS.stats, 'Tableau de bord', 'Pièces, personnel, commandes en un coup d\'œil'],
-            ['gadh', ICONS.gadh, 'Gestion Production', 'Pièces assemblées et retournées, par commande'],
-            ['gadh-rh', ICONS.idBadge, 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
-            ['gadh-commandes', ICONS.box, 'Gestion des commandes', 'Offres, commandes, approvisionnement, stock, livraisons, rentabilité'],
-            ['commandes', ICONS.suiviCmd, 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
-            ['machines', ICONS.wrench, 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
-            ['factures', ICONS.invoice, 'Facturation', 'Factures, avoirs, paiements, relances']
-          ].filter(m => mods.indexOf(m[0]) >= 0).map(m => `<button class="gtmh-carte gtmh-mod-carte" data-module="${m[0]}" onclick="chooseModule('${m[0]}')">
-              <span class="gtmh-mod-ico">${m[1]}</span>
-              <span class="gtmh-mod-txt"><span class="gtmh-nom">${m[2]}</span><span class="gtmh-sous">${m[3]}</span></span>
-              <span class="gtmh-aller">${GTMH_ICO.fleche}</span>
-            </button>`).join('')}
+            ['tek-dashboard', 'Tableau de bord', 'Rendement, chaîne, RH, commandes en un coup d\'œil'],
+            ['rendement', 'Gestion Rendement', 'Production, saisie, statistiques'],
+            ['chaine', 'Suivi chaîne', 'Fiche par ouvrière, objectifs, pertes, rendement'],
+            ['rh', 'Gestion Ressources Humaines', 'Employés, pointage, congés'],
+            ['gadh-tableau', 'Tableau de bord', 'Pièces, personnel, commandes en un coup d\'œil'],
+            ['gadh', 'Gestion Production', 'Pièces assemblées et retournées, par commande'],
+            ['gadh-rh', 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
+            ['gadh-commandes', 'Gestion des commandes', 'Offres, commandes, approvisionnement, stock, livraisons, rentabilité'],
+            ['commandes', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
+            ['machines', 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
+            ['factures', 'Facturation', 'Factures, avoirs, paiements, relances']
+          ].filter(m => mods.indexOf(m[0]) >= 0).map(m => { const v = GTMH_MOD[m[0]] || ['#3B8DF0', '#1565D8', 'barres']; return `<button class="gtmh-mcarte" data-module="${m[0]}" style="--m1:${v[0]};--m2:${v[1]};" onclick="chooseModule('${m[0]}')">
+              <span class="gtmh-mod-ico">${GTMH_ICO[v[2]]}</span>
+              <span class="gtmh-mod-txt"><span class="gtmh-nom">${m[1]}</span><span class="gtmh-sous">${m[2]}</span></span>
+              <span class="gtmh-chevron">${GTMH_ICO.chevron}</span>
+            </button>`; }).join('')}
           </div>
-          <div class="gtmh-bas">
-            ${peutChangerDeSociete() ? `<button class="gtmh-btn" onclick="switchSociete()">${GTMH_ICO.grille}<span>Changer de société</span></button>` : ''}
-            <button class="gtmh-btn" onclick="logout()">${ICONS.logout}<span>Déconnexion</span></button>
+          <div class="gtmh-pied">
+            ${changer ? `<button class="gtmh-pill" onclick="switchSociete()">${GTMH_ICO.echange}<span>Changer de société</span></button>` : '<span></span>'}
+            <button class="gtmh-pill fonce gtmh-deco" onclick="logout()">${GTMH_ICO.marche}<span>Déconnexion</span></button>
           </div>
         </main>
       </div>
     </div>
   `;
+  gtmhApresRendu();
 }
 
 function profilVersUtilisateur(fbUser, profile){
