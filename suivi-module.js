@@ -47,7 +47,14 @@ window.grpSuiviStore = {
   vue: () => (activeModule === 'gadh' ? 'gadh' : 'tek'),
   lectureSeule: () => !!(currentUser && currentUser.role === 'viewer'),
   toast: (msg) => showToast(msg),
-  imprimer: (html, titre) => suiviImprimer(html, titre)
+  imprimer: (html, titre) => suiviImprimer(html, titre),
+  // Facture TEK-TREND préparée à partir d'un export (voir facturation-percko-module.js)
+  facturerExport: (x, forcer) => (activeModule !== 'gadh' && typeof percFacturerExport === 'function') ? percFacturerExport(x, forcer) : {ok:false, message:'Facturation indisponible ici.'},
+  ouvrirFacture: (id, r) => {
+    if(typeof percOuvrirFacture !== 'function') return;
+    percOuvrirFacture(id);
+    if(r && r.ok) showToast('Facture préparée' + (r.sansPrix ? ' : ' + r.sansPrix + ' prix à compléter' : '') + '. Vérifiez, complétez les frais, puis émettez.');
+  }
 };
 
 // Gestion de stock TEK-TREND (onglet Stock du suivi) : données dans le dossier

@@ -385,6 +385,9 @@ function ficheExport(v, e, arch){
     e.com ? el("div", {class:"xp-com-box", text:"💬 " + e.com}) : null);
   var acts = el("div", {class:"actions", style:"margin:12px 0 0"});
   if (!fini) acts.appendChild(el("button", {class:"btn", text:"+ Ajouter un carton", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true}}; render(); }}));
+  /* facture TEK-TREND préparée à partir des cartons de l'export (module Facturation) */
+  if (typeof HOST !== "undefined" && HOST && typeof HOST.facturerExport === "function" && VUE !== "gadh" && e.cartons.length)
+    acts.appendChild(el("button", {class:"btn sec", "data-xp":"facture", text:"🧾 Facture", title:"Prépare la facture à partir des cartons de cet export (modifiable ensuite)", onclick:function(){ facturerExport(e); }}));
   acts.appendChild(el("button", {class:"btn sec", text:"✏️ Modifier les informations", title:"N°, date, nature, destinataire, commentaire", onclick:function(){ ui.tab = "exp"; ui.xp = {id:e.id, modif:true, retourArch:!!arch}; render(); }}));
   head.appendChild(acts);
   v.appendChild(head);
@@ -452,6 +455,30 @@ function ficheExport(v, e, arch){
       el("button", {class:"btn sec", style:"color:#b42318", text:"Supprimer l'export", onclick:function(){ if (!confirm("Supprimer l'export N°" + e.n + " (expédié) et ses " + e.cartons.length + " carton(s) ? Les pièces ne seront plus comptées ni expédiées ni emballées.")) return; var ok = commit(function(){ supprimerExport(e); ui.xpa = {}; ui.xp = {}; }); if (ok) toast("Export supprimé"); }})));
   }
   v.appendChild(vc);
+}
+/* pièces de l'export, par modèle / libellé / taille / client d'origine, pour la facture */
+function piecesFacture(e){
+  var par = {}, o = [];
+  e.cartons.forEach(function(c){ c.it.forEach(function(y){ if (!y[1]) return; var i = infoItem(y), l = i.l, k = [l ? l.model : "", i.lib, i.size, i.sp || ""].join("|");
+    if (!par[k]){ par[k] = {model:l ? l.model : (modelOf(i.lib) || ""), lib:i.lib, size:i.size, client:i.sp || (l ? l.client : ""), qte:0}; o.push(par[k]); }
+    par[k].qte += y[1]; }); });
+  return o;
+}
+function facturerExport(e, forcer){
+  if (typeof dirty !== "undefined" && dirty){ toast("Enregistrement en cours : réessayez dans un instant."); return; }
+  var kg = 0; e.cartons.forEach(function(c){ kg += poidsDe(e, c) || 0; });
+  var r = HOST.facturerExport({exportId:e.id, n:e.n, d:e.d, nat:e.nat || e.cl, colis:e.cartons.length, poidsBrut:Math.round(kg * 10) / 10, pieces:piecesFacture(e)}, !!forcer);
+  if (!r){ toast("Facturation indisponible."); return; }
+  if (r.existe){
+    var x = r.existe[0];
+    choixCarton("Facture de l'export N°" + e.n, "Une facture existe déjà pour cet export (" + r.existe.map(function(f){ return f.numero; }).join(", ") + ").", [
+      {cle:"ouvrir", titre:"Ouvrir la facture existante", aide:x.statut === "brouillon" ? "Brouillon : encore modifiable." : "Facture émise.", fn:function(){ HOST.ouvrirFacture(x.id); }},
+      {cle:"nouvelle", sec:true, titre:"Créer une nouvelle facture", aide:"À partir des cartons actuels de l'export. L'ancienne n'est pas supprimée.", fn:function(){ facturerExport(e, true); }},
+      {cle:"annuler", sec:true, titre:"Annuler"}]);
+    return;
+  }
+  if (!r.ok){ toast(r.message || "Facture impossible."); return; }
+  HOST.ouvrirFacture(r.id, r);
 }
 function confirmerValidation(e){
   var par = {}, lots = [];
@@ -1097,5 +1124,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {piecesFacture:piecesFacture, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();
