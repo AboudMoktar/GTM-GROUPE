@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Écrans de choix (société, module) : carte étroite et compacte, boutons Vue direction / Administration présents,
+// Écrans de choix (société, module) : grands liens sur ordinateur, modules en tuiles sur tout l'écran, boutons Vue direction / Administration présents,
 // tout tient sans défilement sur un écran 1024 × 768. Lancement (dans tests/) : npm run ecrans-choix
 'use strict';
 const {chromium} = require('playwright'); const serveur = require(__dirname + '/serveur.js');
@@ -12,11 +12,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   await p.waitForTimeout(300);
   const m = () => p.evaluate(() => { const c = document.querySelector('.login-card.choix'), rc = c.getBoundingClientRect(); return {w: Math.round(rc.width), bas: Math.round(rc.bottom), n: c.querySelectorAll('.soc-card').length, forts: [...c.querySelectorAll('.choix-fort')].map(x => x.textContent.trim().slice(0, 14)), sous: getComputedStyle(c.querySelector('.soc-sous')).fontSize}; });
   let d = await m();
-  r.push(['société : carte compacte (≤ 560 px), 3 sociétés', d.w <= 560 && d.n === 3]);
+  r.push(['société : carte centrée et large sur ordinateur (560 à 760 px), 3 sociétés', d.w >= 560 && d.w <= 760 && d.n === 3]);
+  r.push(['société : grands liens (≥ 70 px de haut, nom ≥ 20 px)', await p.evaluate(() => { const c = document.querySelector('.choix .soc-card'); return c.getBoundingClientRect().height >= 70 && parseFloat(getComputedStyle(c.querySelector('.soc-nom')).fontSize) >= 20; })]);
   r.push(['société : « Vue direction » et « Administration » présents', d.forts.length === 2 && /Vue direction/.test(d.forts[0]) && /Administration/.test(d.forts[1])]);
   r.push(['société : tient sur un écran 1024 × 768', d.bas <= 768]);
   await p.evaluate(() => { activeSociete = 'gadh'; renderModuleSelect(); }); await p.waitForTimeout(300); d = await m();
-  r.push(['modules GADH : carte étroite, 6 modules, texte secondaire ≥ 13 px', d.w <= 560 && d.n === 6 && parseFloat(d.sous) >= 13]);
+  r.push(['modules GADH : toute la largeur de l\'écran, 6 modules, texte secondaire ≥ 13 px', d.w >= 0.9 * 1024 && d.n === 6 && parseFloat(d.sous) >= 13]);
+  r.push(['modules : tuiles sur 3 colonnes, sans emoji', await p.evaluate(() => { const t = [...document.querySelectorAll('.choix-modules .soc-card')]; return new Set(t.map(x => Math.round(x.getBoundingClientRect().left))).size === 3 && t.every(x => x.querySelector('.mod-ico svg, .mod-ico img')); })]);
   r.push(['modules GADH : tient sur un écran 1024 × 768', d.bas <= 768]);
   r.push(['boutons « Changer de société » et « Déconnexion »', await p.locator('.choix-bas .btn').count() === 2]);
   await p.click('.soc-card >> nth=0'); await p.waitForTimeout(300);
