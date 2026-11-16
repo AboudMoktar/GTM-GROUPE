@@ -111,6 +111,7 @@ const profilsSocieteSelectOrigine = window.renderSocieteSelect;
 window.renderSocieteSelect = function(){
   profilsSocieteSelectOrigine();
   if(!canManageAccounts()) return;
+  if(document.querySelector('.gtmh')) return;   // le nouvel écran d'accueil affiche déjà « Administration »
   const zone = document.querySelector('.login-card .choix-liste');
   if(zone) zone.insertAdjacentHTML('beforeend', `<button class="btn btn-primary choix-fort" style="background:#334155 !important;" onclick="ouvrirAdmin()">
     ${ICONS.params}

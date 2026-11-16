@@ -150,33 +150,119 @@ function societeLogo(k, hauteur, repli, largeur){
   const l = SOCIETES[k] && SOCIETES[k].logo; if(!l) return repli;
   return `<img src="${l}" alt="${SOCIETES[k].nom}" data-repli="${esc(repli)}" onerror="logoRepli(this)" style="display:block;height:${hauteur}px;max-width:${largeur || 160}px;object-fit:contain;">`;
 }
+// ============================================================
+// Écrans d'accueil (choix de la société, choix du module) — maquette « GTM GROUPE » validée par la direction.
+// Styles dans accueil.css. Présentation seule : les droits (userSocietes, isGroupe, canManageAccounts,
+// peutChangerDeSociete, modulesDeSociete) et les actions (chooseSociete, chooseModule, openDirection,
+// ouvrirAdmin, switchSociete, logout, menuUtilisateur, notifOuvrir) sont ceux de l'application, inchangés.
+// Les trois logos sont les fichiers officiels (logo-tek.png, logo-gadh.png, logo-mgt.png), affichés entiers.
+// ============================================================
+const GTMH_SOC = {
+  tek:  {c1:'#14B8A6', c2:'#0E7C9C', clair:'#E3F6F5', activite:'Confection textile – PERCKO'},
+  gadh: {c1:'#E91E63', c2:'#C2185B', clair:'#FCE4EE', activite:'Sous-traitance – Assemblage'},
+  mgt:  {c1:'#F59E0B', c2:'#EA7A0B', clair:'#FEF1DC', activite:'Vente et SAV machines'}
+};
+// Couleur et icône de chaque module (cartes de l'écran des modules).
+const GTMH_MOD = {
+  'tek-dashboard':  ['#3B8DF0', '#1565D8', 'barres'],
+  'gadh-tableau':   ['#3B8DF0', '#1565D8', 'barres'],
+  'rendement':      ['#34C26E', '#15964A', 'chrono'],
+  'gadh':           ['#34C26E', '#15964A', 'chrono'],
+  'chaine':         ['#A274F5', '#7542DD', 'duo'],
+  'rh':             ['#FBB03B', '#F07C0C', 'groupe'],
+  'gadh-rh':        ['#FBB03B', '#F07C0C', 'groupe'],
+  'commandes':      ['#2CC4C9', '#0E8FA6', 'boite'],
+  'gadh-commandes': ['#2CC4C9', '#0E8FA6', 'boite'],
+  'machines':       ['#64748B', '#334155', 'cle'],
+  'factures':       ['#F2477E', '#D11A5B', 'facture']
+};
+const GTMH_ICO = {
+  barres: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3.5" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="16.5" y="4" width="4" height="16" rx="1"/><rect x="2" y="20.5" width="20" height="1.6" rx=".8"/></svg>',
+  chrono: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7.5"/><path d="M12 14V10.2"/><path d="M9.5 2.5h5"/><path d="M12 2.5v4"/><path d="M18.6 7.4l1.6-1.6"/></svg>',
+  duo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.6"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><circle cx="17" cy="9" r="2.7"/><path d="M16.5 14.1c3 .2 5.3 2.7 5.3 5.9"/></svg>',
+  groupe: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.2" r="3.3"/><circle cx="5.2" cy="9" r="2.5"/><circle cx="18.8" cy="9" r="2.5"/><path d="M6.4 20c0-3.6 2.5-6.4 5.6-6.4s5.6 2.8 5.6 6.4z"/><path d="M1 19.5c0-2.8 1.8-5 4.2-5 .9 0 1.7.3 2.4.8-1 1.3-1.6 2.9-1.7 4.2z"/><path d="M23 19.5c0-2.8-1.8-5-4.2-5-.9 0-1.7.3-2.4.8 1 1.3 1.6 2.9 1.7 4.2z"/></svg>',
+  boite: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5l8.5 4.6v9.8L12 21.5l-8.5-4.6V7.1z" fill="rgba(255,255,255,.18)"/><path d="M3.5 7.1L12 11.7l8.5-4.6"/><path d="M12 11.7v9.8"/><path d="M7.8 4.8l8.5 4.6"/></svg>',
+  cle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>',
+  facture: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z" fill="rgba(255,255,255,.18)"/><path d="M14 2.5V8h5.5"/><path d="M12 10.3v8"/><path d="M14.3 11.8c-.5-.7-1.3-1-2.3-1-1.3 0-2.3.7-2.3 1.6 0 2.2 4.7 1.1 4.7 3.4 0 .9-1 1.6-2.4 1.6-1.1 0-1.9-.4-2.4-1.1"/></svg>',
+  couture: '<svg viewBox="0 0 32 28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V8.5A2.5 2.5 0 0 1 7.5 6h15A4.5 4.5 0 0 1 27 10.5V14h-5.5"/><path d="M21.5 14v5"/><path d="M19.5 19h4"/><path d="M2 21.5h28v3.5H2z"/><path d="M10 10.5h7"/><circle cx="24" cy="10" r="1.2" fill="currentColor"/></svg>',
+  personnes: '<svg viewBox="0 0 32 26" fill="currentColor"><circle cx="16" cy="6.5" r="4.5"/><circle cx="6.5" cy="9" r="3.4"/><circle cx="25.5" cy="9" r="3.4"/><path d="M8.5 24c0-5 3.4-8.8 7.5-8.8s7.5 3.8 7.5 8.8z"/><path d="M.5 23.5c0-3.8 2.5-6.8 5.8-6.8 1.2 0 2.3.4 3.2 1.1-1.3 1.7-2.1 3.8-2.2 5.7z"/><path d="M31.5 23.5c0-3.8-2.5-6.8-5.8-6.8-1.2 0-2.3.4-3.2 1.1 1.3 1.7 2.1 3.8 2.2 5.7z"/></svg>',
+  engrenages: '<svg viewBox="0 0 36 30" fill="currentColor"><path fill-rule="evenodd" d="M12.6 1.5h3.8l.6 3.1 2.2.9 2.6-1.8 2.7 2.7-1.8 2.6.9 2.2 3.1.6v3.8l-3.1.6-.9 2.2 1.8 2.6-2.7 2.7-2.6-1.8-2.2.9-.6 3.1h-3.8l-.6-3.1-2.2-.9-2.6 1.8-2.7-2.7 1.8-2.6-.9-2.2-3.1-.6v-3.8l3.1-.6.9-2.2-1.8-2.6 2.7-2.7 2.6 1.8 2.2-.9zM14.5 9.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8z"/><path fill-rule="evenodd" d="M27.4 16.5h2.4l.4 1.9 1.3.6 1.6-1.1 1.7 1.7-1.1 1.6.6 1.3 1.9.4v2.4l-1.9.4-.6 1.3 1.1 1.6-1.7 1.7-1.6-1.1-1.3.6-.4 1.9h-2.4l-.4-1.9-1.3-.6-1.6 1.1-1.7-1.7 1.1-1.6-.6-1.3-1.9-.4v-2.4l1.9-.4.6-1.3-1.1-1.6 1.7-1.7 1.6 1.1 1.3-.6zM28.6 21.4a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg>',
+  maison: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2L12 3.5l9 7.7"/><path d="M5.5 9.5V20.5h4.8v-6h3.4v6h4.8V9.5"/></svg>',
+  usine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 21V10l5 3V10l5 3V5h4l1 3v13z"/><path d="M7 17h2M11 17h2M15 17h2"/></svg>',
+  machine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M7 8h6M7 11h4"/><circle cx="17" cy="10" r="2"/><path d="M5 16v4M19 16v4M3 20h18"/></svg>',
+  stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 20V13M9 20V9M14 20v-5M19 20V5"/><path d="M2 21h20"/></svg>',
+  reglages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  echange: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8.5A8 8 0 0 0 6 5.3L4 7.2"/><path d="M4 3v4.2h4.2"/><path d="M4 15.5a8 8 0 0 0 14 3.2l2-1.9"/><path d="M20 21v-4.2h-4.2"/></svg>',
+  marche: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2.5v9"/><path d="M18.4 6.4a9 9 0 1 1-12.8 0"/></svg>',
+  fleche: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="18" y2="12"/><polyline points="12.5 6.5 18 12 12.5 17.5"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>',
+  bas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  personne: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>'
+};
+function gtmhPeutAdmin(){ return typeof ouvrirAdmin === 'function' && canManageAccounts(); }
+function gtmhLogo(k){ return societeLogo(k, 120, societeMot(k), 400); }
+// Nom du groupe (texte) avec son arc ; « clair » = sur fond bleu nuit.
+function gtmhNomGroupe(clair, id){
+  return `<div class="gtmh-wm${clair ? ' clair' : ''}">
+    <svg class="gtmh-wm-arc" viewBox="0 0 220 40" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0">${clair
+      ? '<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".25" stop-color="#9CC8FF"/><stop offset="1" stop-color="#FFFFFF"/>'
+      : '<stop offset="0" stop-color="#0D3E6D"/><stop offset=".65" stop-color="#1677E8"/><stop offset=".86" stop-color="#1677E8"/><stop offset="1" stop-color="#F59E0B"/>'}</linearGradient></defs>
+      <path d="${clair ? 'M6 38 Q60 2 214 10' : 'M30 36 Q110 -4 196 24'}" fill="none" stroke="url(#${id})" stroke-width="${clair ? 5 : 7}" stroke-linecap="round"/></svg>
+    <b>GTM</b><b class="gtmh-wm-groupe">GROUPE</b>
+  </div>`;
+}
+function gtmhCloche(){ return typeof notifCloche === 'function' ? notifCloche() : ''; }
+function gtmhApresRendu(){ if(typeof notifMajCloche === 'function') setTimeout(notifMajCloche, 0); }
+function gtmhInitiale(){ return esc(String(currentUser.nom || currentUser.username || '?').trim().charAt(0).toUpperCase() || '?'); }
+// Vague colorée en bas des cartes société (deux nappes, couleurs de la société).
+function gtmhVague(k){
+  const c = GTMH_SOC[k] || GTMH_SOC.tek;
+  return `<svg class="gtmh-vague-svg" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="gtmhV-${k}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${c.c2}"/><stop offset=".55" stop-color="${c.c1}"/><stop offset="1" stop-color="${c.c1}" stop-opacity=".55"/></linearGradient></defs>
+    <path d="M0 34 C 110 4, 210 70, 400 18 L400 100 L0 100 Z" fill="${c.c1}" opacity=".22"/>
+    <path d="M0 52 C 120 22, 230 88, 400 40 L400 100 L0 100 Z" fill="url(#gtmhV-${k})"/></svg>`;
+}
+
 function renderSocieteSelect(){
   const soc = userSocietes();
+  const icoCarte = {tek:GTMH_ICO.couture, gadh:GTMH_ICO.personnes, mgt:GTMH_ICO.engrenages};
   document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card choix">
-        <div class="logo-wrap">
-          <div class="logo-text" style="font-size:26px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
-          <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
+    <div class="gtmh gtmh-soc">
+      <aside class="gtmh-hero">
+        <div class="gtmh-hero-txt">
+          ${gtmhNomGroupe(true, 'gtmhArcHero')}
+          <p class="gtmh-slogan">Ensemble<br>pour plus de performance</p>
         </div>
-        <h2 style="text-align:center;">Quelle société voulez-vous ouvrir ?</h2>
-        <p class="choix-qui">Connecté en tant que ${esc(currentUser.nom)}</p>
-        <div class="choix-liste">
-          ${isGroupe() ? `<button class="btn btn-primary choix-fort" onclick="openDirection()">
-            ${ICONS.crown}
-            <span>Vue direction<small>Les trois tableaux de bord sur un seul écran</small></span>
-          </button>` : ''}
-          ${soc.map(k => `<button class="soc-card" style="--m:${SOCIETES[k].marque[0]};" onclick="chooseSociete('${k}')">
-            <span class="soc-bande" style="background:${societeBande(k)};"></span>
-            <span class="soc-logo" style="background:${SOCIETES[k].teinte};">${societeLogo(k, 54, societeMot(k), 104)}</span>
-            <span class="soc-txt"><span class="soc-nom">${SOCIETES[k].nom}</span><span class="soc-sous">${SOCIETES[k].sous}</span></span>
-            <span class="soc-fleche">›</span>
-          </button>`).join('')}
-        </div>
-        <div class="choix-bas"><button class="btn btn-ghost" onclick="logout()">Déconnexion</button></div>
+      </aside>
+      <div class="gtmh-scene">
+        <header class="gtmh-haut">
+          <div class="gtmh-entete">
+            ${gtmhNomGroupe(false, 'gtmhArcTete')}
+            <div class="gtmh-entete-soc">TEK-TREND <i>|</i> GADH TUNISIA <i>|</i> MGT</div>
+          </div>
+          <div class="gtmh-actions">
+            ${isGroupe() ? `<button class="gtmh-pill fonce" onclick="openDirection()">${GTMH_ICO.barres}<span>Vue direction</span></button>` : ''}
+            ${gtmhPeutAdmin() ? `<button class="gtmh-pill" onclick="ouvrirAdmin()">${GTMH_ICO.reglages}<span>Administration</span></button>` : ''}
+            ${gtmhCloche()}
+            <button class="gtmh-avatar" onclick="menuUtilisateur(event)" title="${esc(currentUser.nom)}" aria-label="Menu du compte">${gtmhInitiale()}</button>
+          </div>
+        </header>
+        <main class="gtmh-centre">
+          <h1>Quelle société voulez-vous ouvrir ?</h1>
+          <p class="gtmh-qui">${GTMH_ICO.personne}<span>Connecté en tant que <b>${esc(currentUser.nom)}</b></span></p>
+          <div class="gtmh-societes" data-n="${soc.length}">
+            ${soc.map(k => { const c = GTMH_SOC[k] || GTMH_SOC.tek; return `<button class="gtmh-scarte" data-soc="${k}" style="--c1:${c.c1};--c2:${c.c2};--clair:${c.clair};" onclick="chooseSociete('${k}')">
+              <span class="gtmh-logo">${gtmhLogo(k)}</span>
+              <span class="gtmh-nom">${SOCIETES[k].nom}</span>
+              <span class="gtmh-sous">${c.activite}</span>
+              <span class="gtmh-vague">${gtmhVague(k)}<span class="gtmh-vague-ico">${icoCarte[k] || ''}</span><span class="gtmh-aller">${GTMH_ICO.fleche}</span></span>
+            </button>`; }).join('')}
+          </div>
+          <div class="gtmh-pied"><button class="gtmh-pill fonce gtmh-deco" onclick="logout()">${GTMH_ICO.marche}<span>Déconnexion</span></button></div>
+        </main>
       </div>
     </div>
   `;
+  gtmhApresRendu();
 }
 
 function renderAucuneSociete(){
