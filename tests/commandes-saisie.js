@@ -86,13 +86,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   // suivi automatique (Statut, Emballés, Reste) et statut saisi par libellé
   await p.evaluate(() => { const l = findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M'); S.moves.push({id:'MX2', date:'2027-01-08', lineId:l.id, stage:'emb', qty:30, nc:0, note:''}); render(); });
   const sh = (await p.locator('table.cmdT tr.h2 th').allTextContents()).join('|');
-  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés,\nprêts à expédier\|Contrôlés,\nà emballer\|Reste$/.test(sh)]);
+  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés,\nprêts à expédier\|Reste$/.test(sh)]);
   const rst = await p.evaluate(() => { const tr = document.querySelector('table.cmdT input[data-c="NEOLYS"][data-lib="PHARMA_HOMME COL V NOIR"][data-sz="M"]').closest('tr'); return [...tr.querySelectorAll('td.sv')].map(x => x.textContent).join('|'); });
-  r.push(['emballés en attente et reste (160 commandés, 30 emballés)', rst === '30||130']);
-  // pièces contrôlées, pas encore emballées : colonne à part, retirées du reste à produire
+  r.push(['emballés en attente et reste (160 commandés, 30 emballés)', rst === '30|130']);
+  // pièces contrôlées, pas encore emballées : pas de colonne, mais retirées du reste à produire
   await p.evaluate(() => { const l = findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M'); S.moves.push({id:'MX3', date:'2027-01-08', lineId:l.id, stage:'ctl', qty:50, nc:0, note:''}); render(); });
   const rst2 = await p.evaluate(() => { const tr = document.querySelector('table.cmdT input[data-c="NEOLYS"][data-lib="PHARMA_HOMME COL V NOIR"][data-sz="M"]').closest('tr'); return [...tr.querySelectorAll('td.sv')].map(x => x.textContent).join('|'); });
-  r.push(['contrôlés à emballer : 50 contrôlés dont 30 emballés → 20 contrôlés, reste 110 (160 − 30 − 20)', rst2 === '30|20|110']);
+  r.push(['50 contrôlés dont 30 emballés : pas de colonne « contrôlés », reste 110 (160 − 30 − 20)', rst2 === '30|110']);
+  r.push(['état Excel : même reste, formule avec les contrôlés retirés', await p.evaluate(() => { const g = pkExports.etatCommandeGrid(null, 'PK202701'), i = g.rows.findIndex(x => x.cells[1] && x.cells[1].v === 'PHARMA_HOMME COL V NOIR' && x.cells[2].v === 'M'); const c = g.rows[i].cells[g.rows[i].cells.length - 1]; return c.v === 110 && /-20\)$/.test(c.f); })]);
   await p.evaluate(() => { S.moves = S.moves.filter(m => m.id !== 'MX3'); render(); });
   await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);
   await p.fill('textarea[data-statut="PHARMA_HOMME COL V NOIR"]', 'Manque tissu'); await p.dispatchEvent('textarea[data-statut="PHARMA_HOMME COL V NOIR"]', 'change');

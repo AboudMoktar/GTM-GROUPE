@@ -1897,9 +1897,9 @@ function vCmdSaisie(v, clients, cli, libs){
   var cg = el("colgroup"); cols.forEach(function(w){ cg.appendChild(el("col", {style:"width:" + w + "px"})); }); t.appendChild(cg);
   t.style.width = cols.reduce(function(a, b){ return a + b; }, 0) + "px";
   var h1 = el("tr", {class:"h1"}, el("th", {colspan:String(nG + CL.length + 2), class:"cmdTitre", text:(libelleCommande(lotT || (E && E.lot) || "") ? "COMMANDE : " + libelleCommande(lotT || (E && E.lot) || "") : "COMMANDE") + "   ·   LOT " + (lotT || (E && E.lot) || "—")}));
-  if (SV) h1.appendChild(el("th", {colspan:String(1 + nEx + 3), class:"cmdSuivi", text:"SUIVI (automatique)"}));
+  if (SV) h1.appendChild(el("th", {colspan:String(1 + nEx + 2), class:"cmdSuivi", text:"SUIVI (automatique)"}));
   var h2 = el("tr", {class:"h2"}, (TEL ? [] : ["Model"]).concat(["LIBELLE", "Taille"]).concat(CL).concat(["Total", "Total"]).map(function(h){ return el("th", {text:h}); }));
-  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); COLS.forEach(function(c){ h2.appendChild(el("th", {class:"sv" + (c.av ? " av" : ""), text:SV.titreCol(c)})); }); h2.appendChild(el("th", {class:"sv", style:"white-space:pre-line;line-height:1.15", text:SV.titreEmb || "Emballés, prêts à expédier"})); h2.appendChild(el("th", {class:"sv", style:"white-space:pre-line;line-height:1.15", text:"Contrôlés,\nà emballer"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
+  if (SV){ h2.appendChild(el("th", {class:"sv", text:"Statut"})); COLS.forEach(function(c){ h2.appendChild(el("th", {class:"sv" + (c.av ? " av" : ""), text:SV.titreCol(c)})); }); h2.appendChild(el("th", {class:"sv", style:"white-space:pre-line;line-height:1.15", text:SV.titreEmb || "Emballés, prêts à expédier"})); h2.appendChild(el("th", {class:"sv", text:"Reste"})); }
   t.appendChild(el("thead", null, h1, h2));
   var span = {}, prevM = null, curM = null;
   blocs.forEach(function(b, i){ if (b.li.model !== prevM){ curM = i; span[i] = 0; prevM = b.li.model; } span[curM] += b.sizes.length; });
@@ -1942,7 +1942,7 @@ function vCmdSaisie(v, clients, cli, libs){
         }
         var rs = SV.R[li.lib + "|" + z] || {ex:{}, av:0};
         COLS.forEach(function(c){ tr.appendChild(el("td", {class:"sv" + (c.av ? "" : " b"), text:rs.ex[c.id] ? fmt(rs.ex[c.id]) : ""})); });
-        var tdE = el("td", {class:"sv b"}), tdK = el("td", {class:"sv b"}), tdR = el("td", {class:"sv rst b"}); tr.appendChild(tdE); tr.appendChild(tdK); tr.appendChild(tdR); cellsReste.push({lib:li.lib, z:z, emb:tdE, ctl:tdK, reste:tdR});
+        var tdE = el("td", {class:"sv b"}), tdR = el("td", {class:"sv rst b"}); tr.appendChild(tdE); tr.appendChild(tdR); cellsReste.push({lib:li.lib, z:z, emb:tdE, reste:tdR});
       }
       tb.appendChild(tr);
     });
@@ -1951,7 +1951,7 @@ function vCmdSaisie(v, clients, cli, libs){
   var trT = el("tr", {class:"ttot"}, el("td", {colspan:String(nG), class:"b", text:"TOTAL"}));
   CL.forEach(function(c){ var td = el("td", {class:"b"}); footCells[c] = td; trT.appendChild(td); });
   footCells.__t = el("td", {class:"b"}); footCells.__tl = el("td", {class:"b rouge"}); trT.appendChild(footCells.__t); trT.appendChild(footCells.__tl);
-  if (SV){ trT.appendChild(el("td")); footCells.__ex = COLS.map(function(){ return trT.appendChild(el("td", {class:"b"})); }); footCells.__emb = trT.appendChild(el("td", {class:"b"})); footCells.__ctl = trT.appendChild(el("td", {class:"b"})); footCells.__r = trT.appendChild(el("td", {class:"b rouge"})); }
+  if (SV){ trT.appendChild(el("td")); footCells.__ex = COLS.map(function(){ return trT.appendChild(el("td", {class:"b"})); }); footCells.__emb = trT.appendChild(el("td", {class:"b"})); footCells.__r = trT.appendChild(el("td", {class:"b rouge"})); }
   tb.appendChild(trT);
   t.appendChild(tb);
   if (!blocs.length) v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", text:"Aucune quantité dans cette commande. Appuyez sur ✏️ Modifier pour la saisir."})));
@@ -1965,11 +1965,11 @@ function vCmdSaisie(v, clients, cli, libs){
     CL.forEach(function(c){ parC[c] = 0; });
     cellsTot.forEach(function(x){ var tt = 0; CL.forEach(function(c){ var q = qVue(c, x.lib, x.z); tt += q; parC[c] += q; }); x.td.textContent = tt ? fmt(tt) : ""; gf += tt; if (tt) gc += cutQty(tt, modelOf(x.lib)); });
     cellsLib.forEach(function(x){ var tt = 0; x.sizes.forEach(function(z){ tt += totRef(x.lib, z); }); x.td.textContent = tt ? fmt(tt) : ""; });
-    cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, totRef(x.lib, x.z)); x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.ctl.textContent = ch.controle ? fmt(ch.controle) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tCtl += ch.controle; tR += ch.reste; });
+    cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, totRef(x.lib, x.z)); x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tCtl += ch.controle; tR += ch.reste; });
     if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; COLS.forEach(function(c, i){ tEx[i] += r0.ex[c.id] || 0; }); }); }
     CL.forEach(function(c){ footCells[c].textContent = parC[c] ? fmt(parC[c]) : ""; });
     footCells.__t.textContent = fmt(gf); footCells.__tl.textContent = fmt(gf);
-    if (SV){ footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; footCells.__ctl.textContent = tCtl ? fmt(tCtl) : ""; }
+    if (SV){ footCells.__ex.forEach(function(td, i){ td.textContent = tEx[i] ? fmt(tEx[i]) : ""; }); footCells.__emb.textContent = tEmb ? fmt(tEmb) : ""; }
     /* reste à produire : Total − (Expédié + Emballé + Contrôlé) sur les totaux, jamais négatif (chaque ligne s'arrête à 0) */
     if (SV){ var tX = 0; tEx.forEach(function(q){ tX += q; }); tR = Math.max(0, gf - tX - tEmb - tCtl); footCells.__r.textContent = fmt(tR); }
     stat.innerHTML = "";
