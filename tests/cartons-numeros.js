@@ -32,10 +32,14 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   // couleurs et tailles visibles pendant le défilement
   const c = await p.evaluate(() => { const g = t => getComputedStyle([...document.querySelectorAll('.xp-mx td.m')].find(x => x.textContent.toLowerCase().indexOf(t) >= 0)).backgroundColor; return {noir:g('noir'), rose:g('rose'), sable:g('sable')}; });
   ok(c.noir === 'rgb(89, 89, 89)' && c.rose === 'rgb(255, 192, 203)' && c.sable === 'rgb(222, 220, 134)', 'modèles colorés comme la commande');
-  const fixe = await p.evaluate(() => { const w = document.querySelector('.xp-fixe'), th = w.querySelector('thead th:nth-child(3)'); w.scrollTop = 600; const a = th.getBoundingClientRect(), r = w.getBoundingClientRect(), der = [...w.querySelectorAll('tbody tr')].pop().getBoundingClientRect();
-    return {defile:w.scrollHeight > w.clientHeight + 100, visible:a.top >= r.top - 1 && a.bottom <= r.bottom, texte:th.textContent, haut:Math.round(a.top - r.top)}; });
-  ok(fixe.defile && fixe.visible && fixe.haut <= 2 && fixe.texte === 'S', 'les tailles restent visibles quand on fait défiler les modèles');
-  await p.evaluate(() => { document.querySelector('.xp-fixe').scrollTop = 0; });
+  // ordinateur : c'est la page qui défile ; la ligne des tailles reste collée sous le bandeau du carton
+  await p.waitForTimeout(100);
+  const fixe = await p.evaluate(() => { const vw = document.getElementById('view'), th = document.querySelector('.xp-fixe thead th:nth-child(3)'), bd = document.querySelector('.xp-sticky');
+    const max = vw.scrollHeight - vw.clientHeight; vw.scrollTop = Math.min(700, max - 50);
+    const a = th.getBoundingClientRect(), b = bd.getBoundingClientRect(), lignes = [...document.querySelectorAll('.xp-fixe tbody tr')].map(t => t.getBoundingClientRect());
+    return {defile:vw.scrollTop > 300, sousBandeau:Math.abs(a.top - b.bottom) <= 3, texte:th.textContent, dessus:lignes.some(r => r.top < a.bottom - 5 && r.bottom > a.top), couvre:document.elementFromPoint(a.left + 5, a.top + 5) === th}; });
+  ok(fixe.defile && fixe.sousBandeau && fixe.texte === 'S' && fixe.couvre, 'les tailles restent visibles sous le bandeau quand la page défile — ' + JSON.stringify(fixe));
+  await p.evaluate(() => { document.getElementById('view').scrollTop = 0; });
   await p.locator('.xp-mx input').first().fill('7');
   await p.locator('button.sx-go', {hasText:'Valider le carton N°3'}).click();
   ok(await ns() === '1,2,3,4,5' && await p.locator('.xp-manq').count() === 0, 'carton N°3 recréé : plus de trou, plus d\'alerte');
@@ -50,9 +54,23 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(await p.evaluate(() => pkExports.numeroLibre(S.exports[0])) === 4, 'le prochain carton prend le premier numéro libre');
   await p.locator('.xp-manq button', {hasText:'Renuméroter sans trou'}).click();
   ok(await ns() === '1,2,3,4', '« Renuméroter sans trou » : 1, 2, 3, 4');
+  // 6. carton disparu (mouvements restés sans leur carton) : alerte détaillée, remise en place ou libération
+  await p.evaluate(() => { const e = S.exports[0], c = e.cartons.find(x => x.n === 2); e.cartons = e.cartons.filter(x => x !== c); window.__ct = c.id; ui.xp = null; render(); });
+  const al = await p.locator('.xp-disparu').innerText();
+  ok(/Carton N°2 de l'export N°1/.test(al) && /Modèle Essai Gris · taille XS/.test(al) && /commande PKT/.test(al) && /7 pièce/.test(al), 'carton disparu : numéro, export, modèle, taille, commande et quantité indiqués');
+  await p.click('.xp-disparu [data-disparu="recreer"]');
+  ok(await p.evaluate(() => { const c = S.exports[0].cartons.find(x => x.id === window.__ct); return !!c && c.n === 2 && c.it.length === 1 && c.it[0][1] === 7 && pkExports.mvtsOrphelins().length === 0; }) && await p.locator('.xp-disparu').count() === 0, 'remettre le carton : il revient dans l\'export avec son numéro et ses pièces');
+  await p.evaluate(() => { const e = S.exports[0]; e.cartons = e.cartons.filter(x => x.id !== window.__ct); ui.xp = null; render(); });
+  await p.click('.xp-disparu [data-disparu="retirer"]');
+  ok(await p.evaluate(() => !S.moves.some(m => m.ct === window.__ct)) && await p.locator('.xp-disparu').count() === 0, 'libérer les pièces : elles ne sont plus comptées comme emballées');
+  // 7. état de commande ouvert depuis un export pas encore parti : « prévu », pas « exporté »
+  const tit = await p.evaluate(() => { const e = S.exports[0], sv = pkExports.suiviCommande(e, 'PKT'); return sv.cols.map(c => sv.titreCol(c)).join(' | '); });
+  ok(/Export prévu le 21\/11/.test(tit) && !/Exporté/.test(tit), 'export en cours : colonne « Export prévu le 21/11 » — ' + tit);
+  ok(await p.evaluate(() => { const e = S.exports[0]; e.st = 'fini'; const sv = pkExports.suiviCommande(e, 'PKT'), t = sv.cols.map(c => sv.titreCol(c)).join(' | '); e.st = 'cours'; return /Exporté 21\/11/.test(t); }), 'export validé : colonne « Exporté 21/11 »');
+  await p.evaluate(() => { ui.xp = {id:'E1'}; render(); });
   // 5. dernier carton : simple confirmation, pas de question sur les numéros
   await p.locator('.xp-carton', {hasText:'Carton N°4'}).getByText('Supprimer').click();
-  ok(await p.locator('.xp-choix').count() === 0 && await ns() === '1,2,3', 'dernier carton : suppression directe');
+  ok(await p.locator('.xp-choix').count() === 0 && await ns() === '1,3', 'dernier carton : suppression directe');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur'); process.exit(echecs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
