@@ -1,0 +1,88 @@
+/* ============================================================
+   TEK-TREND et GADH TUNISIA — pages intérieures des modules dans le style des écrans d'accueil
+   (colonne bleu nuit « GTM GROUPE », élément actif en bleu électrique, barre du haut blanche
+   avec fil d'Ariane, cloche et compte, fond gris très clair, cartes blanches à bords fins).
+   - Présentation seule, limitée à TEK-TREND en thème clair : html[data-soc] sans thème sombre.
+     GADH, MGT et le thème sombre ne changent pas.
+   - Aucune règle métier, aucun droit ne dépend de ce fichier.
+   - Compatible Chrome 109 (Windows 7) et Firefox ESR 115 : ni color-mix(), ni :has(), ni imbrication.
+   ============================================================ */
+
+/* ---------- 1. Couleurs ---------- */
+html[data-soc]:not([data-theme="dark"]){
+  --accent:#1677E8; --accent-2:#0F63C9; --accent-bg:#E8F1FD; --accent-ink:#FFFFFF;
+  --bg:#F5F7FB; --border:#DDE6F2; --border-soft:#E8EEF6; --border-strong:#C5D2E4;
+  --ink:#0B1F3A; --ink-soft:#33445E;
+  --nav-bg:#0B1F3A; --nav-ink:#FFFFFF; --nav-ink-hover:#FFFFFF; --nav-hover:rgba(255,255,255,.10); --nav-active:#1677E8; --nav-sep:rgba(255,255,255,.30);
+  --accent-on-nav:transparent;
+  --shadow-sm:0 4px 12px rgba(11,31,58,.06);
+  --radius:14px; --radius-sm:10px;
+}
+html[data-soc]:not([data-theme="dark"]) body{background:#F5F7FB;}
+
+/* ---------- 2. Colonne de gauche ---------- */
+html[data-soc]:not([data-theme="dark"]) .sidebar{
+  background:radial-gradient(120% 40% at 0% 0%,rgba(59,139,234,.35) 0%,rgba(59,139,234,0) 60%),linear-gradient(180deg,#0D2E5C 0%,#0A2348 60%,#0B1F3A 100%) !important;
+  border-right:0 !important;
+}
+.sidebar .gtmh-wm{display:none;}
+html[data-soc] .sidebar .gtmh-wm{display:flex; align-self:center; margin:4px auto 16px; padding-top:16px;}
+html[data-soc] .sidebar .gtmh-wm b{font-size:38px;}
+html[data-soc] .sidebar .gtmh-wm .gtmh-wm-groupe{font-size:19px; letter-spacing:4px; margin-right:-4px; margin-top:4px;}
+html[data-soc] .sidebar .gtmh-wm .gtmh-wm-arc{left:-28%; top:-4px; width:150%; height:42px;}
+html[data-soc] .sidebar .side-logo .logo-wrap > span{height:58px !important; border-radius:12px !important; box-shadow:0 4px 12px rgba(0,0,0,.25);}
+html[data-soc] .sidebar .side-logo img{max-height:44px !important;}
+html[data-soc] .sidebar .side-soc{display:none;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav{gap:5px; padding:0 12px;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button{min-height:46px; padding:10px 14px !important; border-radius:9px !important; font-size:15.5px !important; font-weight:700 !important; color:#FFFFFF !important;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button svg{width:21px; height:21px; opacity:1;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button:hover{background:rgba(255,255,255,.10) !important;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button.active{background:linear-gradient(180deg,#2389F5,#1468D8) !important; box-shadow:0 6px 14px rgba(22,119,232,.40);}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button.active::before{display:none;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav:last-child{border-top:2px solid rgba(255,255,255,.30); margin-left:14px; margin-right:14px; padding-left:0; padding-right:0;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button[onclick^="logout"]{color:#FFFFFF !important;}
+html[data-soc]:not([data-theme="dark"]) .sidebar nav button[onclick^="logout"]:hover{background:rgba(255,255,255,.10) !important;}
+
+/* ---------- 3. Barre du haut (ordinateur) ---------- */
+.topbar .tb-maison{display:none;}
+@media (min-width:1024px){
+  html[data-soc]:not([data-theme="dark"]) .topbar{height:62px; border-bottom:1px solid #E3EAF4 !important; box-shadow:0 2px 8px rgba(11,31,58,.04) !important;}
+  html[data-soc]:not([data-theme="dark"]){--top-h:62px;}
+  html[data-soc] .topbar .tb-maison{display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; width:40px; height:40px; border:0; border-radius:10px; background:transparent; color:#0B1F3A; cursor:pointer;}
+  html[data-soc] .topbar .tb-maison:hover{background:#EEF4FC;}
+  html[data-soc] .topbar .tb-maison svg{width:26px; height:26px;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .tb-titre{flex:1 1 auto; justify-content:flex-start; margin:0 0 0 6px; gap:12px; font-size:17px; font-weight:700; color:#0B1F3A;}
+  html[data-soc] .topbar > .logo-wrap{display:none !important;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .tb-titre .tb-soc,
+  html[data-soc]:not([data-theme="dark"]) .topbar .tb-titre .tb-mod{font-size:17px; font-weight:700; color:#0B1F3A; text-transform:none; letter-spacing:0;}
+  html[data-soc] .topbar .tb-titre .tb-sep{width:auto; height:auto; background:none; color:#6B7A92; font-weight:400;}
+  html[data-soc] .topbar .tb-titre .tb-sep::before{content:'/';}
+  html[data-soc]:not([data-theme="dark"]) .topbar .tb-titre > span:last-child{color:#1677E8;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-chip{gap:14px;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .notif-btn{color:#0B1F3A !important;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .notif-btn svg{width:24px !important; height:24px !important;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-chip .user-menu-btn{border:0 !important; padding:3px 8px 3px 3px !important; border-radius:24px !important;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-chip .uname{color:#0B1F3A !important; font-size:15.5px !important; font-weight:700;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-avatar-ic{width:36px !important; height:36px !important; border-radius:50% !important; background:linear-gradient(180deg,#1C5AA6,#0B2F63) !important; color:#fff !important; box-shadow:0 0 0 3px rgba(22,119,232,.18);}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-avatar-ic svg{width:20px !important; height:20px !important;}
+  html[data-soc]:not([data-theme="dark"]) .topbar .user-chevron{color:#0B1F3A !important;}
+}
+
+/* ---------- 4. Contenu : cartes, boutons, onglets ---------- */
+html[data-soc]:not([data-theme="dark"]) main .card{border-color:#DDE6F2; box-shadow:0 4px 12px rgba(11,31,58,.06);}
+html[data-soc]:not([data-theme="dark"]) main .flex-header h2,
+html[data-soc]:not([data-theme="dark"]) main > h2{color:#0B1F3A; font-weight:800;}
+html[data-soc]:not([data-theme="dark"]) .btn{border-radius:10px !important;}
+html[data-soc]:not([data-theme="dark"]) .btn-primary{background:linear-gradient(180deg,#2389F5,#1468D8) !important; box-shadow:0 3px 8px rgba(22,119,232,.25) !important;}
+html[data-soc]:not([data-theme="dark"]) .btn-primary:hover{background:linear-gradient(180deg,#1A7DEB,#0F5BC2) !important;}
+html[data-soc]:not([data-theme="dark"]) .btn-ghost{border-color:#CBD7E8 !important; color:#0B1F3A !important;}
+
+/* ---------- 5. Téléphone et tablette : barre du haut et barre du bas ---------- */
+@media (max-width:1023px){
+  html[data-soc]:not([data-theme="dark"]) .topbar,
+  html[data-soc]:not([data-theme="dark"]) .en-profondeur .deepbar{background:linear-gradient(120deg,#0D2E5C 0%,#0B1F3A 100%) !important;}
+  html[data-soc]:not([data-theme="dark"]) .bottomnav button.active{color:#1677E8;}
+}
+
+/* ---------- 6. Impression : rien de tout cela ---------- */
+@media print{ .sidebar .gtmh-wm,.topbar .tb-maison{display:none !important;} }
