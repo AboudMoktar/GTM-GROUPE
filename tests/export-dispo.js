@@ -60,8 +60,8 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['carton modifié : seules ses pièces changent', dc.t4.emb === 200 && dc.t4.ctl === 210]);
   // carton fantôme (mouvements d'un carton qui n'existe plus) : signalé, retiré en un bouton
   await p.evaluate(() => { S.moves.push({id:'og1', date:'2026-11-21', lineId:'XL', stage:'emb', qty:5, nc:0, note:'', ct:'XCfantome'}); ui.tab = 'exp'; ui.xp = {id:'X1'}; render(); });
-  r.push(['carton fantôme signalé', /5 pièce\(s\) d'un carton qui n'existe plus/.test(await p.locator('#view').textContent())]);
-  await p.click('text=Retirer ces pièces'); await p.waitForTimeout(300);
+  r.push(['carton fantôme signalé', /il n'existe plus, mais ses 5 pièce\(s\) restent comptées comme emballées/.test(await p.locator('#view').textContent())]);
+  await p.click('text=Libérer ces pièces'); await p.waitForTimeout(300);
   r.push(['carton fantôme retiré', await p.evaluate(() => !S.moves.some(m => m.ct === 'XCfantome') && pkExports.mvtsOrphelins().length === 0)]);
   r.push(['aucune erreur JavaScript', err.length === 0]);
   let ko = 0; r.forEach(x => { if (!x[1]) ko++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });

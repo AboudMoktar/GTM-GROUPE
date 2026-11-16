@@ -44,6 +44,7 @@ var CSS = [
   '.xp-choix-b .btn{display:block;width:100%;text-align:left;margin:0 0 8px;padding:10px 12px;height:auto;white-space:normal}.xp-choix-b .btn b{display:block;font-size:14.5px}.xp-choix-b .btn span{display:block;font-size:12.5px;font-weight:500;opacity:.85;margin-top:2px}',
   '.xp-manq{border:2px solid #b45309;background:#fff7e6;color:#5c3a00;border-radius:12px;padding:10px 12px;margin:0 0 12px}.xp-manq .actions{margin:8px 0 0}',
   /* tableau des quantités d\'un carton : il défile dans son cadre, la ligne des tailles et la colonne des modèles restent visibles */
+  '@media (min-width:1024px){.xp-mxw.xp-fixe{overflow:visible !important;max-height:none !important}.xp-fixe .xp-mx thead th{top:var(--xp-bandeau,78px) !important;z-index:5 !important}.xp-fixe .xp-mx tfoot td{position:static !important}}',
   '.xp-mxw.xp-fixe{overflow:auto;max-height:calc(100vh - 170px);min-height:220px;border:1px solid var(--line);border-radius:10px}.xp-fixe .xp-mx thead th{top:0;z-index:3;box-shadow:0 1px 0 var(--line)}.xp-fixe .xp-mx thead th.m{z-index:4}.xp-fixe .xp-mx tfoot td{position:sticky;bottom:0;z-index:3;box-shadow:0 -1px 0 var(--line)}.xp-fixe .xp-mx tfoot td.m{z-index:4;background:var(--sub)}',
   '.xp-mx td.m.coul{border-left:0}',
   '.xp-sticky{position:sticky;top:0;z-index:7;display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;background:var(--card);border:2px solid var(--ink);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.12)}',
@@ -218,17 +219,49 @@ function mvtsOrphelins(){
   var ids = {}; EX().forEach(function(e){ ids[e.id] = 1; e.cartons.forEach(function(c){ ids[c.id] = 1; }); });
   return S.moves.filter(function(m){ return m.ct && /^X/.test(m.ct) && !ids[m.ct]; });
 }
+/* cartons disparus : regroupe les mouvements par carton (numéro et export lus dans la note du mouvement) */
+function cartonsDisparus(){
+  var par = {};
+  mvtsOrphelins().forEach(function(m){
+    var g = par[m.ct] || (par[m.ct] = {ct:m.ct, n:0, exN:0, q:0, it:{}, mvts:[]}); g.mvts.push(m);
+    var a = /carton N°(\d+)/.exec(m.note || ""), x = /export N°(\d+)/i.exec(m.note || ""); if (a) g.n = +a[1]; if (x) g.exN = +x[1];
+    if (m.stage === "emb"){ g.q += m.qty || 0; g.it[m.lineId] = (g.it[m.lineId] || 0) + (m.qty || 0); } });
+  return Object.keys(par).map(function(k){ var g = par[k];
+    g.lignes = Object.keys(g.it).filter(function(id){ return g.it[id]; }).map(function(id){ var l = lineById(id); return {id:id, q:g.it[id], l:l}; });
+    g.export = EX().filter(function(e){ return e.n === g.exN && e.st !== "fini"; })[0] || null;
+    return g; });
+}
+/* remet le carton dans son export, avec les pièces déjà comptées (les mouvements ne changent pas) */
+function recreerCartonDisparu(g){
+  var e = g.export; if (!e) return false;
+  var n = g.n && !e.cartons.some(function(c){ return c.n === g.n; }) ? g.n : numeroLibre(e);
+  var c = {id:g.ct, n:n, kg:null, com:"", it:g.lignes.filter(function(x){ return x.l; }).map(function(x){ return [x.id, x.q, x.l.lot, x.l.lib, x.l.size]; })};
+  if (!c.it.length) return false;
+  e.cartons.push(c); if (n !== g.n) noterNumero(e, c);
+  return n;
+}
 function alerteOrphelins(v){
-  var o = mvtsOrphelins(); if (!o.length) return;
-  var q = 0; o.forEach(function(m){ if (m.stage === "emb") q += m.qty || 0; });
-  v.appendChild(el("div", {class:"msg err", style:"margin:0 0 10px"},
-    el("b", {text:"⚠ " + fmt(q) + " pièce(s) d'un carton qui n'existe plus restent comptées comme emballées. "}),
-    "Cela fausse le disponible et l'état de commande. ",
-    el("button", {class:"btn small", style:"margin-top:6px", text:"Retirer ces pièces", onclick:function(){
-      if (!confirm("Retirer les " + fmt(q) + " pièce(s) de ce carton disparu (emballage et contrôle automatique) ?")) return;
-      var ok = commit(function(){ var anc = {}; mvtsOrphelins().forEach(function(m){ anc[m.id] = 1; }); checkMoves([], anc); S.moves = S.moves.filter(function(m){ return !anc[m.id]; }); });
-      if (ok) toast("Pièces du carton disparu retirées");
-    }})));
+  var G = cartonsDisparus(); if (!G.length) return;
+  G.forEach(function(g){
+    var nom = "Carton" + (g.n ? " N°" + g.n : "") + (g.exN ? " de l'export N°" + g.exN : "");
+    var b = el("div", {class:"msg err xp-disparu", style:"margin:0 0 10px"},
+      el("b", {text:"⚠ " + nom + " : il n'existe plus, mais ses " + fmt(g.q) + " pièce(s) restent comptées comme emballées."}),
+      el("div", {style:"margin:4px 0 0", text:"Pièces concernées :"}));
+    var ul = el("ul", {style:"margin:2px 0 6px 18px;padding:0"});
+    g.lignes.forEach(function(x){ ul.appendChild(el("li", {text:(x.l ? nomDoc(x.l.lib) + " · taille " + x.l.size + " · commande " + x.l.lot : "ligne supprimée") + " : " + fmt(x.q) + " pièce(s)"})); });
+    b.appendChild(ul);
+    b.appendChild(el("div", {style:"font-size:13px", text:"Tant que ce n'est pas corrigé, ces pièces ne sont plus proposées pour d'autres cartons et l'état de commande les compte comme emballées."}));
+    var acts = el("div", {class:"actions", style:"margin:8px 0 0"});
+    if (g.export && g.lignes.some(function(x){ return x.l; })) acts.appendChild(el("button", {class:"btn small", "data-disparu":"recreer", text:"Remettre le carton" + (g.n ? " N°" + g.n : "") + " dans l'export", title:"Le carton revient dans l'export N°" + g.exN + " avec ces pièces", onclick:function(){
+      var n; var ok = commit(function(){ n = recreerCartonDisparu(g); }); if (ok) toast(n ? "Carton N°" + n + " remis dans l'export N°" + g.exN : "Carton impossible à remettre");
+    }}));
+    acts.appendChild(el("button", {class:"btn small sec", "data-disparu":"retirer", text:"Libérer ces pièces", title:"Les pièces redeviennent disponibles pour d'autres cartons", onclick:function(){
+      if (!confirm("Libérer les " + fmt(g.q) + " pièce(s) du " + nom.toLowerCase() + " ?\nElles ne seront plus comptées comme emballées et redeviendront disponibles.")) return;
+      var ok = commit(function(){ var anc = {}; g.mvts.forEach(function(m){ anc[m.id] = 1; }); checkMoves([], anc); S.moves = S.moves.filter(function(m){ return !anc[m.id]; }); });
+      if (ok) toast("Pièces libérées");
+    }}));
+    b.appendChild(acts); v.appendChild(b);
+  });
 }
 
 /* ---------- vues ---------- */
@@ -532,6 +565,8 @@ function editeurCarton(v, e){
     mx.appendChild(el("div", {class:"tw xp-mxw xp-fixe"}, t));
   });
   v.appendChild(mx);
+  /* hauteur réelle du bandeau du carton : la ligne des tailles se fige juste dessous */
+  setTimeout(function(){ var bd = v.querySelector(".xp-sticky"); if (bd) v.style.setProperty("--xp-bandeau", (bd.offsetHeight - 1) + "px"); }, 0);
   recalc();
   /* 3. valider */
   var fin = el("div", {class:"card"});
@@ -863,7 +898,7 @@ function suiviCommande(e, lot){
   var avD = {}; Object.keys(R).forEach(function(k){ Object.keys(R[k].ex).forEach(function(id){ if (id.indexOf("av:") === 0 && R[k].ex[id]) avD[id.slice(3)] = 1; }); });
   var cols = Object.keys(avD).map(function(d){ return {id:"av:" + d, d:d, av:true}; }).concat(exs.map(function(x){ return {id:x.id, d:x.d, x:x}; }))
     .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : (b.av ? 1 : 0) - (a.av ? 1 : 0) || (a.x && b.x ? a.x.n - b.x.n : 0); });
-  var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (!e && x.st !== "fini" ? "Prêt à expédier le " : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
+  var titre = function(x){ var d = dmyL(x.d).slice(0, 5); return (x.st !== "fini" ? (e ? "Export prévu le " : "Prêt à expédier le ") : "Exporté ") + d + (dates[d] > 1 ? " (N°" + x.n + ")" : ""); };
   /* date prévue d'expédition des pièces emballées : celle des exports en cours qui contiennent cette commande
      (suit la date de l'export quand elle change) */
   var prevus = sortedUnique(EX().filter(function(x){ return x.st !== "fini" && x.cartons.some(function(c){ return c.it.some(function(y){ return infoItem(y).lot === lot; }); }); }).map(function(x){ return x.d; })).sort();
