@@ -58,7 +58,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   const M0 = await p.evaluate(() => { const d = document.querySelector('#pk-fact-apercu iframe').contentDocument, t = d.body.innerText.replace(/\u00a0|\u202f/g, ' ');
     return {pages:d.querySelectorAll('.pg').length, marque:(d.querySelector('.brouillon') || {}).textContent, t, cadre:!!d.querySelector('.cadre table.l'), boites:d.querySelectorAll('.b3 > div').length, coins:d.querySelectorAll('.adr i').length}; });
   ok(M0.pages >= 1 && M0.cadre && M0.boites === 3 * M0.pages && M0.coins === 4 * M0.pages && M0.marque === 'APERÇU', 'modèle papier (' + M0.pages + ' page(s)) : en-tête à 3 cases, adresse encadrée, tableau, filigrane « APERÇU »');
-  ok(/SOCIÉTÉ ESSAI/.test(M0.t) && /MF :0000000X/.test(M0.t) && /Percko chez Neolys/.test(M0.t) && /PHARMA HOMME COL V NOIR\s+XS S M/.test(M0.t) && /18,000/.test(M0.t) && /NET A PAYER/.test(M0.t) && /1 169,00/.test(M0.t) && /VALEUR MATIERE PREMIERE: 180\.00/.test(M0.t) && /Nombre de colis: 2/.test(M0.t) && /MODE DE TRANSPORT :DDP/.test(M0.t) && /RESERVE DE PROPRIETE/.test(M0.t), 'modèle papier : société, livraison, lignes (quantité à 3 décimales), totaux, valeur matière, colis, transport, mentions');
+  ok(/SOCIÉTÉ ESSAI/.test(M0.t) && /MF :0000000X/.test(M0.t) && /Percko chez Neolys/.test(M0.t) && /PHARMA HOMME COL V NOIR\s+XS S M/.test(M0.t) && /18,000/.test(M0.t) && /NET A PAYER/.test(M0.t) && /1 169,00/.test(M0.t) && /ART048\s+VALEUR MATIERE PREMIERE: 180\.00/.test(M0.t) && !/ART0002/.test(M0.t) && /Nombre de colis: 2/.test(M0.t) && /MODE DE TRANSPORT :DDP/.test(M0.t) && /RESERVE DE PROPRIETE/.test(M0.t), 'modèle papier : société, livraison, lignes (quantité à 3 décimales), totaux, valeur matière, colis, transport, mentions');
   if (process.env.CAPTURE) await p.screenshot({path:process.env.CAPTURE});
   // Imprimer et PDF : la fenêtre d'impression du navigateur est appelée sur la facture
   await p.evaluate(() => { window.__imp = 0; document.querySelector('#pk-fact-apercu iframe').contentWindow.print = () => { window.__imp++; }; });
@@ -94,6 +94,12 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.evaluate(() => percMaj('valeurMatiere', '999'));
   await p.evaluate(() => factMajLigne(0, 'qte', 19));
   ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 999, 'valeur saisie à la main : conservée quand les quantités changent');
+  // champ vidé ou remis à 0 : le calcul reprend tout seul (cas d'une facture créée avant ce calcul)
+  await p.evaluate(() => percMaj('valeurMatiere', '0'));
+  ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 182.5 && /Calculée/.test(await p.evaluate(() => document.querySelector('[data-pk="valeur-calcul"]').textContent)), 'valeur remise à 0 : recalculée automatiquement (73 × 2,50 = 182,50)');
+  await p.evaluate(() => { factModifier(f => { delete f.percko.valeurAuto; f.percko.valeurMatiere = ''; }); });
+  ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 182.5, 'ancienne facture sans valeur : calculée à l\'ouverture');
+  await p.evaluate(() => percMaj('valeurMatiere', '999'));
   await p.evaluate(() => percValeurAuto());
   ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 182.5, '« Reprendre le calcul » : 73 × 2,50 = 182,50');
   await p.evaluate(() => factMajLigne(0, 'qte', 18));

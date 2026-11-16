@@ -163,6 +163,10 @@ function percLignesExport(pieces){
 // Valeur matière première = pièces × valeur par pièce + exosquelettes × valeur par exosquelette (16/11/2026).
 // Les deux valeurs unitaires sont dans les réglages (« Catalogue & prix »), pas dans le code.
 function percValeurs(){ const P = factParams('tek'); return {piece:Number(P.valeurPiece) || 0, exo:Number(P.valeurExo) || 0}; }
+// Référence imprimée devant la ligne « valeur matière première » : la sienne, pas celle des frais (ART0002).
+function percRefValeur(){ const r = String(factParams('tek').refValeur || '').trim(); return r || 'ART048'; }
+// La valeur est calculée tant qu'aucun montant n'a été saisi à la main (un champ vide ou à 0 = calcul automatique).
+function percValeurEstAuto(p){ return !!p && (p.valeurAuto === true || !(Number(p.valeurMatiere) > 0)); }
 function percValeurMatiere(f){
   const V = percValeurs(); if(!V.piece && !V.exo) return null;
   const tarif = percTarif(), fam = {}; tarif.forEach(a => { fam[a.code] = a.fam; });
@@ -198,7 +202,10 @@ window.percFacturerExport = function(x, forcer){
 // Facture d'un export, en mémoire : celle déjà préparée (émise de préférence, sinon le brouillon le plus récent), sinon calculée.
 function percFactureDunExport(x){
   const deja = percFactureDeLExport(x.exportId), emises = deja.filter(d => d.f.statut === 'emise');
-  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; return {f:factListe('tek')[c.id] || c.f, existe:true}; }
+  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; const f0 = factListe('tek')[c.id] || c.f;
+    // brouillon dont la valeur matière n'a pas été saisie : montrée calculée, comme à l'ouverture de la facture
+    if(f0.statut === 'brouillon' && f0.percko && percValeurEstAuto(f0.percko)){ const vm = percValeurMatiere(f0); if(vm) return {f:Object.assign({}, f0, {percko:Object.assign({}, f0.percko, {valeurMatiere:vm.valeur})}), existe:true}; }
+    return {f:f0, existe:true}; }
   const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''};
   const L = percLignesExport(x.pieces), compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
   const clients = factClients('tek'), cid = Object.keys(clients).find(k => (clients[k].nom || '').toUpperCase() === 'PERCKO') || Object.keys(clients)[0] || '';
@@ -232,7 +239,7 @@ window.percApercuFacture = function(x){
     p.transport ? 'MODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n').split('\n').map(t => t.trim()).filter(Boolean);
   return {existe:deja.length > 0, statut:f.statut, numero:f.numero || '', date:f.date || '', echeance:f.echeance || f.date || '', codeClient:p.codeClient || '', livraison:String(p.livraison || '').split('\n'),
     societe:{raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:String(P.adresse || PERC_SOCIETE.adresse || '').split('\n'), mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email},
-    lignes, note, ht, sansPrix:lignes.filter(l => !l.pu && l.qte).length};
+    lignes, note, refNote:percRefValeur(), ht, sansPrix:lignes.filter(l => !l.pu && l.qte).length};
 };
 // Ouvre la facture dans le module Facturation (depuis n'importe quel module).
 window.percOuvrirFacture = function(id){
@@ -273,7 +280,7 @@ window.renderFactEdit = function(main){
   const soc = factSoc();
   // valeur matière première : recalculée tant qu'elle n'a pas été saisie à la main (brouillon)
   if(soc === 'tek'){ const l0 = factToutes('tek'), f0 = l0[factId];
-    if(f0 && f0.percko && f0.percko.valeurAuto && f0.statut === 'brouillon'){ const vm = percValeurMatiere(f0); if(vm && String(f0.percko.valeurMatiere) !== String(vm.valeur)){ f0.percko.valeurMatiere = vm.valeur; factEnregistrer('tek', l0); } } }
+    if(f0 && f0.percko && percValeurEstAuto(f0.percko) && f0.statut === 'brouillon'){ const vm = percValeurMatiere(f0); if(vm && (String(f0.percko.valeurMatiere) !== String(vm.valeur) || f0.percko.valeurAuto !== true)){ f0.percko.valeurMatiere = vm.valeur; f0.percko.valeurAuto = true; factEnregistrer('tek', l0); } } }
   const f = factToutes(soc)[factId];
   window.__devEUR = !!(f && f.devise === 'EUR');
   try { percEditOrigine(main); } finally { window.__devEUR = false; }
@@ -303,7 +310,7 @@ window.renderFactEdit = function(main){
   if(a) a.onchange = () => { if(a.value !== '') percAjouterArticle(+a.value); };
   if(x) x.onchange = () => { if(x.value !== '') percAjouterFrais(+x.value); };
 };
-window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; if(k === 'valeurMatiere') f.percko.valeurAuto = false; }, k === 'valeurMatiere');
+window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; if(k === 'valeurMatiere') f.percko.valeurAuto = !(Number(v) > 0) ? true : false; }, k === 'valeurMatiere');
 window.percValeurAuto = () => factModifier(f => { f.percko = f.percko || {}; f.percko.valeurAuto = true; });
 window.percAjouterArticle = (i) => { const a = percReglages().catalogue[i], f = factToutes('tek')[factId]; if(!a || !f) return;
   const dest = (f.percko && f.percko.destination) || 'NEOLYS';
@@ -363,7 +370,8 @@ function renderFactCatalogue(main){
     <div class="card" data-pk="valeurs"><h3 style="margin:0 0 4px;font-size:14px;">Valeur matière première</h3>
       <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">Calculée sur chaque facture d'export : pièces × valeur par pièce + exosquelettes × valeur par exosquelette.</p>
       <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Valeur par pièce (€)</label>${inp('pk-vp', percValeurs().piece, 'width:100%;')}</div>
-      <div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Valeur par exosquelette (€)</label>${inp('pk-ve', percValeurs().exo, 'width:100%;')}</div></div></div>
+      <div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Valeur par exosquelette (€)</label>${inp('pk-ve', percValeurs().exo, 'width:100%;')}</div>
+      <div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Référence de la ligne</label><input class="mgt-in pk-vr" value="${esc(percRefValeur())}" ${ed ? '' : 'disabled'} style="width:100%;"></div></div></div>
     <div class="card"><h3 style="margin:0 0 8px;font-size:14px;">Destinations</h3>
       ${Object.entries(R.dest).map(([k, d]) => `<div class="pk-dest" data-k="${k}" style="margin-bottom:12px;"><b style="font-size:13px;">${esc(k)}</b>
         <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">N° client</label><input class="mgt-in pk-dc" value="${esc(d.code)}" ${ed ? '' : 'disabled'}></div>
@@ -382,7 +390,7 @@ window.percSauverCatalogue = (silencieux) => {
   const frais = []; document.querySelectorAll('.pk-frais').forEach(r => { const lib = r.querySelector('.pk-fl').value; if(lib.trim()) frais.push({code:'ART0002', lib, pu:parseFloat(r.querySelector('.pk-fp').value) || 0}); });
   const tx = []; document.querySelectorAll('.pk-tx').forEach(r => { tx.push({code:r.dataset.code, prix:parseFloat(r.querySelector('.pk-txp').value) || 0}); });
   const vp = document.querySelector('.pk-vp'), ve = document.querySelector('.pk-ve');
-  percEnregistrer(Object.assign({catalogue:R.catalogue, destinations:dest, fraisTypes:frais}, tx.length ? {tarifExport:tx} : {}, vp && ve ? {valeurPiece:parseFloat(vp.value) || 0, valeurExo:parseFloat(ve.value) || 0} : {}));
+  percEnregistrer(Object.assign({catalogue:R.catalogue, destinations:dest, fraisTypes:frais}, tx.length ? {tarifExport:tx} : {}, vp && ve ? {valeurPiece:parseFloat(vp.value) || 0, valeurExo:parseFloat(ve.value) || 0, refValeur:((document.querySelector('.pk-vr') || {}).value || '').trim()} : {}));
   if(!silencieux) showToast('Catalogue enregistré');
 };
 
@@ -439,7 +447,7 @@ function percFactureModeleHtml(f, auto, marque){
     (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) || (p.poidsNet !== '' && p.poidsNet != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut:: ' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net:: ' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : '',
     // comme sur la facture papier : le mode de transport est dans le même bloc, après deux lignes vides
     p.transport ? '\n\n\nMODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n');
-  if(note) rows.push(`<tr><td>ART0002</td><td class="note">${nl(note.replace(/^\n+/, ''))}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);
+  if(note) rows.push(`<tr><td>${esc(percRefValeur())}</td><td class="note">${nl(note.replace(/^\n+/, ''))}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);
   const ent = `<div class="soc"><b>${esc(S.raison)}</b><b>${esc(S.adresse.split('\n')[0] || '')}</b><b>MF :${esc(S.mf)}</b><b>${esc(S.email)}</b><b>${esc(S.adresse.split('\n').slice(1).join(' '))}</b><span>Tél &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;${esc(S.tel)}</span></div>
     <div class="b3"><div><span>${f.type === 'avoir' ? 'Avoir N°' : 'Facture N°'}</span><b>${esc(f.numero || 'BROUILLON')}</b></div><div><span>Date</span><b>${mgtDate(f.date)}</b></div><div><span>Client</span><b>${esc(p.codeClient || '')}</b></div></div>
     <div class="adr"><i></i><i></i><i></i><i></i><b>${nl(livraison)}</b></div>`;

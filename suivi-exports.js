@@ -495,7 +495,7 @@ function factureGrid(e){
     g.rows[r].h = des.length > 44 ? 26 : 15; r++;
   });
   var fin = r;
-  F.note.forEach(function(t, i){ gset(g, r, 0, i === 0 ? "ART0002" : "", C); gset(g, r, 1, t, {sz:9, al:"l", bd:"t", wrap:1}); for (var k = 2; k < 8; k++) gset(g, r, k, "", D); g.rows[r].h = t.length > 46 ? 24 : 13; r++; });
+  F.note.forEach(function(t, i){ gset(g, r, 0, i === 0 ? (F.refNote || "") : "", C); gset(g, r, 1, t, {sz:9, al:"l", bd:"t", wrap:1}); for (var k = 2; k < 8; k++) gset(g, r, k, "", D); g.rows[r].h = t.length > 46 ? 24 : 13; r++; });
   r++;
   [["Total HT", F.ht, 0], ["Net HT", F.ht, 1], ["Total TVA", "", 0], ["Total TTC", F.ht, 0], ["NET A PAYER", F.ht, 1]].forEach(function(x, i){
     gset(g, r, 4, x[0], {b:x[2], sz:10, al:"l", bd:"t", bg:"EFEFEF"}); gset(g, r, 5, "", {bd:"t", bg:"EFEFEF"}); gmerge(g, r, 4, r, 5);
