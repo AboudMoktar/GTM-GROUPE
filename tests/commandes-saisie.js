@@ -86,9 +86,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   // suivi automatique (Statut, Emballés, Reste) et statut saisi par libellé
   await p.evaluate(() => { const l = findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M'); S.moves.push({id:'MX2', date:'2027-01-08', lineId:l.id, stage:'emb', qty:30, nc:0, note:''}); render(); });
   const sh = (await p.locator('table.cmdT tr.h2 th').allTextContents()).join('|');
-  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés,\nprêts à expédier\|Reste$/.test(sh)]);
+  r.push(['colonnes de suivi ajoutées automatiquement', /\|Statut\|Emballés,\nprêts à expédier\|Contrôlés,\nà emballer\|Reste$/.test(sh)]);
   const rst = await p.evaluate(() => { const tr = document.querySelector('table.cmdT input[data-c="NEOLYS"][data-lib="PHARMA_HOMME COL V NOIR"][data-sz="M"]').closest('tr'); return [...tr.querySelectorAll('td.sv')].map(x => x.textContent).join('|'); });
-  r.push(['emballés en attente et reste (160 commandés, 30 emballés)', rst === '30|130']);
+  r.push(['emballés en attente et reste (160 commandés, 30 emballés)', rst === '30||130']);
+  // pièces contrôlées, pas encore emballées : colonne à part, retirées du reste à produire
+  await p.evaluate(() => { const l = findLine('PK202701', 'NEOLYS', 'PHARMA_HOMME COL V NOIR', 'M'); S.moves.push({id:'MX3', date:'2027-01-08', lineId:l.id, stage:'ctl', qty:50, nc:0, note:''}); render(); });
+  const rst2 = await p.evaluate(() => { const tr = document.querySelector('table.cmdT input[data-c="NEOLYS"][data-lib="PHARMA_HOMME COL V NOIR"][data-sz="M"]').closest('tr'); return [...tr.querySelectorAll('td.sv')].map(x => x.textContent).join('|'); });
+  r.push(['contrôlés à emballer : 50 contrôlés dont 30 emballés → 20 contrôlés, reste 110 (160 − 30 − 20)', rst2 === '30|20|110']);
+  await p.evaluate(() => { S.moves = S.moves.filter(m => m.id !== 'MX3'); render(); });
   await p.click('.cm-act button:has-text("Modifier")'); await p.waitForTimeout(150);
   await p.fill('textarea[data-statut="PHARMA_HOMME COL V NOIR"]', 'Manque tissu'); await p.dispatchEvent('textarea[data-statut="PHARMA_HOMME COL V NOIR"]', 'change');
   await p.click('.cm-barre button:has-text("Valider")'); await p.waitForTimeout(150);
