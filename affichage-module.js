@@ -53,3 +53,15 @@
   window.addEventListener('storage', function(e){ if(e.key === CLE) appliquer(); });
   poserStyle(); appliquer();
 })();
+
+/* ---------- Molette de la souris sur un champ numérique ----------
+   Par défaut, tourner la molette au-dessus d'un champ « nombre » actif change sa valeur (58 devient 57, 56…)
+   au lieu de faire défiler la page : on saisit une quantité, on descend pour valider, et elle a changé.
+   Ici la molette fait toujours défiler : le champ est quitté (sa valeur saisie est gardée telle quelle). */
+(function(){
+  if (window.__gtmMolette) return; window.__gtmMolette = true;
+  document.addEventListener('wheel', function(ev){
+    var a = document.activeElement;
+    if (a && a.tagName === 'INPUT' && a.type === 'number') a.blur();
+  }, {capture:true, passive:true});
+})();
