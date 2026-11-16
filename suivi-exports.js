@@ -585,6 +585,11 @@ function editeurCarton(v, e){
     el("label", {class:"lg2"}, "Commentaire du carton", comI)));
   fin.appendChild(kgInfo);
   function enregistrer(suivant){
+    /* l'export affiché a pu être relu depuis le serveur entre-temps : on enregistre toujours dans l'export en mémoire,
+       jamais dans une copie détachée (sinon les pièces sont comptées et le carton n'apparaît nulle part) */
+    var actuel = exportDe(e.id);
+    if (!actuel){ toast("Cet export n'existe plus : le carton n'a pas été enregistré."); return; }
+    e = actuel;
     if (!C.id && e.cartons.some(function(x){ return x.n === E.n; })) E.n = numeroLibre(e);   /* numéro pris entre-temps */
     var c = {id:C.id || nid("XC"), n:E.n, kg:lireKg(E.kg), com:String(E.com || "").trim(), it:E.it.filter(function(x){ return x[1] > 0; }).map(function(x){ return x.slice(); })};
     if (!c.it.length){ toast("Le carton est vide."); return; }

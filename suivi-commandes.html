@@ -858,8 +858,13 @@ window.suiviRecharger = function(){
   var a = document.activeElement; if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
   var att = 900 - (Date.now() - DERNIER_DEFIL);
   if (att > 0){ clearTimeout(RECHARGE_EN_ATTENTE); RECHARGE_EN_ATTENTE = setTimeout(window.suiviRecharger, att + 50); return; }
-  var before = JSON.stringify(lastSaved); loadHost();
-  if (JSON.stringify(lastSaved) !== before) render(true);
+  /* rien de nouveau (cas le plus fréquent : l'écho de notre propre enregistrement) : on ne touche à rien.
+     Relire quand même remplaçait tous les objets en mémoire sans redessiner l'écran : un carton validé juste
+     après était rangé dans une copie détachée de l'export et disparaissait, ses pièces restant comptées
+     (carton N°45 disparu et N°33 manquant, 16/11/2026). */
+  var docs = HOST.lireDocs(), ids = Object.keys(docs);
+  if (ids.length === Object.keys(lastSaved).length && ids.every(function(id){ return lastSaved[id] === JSON.stringify(docs[id]); })) return;
+  loadHost(); render(true);
 };
 function load(){
   if (HOST){ storageMode = "groupe"; loadHost(); return Promise.resolve(); }
