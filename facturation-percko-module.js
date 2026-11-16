@@ -160,6 +160,19 @@ function percLignesExport(pieces){
   Object.keys(inconnus).forEach(k => lignes.push({ref:'', exp:true, designation:k, qte:inconnus[k], pu:0, remise:0}));
   return {lignes, inconnus:Object.keys(inconnus), familles:Array.from(new Set(ordre.map(k => groupes[k].a.fam)))};
 }
+// Valeur matière première = pièces × valeur par pièce + exosquelettes × valeur par exosquelette (16/11/2026).
+// Les deux valeurs unitaires sont dans les réglages (« Catalogue & prix »), pas dans le code.
+function percValeurs(){ const P = factParams('tek'); return {piece:Number(P.valeurPiece) || 0, exo:Number(P.valeurExo) || 0}; }
+function percValeurMatiere(f){
+  const V = percValeurs(); if(!V.piece && !V.exo) return null;
+  const tarif = percTarif(), fam = {}; tarif.forEach(a => { fam[a.code] = a.fam; });
+  let pieces = 0, exos = 0;
+  (f.lignes || []).forEach(l => {
+    const q = Number(l.qte) || 0, estExo = fam[l.ref] === 'exo' || /EXOSQUELETTE/i.test(l.designation || '');
+    if(estExo) exos += q; else if(l.exp || l.emb || fam[l.ref]) pieces += q;
+  });
+  return {pieces, exos, valeur:Math.round((pieces * V.piece + exos * V.exo) * 100) / 100};
+}
 const PERC_COMPO_FAM = {pharma:'PHARMA', sport:'SPORT', gilet:'GILET-NOIR', pro:'LYNE-PRO'};
 function percFactureDeLExport(exportId){
   return Object.entries(factToutes('tek')).filter(([, f]) => f.type !== 'avoir' && f.origine && f.origine.type === 'export' && f.origine.exportId === exportId).map(([id, f]) => ({id, f}));
@@ -177,7 +190,7 @@ window.percFacturerExport = function(x, forcer){
   const compo = PERC_COMPO.filter(([k]) => L.familles.some(f => PERC_COMPO_FAM[f] === k)).map(c => c[1]).join('\n');
   const id = factCreer('tek', {clientId:cid, objet:'Export N°' + x.n + (jj ? ' du ' + jj : ''), devise:'EUR', tva:0, timbre:0, echeance:today, notes:'', lignes:L.lignes,
     origine:{type:'export', exportId:x.exportId, label:'N°' + x.n + (jj ? ' du ' + jj : '')},
-    percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', composition:compo}});
+    percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', valeurAuto:true, composition:compo}});
   return {ok:true, id, sansPrix:L.lignes.filter(l => !l.pu).length, inconnus:L.inconnus};
 };
 // Ouvre la facture dans le module Facturation (depuis n'importe quel module).
@@ -216,7 +229,11 @@ window.percCreer = (cmdId) => {
 // --- Complément de l'écran facture : détails d'expédition, articles et frais ---
 const percEditOrigine = window.renderFactEdit;
 window.renderFactEdit = function(main){
-  const soc = factSoc(), f = factToutes(soc)[factId];
+  const soc = factSoc();
+  // valeur matière première : recalculée tant qu'elle n'a pas été saisie à la main (brouillon)
+  if(soc === 'tek'){ const l0 = factToutes('tek'), f0 = l0[factId];
+    if(f0 && f0.percko && f0.percko.valeurAuto && f0.statut === 'brouillon'){ const vm = percValeurMatiere(f0); if(vm && String(f0.percko.valeurMatiere) !== String(vm.valeur)){ f0.percko.valeurMatiere = vm.valeur; factEnregistrer('tek', l0); } } }
+  const f = factToutes(soc)[factId];
   window.__devEUR = !!(f && f.devise === 'EUR');
   try { percEditOrigine(main); } finally { window.__devEUR = false; }
   if(soc === 'tek') main.querySelectorAll('div').forEach(d => { if(!d.children.length && /(dinar|euro)/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
@@ -229,6 +246,8 @@ window.renderFactEdit = function(main){
     <div style="display:flex;gap:8px;flex-wrap:wrap;">${champ('N° client', 'codeClient')}${champ('Transport', 'transport', 'text', 'placeholder="ex. DDP"')}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">${champ('Nombre de colis', 'colis', 'number', 'min="0"')}${champ('Poids brut (kg)', 'poidsBrut', 'number', 'min="0"')}${champ('Poids net (kg)', 'poidsNet', 'number', 'min="0"')}</div>
     ${champ('Valeur matière première (€)', 'valeurMatiere', 'number', 'min="0" step="0.01"')}
+    ${(() => { const vm = percValeurMatiere(f), V = percValeurs(); if(!vm) return ''; const calc = `${percN(vm.pieces, 0)} pièce(s) × ${percN(V.piece, 2)} €${vm.exos ? ` + ${percN(vm.exos, 0)} exosquelette(s) × ${percN(V.exo, 2)} €` : ''} = ${percN(vm.valeur, 2)} €`;
+      return `<div data-pk="valeur-calcul" style="font-size:12px;color:var(--ink-soft);margin:-4px 0 8px;">${p.valeurAuto ? 'Calculée : ' + calc : 'Saisie à la main. Calcul : ' + calc + (ed ? ` <button class="btn btn-ghost" style="padding:2px 10px;font-size:12px;" onclick="percValeurAuto()">Reprendre le calcul</button>` : '')}</div>`; })()}
     ${mgtZone('Adresse de livraison (imprimée)', 'pk-livraison', p.livraison).replace('<textarea', `<textarea ${dis} onchange="percMaj('livraison', this.value)"`)}
     ${mgtZone('Composition de matière', 'pk-composition', p.composition).replace('<textarea', `<textarea ${dis} onchange="percMaj('composition', this.value)"`)}
     ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
@@ -243,7 +262,8 @@ window.renderFactEdit = function(main){
   if(a) a.onchange = () => { if(a.value !== '') percAjouterArticle(+a.value); };
   if(x) x.onchange = () => { if(x.value !== '') percAjouterFrais(+x.value); };
 };
-window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; }, false);
+window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; if(k === 'valeurMatiere') f.percko.valeurAuto = false; }, k === 'valeurMatiere');
+window.percValeurAuto = () => factModifier(f => { f.percko = f.percko || {}; f.percko.valeurAuto = true; });
 window.percAjouterArticle = (i) => { const a = percReglages().catalogue[i], f = factToutes('tek')[factId]; if(!a || !f) return;
   const dest = (f.percko && f.percko.destination) || 'NEOLYS';
   factModifier(f => { f.lignes.push({ref:a.code, code:a.code, refKey:a.ref, designation:a.lib + (a.etiq ? '\n' + a.etiq : ''), qte:1, pu:Number((a.prix || {})[dest]) || 0, remise:0}); }); };
@@ -299,6 +319,10 @@ function renderFactCatalogue(main){
       <p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;">Prix unitaire HT en euros, utilisé quand la facture est créée depuis un export du suivi. Un prix vide = « prix à compléter » sur la facture.</p>
       ${percTarif().map(a => `<div class="pk-tx" data-code="${esc(a.code)}" style="display:grid;grid-template-columns:70px minmax(0,1fr) 96px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border-soft);">
         <b style="font-size:12.5px;">${esc(a.code)}</b><div style="font-size:12.5px;min-width:0;">${esc(a.lib)} ${esc(a.etiq || '')}</div>${inp('pk-txp', a.prix, 'width:100%;')}</div>`).join('')}</div>
+    <div class="card" data-pk="valeurs"><h3 style="margin:0 0 4px;font-size:14px;">Valeur matière première</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">Calculée sur chaque facture d'export : pièces × valeur par pièce + exosquelettes × valeur par exosquelette.</p>
+      <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Valeur par pièce (€)</label>${inp('pk-vp', percValeurs().piece, 'width:100%;')}</div>
+      <div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">Valeur par exosquelette (€)</label>${inp('pk-ve', percValeurs().exo, 'width:100%;')}</div></div></div>
     <div class="card"><h3 style="margin:0 0 8px;font-size:14px;">Destinations</h3>
       ${Object.entries(R.dest).map(([k, d]) => `<div class="pk-dest" data-k="${k}" style="margin-bottom:12px;"><b style="font-size:13px;">${esc(k)}</b>
         <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">N° client</label><input class="mgt-in pk-dc" value="${esc(d.code)}" ${ed ? '' : 'disabled'}></div>
@@ -316,7 +340,8 @@ window.percSauverCatalogue = (silencieux) => {
   document.querySelectorAll('.pk-dest').forEach(r => { dest[r.dataset.k] = {code:r.querySelector('.pk-dc').value.trim(), transport:r.querySelector('.pk-dt').value.trim(), livraison:r.querySelector('.pk-dl').value}; });
   const frais = []; document.querySelectorAll('.pk-frais').forEach(r => { const lib = r.querySelector('.pk-fl').value; if(lib.trim()) frais.push({code:'ART0002', lib, pu:parseFloat(r.querySelector('.pk-fp').value) || 0}); });
   const tx = []; document.querySelectorAll('.pk-tx').forEach(r => { tx.push({code:r.dataset.code, prix:parseFloat(r.querySelector('.pk-txp').value) || 0}); });
-  percEnregistrer(Object.assign({catalogue:R.catalogue, destinations:dest, fraisTypes:frais}, tx.length ? {tarifExport:tx} : {}));
+  const vp = document.querySelector('.pk-vp'), ve = document.querySelector('.pk-ve');
+  percEnregistrer(Object.assign({catalogue:R.catalogue, destinations:dest, fraisTypes:frais}, tx.length ? {tarifExport:tx} : {}, vp && ve ? {valeurPiece:parseFloat(vp.value) || 0, valeurExo:parseFloat(ve.value) || 0} : {}));
   if(!silencieux) showToast('Catalogue enregistré');
 };
 

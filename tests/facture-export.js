@@ -13,7 +13,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.evaluate(() => { hlEcritureAutorisee = () => true;
     currentUser = {username:'admin', nom:'Administrateur', role:'admin', profil:'sysadmin', groupe:true, societes:{tek:true, gadh:true, mgt:true}};
     // tarif d'essai : prix inventés (1 € de plus par article), rangés dans les réglages comme le fait l'écran « Catalogue & prix »
-    memoryCache['grp1_fact_params'] = {tarifExport:percTarif().map((a, i) => ({code:a.code, prix:a.fam === 'flex' ? 0 : 10 + i}))};
+    memoryCache['grp1_fact_params'] = {valeurPiece:2.5, valeurExo:7, tarifExport:percTarif().map((a, i) => ({code:a.code, prix:a.fam === 'flex' ? 0 : 10 + i}))};
     memoryCache['grp1_fact_clients'] = {defaut:{nom:'PERCKO'}};
     activeSociete = 'tek'; activeModule = 'commandes'; renderShell(); nav('commandes-home'); });
   await p.waitForTimeout(1200);
@@ -48,6 +48,20 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(Math.abs(F.ht - htAtt) < 0.005, 'total HT = somme des quantités × prix (' + F.ht + ')');
   ok(String(F.percko.colis) === '2' && Number(F.percko.poidsBrut) === 20.5 && F.percko.destination === 'NEOLYS' && /Neolys/i.test(F.percko.livraison), 'expédition : 2 colis, 20,5 kg brut, adresse NEOLYS');
   ok(/PHARMA/.test(F.percko.composition) && /SPORT/.test(F.percko.composition), 'composition de matière des familles présentes');
+  // valeur matière première : 72 pièces × 2,5 (valeurs d'essai), calcul affiché
+  const V1 = await p.evaluate(() => ({v:Number(factToutes('tek')[factId].percko.valeurMatiere), t:document.querySelector('[data-pk="valeur-calcul"]').textContent}));
+  ok(V1.v === 180 && /72 pièce\(s\) × 2,50 €/.test(V1.t), 'valeur matière première calculée : 72 pièces × 2,50 = 180 — ' + V1.t);
+  // un exosquelette ajouté à la main compte à part ; une ligne de frais ne compte pas
+  await p.evaluate(() => { factModifier(f => { f.lignes.push({ref:'ART047', designation:'EXOSQUELETTE', qte:3, pu:1, remise:0}); f.lignes.push({ref:'ART0002', designation:'FRAIS EXPORT', qte:1, pu:50, remise:0}); }); });
+  ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 201, 'avec 3 exosquelettes : 72 × 2,50 + 3 × 7 = 201 (les frais ne comptent pas)');
+  await p.evaluate(() => { factModifier(f => { f.lignes.splice(f.lignes.length - 2, 2); }); });
+  // saisie à la main : gardée, plus de recalcul ; « Reprendre le calcul » y revient
+  await p.evaluate(() => percMaj('valeurMatiere', '999'));
+  await p.evaluate(() => factMajLigne(0, 'qte', 19));
+  ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 999, 'valeur saisie à la main : conservée quand les quantités changent');
+  await p.evaluate(() => percValeurAuto());
+  ok(await p.evaluate(() => Number(factToutes('tek')[factId].percko.valeurMatiere)) === 182.5, '« Reprendre le calcul » : 73 × 2,50 = 182,50');
+  await p.evaluate(() => factMajLigne(0, 'qte', 18));
   // modifiable : quantité, prix, ligne ajoutée
   await p.evaluate(() => { factMajLigne(0, 'qte', 20); factMajLigne(9, 'pu', 14.78); factAjouterLigne(); });
   const M = await p.evaluate(() => { const f = factToutes('tek')[factId]; return {q:f.lignes[0].qte, pu:f.lignes[9].pu, n:f.lignes.length, champs:document.querySelectorAll('.mgt-ligne input:not([disabled])').length}; });
@@ -69,7 +83,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.evaluate(() => percSauverCatalogue(true));
   ok(await p.evaluate(() => percTarif().find(a => a.code === 'ART023').prix === 14.78 && percTarif().find(a => a.code === 'ART001').prix === 10), 'prix modifié enregistré, les autres conservés');
   // le code ne contient aucun prix du tarif d'export (dépôt public)
-  ok(await p.evaluate(() => { memoryCache['grp1_fact_params'] = {}; return percTarif().every(a => a.prix === 0); }), 'sans réglages, aucun prix : ils ne sont pas dans le code');
+  ok(await p.evaluate(() => { memoryCache['grp1_fact_params'] = {}; return percTarif().every(a => a.prix === 0) && percValeurs().piece === 0 && percValeurs().exo === 0; }), 'sans réglages, aucun prix ni valeur : ils ne sont pas dans le code');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur'); process.exit(echecs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
