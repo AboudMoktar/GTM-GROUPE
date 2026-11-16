@@ -103,6 +103,90 @@ function percReste(cmdId){
   return e;
 }
 
+// ============================================================
+// FACTURE GÉNÉRÉE DEPUIS UN EXPORT DU SUIVI (cartons) — 16/11/2026
+// ============================================================
+// Tarif officiel par article : famille, genre, fléché ou non, groupe de tailles. Les PRIX ne sont pas dans le code
+// (dépôt public) : ils sont dans les réglages de facturation TEK-TREND (base Firebase), écran « Catalogue & prix ».
+// Pour les PHARMA, la désignation de la ligne de facture porte le col, la couleur et le groupe de tailles.
+const PERC_TX = (code, lib, fam, genre, fleches, tailles, etiq) => ({code, lib, fam, genre, fleches:!!fleches, tailles, etiq, prix:0});
+const PERC_TARIF_SEED = (() => {
+  const T = PERC_T, o = []; let n = 0; const c = () => 'ART' + String(++n).padStart(3, '0');
+  [['H', 'PHARMA-HOMME'], ['F', 'PHARMA-FEMME']].forEach(([g, nom]) => { [false, true].forEach(fl => { [[T.S3, 'XS S M'], [T.L3, 'L XL XXL'], [T.X3, '3XL']].forEach(([tl, et]) => o.push(PERC_TX(c(), nom + (fl ? ' FLECHES' : ''), 'pharma', g, fl, tl, et))); }); });
+  [['H', 'Sport-H-Re-Mi'], ['F', 'Sport-F-Re-Mi']].forEach(([g, nom]) => { [[T.S3, 'Taille XS,S,M'], [T.L3, 'Taille L,XL,2XL']].forEach(([tl, et]) => o.push(PERC_TX(c(), nom, 'sport', g, false, tl, et))); });
+  [['H', 'Gilet-H-Noir'], ['F', 'Gilet-F-Noir']].forEach(([g, nom]) => { [[T.S3, 'Taille XS,S,M'], [T.G4, 'Taille L,XL,2XL,3XL']].forEach(([tl, et]) => o.push(PERC_TX(c(), nom, 'gilet', g, false, tl, et))); });
+  o.push(PERC_TX(c(), 'Pro Homme', 'pro', 'H', false, T.TOUT, '')); o.push(PERC_TX(c(), 'Pro Femme', 'pro', 'F', false, T.TOUT, ''));
+  [['H', 'Flex Homme'], ['F', 'Flex Femme']].forEach(([g, nom]) => { [[T.S3, 'Taille XS,S,M'], [T.G4, 'Taille L,XL,2XL,3XL']].forEach(([tl, et]) => o.push(PERC_TX(c(), nom, 'flex', g, false, tl, et))); });
+  ['A-B', 'C-D', 'E-F', 'G-H'].forEach(b => ['S', 'M', 'L', 'XL', '2XL'].forEach(z => o.push(PERC_TX(c(), 'Soutien-gorge ' + z + ' ' + b, 'sg', 'F', false, [], ''))));
+  o.push(PERC_TX(c(), 'EXOSQUELETTE', 'exo', '', false, [], ''));
+  return o;
+})();
+function percTarif(){
+  const P = factParams('tek'), enr = Array.isArray(P.tarifExport) ? P.tarifExport : null, parCode = {};
+  (enr || []).forEach(a => { if(a && a.code) parCode[a.code] = a; });
+  // la structure vient du code (familles, tailles) ; les prix et libellés modifiés viennent des réglages
+  return PERC_TARIF_SEED.map(a => { const e = parCode[a.code] || {}; return Object.assign({}, a, {prix:Number(e.prix) || 0, lib:e.lib || a.lib}); });
+}
+// Modèle du suivi → famille tarifaire, genre, col, couleur.
+function percLireModele(model, lib){
+  const t = (String(model || '') + ' ' + String(lib || '')).toUpperCase().replace(/[_]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const fam = /PHARMA/.test(t) ? 'pharma' : /SPORT/.test(t) ? 'sport' : /GILET|GILLET/.test(t) ? 'gilet' : /LYNE|\bPRO\b/.test(t) ? 'pro' : /FLEX/.test(t) ? 'flex' : /SOUTIEN/.test(t) ? 'sg' : /EXO/.test(t) ? 'exo' : '';
+  const genre = /FEMME|-F-|\bF\b/.test(t) ? 'F' : 'H';
+  const col = /COL ROND|COL R\b/.test(t) ? 'R' : /COL V/.test(t) ? 'V' : '';
+  const couleur = /ROSE/.test(t) ? 'ROSE' : /SABLE/.test(t) ? 'SABLE' : /GRIS/.test(t) ? 'GRIS' : /NOIR/.test(t) ? 'NOIR' : '';
+  return {fam, genre, col, couleur};
+}
+function percDesignationExport(a, m){
+  if(a.fam === 'pharma') return 'PHARMA ' + (m.genre === 'F' ? 'FEMME' : 'HOMME') + (m.col ? ' COL ' + m.col : '') + (m.couleur ? ' ' + m.couleur : '') + (a.fleches ? ' FLECHES' : '') + (a.etiq ? '\n' + a.etiq : '');
+  return a.lib + (a.etiq ? ' ' + a.etiq : '');
+}
+// pieces : [{model, lib, size, client, qte}] → lignes de facture (une par article du tarif ; par couleur et col pour les PHARMA)
+function percLignesExport(pieces){
+  const tarif = percTarif(), groupes = {}, ordre = [], inconnus = {};
+  (pieces || []).forEach(p => {
+    const q = Number(p.qte) || 0; if(!q) return;
+    const m = percLireModele(p.model, p.lib), fl = /FL[EÉ]CH/i.test(p.client || '') || /FL[EÉ]CH/i.test(p.sp || '');
+    const i = tarif.findIndex(a => a.fam === m.fam && m.fam && (a.genre === m.genre || !a.genre) && a.fleches === fl && (a.tailles || []).indexOf(p.size) >= 0);
+    if(i < 0){ const k = (p.lib || p.model || '?') + ' · ' + (p.size || '') + (fl ? ' · FLÉCHÉS' : ''); inconnus[k] = (inconnus[k] || 0) + q; return; }
+    const a = tarif[i], k = a.code + '|' + (a.fam === 'pharma' ? m.col + '|' + m.couleur : '');
+    if(!groupes[k]){ groupes[k] = {i, a, m, qte:0}; ordre.push(k); }
+    groupes[k].qte += q;
+  });
+  const rangC = {NOIR:0, GRIS:1, SABLE:2, ROSE:3}, rangCol = {V:0, R:1, '':2};
+  // même ordre que la facture papier : par modèle (genre, col, couleur), puis par groupe de tailles
+  const cle = g => [g.a.fam === 'pharma' ? 0 : 1, g.a.fam === 'pharma' ? (g.a.fleches ? 1 : 0) : 0, g.a.fam === 'pharma' ? (g.m.genre === 'F' ? 1 : 0) : 0, g.a.fam === 'pharma' ? rangCol[g.m.col] : 0, g.a.fam === 'pharma' ? (rangC[g.m.couleur] || 0) : 0, g.i];
+  const lignes = ordre.map(k => groupes[k]).sort((x, y) => { const a = cle(x), b = cle(y); for(let j = 0; j < a.length; j++) if(a[j] !== b[j]) return a[j] - b[j]; return 0; })
+    .map(g => ({ref:g.a.code, code:g.a.code, exp:true, designation:percDesignationExport(g.a, g.m), qte:g.qte, pu:Number(g.a.prix) || 0, remise:0}));
+  Object.keys(inconnus).forEach(k => lignes.push({ref:'', exp:true, designation:k, qte:inconnus[k], pu:0, remise:0}));
+  return {lignes, inconnus:Object.keys(inconnus), familles:Array.from(new Set(ordre.map(k => groupes[k].a.fam)))};
+}
+const PERC_COMPO_FAM = {pharma:'PHARMA', sport:'SPORT', gilet:'GILET-NOIR', pro:'LYNE-PRO'};
+function percFactureDeLExport(exportId){
+  return Object.entries(factToutes('tek')).filter(([, f]) => f.type !== 'avoir' && f.origine && f.origine.type === 'export' && f.origine.exportId === exportId).map(([id, f]) => ({id, f}));
+}
+// Appelée par le suivi (bouton « Facture » d'un export). x : {exportId, n, d, nat, colis, poidsBrut, pieces:[…]}
+window.percFacturerExport = function(x, forcer){
+  if(!canEditFact('tek')) return {ok:false, message:'Votre profil ne permet pas de créer une facture TEK-TREND.'};
+  const deja = percFactureDeLExport(x.exportId);
+  if(deja.length && !forcer) return {ok:false, existe:deja.map(d => ({id:d.id, numero:d.f.numero || 'brouillon', statut:d.f.statut}))};
+  const L = percLignesExport(x.pieces);
+  if(!L.lignes.length) return {ok:false, message:'Cet export ne contient aucune pièce à facturer.'};
+  const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, today = getTodayISO();
+  const clients = factClients('tek'), cid = Object.keys(clients).find(k => (clients[k].nom || '').toUpperCase() === 'PERCKO') || Object.keys(clients)[0] || '';
+  const jj = x.d ? x.d.slice(8, 10) + '/' + x.d.slice(5, 7) + '/' + x.d.slice(2, 4) : '';
+  const compo = PERC_COMPO.filter(([k]) => L.familles.some(f => PERC_COMPO_FAM[f] === k)).map(c => c[1]).join('\n');
+  const id = factCreer('tek', {clientId:cid, objet:'Export N°' + x.n + (jj ? ' du ' + jj : ''), devise:'EUR', tva:0, timbre:0, echeance:today, notes:'', lignes:L.lignes,
+    origine:{type:'export', exportId:x.exportId, label:'N°' + x.n + (jj ? ' du ' + jj : '')},
+    percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', composition:compo}});
+  return {ok:true, id, sansPrix:L.lignes.filter(l => !l.pu).length, inconnus:L.inconnus};
+};
+// Ouvre la facture dans le module Facturation (depuis n'importe quel module).
+window.percOuvrirFacture = function(id){
+  activeSociete = 'tek'; activeModule = 'factures';
+  if(typeof renderShell === 'function') renderShell();
+  factOuvrir(id);
+};
+
 // --- Création de la facture ---
 window.percChoisirCommande = () => {
   if(typeof getCmdCommandes !== 'function'){ showToast('Module Commandes indisponible'); return; }
@@ -175,7 +259,7 @@ window.factLigne = function(id, f, toutes, avecClient){
   try { return percLigneOrigine(id, f, toutes, avecClient); } finally { window.__devEUR = false; }
 };
 const percOrigineLabel = window.factOrigineLabel;
-window.factOrigineLabel = function(o){ return o && o.type === 'percko' ? 'Emballage ' + (o.label || '') : percOrigineLabel(o); };
+window.factOrigineLabel = function(o){ return o && o.type === 'percko' ? 'Emballage ' + (o.label || '') : o && o.type === 'export' ? 'Export ' + (o.label || '') : percOrigineLabel(o); };
 const percNumero = window.factNumero;
 window.factNumero = function(soc, type, annee){
   if(soc !== 'tek' || type === 'avoir') return percNumero(soc, type, annee);
@@ -211,6 +295,10 @@ function renderFactCatalogue(main){
       ${R.catalogue.map((a, i) => `<div class="pk-art" data-i="${i}" style="display:grid;grid-template-columns:minmax(0,1fr) 84px 84px;gap:6px;align-items:center;padding:5px 0;border-top:1px solid var(--border-soft);">
         <div style="min-width:0;"><b style="font-size:12.5px;">${esc(a.code)}</b><div style="font-size:11.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;">${esc(a.lib)} ${esc(a.etiq || '')}</div></div>
         ${inp('pk-nl', a.prix.NEOLYS, 'width:100%;')}${inp('pk-aa', a.prix.ALLOGA, 'width:100%;')}</div>`).join('')}</div>
+    <div class="card" style="padding:6px 10px;" data-pk="tarif-export"><h3 style="margin:6px 0 2px;font-size:14px;">Tarif des factures d'export (liste officielle)</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;">Prix unitaire HT en euros, utilisé quand la facture est créée depuis un export du suivi. Un prix vide = « prix à compléter » sur la facture.</p>
+      ${percTarif().map(a => `<div class="pk-tx" data-code="${esc(a.code)}" style="display:grid;grid-template-columns:70px minmax(0,1fr) 96px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border-soft);">
+        <b style="font-size:12.5px;">${esc(a.code)}</b><div style="font-size:12.5px;min-width:0;">${esc(a.lib)} ${esc(a.etiq || '')}</div>${inp('pk-txp', a.prix, 'width:100%;')}</div>`).join('')}</div>
     <div class="card"><h3 style="margin:0 0 8px;font-size:14px;">Destinations</h3>
       ${Object.entries(R.dest).map(([k, d]) => `<div class="pk-dest" data-k="${k}" style="margin-bottom:12px;"><b style="font-size:13px;">${esc(k)}</b>
         <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:11px;color:var(--ink-soft);">N° client</label><input class="mgt-in pk-dc" value="${esc(d.code)}" ${ed ? '' : 'disabled'}></div>
@@ -227,7 +315,8 @@ window.percSauverCatalogue = (silencieux) => {
   const dest = {};
   document.querySelectorAll('.pk-dest').forEach(r => { dest[r.dataset.k] = {code:r.querySelector('.pk-dc').value.trim(), transport:r.querySelector('.pk-dt').value.trim(), livraison:r.querySelector('.pk-dl').value}; });
   const frais = []; document.querySelectorAll('.pk-frais').forEach(r => { const lib = r.querySelector('.pk-fl').value; if(lib.trim()) frais.push({code:'ART0002', lib, pu:parseFloat(r.querySelector('.pk-fp').value) || 0}); });
-  percEnregistrer({catalogue:R.catalogue, destinations:dest, fraisTypes:frais});
+  const tx = []; document.querySelectorAll('.pk-tx').forEach(r => { tx.push({code:r.dataset.code, prix:parseFloat(r.querySelector('.pk-txp').value) || 0}); });
+  percEnregistrer(Object.assign({catalogue:R.catalogue, destinations:dest, fraisTypes:frais}, tx.length ? {tarifExport:tx} : {}));
   if(!silencieux) showToast('Catalogue enregistré');
 };
 
