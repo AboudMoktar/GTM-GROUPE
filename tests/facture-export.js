@@ -33,6 +33,30 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
     pkExports.enregistrerCartonExport(e, {id:'C2', n:2, kg:8, com:'', it:[it('a1', 3), it('b2', 6), it('b3', 9), it('c1', 11), it('c2', 1), it('d1', 2), it('e1', 8), it('f1', 4)]});
     persist(); ui.lot = 'PKT'; ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
   await p.waitForTimeout(900);
+  // onglet Documents : la facture est disponible AVANT la validation de l'export et avant toute création (rien n'est enregistré)
+  await fr().evaluate(() => { ui.tab = 'doc'; ui.xp = null; render(); });
+  const docF = fr().locator('.dc-d[data-doc="Facture"]');
+  ok(await docF.count() === 1 && await docF.getByText('Aperçu').count() === 1 && await docF.getByText('PDF').count() === 1 && await docF.getByText('Excel').count() === 1, 'Documents : « Facture » de l\'export en cours, avec Aperçu, PDF et Excel');
+  const G0 = await fr().evaluate(() => { const g = pkExports.factureGrid(S.exports[0]), t = g.rows.map(r => r.cells.map(c => c ? c.v : '').join('|')); return {f:g.facture, t, pdf:pdfBuild([g]).length, xlsx:xlsxBuild([{name:'Facture', grid:g}]).length}; });
+  ok(!G0.f.existe && G0.f.statut === 'apercu' && G0.t.some(x => /APERÇU/.test(x)) && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 0, 'aperçu calculé depuis les cartons : marqué « APERÇU », aucune facture enregistrée');
+  ok(G0.t.some(x => /^ART001\|PHARMA HOMME COL V NOIR XS S M\|18\|10\|\|\|180\|0$/.test(x)) && G0.t.some(x => /NET A PAYER\|\|1169/.test(x)) && G0.t.some(x => /VALEUR MATIERE PREMIERE: 180\.00/.test(x)) && G0.t.some(x => /Nombre de colis: 2/.test(x)), 'contenu : lignes, total, valeur matière, colis');
+  ok(G0.pdf > 2000 && G0.xlsx > 2000, 'PDF et Excel produits (' + G0.pdf + ' et ' + G0.xlsx + ' octets)');
+  // boutons Excel et PDF de la ligne « Facture » : fichiers nommés d'après l'export, contenu relu
+  await fr().evaluate(() => { window.__f = []; window.saveFile = (n, d) => { window.__f.push({n, d:Array.from(d)}); }; });
+  await docF.getByText('Excel').click(); await docF.getByText('PDF').click();
+  const fichiers = await fr().evaluate(() => window.__f.map(x => ({n:x.n, d:x.d})));
+  ok(fichiers.length === 2 && fichiers[0].n === 'Facture_Export3_NEOLYS_20261121.xlsx' && fichiers[1].n === 'Facture_Export3_NEOLYS_20261121.pdf' && String.fromCharCode.apply(null, fichiers[1].d.slice(0, 5)) === '%PDF-', 'fichiers : ' + fichiers.map(x => x.n).join(' et '));
+  let xl = null; try { const XLSX = require('xlsx'), wb = XLSX.read(Buffer.from(fichiers[0].d), {type:'buffer'}), ws = wb.Sheets[wb.SheetNames[0]]; xl = XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).map(r => r.join('|')); } catch (e) { console.log('     (bibliothèque xlsx absente : relecture du fichier Excel non faite)'); }
+  if (xl) ok(xl.some(x => /^ART001\|PHARMA HOMME COL V NOIR XS S M\|18\|10\|\|\|180\|0$/.test(x)), 'Excel relu : la ligne ART001 y est (18 pièces × 10 = 180)');
+  // aperçu : envoyé à l'impression de l'application, avec le contenu de la facture
+  await docF.getByText('Aperçu').click();
+  await p.waitForSelector('iframe[title="Aperçu"]');
+  const ap = await p.evaluate(() => document.querySelector('iframe[title="Aperçu"]').getAttribute('srcdoc'));
+  await p.waitForTimeout(600); if (process.env.CAPTURE) await p.screenshot({path:process.env.CAPTURE});
+  await p.getByText('Fermer').first().click();
+  await p.waitForFunction(() => !document.querySelector('iframe[title="Aperçu"]'));
+  ok(/PHARMA HOMME COL V NOIR XS S M/.test(ap) && /NET A PAYER/.test(ap), 'aperçu : la facture est affichée pour impression');
+  await fr().evaluate(() => { ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
   await fr().locator('[data-xp="facture"]').click();
   await p.waitForFunction(() => activeModule === 'factures' && typeof factId !== 'undefined' && !!factId);
   const F = await p.evaluate(() => { const f = factToutes('tek')[factId], t = factTotaux(f); return {statut:f.statut, objet:f.objet, origine:f.origine, percko:f.percko, ht:t.ht, lignes:f.lignes.map(l => [l.ref, l.designation.replace('\n', ' '), l.qte, l.pu].join(' ; '))}; });
@@ -73,6 +97,12 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await fr().evaluate(() => { ui.lot = 'PKT'; ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
   await fr().locator('[data-xp="facture"]').click();
   ok(await fr().locator('.xp-choix [data-choix="ouvrir"]').count() === 1 && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 1, 'facture déjà faite : proposée à l\'ouverture, aucun doublon');
+  await fr().locator('.xp-choix [data-choix="annuler"]').click();
+  // Documents : c'est maintenant la facture préparée (avec ses modifications) qui est montrée, marquée BROUILLON
+  const G1 = await fr().evaluate(() => { const g = pkExports.factureGrid(S.exports[0]); return {f:g.facture, t:g.rows.map(r => r.cells.map(c => c ? c.v : '').join('|'))}; });
+  ok(G1.f.existe && G1.f.statut === 'brouillon' && G1.t.some(x => /BROUILLON/.test(x)) && G1.t.some(x => /^ART001\|PHARMA HOMME COL V NOIR XS S M\|20\|/.test(x)), 'Documents : la facture préparée et modifiée (20 pièces) remplace l\'aperçu');
+  await fr().evaluate(() => { ui.tab = 'doc'; ui.xp = null; render(); });
+  await fr().locator('.dc-d[data-doc="Facture"] [data-plus]').click();
   await fr().locator('.xp-choix [data-choix="ouvrir"]').click();
   await p.waitForFunction(() => activeModule === 'factures');
   ok(await p.evaluate(() => Number(factToutes('tek')[factId].lignes[0].qte) === 20), 'c\'est bien la facture déjà modifiée qui s\'ouvre');

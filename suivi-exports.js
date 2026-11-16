@@ -464,10 +464,53 @@ function piecesFacture(e){
     par[k].qte += y[1]; }); });
   return o;
 }
+function demandeFacture(e){
+  var kg = 0; e.cartons.forEach(function(c){ kg += poidsDe(e, c) || 0; });
+  return {exportId:e.id, n:e.n, d:e.d, nat:e.nat || e.cl, colis:e.cartons.length, poidsBrut:Math.round(kg * 10) / 10, pieces:piecesFacture(e)};
+}
+/* Facture de l'export, pour l'onglet Documents (aperçu, PDF, Excel) : la facture préparée si elle existe, sinon le calcul
+   depuis les cartons — donc disponible avant même que l'export soit validé. Rien n'est enregistré. */
+function factureGrid(e){
+  if (typeof HOST === "undefined" || !HOST || typeof HOST.apercuFacture !== "function") return null;
+  var F = HOST.apercuFacture(demandeFacture(e)); if (!F || !F.lignes.length) return null;
+  var g = {cols:[13, 42, 10, 11, 8, 11, 14, 6], rows:[], merges:[], plein:true, landscape:false}, r = 0, L = colName;
+  var B = {b:1, sz:10, al:"l"}, N = {sz:10, al:"l"}, T = {b:1, sz:10, al:"c", bd:"m", bg:"EFEFEF"}, V = {b:1, sz:11, al:"c", bd:"m"};
+  var etat = F.statut === "emise" ? "" : F.existe ? "BROUILLON" : "APERÇU — facture pas encore créée";
+  var soc = [F.societe.raison].concat(F.societe.adresse.slice(0, 1)).concat(F.societe.mf ? ["MF : " + F.societe.mf] : []).concat(F.societe.email ? [F.societe.email] : []).concat(F.societe.adresse.slice(1)).concat(F.societe.tel ? ["Tél : " + F.societe.tel] : []).filter(Boolean);
+  gset(g, 0, 3, "Facture N°", T); gset(g, 0, 4, "", T); gmerge(g, 0, 3, 0, 4); gset(g, 0, 5, "Date", T); gset(g, 0, 6, "Client", T); gset(g, 0, 7, "", T); gmerge(g, 0, 6, 0, 7);
+  gset(g, 1, 3, F.numero || "BROUILLON", V); gset(g, 1, 4, "", V); gmerge(g, 1, 3, 1, 4); gset(g, 1, 5, dmyL(F.date), V); gset(g, 1, 6, F.codeClient, V); gset(g, 1, 7, "", V); gmerge(g, 1, 6, 1, 7);
+  soc.forEach(function(t, i){ gset(g, i, 0, t, i === 0 ? {b:1, sz:11, al:"l"} : B); gmerge(g, i, 0, i, 1); });
+  if (etat){ gset(g, 2, 3, etat, {b:1, sz:11, al:"c", fg:"C00000"}); gmerge(g, 2, 3, 2, 7); }
+  var rl = 4; F.livraison.forEach(function(t, i){ gset(g, rl + i, 3, t, {b:1, sz:10, al:"l"}); gmerge(g, rl + i, 3, rl + i, 7); });
+  r = Math.max(soc.length, rl + F.livraison.length) + 1;
+  ["Référence", "Désignation", "Quantité", "P.U. HT", "% REM", "Remise HT", "Montant HT", "TVA"].forEach(function(h, i){ gset(g, r, i, h, T); }); g.rows[r].h = 18; g.sticky = r + 1;
+  var tete = r; r++;
+  var C = {sz:10, al:"l", bd:"t", wrap:1}, D = {sz:10, al:"r", bd:"t"}, deb = r + 1;
+  F.lignes.forEach(function(l){
+    var rr = r + 1, des = l.designation.replace(/\s*\n\s*/g, " ");
+    gset(g, r, 0, l.ref, C); gset(g, r, 1, des, C); gset(g, r, 2, l.qte, D); gset(g, r, 3, l.pu || "", D); gset(g, r, 4, l.remise || "", D);
+    gset(g, r, 5, l.remise ? roundv(l.qte * l.pu * l.remise / 100) : "", D);
+    gset(g, r, 6, l.montant, {sz:10, al:"r", bd:"t", b:1}); g.rows[r].cells[6].f = "ROUND(" + L(2) + rr + "*" + L(3) + rr + "*(1-N(" + L(4) + rr + ")/100),2)";
+    gset(g, r, 7, 0, {sz:10, al:"c", bd:"t"});
+    g.rows[r].h = des.length > 44 ? 26 : 15; r++;
+  });
+  var fin = r;
+  F.note.forEach(function(t, i){ gset(g, r, 0, i === 0 ? "ART0002" : "", C); gset(g, r, 1, t, {sz:9, al:"l", bd:"t", wrap:1}); for (var k = 2; k < 8; k++) gset(g, r, k, "", D); g.rows[r].h = t.length > 46 ? 24 : 13; r++; });
+  r++;
+  [["Total HT", F.ht, 0], ["Net HT", F.ht, 1], ["Total TVA", "", 0], ["Total TTC", F.ht, 0], ["NET A PAYER", F.ht, 1]].forEach(function(x, i){
+    gset(g, r, 4, x[0], {b:x[2], sz:10, al:"l", bd:"t", bg:"EFEFEF"}); gset(g, r, 5, "", {bd:"t", bg:"EFEFEF"}); gmerge(g, r, 4, r, 5);
+    gset(g, r, 6, x[1], {b:x[2], sz:10, al:"r", bd:"t"}); gset(g, r, 7, "", {bd:"t"}); gmerge(g, r, 6, r, 7);
+    if (x[1] !== "") g.rows[r].cells[6].f = i === 0 ? "SUM(" + L(6) + deb + ":" + L(6) + fin + ")" : L(6) + (r - i + 1);
+    g.rows[r].h = 16; r++; });
+  r++;
+  gset(g, r, 0, "Facture payable le " + dmyL(F.echeance) + " pour la somme de " + fmt(F.ht, 2) + " Euros.", {sz:10, al:"l"}); gmerge(g, r, 0, r, 7); r++;
+  if (F.sansPrix){ gset(g, r, 0, "⚠ " + F.sansPrix + " ligne(s) sans prix : à compléter avant d'émettre la facture.", {b:1, sz:10, al:"l", fg:"C00000"}); gmerge(g, r, 0, r, 7); r++; }
+  g.facture = {existe:F.existe, statut:F.statut, numero:F.numero, ht:F.ht, sansPrix:F.sansPrix, tete:tete};
+  return g;
+}
 function facturerExport(e, forcer){
   if (typeof dirty !== "undefined" && dirty){ toast("Enregistrement en cours : réessayez dans un instant."); return; }
-  var kg = 0; e.cartons.forEach(function(c){ kg += poidsDe(e, c) || 0; });
-  var r = HOST.facturerExport({exportId:e.id, n:e.n, d:e.d, nat:e.nat || e.cl, colis:e.cartons.length, poidsBrut:Math.round(kg * 10) / 10, pieces:piecesFacture(e)}, !!forcer);
+  var r = HOST.facturerExport(demandeFacture(e), !!forcer);
   if (!r){ toast("Facturation indisponible."); return; }
   if (r.existe){
     var x = r.existe[0];
@@ -1124,5 +1167,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {piecesFacture:piecesFacture, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {piecesFacture:piecesFacture, factureGrid:factureGrid, facturerExport:facturerExport, titreFichier:titreFichier, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();

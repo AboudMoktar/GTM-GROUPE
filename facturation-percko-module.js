@@ -193,6 +193,29 @@ window.percFacturerExport = function(x, forcer){
     percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', valeurAuto:true, composition:compo}});
   return {ok:true, id, sansPrix:L.lignes.filter(l => !l.pu).length, inconnus:L.inconnus};
 };
+// Données de la facture d'un export pour l'onglet « Documents » du suivi (aperçu, PDF, Excel), SANS rien enregistrer :
+// la facture déjà préparée pour cet export si elle existe (avec ses modifications), sinon le calcul depuis les cartons.
+window.percApercuFacture = function(x){
+  const deja = percFactureDeLExport(x.exportId).sort((a, b) => (a.f.statut === 'emise' ? 1 : 0) - (b.f.statut === 'emise' ? 1 : 0) || String(b.f.date || '').localeCompare(String(a.f.date || '')));
+  const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, P = factParams('tek');
+  let f;
+  if(deja.length) f = deja[deja.length - 1].f.statut === 'emise' ? deja[deja.length - 1].f : deja[0].f;
+  else {
+    const L = percLignesExport(x.pieces), compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
+    f = {numero:'', statut:'apercu', date:getTodayISO(), echeance:getTodayISO(), lignes:L.lignes, tva:0, timbre:0, devise:'EUR',
+      percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', valeurAuto:true, composition:compo}};
+    const vm = percValeurMatiere(f); if(vm) f.percko.valeurMatiere = vm.valeur;
+  }
+  const p = f.percko || {}, lignes = (f.lignes || []).map(l => { const q = Number(l.qte) || 0, pu = Number(l.pu) || 0, rem = Number(l.remise) || 0;
+    return {ref:l.ref || '', designation:String(l.designation || ''), qte:q, pu, remise:rem, montant:Math.round(q * pu * (1 - rem / 100) * 100) / 100}; });
+  const ht = Math.round(lignes.reduce((t, l) => t + l.montant, 0) * 100) / 100;
+  const note = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition || '',
+    [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut: ' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net: ' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n'),
+    p.transport ? 'MODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n').split('\n').map(t => t.trim()).filter(Boolean);
+  return {existe:deja.length > 0, statut:f.statut, numero:f.numero || '', date:f.date || '', echeance:f.echeance || f.date || '', codeClient:p.codeClient || '', livraison:String(p.livraison || '').split('\n'),
+    societe:{raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:String(P.adresse || PERC_SOCIETE.adresse || '').split('\n'), mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email},
+    lignes, note, ht, sansPrix:lignes.filter(l => !l.pu && l.qte).length};
+};
 // Ouvre la facture dans le module Facturation (depuis n'importe quel module).
 window.percOuvrirFacture = function(id){
   activeSociete = 'tek'; activeModule = 'factures';

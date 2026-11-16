@@ -101,7 +101,11 @@ function groupes(lot){
         d("colis", "Liste de colisage", "Commande de chaque ligne, total, nombre de colis, poids", "landscape"),
         d("total", "Liste total", "Au format de la commande, une page par commande, récapitulatif", "portrait"),
         d("etat", "État des commandes", "Au format de la commande : par client, total, exporté, reste", "portrait")
-      ]});
+      ].concat(X().factureGrid && typeof HOST !== "undefined" && HOST && HOST.apercuFacture ? [{t:"Facture", o:"portrait", vide:"Aucune pièce à facturer dans cet export.",
+        s:e.st === "fini" ? "Facture de l'export, au prix du tarif" : "Disponible avant la validation de l'export : calculée depuis les cartons, ou la facture préparée si elle existe",
+        nom:X().titreFichier ? X().titreFichier(e, "Facture") : nomFichier("Facture_export_" + e.n),
+        grilles:function(){ var g = X().factureGrid(e); return g ? [{name:"Facture", grid:g}] : []; },
+        plus:{t:"✏️ Modifier", titre:"Ouvre la facture dans Facturation pour la modifier ou l'émettre", fn:function(){ X().facturerExport(e); }}}] : [])});
     });
   }
   if (!G){
@@ -135,7 +139,8 @@ window.vDocuments = function(v){
             [["portrait", "▯ Portrait"], ["landscape", "▭ Paysage"]].map(function(o){ return el("button", {type:"button", class:ori(d) === o[0] ? "on" : "", "data-ori":o[0], "aria-pressed":String(ori(d) === o[0]), text:o[1], onclick:function(){ choisirOri(d, o[0]); render(true); }}); })),
           el("button", {class:"btn small", text:"👁 Aperçu", onclick:function(){ try { apercu(d); } catch (e) { toast(e.message); } }}),
           el("button", {class:"btn small sec", text:"📕 PDF", onclick:function(){ try { pdf(d); } catch (e) { toast(e.message); } }}),
-          el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ try { excel(d); } catch (e) { toast(e.message); } }}))));
+          el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ try { excel(d); } catch (e) { toast(e.message); } }}),
+          d.plus ? el("button", {class:"btn small sec", "data-plus":"1", text:d.plus.t, title:d.plus.titre || "", onclick:function(){ try { d.plus.fn(); } catch (e) { toast(e.message); } }}) : null)));
     });
     c.appendChild(l); v.appendChild(c);
   });
