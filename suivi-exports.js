@@ -39,6 +39,13 @@ var CSS = [
   '.xp-ligne{grid-template-columns:minmax(0,1fr) auto auto}.xp-lot{max-width:150px;height:34px;padding:0 6px;font-size:13px;margin-top:4px}',
   '.xp-step{display:flex;align-items:center;gap:4px}.xp-step button{width:34px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--sub);color:var(--ink);font-size:20px;font-weight:700;cursor:pointer}',
   '.xp-step input{width:58px;height:38px;text-align:center;font-size:17px;font-weight:800;padding:0 2px;background:var(--edit);border-color:var(--edit-line)}',
+  '.xp-choix{position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px}',
+  '.xp-choix-b{background:var(--card);border-radius:14px;padding:18px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)}.xp-choix-b h3{margin:0 0 6px;font-size:17px}.xp-choix-b p{margin:0 0 12px}',
+  '.xp-choix-b .btn{display:block;width:100%;text-align:left;margin:0 0 8px;padding:10px 12px;height:auto;white-space:normal}.xp-choix-b .btn b{display:block;font-size:14.5px}.xp-choix-b .btn span{display:block;font-size:12.5px;font-weight:500;opacity:.85;margin-top:2px}',
+  '.xp-manq{border:2px solid #b45309;background:#fff7e6;color:#5c3a00;border-radius:12px;padding:10px 12px;margin:0 0 12px}.xp-manq .actions{margin:8px 0 0}',
+  /* tableau des quantités d\'un carton : il défile dans son cadre, la ligne des tailles et la colonne des modèles restent visibles */
+  '.xp-mxw.xp-fixe{overflow:auto;max-height:calc(100vh - 170px);min-height:220px;border:1px solid var(--line);border-radius:10px}.xp-fixe .xp-mx thead th{top:0;z-index:3;box-shadow:0 1px 0 var(--line)}.xp-fixe .xp-mx thead th.m{z-index:4}.xp-fixe .xp-mx tfoot td{position:sticky;bottom:0;z-index:3;box-shadow:0 -1px 0 var(--line)}.xp-fixe .xp-mx tfoot td.m{z-index:4;background:var(--sub)}',
+  '.xp-mx td.m.coul{border-left:0}',
   '.xp-sticky{position:sticky;top:0;z-index:7;display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;background:var(--card);border:2px solid var(--ink);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.12)}',
   '.xp-cnum{font-size:20px;font-weight:800}',
   '.xp-mx{border-collapse:separate;border-spacing:0;min-width:100%}.xp-mx th,.xp-mx td{border-bottom:1px solid var(--line);padding:3px;text-align:center;white-space:nowrap}',
@@ -164,12 +171,28 @@ function enregistrerCartonExport(e, c){
   var i = e.cartons.findIndex(function(x){ return x.id === c.id; });
   if (i >= 0) e.cartons[i] = c; else e.cartons.push(c);
 }
-function supprimerCartonExport(e, id){
+/* ---------- numéros de cartons ----------
+   Un numéro peut rester libre (carton supprimé « en gardant les numéros ») : il est signalé sur la fiche de
+   l'export et le prochain carton créé le reprend. « Renuméroter » remet 1, 2, 3… sans trou. */
+function numerosManquants(e){ var pris = {}, mx = 0, o = []; e.cartons.forEach(function(c){ pris[c.n] = 1; if (c.n > mx) mx = c.n; }); for (var i = 1; i < mx; i++) if (!pris[i]) o.push(i); return o; }
+function numeroLibre(e){ var pris = {}, i = 1; e.cartons.forEach(function(c){ pris[c.n] = 1; }); while (pris[i]) i++; return i; }
+function noterNumero(e, x){ S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); }
+function renumeroterCartons(e){ e.cartons.slice().sort(function(a, b){ return a.n - b.n; }).forEach(function(x, i){ if (x.n !== i + 1){ x.n = i + 1; noterNumero(e, x); } }); }
+/* garder = true : les autres cartons gardent leur numéro (celui du carton supprimé reste libre) */
+function supprimerCartonExport(e, id, garder){
   var c = e.cartons.filter(function(x){ return x.id === id; })[0]; if (!c) return;
   var anc = anciensDe(id); checkMoves([], anc);
   S.moves = S.moves.filter(function(m){ return !anc[m.id]; });
   e.cartons = e.cartons.filter(function(x){ return x.id !== id; });
-  e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; S.moves.forEach(function(m){ if (m.ct === x.id) m.note = (m.stage === "ctl" ? "Contrôle (auto) · export N°" + e.n + " carton N°" : "Export N°" + e.n + " · carton N°") + x.n; }); } });
+  if (!garder) e.cartons.forEach(function(x){ if (x.n > c.n){ x.n--; noterNumero(e, x); } });
+}
+/* petite fenêtre de choix (plusieurs réponses possibles, ce que confirm() ne permet pas) */
+function choixCarton(titre, texte, boutons){
+  var fond = el("div", {class:"xp-choix"}), boite = el("div", {class:"xp-choix-b"}, el("h3", {text:titre}), el("p", {class:"mut", text:texte}));
+  function fermer(){ if (fond.parentNode) fond.parentNode.removeChild(fond); }
+  boutons.forEach(function(b){ boite.appendChild(el("button", {class:"btn" + (b.sec ? " sec" : ""), style:b.rouge ? "color:#b42318" : "", "data-choix":b.cle, onclick:function(){ fermer(); if (b.fn) b.fn(); }}, el("b", {text:b.titre}), b.aide ? el("span", {text:b.aide}) : null)); });
+  fond.addEventListener("click", function(ev){ if (ev.target === fond) fermer(); });
+  fond.appendChild(boite); document.body.appendChild(fond);
 }
 function validerExport(e){
   if (!e.cartons.length) throw new Error("L'export n'a aucun carton.");
@@ -338,6 +361,16 @@ function ficheExport(v, e, arch){
     el("div", {class:"mut", style:"margin:4px 0 8px", text:"Rattachez-les pour qu'elles comptent dans le suivi de ces commandes (emballées" + (fini ? ", expédiées" : "") + ")."}),
     el("button", {class:"btn", text:"Rattacher aux commandes", onclick:function(){ commit(function(){ rattacher(e); }, "Pièces rattachées aux commandes"); }})));
   else if (libres) v.appendChild(el("div", {class:"msg", style:"margin:0 0 12px", text:fmt(libres) + " pièce(s) sur des commandes pas encore enregistrées : elles figurent sur les documents ; elles seront rattachées au suivi quand la commande sera enregistrée."}));
+  var manq = numerosManquants(e);
+  if (manq.length){
+    var bm = el("div", {class:"xp-manq", "data-manq":manq.join(",")}, el("b", {text:(manq.length > 1 ? "Numéros de carton manquants : " : "Numéro de carton manquant : ") + manq.map(function(n){ return "N°" + n; }).join(", ")}),
+      el("div", {style:"font-size:13px;margin-top:2px", text:fini ? "Rouvrez l'export pour corriger." : "Créez le carton manquant, ou renumérotez tous les cartons pour supprimer le trou."}));
+    if (!fini){ var am = el("div", {class:"actions"});
+      manq.slice(0, 4).forEach(function(n){ am.appendChild(el("button", {class:"btn small", text:"+ Créer le carton N°" + n, onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true, n:n}}; render(); }})); });
+      am.appendChild(el("button", {class:"btn small sec", text:"Renuméroter sans trou", onclick:function(){ if (confirm("Renuméroter les cartons de 1 à " + e.cartons.length + " ?\nLes fiches cartons déjà imprimées ne correspondront plus.")) commit(function(){ renumeroterCartons(e); }, "Cartons renumérotés"); }}));
+      bm.appendChild(am); }
+    v.appendChild(bm);
+  }
   /* cartons : contenu, poids et commentaire (modifiables à tout moment) */
   var cc = el("div", {class:"card"}, el("h2", {text:"Cartons"}));
   if (!e.cartons.length) cc.appendChild(el("div", {class:"xp-vide", text:"Pas encore de carton. Touchez « + Ajouter un carton »."}));
@@ -355,7 +388,14 @@ function ficheExport(v, e, arch){
     if (!fini) b.appendChild(el("div", {class:"actions", style:"margin:8px 0 0"},
       el("button", {class:"btn small sec", text:"Modifier", onclick:function(){ ui.xp = {id:e.id, carton:{id:c.id}}; render(); }}),
       el("button", {class:"btn small sec", text:"Refaire le même", title:"Nouveau carton avec le même contenu", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true, depuis:c.id}}; render(); }}),
-      el("button", {class:"btn small sec", style:"color:#b42318", text:"Supprimer", onclick:function(){ if (!confirm("Supprimer le carton N°" + c.n + " ? Les cartons suivants sont renumérotés.")) return; commit(function(){ supprimerCartonExport(e, c.id); }, "Carton supprimé"); }})));
+      el("button", {class:"btn small sec", style:"color:#b42318", text:"Supprimer", onclick:function(){
+        var dernier = !e.cartons.some(function(x){ return x.n > c.n; });
+        if (dernier){ if (confirm("Supprimer le carton N°" + c.n + " ?")) commit(function(){ supprimerCartonExport(e, c.id); }, "Carton supprimé"); return; }
+        choixCarton("Supprimer le carton N°" + c.n, "Ses pièces redeviennent disponibles. Que faire des numéros des cartons suivants ?", [
+          {cle:"renumeroter", titre:"Supprimer et renuméroter", aide:"Les cartons suivants reculent d'un numéro : aucun trou.", fn:function(){ commit(function(){ supprimerCartonExport(e, c.id); }, "Carton supprimé, cartons renumérotés"); }},
+          {cle:"garder", sec:true, titre:"Supprimer et garder les numéros", aide:"Le N°" + c.n + " reste libre : à recréer ensuite (carton déjà étiqueté, par exemple).", fn:function(){ commit(function(){ supprimerCartonExport(e, c.id, true); }, "Carton supprimé — le N°" + c.n + " reste à recréer"); }},
+          {cle:"annuler", sec:true, titre:"Annuler"}]);
+      }})));
     lst.appendChild(b);
   });
   cc.appendChild(lst);
@@ -417,7 +457,7 @@ function editeurCarton(v, e){
     var src = C.id ? e.cartons.filter(function(x){ return x.id === C.id; })[0] : C.depuis ? e.cartons.filter(function(x){ return x.id === C.depuis; })[0] : null;
     var n = 0; e.cartons.forEach(function(x){ if (x.n > n) n = x.n; });
     var dernier = null; e.cartons.forEach(function(c){ c.it.forEach(function(x){ dernier = infoItem(x).lot; }); });
-    C.etat = {it:src ? src.it.map(function(x){ return x.slice(); }) : [], kg:C.id && src && aPoidsSaisi(src) ? String(src.kg) : "", com:C.id && src ? src.com || "" : "", n:C.id && src ? src.n : n + 1,
+    C.etat = {it:src ? src.it.map(function(x){ return x.slice(); }) : [], kg:C.id && src && aPoidsSaisi(src) ? String(src.kg) : "", com:C.id && src ? src.com || "" : "", n:C.id && src ? src.n : (C.n && !e.cartons.some(function(x){ return x.n === C.n; }) ? C.n : numeroLibre(e)),
       lot:(src && src.it[0] ? infoItem(src.it[0]).lot : dernier) || sortedUnique(S.lines.map(function(l){ return l.lot; })).pop() || null, tous:false};
   }
   var E = C.etat, saufCt = C.id || null, R = regleColis(e.cl), t1 = !!(R && R.t1), nbC = e.cartons.length + (C.id ? 0 : 1);
@@ -429,7 +469,7 @@ function editeurCarton(v, e){
   v.appendChild(el("div", {class:"xp-sticky"},
     el("button", {class:"btn small sec", text:"←", title:"Retour à l'export", onclick:function(){ ui.xp = {id:e.id}; render(); }}),
     el("div", {style:"flex:1;min-width:0"}, el("div", {class:"xp-cnum", text:"📦 Carton N°" + E.n + (C.id ? "" : " (nouveau)")}),
-      el("div", {class:"mut", style:"font-size:12.5px", text:"Export N°" + e.n + " · " + e.cl + " · " + dmyL(e.d) + " · carton " + E.n + " sur " + nbC})),
+      el("div", {class:"mut", style:"font-size:12.5px", text:"Export N°" + e.n + " · " + e.cl + " · " + dmyL(e.d) + " · carton " + E.n + " sur " + Math.max(nbC, E.n)})),
     el("div", {style:"text-align:right"}, totEl, el("div", {class:"mut", style:"font-size:12px", text:"pièces"}))));
   /* 1. commande (lot) */
   var cc = el("div", {class:"card"}, el("div", {class:"mut", style:"font-weight:700;margin:0 0 6px", text:"Commande (N° de lot)"}));
@@ -465,7 +505,8 @@ function editeurCarton(v, e){
     t.appendChild(el("thead", null, th));
     var tb = el("tbody");
     g.mods.forEach(function(m){
-      var tr = el("tr", {class:(m.dans ? "dans" : "") + (m.sp ? " sp" : "")}, el("td", {class:"m"}, nomDoc(m.lib), m.sp ? el("span", {class:"xp-tag sp", text:m.sp}) : null));
+      var cl2 = couleurLib(m.lib);   /* mêmes couleurs que la commande */
+      var tr = el("tr", {class:(m.dans ? "dans" : "") + (m.sp ? " sp" : "")}, el("td", {class:"m coul", style:"background:#" + cl2[0] + ";color:#" + cl2[1]}, nomDoc(m.lib), m.sp ? el("span", {class:"xp-tag sp", text:m.sp}) : null));
       var totRow = el("td", {class:"t"});
       g.tailles.forEach(function(z){
         if (m.sizes.indexOf(z) < 0){ tr.appendChild(el("td", {class:"x", text:"·"})); return; }
@@ -488,7 +529,7 @@ function editeurCarton(v, e){
     g.tailles.forEach(function(z){ var td = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ var x = itemDe(E.lot, m.lib, z, m.sp); if (x) s += x[1]; }); td.textContent = s ? fmt(s) : ""; }); tf.appendChild(td); });
     var tdT = el("td", {class:"t"}); majs.push(function(){ var s = 0; g.mods.forEach(function(m){ m.sizes.forEach(function(z){ var x = itemDe(E.lot, m.lib, z, m.sp); if (x) s += x[1]; }); }); tdT.textContent = s ? fmt(s) : ""; }); tf.appendChild(tdT);
     t.appendChild(el("tfoot", null, tf));
-    mx.appendChild(el("div", {class:"tw xp-mxw"}, t));
+    mx.appendChild(el("div", {class:"tw xp-mxw xp-fixe"}, t));
   });
   v.appendChild(mx);
   recalc();
@@ -509,13 +550,14 @@ function editeurCarton(v, e){
     el("label", {class:"lg2"}, "Commentaire du carton", comI)));
   fin.appendChild(kgInfo);
   function enregistrer(suivant){
+    if (!C.id && e.cartons.some(function(x){ return x.n === E.n; })) E.n = numeroLibre(e);   /* numéro pris entre-temps */
     var c = {id:C.id || nid("XC"), n:E.n, kg:lireKg(E.kg), com:String(E.com || "").trim(), it:E.it.filter(function(x){ return x[1] > 0; }).map(function(x){ return x.slice(); })};
     if (!c.it.length){ toast("Le carton est vide."); return; }
     var szs = {}; c.it.forEach(function(x){ szs[infoItem(x).size] = 1; });
     var av = []; if (R && t1 && Object.keys(szs).length > 1) av.push("plusieurs tailles (règle " + e.cl + " : une seule)"); if (R && total() > R.n) av.push("plus de " + R.n + " pièces (règle " + e.cl + ")");
     if (av.length && !confirm("Attention : " + av.join(", ") + ".\nValider quand même ?")) return;
-    var ok = commit(function(){ enregistrerCartonExport(e, c); ui.xp = suivant ? {id:e.id, carton:{nouveau:true}} : {id:e.id}; if (suivant) ui.xp.carton.etat = {it:[], kg:"", com:"", n:Math.max.apply(null, e.cartons.map(function(x){ return x.n; })) + 1, lot:E.lot, tous:E.tous}; });
-    if (ok) toast("Carton N°" + c.n + (C.id ? " modifié" : " enregistré") + (suivant ? " — carton N°" + (c.n + 1) : ""));
+    var ok = commit(function(){ enregistrerCartonExport(e, c); ui.xp = suivant ? {id:e.id, carton:{nouveau:true}} : {id:e.id}; if (suivant) ui.xp.carton.etat = {it:[], kg:"", com:"", n:numeroLibre(e), lot:E.lot, tous:E.tous}; });
+    if (ok) toast("Carton N°" + c.n + (C.id ? " modifié" : " enregistré") + (suivant ? " — carton N°" + numeroLibre(e) : ""));
   }
   fin.appendChild(el("div", {class:"actions"},
     el("button", {class:"sx-go", style:"flex:1 1 220px", text:C.id ? "✔ Enregistrer le carton N°" + E.n : "✔ Valider le carton N°" + E.n, onclick:function(){ enregistrer(false); }}),
@@ -1011,5 +1053,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();

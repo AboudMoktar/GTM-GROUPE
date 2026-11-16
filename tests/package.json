@@ -45,7 +45,8 @@
     "ecrans-choix": "node ecrans-choix.js",
     "multiplateforme": "node multiplateforme.js",
     "gc-import-complet": "node gc-import-complet.js",
-    "gc-saisie-simple": "node gc-saisie-simple.js"
+    "gc-saisie-simple": "node gc-saisie-simple.js",
+    "cartons-numeros": "node cartons-numeros.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
