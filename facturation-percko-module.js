@@ -195,6 +195,24 @@ window.percFacturerExport = function(x, forcer){
 };
 // Données de la facture d'un export pour l'onglet « Documents » du suivi (aperçu, PDF, Excel), SANS rien enregistrer :
 // la facture déjà préparée pour cet export si elle existe (avec ses modifications), sinon le calcul depuis les cartons.
+// Facture d'un export, en mémoire : celle déjà préparée (émise de préférence, sinon le brouillon le plus récent), sinon calculée.
+function percFactureDunExport(x){
+  const deja = percFactureDeLExport(x.exportId), emises = deja.filter(d => d.f.statut === 'emise');
+  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; return {f:factListe('tek')[c.id] || c.f, existe:true}; }
+  const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''};
+  const L = percLignesExport(x.pieces), compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
+  const clients = factClients('tek'), cid = Object.keys(clients).find(k => (clients[k].nom || '').toUpperCase() === 'PERCKO') || Object.keys(clients)[0] || '';
+  const f = {type:'facture', numero:'', statut:'apercu', date:getTodayISO(), echeance:getTodayISO(), clientId:cid, lignes:L.lignes, tva:0, timbre:0, devise:'EUR', paiements:[],
+    percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', valeurAuto:true, composition:compo}};
+  const vm = percValeurMatiere(f); if(vm) f.percko.valeurMatiere = vm.valeur;
+  return {f, existe:false};
+}
+// Aperçu (ou impression / PDF) de la facture d'un export, au modèle papier. mode : '' | 'imprimer' | 'pdf'
+window.percApercuFactureExport = function(x, mode){
+  const r = percFactureDunExport(x); if(!r.f.lignes || !r.f.lignes.length){ showToast('Aucune pièce à facturer dans cet export.'); return false; }
+  percApercuModele(r.f, 'Facture ' + (r.f.numero || ('export N°' + x.n)), r.f.statut === 'emise' ? '' : r.existe ? 'BROUILLON' : 'APERÇU', mode || '');
+  return true;
+};
 window.percApercuFacture = function(x){
   const deja = percFactureDeLExport(x.exportId).sort((a, b) => (a.f.statut === 'emise' ? 1 : 0) - (b.f.statut === 'emise' ? 1 : 0) || String(b.f.date || '').localeCompare(String(a.f.date || '')));
   const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, P = factParams('tek');
@@ -406,6 +424,11 @@ const percImprimerOrigine = window.factImprimer;
 window.factImprimer = function(id, relance){
   const soc = factSoc(), f = factListe(soc)[id];
   if(relance || soc !== 'tek' || !f) return percImprimerOrigine(id, relance);
+  // aperçu dans l'application (plus de fenêtre séparée, souvent bloquée) : Imprimer ou PDF depuis la barre du haut
+  percApercuModele(f, (f.type === 'avoir' ? 'Avoir ' : 'Facture ') + (f.numero || 'brouillon'));
+};
+// Page(s) A4 au modèle papier TEK-TREND. marque : texte en filigrane (« BROUILLON », « APERÇU ») ou '' ; auto : lance l'impression.
+function percFactureModeleHtml(f, auto, marque){
   const P = factParams('tek'), eur = true, d = 2;
   const S = {raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:P.adresse || PERC_SOCIETE.adresse, mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email};
   const p = f.percko || {}, t = factTotaux(f), nl = (x) => esc(x || '').replace(/\n/g, '<br>');
@@ -413,10 +436,11 @@ window.factImprimer = function(id, relance){
   const livraison = p.livraison || [cli.nom, cli.adresse].filter(Boolean).join('\n');
   const rows = (f.lignes || []).map(l => `<tr><td>${esc(l.ref || '')}</td><td>${nl(l.designation)}</td><td class="n">${percN(l.qte, 3)}</td><td class="n">${percN(l.pu, d)}</td><td class="n">${l.remise ? percN(l.remise, 2) : ''}</td><td class="n">${l.remise ? percN(Number(l.qte) * Number(l.pu) * Number(l.remise) / 100, d) : ''}</td><td class="n">${percN(factMontantLigne(l), d)}</td><td class="c">0</td></tr>`);
   const note = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition ? '\n' + p.composition : '',
-    (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) || (p.poidsNet !== '' && p.poidsNet != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut::' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net::' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : ''].filter(Boolean).join('\n');
-  if(note) rows.push(`<tr><td>ART0002</td><td>${nl(note)}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);
-  if(p.transport) rows.push(`<tr><td></td><td style="padding-top:12px;">MODE DE TRANSPORT :${esc(p.transport)}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
-  const ent = `<div class="soc">${typeof logoDocHTML === 'function' ? logoDocHTML('tek', 14, 'margin:0 0 1.5mm;') : ''}<b>${esc(S.raison)}</b><b>${esc(S.adresse.split('\n')[0] || '')}</b><b>MF :${esc(S.mf)}</b><b>${esc(S.email)}</b><b>${esc(S.adresse.split('\n').slice(1).join(' '))}</b><span>Tél &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;${esc(S.tel)}</span></div>
+    (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) || (p.poidsNet !== '' && p.poidsNet != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut:: ' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net:: ' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : '',
+    // comme sur la facture papier : le mode de transport est dans le même bloc, après deux lignes vides
+    p.transport ? '\n\n\nMODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n');
+  if(note) rows.push(`<tr><td>ART0002</td><td class="note">${nl(note.replace(/^\n+/, ''))}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);
+  const ent = `<div class="soc"><b>${esc(S.raison)}</b><b>${esc(S.adresse.split('\n')[0] || '')}</b><b>MF :${esc(S.mf)}</b><b>${esc(S.email)}</b><b>${esc(S.adresse.split('\n').slice(1).join(' '))}</b><span>Tél &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;${esc(S.tel)}</span></div>
     <div class="b3"><div><span>${f.type === 'avoir' ? 'Avoir N°' : 'Facture N°'}</span><b>${esc(f.numero || 'BROUILLON')}</b></div><div><span>Date</span><b>${mgtDate(f.date)}</b></div><div><span>Client</span><b>${esc(p.codeClient || '')}</b></div></div>
     <div class="adr"><i></i><i></i><i></i><i></i><b>${nl(livraison)}</b></div>`;
   const e2 = (x) => percN(x, d), unite = 'Euros';
@@ -431,12 +455,13 @@ window.factImprimer = function(id, relance){
     .b3{position:absolute;left:92mm;top:0;width:102mm;display:flex;gap:2.4mm;} .b3>div{flex:1;border:1.4px solid #000;border-radius:7px;text-align:center;height:13mm;overflow:hidden;} .b3 span{display:block;background:#efefef;font-weight:bold;border-bottom:1.4px solid #000;padding:1.3mm 0;font-size:12px;} .b3 b{display:block;padding:1.5mm 0;font-size:11.5px;}
     .adr{position:absolute;left:92mm;top:40mm;width:96mm;height:40mm;padding:3.5mm 4mm;line-height:6.4mm;} .adr b{font-size:11.5px;} .adr i{position:absolute;width:5mm;height:5mm;border:1.5px solid #000;} .adr i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0} .adr i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0} .adr i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0} .adr i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
     .cadre{position:absolute;left:8mm;top:88mm;width:194mm;border:1.4px solid #000;border-radius:7px;overflow:hidden;} table.l{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;} table.l th{background:#efefef;border-bottom:1.4px solid #000;border-left:1.4px solid #000;padding:1.4mm 1mm;font-size:12px;height:6.5mm;} table.l th:first-child{border-left:0}
-    table.l td{border-left:1.4px solid #000;padding:.4mm 1.3mm;vertical-align:top;font-size:12px;line-height:3.7mm;} table.l td:first-child{border-left:0} table.l td.n{text-align:right;white-space:nowrap} table.l td.c{text-align:center} table.l tr.fill td{height:auto}
+    table.l td{border-left:1.4px solid #000;padding:.4mm 1.3mm;vertical-align:top;font-size:12px;line-height:3.7mm;} table.l td:first-child{border-left:0} table.l td.n{text-align:right;white-space:nowrap} table.l td.c{text-align:center} table.l tr.fill td{height:auto} table.l tr.fill{height:100%}
     .bas{position:absolute;left:8mm;top:205mm;width:194mm;} .p1{display:flex;justify-content:space-between;align-items:flex-start;} table.code{border-collapse:separate;border-spacing:0;border:1.4px solid #000;border-radius:6px;overflow:hidden;width:86mm;} table.code th{background:#efefef;border-left:1.4px solid #000;border-bottom:1.4px solid #000;padding:1.2mm;font-size:12px;} table.code td{border-left:1.4px solid #000;padding:1.2mm;font-size:12px;height:6mm;} table.code th:first-child,table.code td:first-child{border-left:0;text-align:center} table.code td.n{text-align:right}
     .tot{width:88mm;border:1.4px solid #000;border-radius:6px;overflow:hidden;} .tot div{display:flex;border-top:1px solid #000;} .tot div:first-child{border-top:0} .tot span{flex:0 0 48%;background:#efefef;padding:1.5mm;font-size:12px;} .tot em{flex:1;font-style:normal;text-align:right;padding:1.5mm 1mm;font-size:12px;} .tot .np{border-top:1.4px solid #000}
-    .pay{margin-top:20mm;font-size:12px;letter-spacing:.2px;} .legal{margin-top:12mm;font-size:8.5px;line-height:1.35;} .brouillon{position:absolute;top:120mm;left:0;right:0;text-align:center;font-size:90px;color:rgba(200,0,0,.12);transform:rotate(-25deg);pointer-events:none;z-index:5}
+    .pay{margin-top:20mm;font-size:12px;letter-spacing:.2px;} .legal{margin-top:12mm;font-size:7.5px;line-height:1.35;width:190mm;overflow-wrap:break-word;} table.l td.note{font-size:10.5px;line-height:3.5mm;} .brouillon{position:absolute;top:120mm;left:0;right:0;text-align:center;font-size:90px;color:rgba(200,0,0,.12);transform:rotate(-25deg);pointer-events:none;z-index:5}
     #mesure{position:absolute;left:-9999px;top:0;width:194mm;visibility:hidden}`;
-  const donnees = JSON.stringify({rows, ent, pied, thead, brouillon:f.statut !== 'emise'}).replace(/</g, '\\u003c');
+  const filigrane = marque !== undefined ? marque : (f.statut !== 'emise' ? 'BROUILLON' : '');
+  const donnees = JSON.stringify({rows, ent, pied, thead, brouillon:!!filigrane, marque:filigrane, auto:!!auto}).replace(/</g, '\\u003c');
   const script = `(function(){
     var D=${donnees}, mm=96/25.4, capN=(275-88-6.5)*mm, capF=(203-88-6.5)*mm, i, h=[];
     var m=document.getElementById('mesure'); m.innerHTML='<div class="cadre" style="position:static;"><table class="l">'+D.thead+'<tbody>'+D.rows.join('')+'</tbody></table></div>';
@@ -446,14 +471,38 @@ window.factImprimer = function(id, relance){
     var last=pages[pages.length-1], tot=last.reduce(function(s,j){return s+h[j];},0);
     if(tot>capF){ var j=last.pop(); if(!last.length) pages.pop(); pages.push([j]); }
     var out=''; pages.forEach(function(pg,n){ var fin=n===pages.length-1, bas=fin?203:275;
-      out+='<div class="pg">'+(D.brouillon?'<div class="brouillon">BROUILLON</div>':'')+'<div class="ent">'+D.ent+'</div><div class="cadre" style="height:'+(bas-88)+'mm;"><table class="l">'+D.thead+'<tbody>'+pg.map(function(j){return D.rows[j];}).join('')+'<tr class="fill"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div>'+(fin?'<div class="bas">'+D.pied+'</div>':'')+'</div>'; });
-    document.body.insertAdjacentHTML('beforeend', out); m.remove(); setTimeout(function(){window.print();}, 250);
+      out+='<div class="pg">'+(D.brouillon?'<div class="brouillon">'+D.marque+'</div>':'')+'<div class="ent">'+D.ent+'</div><div class="cadre" style="height:'+(bas-88)+'mm;"><table class="l">'+D.thead+'<tbody>'+pg.map(function(j){return D.rows[j];}).join('')+'<tr class="fill"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div>'+(fin?'<div class="bas">'+D.pied+'</div>':'')+'</div>'; });
+    document.body.insertAdjacentHTML('beforeend', out); m.remove(); if(D.auto) setTimeout(function(){window.print();}, 250);
   })();`;
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(f.numero || 'Brouillon')}</title><style>${css}</style></head><body><div id="mesure"></div><script>${script}<\/script></body></html>`;
-  const w = window.open('', '_blank');
-  if(!w){ showToast('Autorisez les fenêtres pop-up pour imprimer'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
-};
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(f.numero || 'Brouillon')}</title><style>${css}</style></head><body><div id="mesure"></div><script>${script}<\/script></body></html>`;
+}
+// Aperçu plein écran d'une facture au modèle papier (dans l'application), avec impression / enregistrement en PDF.
+function percApercuModele(f, titre, marque, imprimerTout){
+  const ancien = document.getElementById('pk-fact-apercu'); if(ancien) ancien.remove();
+  const ov = document.createElement('div'); ov.id = 'pk-fact-apercu'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Aperçu de la facture');
+  ov.setAttribute('style', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483000;display:flex;flex-direction:column;background:#525659;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif');
+  const bar = document.createElement('div'); bar.setAttribute('style', 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;background:#1F3864;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)');
+  const t = document.createElement('div'); t.textContent = '👁 ' + titre + ' · A4 portrait'; t.setAttribute('style', 'flex:1 1 200px;min-width:0;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'); bar.appendChild(t);
+  const fr = document.createElement('iframe'); fr.title = 'Aperçu de la facture'; fr.setAttribute('style', 'flex:1;width:100%;border:0;background:#525659');
+  let zoom = 1, ajuste = true;
+  const appliquer = () => { try { const b = fr.contentDocument && fr.contentDocument.body; if(!b) return; if(ajuste) zoom = Math.max(0.3, Math.min(3, (fr.clientWidth - 40) / (210 * 96 / 25.4))); b.style.zoom = String(zoom); } catch(e) {} };
+  const fermer = () => { ov.remove(); document.removeEventListener('keydown', clavier); window.removeEventListener('resize', appliquer); };
+  const clavier = (ev) => { if(ev.key === 'Escape') fermer(); };
+  const imprimer = () => { try { const b = fr.contentDocument.body, z = b.style.zoom; b.style.zoom = '1'; fr.contentWindow.focus(); fr.contentWindow.print(); b.style.zoom = z; } catch(e) { showToast('Impression impossible ici'); } };
+  const bouton = (txt, aide, fn, fort) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = aide; b.setAttribute('data-ap', aide);
+    b.setAttribute('style', 'border:0;border-radius:10px;padding:8px 14px;min-height:40px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;' + (fort ? 'background:#fff;color:#1F3864' : 'background:rgba(255,255,255,.16);color:#fff'));
+    b.addEventListener('click', fn); bar.appendChild(b); return b; };
+  bouton('🖨 Imprimer', 'Imprimer', imprimer, true);
+  bouton('📕 PDF', 'Enregistrer en PDF', () => { showToast('Dans la fenêtre d\'impression, choisissez « Enregistrer au format PDF » comme imprimante.'); setTimeout(imprimer, 600); });
+  bouton('−', 'Réduire', () => { ajuste = false; zoom = Math.max(0.3, zoom / 1.2); appliquer(); });
+  bouton('↔ Ajuster', 'Ajuster à l\'écran', () => { ajuste = true; appliquer(); });
+  bouton('+', 'Agrandir', () => { ajuste = false; zoom = Math.min(3, zoom * 1.2); appliquer(); });
+  bouton('✕ Fermer', 'Fermer', fermer);
+  ov.appendChild(bar); ov.appendChild(fr); document.body.appendChild(ov);
+  fr.addEventListener('load', () => { try { const st = fr.contentDocument.createElement('style'); st.textContent = '@media screen{html{background:#525659}body{background:transparent!important;width:210mm;margin:0 auto}.pg{background:#fff;margin:14px auto;box-shadow:0 2px 10px rgba(0,0,0,.45)}}'; fr.contentDocument.head.appendChild(st); } catch(e) {} setTimeout(appliquer, 60); if(imprimerTout) setTimeout(imprimerTout === 'pdf' ? () => bar.querySelector('[data-ap="Enregistrer en PDF"]').click() : imprimer, 500); });
+  document.addEventListener('keydown', clavier); window.addEventListener('resize', appliquer);
+  fr.srcdoc = percFactureModeleHtml(f, false, marque);
+}
 
 // TEK-TREND facture en euros : on remplace les libellés « DT » des écrans de facturation.
 const percListe2 = window.renderFactListe;

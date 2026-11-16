@@ -41,21 +41,32 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(!G0.f.existe && G0.f.statut === 'apercu' && G0.t.some(x => /APERÇU/.test(x)) && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 0, 'aperçu calculé depuis les cartons : marqué « APERÇU », aucune facture enregistrée');
   ok(G0.t.some(x => /^ART001\|PHARMA HOMME COL V NOIR XS S M\|18\|10\|\|\|180\|0$/.test(x)) && G0.t.some(x => /NET A PAYER\|\|1169/.test(x)) && G0.t.some(x => /VALEUR MATIERE PREMIERE: 180\.00/.test(x)) && G0.t.some(x => /Nombre de colis: 2/.test(x)), 'contenu : lignes, total, valeur matière, colis');
   ok(G0.pdf > 2000 && G0.xlsx > 2000, 'PDF et Excel produits (' + G0.pdf + ' et ' + G0.xlsx + ' octets)');
-  // boutons Excel et PDF de la ligne « Facture » : fichiers nommés d'après l'export, contenu relu
+  // bouton Excel : fichier nommé d'après l'export, contenu relu
   await fr().evaluate(() => { window.__f = []; window.saveFile = (n, d) => { window.__f.push({n, d:Array.from(d)}); }; });
-  await docF.getByText('Excel').click(); await docF.getByText('PDF').click();
+  await docF.getByText('Excel').click();
   const fichiers = await fr().evaluate(() => window.__f.map(x => ({n:x.n, d:x.d})));
-  ok(fichiers.length === 2 && fichiers[0].n === 'Facture_Export3_NEOLYS_20261121.xlsx' && fichiers[1].n === 'Facture_Export3_NEOLYS_20261121.pdf' && String.fromCharCode.apply(null, fichiers[1].d.slice(0, 5)) === '%PDF-', 'fichiers : ' + fichiers.map(x => x.n).join(' et '));
+  ok(fichiers.length === 1 && fichiers[0].n === 'Facture_Export3_NEOLYS_20261121.xlsx', 'fichier Excel : ' + fichiers.map(x => x.n).join(', '));
   let xl = null; try { const XLSX = require('xlsx'), wb = XLSX.read(Buffer.from(fichiers[0].d), {type:'buffer'}), ws = wb.Sheets[wb.SheetNames[0]]; xl = XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).map(r => r.join('|')); } catch (e) { console.log('     (bibliothèque xlsx absente : relecture du fichier Excel non faite)'); }
   if (xl) ok(xl.some(x => /^ART001\|PHARMA HOMME COL V NOIR XS S M\|18\|10\|\|\|180\|0$/.test(x)), 'Excel relu : la ligne ART001 y est (18 pièces × 10 = 180)');
-  // aperçu : envoyé à l'impression de l'application, avec le contenu de la facture
+  // aperçu : la facture au modèle papier TEK-TREND (en-tête, cadre, pied), dans l'application
+  await p.evaluate(() => { const P = getJSON('fact_params', {}); Object.assign(P, {raison:'SOCIÉTÉ ESSAI', adresse:'1 RUE ESSAI\n0000 VILLE', mf:'0000000X', tel:'00 00 00 00', email:'essai@exemple.test'}); memoryCache['grp1_fact_params'] = P; });
   await docF.getByText('Aperçu').click();
-  await p.waitForSelector('iframe[title="Aperçu"]');
-  const ap = await p.evaluate(() => document.querySelector('iframe[title="Aperçu"]').getAttribute('srcdoc'));
-  await p.waitForTimeout(600); if (process.env.CAPTURE) await p.screenshot({path:process.env.CAPTURE});
-  await p.getByText('Fermer').first().click();
-  await p.waitForFunction(() => !document.querySelector('iframe[title="Aperçu"]'));
-  ok(/PHARMA HOMME COL V NOIR XS S M/.test(ap) && /NET A PAYER/.test(ap), 'aperçu : la facture est affichée pour impression');
+  await p.waitForSelector('#pk-fact-apercu iframe');
+  const modele = p.frameLocator('#pk-fact-apercu iframe');
+  await modele.locator('.pg').first().waitFor();
+  await p.waitForTimeout(500);
+  const M0 = await p.evaluate(() => { const d = document.querySelector('#pk-fact-apercu iframe').contentDocument, t = d.body.innerText.replace(/\u00a0|\u202f/g, ' ');
+    return {pages:d.querySelectorAll('.pg').length, marque:(d.querySelector('.brouillon') || {}).textContent, t, cadre:!!d.querySelector('.cadre table.l'), boites:d.querySelectorAll('.b3 > div').length, coins:d.querySelectorAll('.adr i').length}; });
+  ok(M0.pages >= 1 && M0.cadre && M0.boites === 3 * M0.pages && M0.coins === 4 * M0.pages && M0.marque === 'APERÇU', 'modèle papier (' + M0.pages + ' page(s)) : en-tête à 3 cases, adresse encadrée, tableau, filigrane « APERÇU »');
+  ok(/SOCIÉTÉ ESSAI/.test(M0.t) && /MF :0000000X/.test(M0.t) && /Percko chez Neolys/.test(M0.t) && /PHARMA HOMME COL V NOIR\s+XS S M/.test(M0.t) && /18,000/.test(M0.t) && /NET A PAYER/.test(M0.t) && /1 169,00/.test(M0.t) && /VALEUR MATIERE PREMIERE: 180\.00/.test(M0.t) && /Nombre de colis: 2/.test(M0.t) && /MODE DE TRANSPORT :DDP/.test(M0.t) && /RESERVE DE PROPRIETE/.test(M0.t), 'modèle papier : société, livraison, lignes (quantité à 3 décimales), totaux, valeur matière, colis, transport, mentions');
+  if (process.env.CAPTURE) await p.screenshot({path:process.env.CAPTURE});
+  // Imprimer et PDF : la fenêtre d'impression du navigateur est appelée sur la facture
+  await p.evaluate(() => { window.__imp = 0; document.querySelector('#pk-fact-apercu iframe').contentWindow.print = () => { window.__imp++; }; });
+  await p.locator('#pk-fact-apercu [data-ap="Imprimer"]').click();
+  await p.locator('#pk-fact-apercu [data-ap="Enregistrer en PDF"]').click(); await p.waitForTimeout(900);
+  ok(await p.evaluate(() => window.__imp) === 2, 'Imprimer et PDF : impression lancée sur la facture (PDF = « Enregistrer au format PDF »)');
+  await p.locator('#pk-fact-apercu [data-ap="Fermer"]').click();
+  ok(await p.locator('#pk-fact-apercu').count() === 0 && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 0, 'aperçu fermé, toujours aucune facture enregistrée');
   await fr().evaluate(() => { ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
   await fr().locator('[data-xp="facture"]').click();
   await p.waitForFunction(() => activeModule === 'factures' && typeof factId !== 'undefined' && !!factId);
