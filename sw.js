@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v292';
+const CACHE_NAME = 'groupe-v293';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -79,7 +79,7 @@ const APP_SHELL = [
   './charte.css',
   './multiplateforme.css',
   './accueil.css',
-  './modules-tek.css'
+  './modules-charte.css'
 ];
 // Bibliothèques Firebase (autre site) : indispensables pour démarrer hors ligne.
 const EXTERNES = [

@@ -51,7 +51,7 @@
     "molette-nombres": "node molette-nombres.js",
     "facture-export": "node facture-export.js",
     "apercu-fermer": "node apercu-fermer.js",
-    "sous-pages-tek": "node sous-pages-tek.js"
+    "sous-pages": "node sous-pages.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
