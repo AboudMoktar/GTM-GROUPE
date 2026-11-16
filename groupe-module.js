@@ -150,30 +150,89 @@ function societeLogo(k, hauteur, repli, largeur){
   const l = SOCIETES[k] && SOCIETES[k].logo; if(!l) return repli;
   return `<img src="${l}" alt="${SOCIETES[k].nom}" data-repli="${esc(repli)}" onerror="logoRepli(this)" style="display:block;height:${hauteur}px;max-width:${largeur || 160}px;object-fit:contain;">`;
 }
+// ============================================================
+// Écrans d'accueil (charte « Industrial Corporate Premium », styles dans accueil.css)
+// Présentation seule : les droits (userSocietes, isGroupe, canManageAccounts, peutChangerDeSociete)
+// et les actions (chooseSociete, chooseModule, openDirection, ouvrirAdmin, switchSociete, logout) sont inchangés.
+// ============================================================
+// Couleur d'identification de chaque société sur les écrans d'accueil (secondaire : le logo officiel reste intact).
+const GTMH_ACCENT = {tek:'#14B8A6', gadh:'#E91E63', mgt:'#F59E0B'};
+const GTMH_ICO = {
+  grille: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  fleche: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>'
+};
+function gtmhAccent(k){ return GTMH_ACCENT[k] || '#1677E8'; }
+function gtmhPeutAdmin(){ return typeof ouvrirAdmin === 'function' && canManageAccounts(); }
+// Logo officiel d'une société, affiché entier dans son cadre (jamais rogné, étiré ni recoloré).
+function gtmhLogo(k){ return `<span class="gtmh-logo">${societeLogo(k, 120, societeMot(k), 400)}</span>`; }
+function gtmhMarque(){
+  return `<div class="gtmh-gtm"><img src="./icon-192.png" alt="" onerror="this.style.display='none'"><div><b>GTM GROUPE</b><span>TEK-TREND · GADH TUNISIA · MGT</span></div></div>`;
+}
+function gtmhDate(){
+  try { return new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'}); } catch(e){ return ''; }
+}
+// Colonne de gauche. « actif » = société ouverte (écran des modules) ou null (écran des sociétés).
+function gtmhCote(actif){
+  const soc = userSocietes();
+  const groupe = (isGroupe() ? `<button class="gtmh-lien" onclick="openDirection()">${ICONS.crown}<span>Vue direction</span></button>` : '')
+    + (gtmhPeutAdmin() ? `<button class="gtmh-lien" onclick="ouvrirAdmin()">${ICONS.params}<span>Administration</span></button>` : '');
+  return `<aside class="gtmh-cote${actif ? '' : ' gtmh-cote-photo'}">
+    ${gtmhMarque()}
+    ${actif ? `<nav class="gtmh-nav">
+      <div class="gtmh-nav-titre">Sociétés</div>
+      ${soc.map(k => `<button class="gtmh-lien${k === actif ? ' actif' : ''}" style="--gtmh:${gtmhAccent(k)};" onclick="chooseSociete('${k}')"><i class="gtmh-pastille"></i><span>${SOCIETES[k].nom}</span></button>`).join('')}
+      ${groupe ? `<div class="gtmh-nav-titre">Groupe</div>${groupe}` : ''}
+    </nav>` : `<p class="gtmh-devise">Plateforme de gestion du groupe : production, ressources humaines, commandes et facturation.</p>`}
+    <div class="gtmh-cote-bas">
+      ${actif && peutChangerDeSociete() ? `<button class="gtmh-lien" onclick="switchSociete()">${GTMH_ICO.grille}<span>Changer de société</span></button>` : ''}
+      <button class="gtmh-lien" onclick="logout()">${ICONS.logout}<span>Déconnexion</span></button>
+      <div class="gtmh-date">${esc(gtmhDate())}</div>
+    </div>
+  </aside>`;
+}
+// Barre du haut : fil d'Ariane, utilisateur connecté, déconnexion.
+function gtmhBarre(fil){
+  const nom = String(currentUser.nom || currentUser.username || '');
+  return `<header class="gtmh-barre">
+    <div class="gtmh-fil">${fil}</div>
+    <div class="gtmh-barre-droite">
+      <div class="gtmh-user" title="${esc(nom)}"><i>${esc(nom.trim().charAt(0).toUpperCase() || '?')}</i><span>${esc(nom)}</span></div>
+      <button class="gtmh-btn" onclick="logout()" title="Déconnexion">${ICONS.logout}<span>Déconnexion</span></button>
+    </div>
+  </header>`;
+}
 function renderSocieteSelect(){
   const soc = userSocietes();
+  const tuiles = (isGroupe() ? `<button class="gtmh-carte gtmh-tuile fort" onclick="openDirection()">
+        <span class="gtmh-ico">${ICONS.crown}</span>
+        <span class="gtmh-soc-txt"><span class="gtmh-nom">Vue direction</span><span class="gtmh-sous">Les trois tableaux de bord sur un seul écran</span></span>
+        <span class="gtmh-aller">${GTMH_ICO.fleche}</span>
+      </button>` : '')
+    + (gtmhPeutAdmin() ? `<button class="gtmh-carte gtmh-tuile" onclick="ouvrirAdmin()">
+        <span class="gtmh-ico">${ICONS.params}</span>
+        <span class="gtmh-soc-txt"><span class="gtmh-nom">Administration</span><span class="gtmh-sous">Comptes, sessions, maintenance</span></span>
+        <span class="gtmh-aller">${GTMH_ICO.fleche}</span>
+      </button>` : '');
+  const nTuiles = (isGroupe() ? 1 : 0) + (gtmhPeutAdmin() ? 1 : 0);
   document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card choix">
-        <div class="logo-wrap">
-          <div class="logo-text" style="font-size:26px;"><span class="tek">GTM</span> <span class="trend">GROUPE</span></div>
-          <div class="logo-sub">TEK-TREND · GADH TUNISIA · MGT</div>
-        </div>
-        <h2 style="text-align:center;">Quelle société voulez-vous ouvrir ?</h2>
-        <p class="choix-qui">Connecté en tant que ${esc(currentUser.nom)}</p>
-        <div class="choix-liste">
-          ${isGroupe() ? `<button class="btn btn-primary choix-fort" onclick="openDirection()">
-            ${ICONS.crown}
-            <span>Vue direction<small>Les trois tableaux de bord sur un seul écran</small></span>
-          </button>` : ''}
-          ${soc.map(k => `<button class="soc-card" style="--m:${SOCIETES[k].marque[0]};" onclick="chooseSociete('${k}')">
-            <span class="soc-bande" style="background:${societeBande(k)};"></span>
-            <span class="soc-logo" style="background:${SOCIETES[k].teinte};">${societeLogo(k, 54, societeMot(k), 104)}</span>
-            <span class="soc-txt"><span class="soc-nom">${SOCIETES[k].nom}</span><span class="soc-sous">${SOCIETES[k].sous}</span></span>
-            <span class="soc-fleche">›</span>
-          </button>`).join('')}
-        </div>
-        <div class="choix-bas"><button class="btn btn-ghost" onclick="logout()">Déconnexion</button></div>
+    <div class="gtmh gtmh-soc">
+      ${gtmhCote(null)}
+      <div class="gtmh-zone">
+        ${gtmhBarre('<span>Accueil</span>')}
+        <main class="gtmh-centre">
+          <h1>Quelle société voulez-vous ouvrir ?</h1>
+          <p class="gtmh-qui">Connecté en tant que <b>${esc(currentUser.nom)}</b></p>
+          <div class="gtmh-societes" data-n="${soc.length}">
+            ${soc.map(k => `<button class="gtmh-carte gtmh-soc-carte" data-soc="${k}" style="--gtmh:${gtmhAccent(k)};" onclick="chooseSociete('${k}')">
+              ${gtmhLogo(k)}
+              <span class="gtmh-soc-pied">
+                <span class="gtmh-soc-txt"><span class="gtmh-nom">${SOCIETES[k].nom}</span><span class="gtmh-sous">${SOCIETES[k].sous}</span></span>
+                <span class="gtmh-aller">${GTMH_ICO.fleche}</span>
+              </span>
+            </button>`).join('')}
+          </div>
+          ${nTuiles ? `<div class="gtmh-groupe-titre">Groupe</div><div class="gtmh-groupe" data-n="${nTuiles}">${tuiles}</div>` : ''}
+        </main>
       </div>
     </div>
   `;

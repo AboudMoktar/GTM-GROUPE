@@ -1,0 +1,198 @@
+/* ============================================================
+   GTM GROUPE — Écrans d'accueil (choix de la société, choix du module)
+   Style « Industrial Corporate Premium » : bleu nuit structurant, bleu électrique pour l'action,
+   fond gris très clair, cartes blanches à bords fins.
+   - Présentation seule : aucune règle métier, aucun droit ne dépend de ce fichier.
+   - Les trois logos sont les fichiers officiels du projet, affichés entiers (object-fit:contain), jamais recolorés.
+   - Palette propre à ces écrans, identique en thème clair et sombre.
+   - Compatible Chrome 109 (Windows 7) et Firefox ESR 115 : flex, grid, variables ; ni color-mix(), ni :has().
+   ============================================================ */
+.gtmh{
+  --nuit:#0B1F3A; --principal:#0D3E6D; --electrique:#1677E8; --turquoise:#14B8A6; --rose:#E91E63; --orange:#F59E0B;
+  --fond:#F5F7FB; --carte:#FFFFFF; --encre:#0B1F3A; --encre2:#44546A; --trait:#D5DCE8; --trait-fort:#B4BFD0;
+  --gtmh:var(--electrique);
+  position:relative; display:flex; min-height:100vh; width:100%; background:var(--fond); color:var(--encre);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:15px; line-height:1.4; text-align:left;
+  -webkit-font-smoothing:antialiased;
+}
+.gtmh *,.gtmh *::before,.gtmh *::after{box-sizing:border-box;}
+.gtmh button{font:inherit; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.gtmh svg{flex:0 0 auto;}
+
+/* ---------- Colonne de gauche (bleu nuit) ---------- */
+.gtmh-cote{flex:0 0 284px; display:flex; flex-direction:column; background:var(--nuit); color:#fff; padding:26px 18px 18px; position:relative; overflow:hidden;}
+.gtmh-cote-photo{background:var(--nuit) url('./hero-bg.jpg') 78% bottom / cover no-repeat;}
+.gtmh-cote-photo::before{content:''; position:absolute; left:0; top:0; right:0; bottom:0; background:linear-gradient(180deg,rgba(11,31,58,.97) 0%,rgba(11,31,58,.88) 45%,rgba(11,31,58,.62) 100%);}
+.gtmh-cote > *{position:relative;}
+.gtmh-gtm{display:flex; align-items:center; gap:12px; padding:0 6px;}
+.gtmh-gtm img{width:48px; height:48px; border-radius:11px; display:block; flex:0 0 auto; box-shadow:0 2px 8px rgba(0,0,0,.35);}
+.gtmh-gtm b{display:block; font-size:21px; font-weight:800; letter-spacing:.4px; line-height:1.1;}
+.gtmh-gtm span{display:block; margin-top:4px; font-size:9.5px; font-weight:600; letter-spacing:.3px; white-space:nowrap; color:#9FB4D0; text-transform:uppercase;}
+.gtmh-devise{margin-top:26px; padding:0 6px; font-size:15px; line-height:1.5; color:#C9D6E8; max-width:220px;}
+.gtmh-nav{margin-top:28px; display:flex; flex-direction:column; gap:4px; min-height:0;}
+.gtmh-nav-titre{margin:14px 10px 6px; font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#7F97B8;}
+.gtmh-nav-titre:first-child{margin-top:0;}
+.gtmh-lien{display:flex; align-items:center; gap:11px; width:100%; min-height:44px; padding:9px 12px; border:0; border-radius:10px; background:transparent; color:#D6E0EE !important; font-size:15px; font-weight:600; text-align:left; transition:background .15s,color .15s;}
+.gtmh-lien svg{width:19px; height:19px; opacity:.9;}
+.gtmh-lien .gtmh-pastille{flex:0 0 auto; width:9px; height:9px; border-radius:50%; background:var(--gtmh); box-shadow:0 0 0 3px rgba(255,255,255,.10);}
+.gtmh-lien:hover{background:rgba(255,255,255,.09); color:#fff !important;}
+.gtmh-lien.actif{background:var(--electrique); color:#fff !important; box-shadow:0 4px 12px rgba(22,119,232,.35);}
+.gtmh-lien.actif .gtmh-pastille{background:#fff; box-shadow:none;}
+.gtmh-cote-bas{margin-top:auto; padding-top:16px; display:flex; flex-direction:column; gap:4px; border-top:1px solid rgba(255,255,255,.14);}
+.gtmh-date{display:block; padding:4px 12px 0; font-size:12.5px; color:#9FB4D0;}
+.gtmh-date::first-letter{text-transform:uppercase;}
+
+/* ---------- Zone principale ---------- */
+.gtmh-zone{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; min-height:100vh;}
+.gtmh-barre{flex:0 0 auto; display:flex; align-items:center; gap:12px; min-height:64px; padding:10px 32px; background:var(--carte); border-bottom:1px solid var(--trait);}
+.gtmh-fil{display:flex; align-items:center; gap:10px; min-width:0; white-space:nowrap; font-size:15px; font-weight:700; color:var(--principal);}
+.gtmh-fil .gtmh-sep{color:var(--trait-fort); font-weight:400;}
+.gtmh-fil button{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border:1.5px solid var(--trait); border-radius:10px; background:var(--carte); color:var(--principal) !important; transition:border-color .15s,background .15s;}
+.gtmh-fil button:hover{border-color:var(--electrique); background:#EEF5FE;}
+.gtmh-fil svg{width:19px; height:19px;}
+.gtmh-barre-droite{margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:10px;}
+.gtmh-user{display:flex; align-items:center; gap:10px; padding:5px 14px 5px 5px; border:1.5px solid var(--trait); border-radius:999px; background:var(--fond); font-weight:700; font-size:14.5px; color:var(--encre); max-width:320px;}
+.gtmh-user i{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:var(--principal); color:#fff; font-style:normal; font-weight:800; font-size:14px;}
+.gtmh-user span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.gtmh-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:8px 16px; border:1.5px solid var(--trait-fort); border-radius:10px; background:var(--carte); color:var(--encre) !important; font-size:14.5px; font-weight:700; transition:border-color .15s,background .15s,color .15s;}
+.gtmh-btn svg{width:18px; height:18px;}
+.gtmh-btn:hover{border-color:var(--electrique); color:var(--electrique) !important; background:#EEF5FE;}
+.gtmh-centre{flex:1 1 auto; display:flex; flex-direction:column; padding:28px 32px 30px; min-height:0;}
+.gtmh h1{margin:0; font-size:28px; font-weight:800; letter-spacing:-.3px; color:var(--encre); text-align:center;}
+.gtmh-qui{margin:6px 0 22px; text-align:center; font-size:15.5px; color:var(--encre2);}
+.gtmh-qui b{color:var(--encre);}
+
+/* ---------- Cartes (base commune) ---------- */
+.gtmh-carte{position:relative; display:flex; text-align:left; width:100%; background:var(--carte); color:var(--encre) !important; border:1.5px solid var(--trait); border-radius:16px; box-shadow:0 1px 2px rgba(11,31,58,.05),0 6px 18px rgba(11,31,58,.05); overflow:hidden; transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}
+.gtmh-carte:hover{transform:translateY(-3px); border-color:var(--gtmh); box-shadow:0 2px 4px rgba(11,31,58,.06),0 16px 34px rgba(11,31,58,.13);}
+.gtmh-carte:active{transform:translateY(-1px);}
+.gtmh button:focus-visible{outline:3px solid var(--electrique); outline-offset:2px;}
+.gtmh-aller{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#EEF5FE; color:var(--electrique); transition:background .16s,color .16s,transform .16s;}
+.gtmh-aller svg{width:19px; height:19px;}
+.gtmh-carte:hover .gtmh-aller{background:var(--electrique); color:#fff; transform:translateX(3px);}
+
+/* ---------- Écran 1 : sociétés ---------- */
+.gtmh-societes{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; min-height:250px; max-height:480px;}
+.gtmh-societes[data-n="1"]{grid-template-columns:minmax(0,520px); justify-content:center;}
+.gtmh-modules[data-n="1"],.gtmh-modules[data-n="2"]{max-height:260px;} .gtmh-modules[data-n="3"]{max-height:300px;}
+.gtmh-societes[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+.gtmh-soc-carte{flex-direction:column; padding:0;}
+.gtmh-soc-carte::before{content:''; display:block; flex:0 0 5px; background:var(--gtmh);}
+.gtmh-logo{flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:22px 26px 16px; min-height:120px; background:#fff;}
+.gtmh-logo img{display:block; width:auto !important; height:auto !important; max-width:100% !important; max-height:150px !important; object-fit:contain;}
+.gtmh-soc-pied{flex:0 0 auto; display:flex; align-items:center; gap:14px; padding:16px 22px 18px; border-top:1px solid var(--trait); background:#FAFBFD;}
+.gtmh-soc-txt{flex:1 1 auto; min-width:0;}
+.gtmh-nom{display:block; font-size:21px; font-weight:800; letter-spacing:-.2px; color:var(--encre);}
+.gtmh-sous{display:block; margin-top:3px; font-size:15px; color:var(--encre2);}
+.gtmh-groupe{flex:0 0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-top:22px;}
+.gtmh-groupe[data-n="1"]{grid-template-columns:minmax(0,1fr);}
+.gtmh-groupe-titre{margin:26px 0 0; font-size:12px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:var(--encre2);}
+.gtmh-groupe-titre + .gtmh-groupe{margin-top:10px;}
+.gtmh-tuile{align-items:center; gap:16px; padding:16px 20px; min-height:84px;}
+.gtmh-tuile .gtmh-ico{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:13px; background:#EEF5FE; color:var(--electrique);}
+.gtmh-tuile .gtmh-ico svg{width:26px; height:26px;}
+.gtmh-tuile .gtmh-nom{font-size:18px;}
+.gtmh-tuile .gtmh-sous{font-size:14.5px;}
+.gtmh-tuile.fort{background:var(--nuit); border-color:var(--nuit); color:#fff !important;}
+.gtmh-tuile.fort .gtmh-nom{color:#fff;} .gtmh-tuile.fort .gtmh-sous{color:#B9C8DD;}
+.gtmh-tuile.fort .gtmh-ico{background:rgba(255,255,255,.12); color:#fff;}
+.gtmh-tuile.fort .gtmh-aller{background:var(--electrique); color:#fff;}
+.gtmh-tuile.fort:hover{border-color:var(--electrique);}
+
+/* ---------- Écran 2 : modules ---------- */
+.gtmh-bandeau{flex:0 0 auto; display:flex; align-items:center; gap:22px; padding:16px 24px; margin-bottom:22px; background:var(--carte); border:1.5px solid var(--trait); border-left:6px solid var(--gtmh); border-radius:16px;}
+.gtmh-bandeau .gtmh-logo{flex:0 0 auto; min-height:0; padding:0; width:190px; height:84px;}
+.gtmh-bandeau .gtmh-logo img{max-height:84px !important;}
+.gtmh-bandeau-txt{min-width:0; padding-left:22px; border-left:1px solid var(--trait);}
+.gtmh-bandeau-txt b{display:block; font-size:24px; font-weight:800; letter-spacing:-.2px;}
+.gtmh-bandeau-txt span{display:block; margin-top:2px; font-size:15.5px; color:var(--encre2);}
+.gtmh-mod .gtmh-qui{margin-bottom:18px;}
+.gtmh-modules{flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:minmax(118px,1fr); gap:20px; max-height:560px;}
+.gtmh-mod-carte{align-items:center; gap:18px; padding:18px 20px;}
+.gtmh-mod-carte .gtmh-mod-ico{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:66px; height:66px; border-radius:16px; background:#EEF5FE; color:var(--gtmh);}
+.gtmh-mod-carte .gtmh-mod-ico svg{width:32px !important; height:32px !important;}
+.gtmh-mod-carte .gtmh-mod-ico img{width:40px !important; height:auto !important;}
+.gtmh-mod-txt{flex:1 1 auto; min-width:0;}
+.gtmh-mod-carte .gtmh-nom{font-size:19.5px; line-height:1.2;}
+.gtmh-mod-carte .gtmh-sous{font-size:14.5px; line-height:1.35;}
+.gtmh-bas{display:none;}
+
+/* ---------- Grands écrans ---------- */
+@media (min-width:1500px){
+  .gtmh-cote{flex-basis:300px; padding:30px 22px 22px;}
+  .gtmh-centre{padding:34px 44px 36px;}
+  .gtmh h1{font-size:32px;} .gtmh-qui{font-size:17px;}
+  .gtmh-nom{font-size:24px;} .gtmh-sous{font-size:16.5px;}
+  .gtmh-logo img{max-height:160px !important;}
+  .gtmh-mod-carte .gtmh-mod-ico{width:78px; height:78px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:38px !important; height:38px !important;}
+  .gtmh-mod-carte .gtmh-nom{font-size:22.5px;} .gtmh-mod-carte .gtmh-sous{font-size:16px;}
+  .gtmh-modules{max-height:640px; gap:24px;} .gtmh-societes{max-height:540px; gap:26px;}
+  .gtmh-lien{font-size:16px; min-height:48px;}
+}
+@media (min-width:2200px){
+  .gtmh-cote{flex-basis:340px;}
+  .gtmh-centre{padding:44px 64px;}
+  .gtmh h1{font-size:38px;} .gtmh-qui{font-size:19px;}
+  .gtmh-nom{font-size:28px;} .gtmh-sous{font-size:19px;}
+  .gtmh-mod-carte .gtmh-nom{font-size:26px;} .gtmh-mod-carte .gtmh-sous{font-size:18.5px;}
+  .gtmh-modules{max-height:820px;} .gtmh-societes{max-height:680px;}
+  .gtmh-logo img{max-height:210px !important;}
+}
+/* ---------- Petits écrans d'ordinateur (hauteur 720 / 768) ---------- */
+@media (min-width:900px) and (max-height:790px){
+  .gtmh-barre{min-height:56px; padding-top:7px; padding-bottom:7px;}
+  .gtmh-centre{padding-top:18px; padding-bottom:18px;}
+  .gtmh h1{font-size:25px;} .gtmh-qui{margin-bottom:14px;}
+  .gtmh-bandeau{padding:10px 20px; margin-bottom:14px;} .gtmh-bandeau .gtmh-logo{height:62px;} .gtmh-bandeau .gtmh-logo img{max-height:62px !important;}
+  .gtmh-societes{min-height:220px; gap:18px;} .gtmh-logo{padding:14px 20px 10px; min-height:96px;} .gtmh-logo img{max-height:104px !important;}
+  .gtmh-soc-pied{padding:12px 18px 13px;}
+  .gtmh-groupe{margin-top:16px; gap:18px;} .gtmh-groupe-titre{margin-top:16px;} .gtmh-tuile{min-height:70px; padding:11px 18px;}
+  .gtmh-modules{gap:14px; grid-auto-rows:minmax(100px,1fr);}
+  .gtmh-nav{margin-top:18px;} .gtmh-cote{padding-top:18px;}
+}
+@media (min-width:900px) and (max-width:1180px){
+  .gtmh-cote{flex-basis:232px; padding-left:12px; padding-right:12px;}
+  .gtmh-centre,.gtmh-barre{padding-left:20px; padding-right:20px;}
+  .gtmh-mod-carte{gap:12px; padding:14px;} .gtmh-mod-carte .gtmh-mod-ico{width:54px; height:54px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:27px !important; height:27px !important;}
+  .gtmh-mod-carte .gtmh-nom{font-size:17.5px;} .gtmh-mod-carte .gtmh-sous{font-size:13.5px;}
+  .gtmh-societes,.gtmh-groupe{gap:14px;} .gtmh-nom{font-size:19px;}
+  .gtmh-aller{width:32px; height:32px;}
+}
+/* ---------- Tablettes et téléphones : la colonne devient un bandeau, les cartes s'empilent ---------- */
+@media (max-width:899px){
+  .gtmh{flex-direction:column;}
+  .gtmh-cote{flex:0 0 auto; flex-direction:row; align-items:center; padding:12px 16px; background-image:none;}
+  .gtmh-cote-photo::before{display:none;}
+  .gtmh-gtm img{width:40px; height:40px;} .gtmh-gtm b{font-size:18px;}
+  .gtmh-nav,.gtmh-cote-bas,.gtmh-devise{display:none;}
+  .gtmh-zone{min-height:0;}
+  .gtmh-barre{padding:8px 14px; min-height:56px;}
+  .gtmh-centre{padding:18px 14px 22px;}
+  .gtmh h1{font-size:23px;} .gtmh-qui{font-size:15px; margin-bottom:16px;}
+  .gtmh-societes{flex:0 0 auto; min-height:0; max-height:none; gap:14px;}
+  .gtmh-societes .gtmh-logo{min-height:150px; padding:16px;} .gtmh-societes .gtmh-logo img{max-height:118px !important;}
+  .gtmh-soc-pied{padding:12px 14px;} .gtmh-soc-pied .gtmh-aller{display:none;}
+  .gtmh-modules{flex:0 0 auto; grid-template-columns:repeat(2,minmax(0,1fr)); max-height:none; gap:12px; grid-auto-rows:auto;}
+  .gtmh-groupe{gap:14px;}
+  .gtmh-bandeau{padding:12px 16px; gap:14px; margin-bottom:16px;} .gtmh-bandeau .gtmh-logo{width:130px; height:62px;} .gtmh-bandeau .gtmh-logo img{max-height:62px !important;}
+  .gtmh-bandeau-txt{padding-left:14px;} .gtmh-bandeau-txt b{font-size:19px;}
+  .gtmh-bas{display:flex; gap:10px; margin-top:18px;} .gtmh-bas .gtmh-btn{flex:1; min-height:50px; font-size:15.5px;}
+  .gtmh-carte:hover{transform:none;}
+}
+@media (max-width:640px){
+  .gtmh-societes,.gtmh-societes[data-n="2"],.gtmh-modules,.gtmh-groupe{grid-template-columns:minmax(0,1fr);}
+  .gtmh-soc-carte{flex-direction:row; align-items:stretch;}
+  .gtmh-soc-carte::before{flex:0 0 6px;}
+  .gtmh-soc-carte .gtmh-logo{flex:0 0 118px; min-height:92px; padding:10px 12px;} .gtmh-soc-carte .gtmh-logo img{max-height:68px !important;}
+  .gtmh-soc-pied .gtmh-aller{display:inline-flex;}
+  .gtmh-soc-pied{flex:1 1 auto; border-top:0; border-left:1px solid var(--trait); padding:12px 14px;}
+  .gtmh-nom{font-size:19px;} .gtmh-mod-carte{padding:14px;} .gtmh-mod-carte .gtmh-mod-ico{width:54px; height:54px;} .gtmh-mod-carte .gtmh-mod-ico svg{width:27px !important; height:27px !important;}
+  .gtmh-user span{max-width:110px;} .gtmh-fil .gtmh-racine,.gtmh-fil .gtmh-sep{display:none;} .gtmh-fil span{overflow:hidden; text-overflow:ellipsis;} .gtmh-barre .gtmh-btn span{display:none;} .gtmh-barre .gtmh-btn{padding:8px 11px;}
+  .gtmh-bandeau .gtmh-logo{width:104px;}
+}
+/* contraste renforcé (écrans anciens / peu contrastés) : traits et textes secondaires plus marqués */
+html[data-affichage="renforce"] .gtmh{--trait:#9AA8BD; --trait-fort:#7A8BA3; --encre2:#22324A;}
+html[data-affichage="renforce"] .gtmh-carte{border-width:2px;}
+@media print{ .gtmh-cote,.gtmh-barre{display:none;} }
+/* Les cartes de module restent en bleu électrique (action principale) ; la couleur de la société ne marque que le bandeau. */
+.gtmh-mod-carte{--gtmh:var(--electrique);}
