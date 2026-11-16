@@ -486,7 +486,8 @@ function percApercuModele(f, titre, marque, imprimerTout){
   const fr = document.createElement('iframe'); fr.title = 'Aperçu de la facture'; fr.setAttribute('style', 'flex:1;width:100%;border:0;background:#525659');
   let zoom = 1, ajuste = true;
   const appliquer = () => { try { const b = fr.contentDocument && fr.contentDocument.body; if(!b) return; if(ajuste) zoom = Math.max(0.3, Math.min(3, (fr.clientWidth - 40) / (210 * 96 / 25.4))); b.style.zoom = String(zoom); } catch(e) {} };
-  const fermer = () => { ov.remove(); document.removeEventListener('keydown', clavier); window.removeEventListener('resize', appliquer); };
+  const retirer = () => { ov.remove(); document.removeEventListener('keydown', clavier); window.removeEventListener('resize', appliquer); };
+  const fermer = typeof gtmFenetreRetour === 'function' ? gtmFenetreRetour(retirer) : retirer;   // le bouton « retour » du téléphone ferme l'aperçu
   const clavier = (ev) => { if(ev.key === 'Escape') fermer(); };
   const imprimer = () => { try { const b = fr.contentDocument.body, z = b.style.zoom; b.style.zoom = '1'; fr.contentWindow.focus(); fr.contentWindow.print(); b.style.zoom = z; } catch(e) { showToast('Impression impossible ici'); } };
   const bouton = (txt, aide, fn, fort) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = aide; b.setAttribute('data-ap', aide);
@@ -499,6 +500,7 @@ function percApercuModele(f, titre, marque, imprimerTout){
   bouton('+', 'Agrandir', () => { ajuste = false; zoom = Math.min(3, zoom * 1.2); appliquer(); });
   bouton('✕ Fermer', 'Fermer', fermer);
   ov.appendChild(bar); ov.appendChild(fr); document.body.appendChild(ov);
+  ov.tabIndex = -1; try { ov.focus(); } catch(e) {}
   fr.addEventListener('load', () => { try { const st = fr.contentDocument.createElement('style'); st.textContent = '@media screen{html{background:#525659}body{background:transparent!important;width:210mm;margin:0 auto}.pg{background:#fff;margin:14px auto;box-shadow:0 2px 10px rgba(0,0,0,.45)}}'; fr.contentDocument.head.appendChild(st); } catch(e) {} setTimeout(appliquer, 60); if(imprimerTout) setTimeout(imprimerTout === 'pdf' ? () => bar.querySelector('[data-ap="Enregistrer en PDF"]').click() : imprimer, 500); });
   document.addEventListener('keydown', clavier); window.addEventListener('resize', appliquer);
   fr.srcdoc = percFactureModeleHtml(f, false, marque);
