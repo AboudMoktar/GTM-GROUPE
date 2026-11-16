@@ -4600,6 +4600,9 @@ function imprimerDoc(html, format, marge, titre){
   apercuDoc(full, titre, format, marge, imprimer);
 }
 function apercuDoc(full, titre, format, marge, imprimer){
+  /* dans l'application : l'aperçu est construit et géré par la page principale (ses boutons restent actifs même si ce
+     cadre est rechargé, et le bouton « retour » du téléphone le ferme) */
+  if (HOST && typeof HOST.apercu === "function"){ try { return HOST.apercu(full, titre, format, marge); } catch (e) {} }
   var D = document;
   try { if (HOST && window.parent && window.parent !== window && window.parent.document && window.parent.document.body) D = window.parent.document; } catch (e) {}
   var ancien = D.getElementById("pk-apercu"); if (ancien) ancien.remove();

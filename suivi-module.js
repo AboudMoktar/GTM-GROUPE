@@ -48,6 +48,7 @@ window.grpSuiviStore = {
   lectureSeule: () => !!(currentUser && currentUser.role === 'viewer'),
   toast: (msg) => showToast(msg),
   imprimer: (html, titre) => suiviImprimer(html, titre),
+  apercu: (full, titre, format, marge) => suiviApercu(full, titre, format, marge),
   // Facture TEK-TREND préparée à partir d'un export (voir facturation-percko-module.js)
   facturerExport: (x, forcer) => (activeModule !== 'gadh' && typeof percFacturerExport === 'function') ? percFacturerExport(x, forcer) : {ok:false, message:'Facturation indisponible ici.'},
   apercuFactureModele: (x, mode) => (activeModule !== 'gadh' && typeof percApercuFactureExport === 'function') ? percApercuFactureExport(x, mode) : false,
@@ -102,6 +103,54 @@ function suiviImprimer(html, titre){
   window.addEventListener('afterprint', nettoyer);
   document.title = titre || 'Document';
   setTimeout(() => { window.print(); }, 150);
+}
+
+// Bouton « retour » du téléphone : il ferme la fenêtre ouverte par-dessus l'écran (aperçu) au lieu de quitter l'application.
+// Renvoie la fonction à appeler pour une fermeture par bouton ; `fermer` retire réellement la fenêtre.
+function gtmFenetreRetour(fermer){
+  let ouvert = true, pousse = false;
+  const surRetour = () => { if(!ouvert) return; ouvert = false; window.removeEventListener('popstate', surRetour); fermer(); };
+  try { history.pushState({gtmFenetre:Date.now()}, ''); pousse = true; } catch(e) {}
+  window.addEventListener('popstate', surRetour);
+  return () => { if(!ouvert) return; if(pousse){ try { history.back(); return; } catch(e) {} } surRetour(); };
+}
+// Aperçu avant impression d'un document du suivi. Tout est construit et géré ICI (page principale) : avant, les boutons
+// appartenaient au cadre du suivi et ne répondaient plus dès que ce cadre était rechargé (bouton Fermer sans effet).
+function suiviApercu(full, titre, format, marge){
+  const ancien = document.getElementById('pk-apercu'); if(ancien) ancien.remove();
+  const pays = /landscape/.test(format), pw = pays ? 297 : 210, ph = pays ? 210 : 297; let zoom = 1, ajuste = true;
+  const ov = document.createElement('div'); ov.id = 'pk-apercu'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Aperçu avant impression');
+  ov.setAttribute('style', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483000;display:flex;flex-direction:column;background:#525659;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif');
+  const bar = document.createElement('div');
+  bar.setAttribute('style', 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;background:#1F3864;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)');
+  const t = document.createElement('div'); t.textContent = '👁 ' + String(titre).replace(/_/g, ' ') + ' · A4 ' + (pays ? 'paysage' : 'portrait');
+  t.setAttribute('style', 'flex:1 1 200px;min-width:0;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap');
+  bar.appendChild(t);
+  const fr = document.createElement('iframe'); fr.title = 'Aperçu'; fr.setAttribute('style', 'flex:1;width:100%;border:0;background:#525659');
+  const zone = () => { try { return fr.contentDocument && fr.contentDocument.getElementById('pk-doc-zone'); } catch(e) { return null; } };
+  const appliquer = () => { const z = zone(); if(!z) return; if(ajuste){ const px = pw * 96 / 25.4; zoom = Math.max(0.3, Math.min(4, (fr.clientWidth - 28) / px)); } z.style.zoom = String(zoom); };
+  const retirer = () => { ov.remove(); document.removeEventListener('keydown', clavier); window.removeEventListener('resize', appliquer); };
+  const fermer = gtmFenetreRetour(retirer);
+  const clavier = (ev) => { if(ev.key === 'Escape') fermer(); };
+  const bouton = (txt, aide, fn, fort) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = aide; b.setAttribute('data-ap', aide);
+    b.setAttribute('style', 'border:0;border-radius:10px;padding:8px 14px;min-height:40px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;' + (fort ? 'background:#fff;color:#1F3864' : 'background:rgba(255,255,255,.16);color:#fff'));
+    b.addEventListener('click', fn); bar.appendChild(b); return b; };
+  bouton('🖨 Imprimer', 'Imprimer', () => suiviImprimer(full, titre), true);
+  bouton('−', 'Réduire', () => { ajuste = false; zoom = Math.max(0.3, zoom / 1.2); appliquer(); });
+  bouton('↔ Ajuster', 'Ajuster à l\'écran', () => { ajuste = true; appliquer(); });
+  bouton('+', 'Agrandir', () => { ajuste = false; zoom = Math.min(4, zoom * 1.2); appliquer(); });
+  bouton('✕ Fermer', 'Fermer', fermer);
+  ov.appendChild(bar); ov.appendChild(fr); document.body.appendChild(ov);
+  ov.tabIndex = -1; try { ov.focus(); } catch(e) {}   // le clavier (Échap) agit sur l'aperçu, pas sur le cadre resté dessous
+  fr.addEventListener('load', appliquer);
+  fr.srcdoc = '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    'html,body{margin:0;padding:0;background:#525659}' +
+    '#pk-doc-zone{display:block!important;box-sizing:border-box;width:' + pw + 'mm;min-height:' + ph + 'mm;padding:' + marge + ';margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.45)}' +
+    '#pk-doc-zone .grl-saut,#pk-doc-zone .sec-colis,#pk-doc-zone .sec-total{margin-top:8mm;padding-top:8mm;border-top:3px dashed #9aa4b5}' +
+    '#pk-doc-zone .etq-page{margin-bottom:8mm;padding-bottom:8mm;border-bottom:3px dashed #9aa4b5}' +
+    '</style></head><body><div id="pk-doc-zone">' + full + '</div></body></html>';
+  document.addEventListener('keydown', clavier); window.addEventListener('resize', appliquer);
+  return ov;
 }
 
 function renderSuiviFrame(main){
