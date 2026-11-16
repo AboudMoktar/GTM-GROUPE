@@ -1499,6 +1499,7 @@ function renderShell(){
 
   document.getElementById('app').innerHTML = `
     <div class="sidebar no-print">
+      ${activeSociete === 'tek' && typeof gtmhNomGroupe === 'function' ? gtmhNomGroupe(true, 'gtmhArcSide') : ''}
       <div class="side-logo">${appBrandingHTML()}${activeSociete && SOCIETES[activeSociete] ? `<span class="side-soc">${esc(SOCIETES[activeSociete].nom)}</span>` : ''}</div>
       <nav>${items.filter(i=>i.cote!==false).map(i=>navBtn(i,'')).join('')}</nav>
       <div class="side-sep"></div>
@@ -1510,6 +1511,7 @@ function renderShell(){
     <div class="app-body">
       <div class="topbar no-print">
         ${appBrandingHTML()}
+        ${activeSociete === 'tek' && peutChangerDeModule() && typeof GTMH_ICO !== 'undefined' ? `<button class="tb-maison" onclick="switchModule()" title="Accueil : choix du module" aria-label="Accueil">${GTMH_ICO.maison}</button>` : ''}
         <div class="tb-titre" id="tb-titre"></div>
         <div class="user-chip">
           <div class="sync-wrap">
@@ -3151,6 +3153,7 @@ window.onload = init;
 <link rel="stylesheet" href="./charte.css">
 <link rel="stylesheet" href="./multiplateforme.css">
 <link rel="stylesheet" href="./accueil.css">
+<link rel="stylesheet" href="./modules-tek.css">
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', function(){

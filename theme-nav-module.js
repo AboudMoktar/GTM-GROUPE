@@ -60,7 +60,11 @@ function navMajTitre(){
   const it = (typeof navItems === 'function' ? navItems() : []).find(i => i.tab === activeTab);
   const soc = (typeof SOCIETES !== 'undefined' && typeof activeSociete !== 'undefined' && SOCIETES[activeSociete]) ? SOCIETES[activeSociete].nom : '';
   const t = it ? String(it.label || '') : '';
-  z.innerHTML = (soc ? '<span class="tb-soc">' + esc(soc) + '</span><span class="tb-sep"></span>' : '') + '<span>' + esc(t) + '</span>';
+  // TEK-TREND : fil d'Ariane « Société / Module / Onglet » (le module est omis s'il porte le même nom que l'onglet).
+  const MODS = {'tek-dashboard':'Tableau de bord', rendement:'Gestion Rendement', chaine:'Suivi chaîne', rh:'Ressources humaines', commandes:'Suivi des Commandes', factures:'Facturation'};
+  const mod = (typeof activeSociete !== 'undefined' && activeSociete === 'tek' && typeof activeModule !== 'undefined') ? (MODS[activeModule] || '') : '';
+  z.innerHTML = (soc ? '<span class="tb-soc">' + esc(soc) + '</span><span class="tb-sep"></span>' : '')
+    + (mod && mod !== t ? '<span class="tb-mod">' + esc(mod) + '</span><span class="tb-sep"></span>' : '') + '<span>' + esc(t) + '</span>';
 }
 window.nav = function(){ const r = navThemeOrigine.apply(this, arguments); try { navMajBarre(); navMajTitre(); } catch(e) {} return r; };
 const navThemeShell = window.renderShell;
