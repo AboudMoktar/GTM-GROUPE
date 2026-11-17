@@ -19,7 +19,7 @@ Accès complet aux trois sociétés · gestion des comptes · configuration · s
 | TEK-TREND | Rendement | Suivi de commande v4 (prod_commandes, bons, saisies, étapes) | oui | oui | oui | oui |
 | TEK-TREND | RH | Salariés, pointages, absences | oui | oui | oui | oui |
 | TEK-TREND | RH | Dossiers RH et départements | oui | oui | oui | oui |
-| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs | oui | oui | oui | oui |
+| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs, historique | oui | oui | oui | oui |
 | TEK-TREND | Machines | Machines, arrêts, horaires machines | oui | oui | oui | oui |
 | TEK-TREND | Stock | Stock : mouvements, commandes fournisseurs, réglages | oui | oui | oui | oui |
 | TEK-TREND | Messages | Messages internes (onglet retiré de l'interface) | oui | oui | oui | oui |
@@ -52,7 +52,7 @@ Accès complet à TEK-TREND et GADH TUNISIA. Rôle technique : `admin`. Sociét�
 | TEK-TREND | Rendement | Suivi de commande v4 (prod_commandes, bons, saisies, étapes) | oui | oui | oui | oui |
 | TEK-TREND | RH | Salariés, pointages, absences | oui | oui | oui | oui |
 | TEK-TREND | RH | Dossiers RH et départements | oui | oui | oui | oui |
-| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs | oui | oui | oui | oui |
+| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs, historique | oui | oui | oui | oui |
 | TEK-TREND | Machines | Machines, arrêts, horaires machines | oui | oui | oui | oui |
 | TEK-TREND | Stock | Stock : mouvements, commandes fournisseurs, réglages | oui | oui | oui | oui |
 | TEK-TREND | Messages | Messages internes (onglet retiré de l'interface) | oui | oui | oui | oui |
@@ -75,7 +75,7 @@ Ressources humaines et facturation TEK-TREND. Rôle technique : `admin`. Sociét
 | TEK-TREND | Rendement | Horaires de travail (schedule) | oui | — | — | — |
 | TEK-TREND | RH | Salariés, pointages, absences | oui | oui | oui | oui (sauf collections protégées) |
 | TEK-TREND | RH | Dossiers RH et départements | oui | oui | oui | oui (sauf collections protégées) |
-| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs | oui | oui | oui | oui (sauf collections protégées) |
+| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs, historique | oui | oui | oui | oui (sauf collections protégées) |
 | TEK-TREND ↔ GADH | Commandes | Commandes PERCKO : commandes, saisies, historique, expéditions, emballage | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Suivi PERCKO : lots, envois et retours GADH | oui | — | — | — |
 | TEK-TREND ↔ GADH | Commandes | Catalogue des références | oui | — | — | — |
@@ -159,7 +159,7 @@ Lecture seule sur les trois sociétés · aucune modification. Rôle technique :
 | TEK-TREND | Rendement | Suivi de commande v4 (prod_commandes, bons, saisies, étapes) | oui | — | — | — |
 | TEK-TREND | RH | Salariés, pointages, absences | oui | — | — | — |
 | TEK-TREND | RH | Dossiers RH et départements | oui | — | — | — |
-| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs | oui | — | — | — |
+| TEK-TREND | Facturation | Factures, clients facturés, paramètres, compteurs, historique | oui | — | — | — |
 | TEK-TREND | Machines | Machines, arrêts, horaires machines | oui | — | — | — |
 | TEK-TREND | Stock | Stock : mouvements, commandes fournisseurs, réglages | oui | — | — | — |
 | TEK-TREND | Messages | Messages internes (onglet retiré de l'interface) | oui | — | — | — |
