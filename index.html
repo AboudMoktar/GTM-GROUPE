@@ -1584,6 +1584,7 @@ function nav(tab){
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
   else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
+  else if(tab === 'cmd-historique'){ renderHistoriqueTek(main); }
   else if(tab.indexOf('gc-') === 0){ renderGC(tab, main); }
   else if(tab.indexOf('mgt-') === 0){ renderMgt(tab, main); }
   else if(tab.indexOf('fact-') === 0){ renderFact(tab, main); }
@@ -3114,6 +3115,7 @@ window.onload = init;
 <script src="./factures-module.js"></script>
 <script src="./facturation-percko-module.js"></script>
 <script src="./facturation-saisie-module.js"></script>
+<script src="./historique-tek-module.js"></script>
 <script src="./machines-module.js"></script>
 <script src="./gadh-gc-calcul.js"></script>
 <script src="./gadh-gc-module.js"></script>

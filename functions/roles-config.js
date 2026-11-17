@@ -36,7 +36,7 @@
     'tek.suivi_v4':         {societe:'tek', module:'Rendement', libelle:'Suivi de commande v4 (prod_commandes, bons, saisies, étapes)', dossier:'tek', cles:['prod_commandes', 'prod_bons', 'prod_v4_migre'], prefixes:['prod_saisies_', 'prod_stage_']},
     'tek.rh_presence':      {societe:'tek', module:'RH', libelle:'Salariés, pointages, absences', dossier:'tek', cles:['employees', 'absence_periods'], prefixes:['attendance_']},
     'tek.rh_dossiers':      {societe:'tek', module:'RH', libelle:'Dossiers RH et départements', dossier:'tek', cles:['rh_departements'], prefixes:['rh_base_']},
-    'tek.facturation':      {societe:'tek', module:'Facturation', libelle:'Factures, clients facturés, paramètres, compteurs', dossier:'tek', cles:['factures', 'fact_clients', 'fact_params', 'fact_compteurs']},
+    'tek.facturation':      {societe:'tek', module:'Facturation', libelle:'Factures, clients facturés, paramètres, compteurs, historique', dossier:'tek', cles:['factures', 'fact_clients', 'fact_params', 'fact_compteurs', 'fact_historique']},
     'tek.machines':         {societe:'tek', module:'Machines', libelle:'Machines, arrêts, horaires machines', dossier:'tek', prefixes:['tek_']},
     'tek.stock':            {societe:'tek', module:'Stock', libelle:'Stock : mouvements, commandes fournisseurs, réglages', dossier:'tek', prefixes:['stk_']},
     'tek.messages':         {societe:'tek', module:'Messages', libelle:'Messages internes (onglet retiré de l\'interface)', dossier:'tek', cles:['messages']},

@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+// Historique TEK-TREND : commandes (quantités totales par commande et par mois) et saisie rapide des factures
+// (numéro, date, montant). Données inventées. Lancement (dans tests/) : npm run historique-tek
+'use strict';
+const {chromium} = require('playwright'); const serveur = require(__dirname + '/serveur.js');
+let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) echecs++; }
+(async () => {
+  const s = serveur.demarrer(8787), b = await chromium.launch();
+  const p = await (await b.newContext({viewport:{width:1366, height:768}, serviceWorkers:'block'})).newPage(); const err = [];
+  p.on('pageerror', e => { if (!/firebase/i.test(e.message)) err.push(e.message); });
+  await p.route(u => !String(u).startsWith('http://localhost'), r => r.abort());
+  await p.goto('http://localhost:8787/index.html'); await p.waitForFunction(() => typeof renderHistoriqueTek === 'function');
+  const prep = (role) => p.evaluate(role => { hlEcritureAutorisee = () => true;
+    currentUser = {username:'u', nom:'Essai', role, profil:role === 'admin' ? 'sysadmin' : 'lecture', groupe:role === 'admin', societes:{tek:true}};
+    activeSociete = 'tek'; activeModule = 'factures'; renderShell(); nav('fact-historique'); }, role);
+  await p.evaluate(() => { memoryCache['grp1_fact_clients'] = {defaut:{nom:'PERCKO'}}; memoryCache['grp1_fact_compteurs'] = {FA:{'2026':28}};
+    memoryCache['grp1_factures'] = {x27:{type:'facture', numero:'FA26/027', statut:'emise', date:'2026-10-10', clientId:'defaut', client:{nom:'PERCKO'}, lignes:[{designation:'a', qte:1, pu:20}], tva:0, timbre:0, paiements:[]}}; });
+  await prep('admin'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => [...document.querySelectorAll('.sidebar nav button[data-tab]')].map(x => x.textContent.trim()).join('|')) === 'Factures|Historique|Clients|Réglages', 'Facturation : onglet « Historique »');
+  ok(await p.inputValue('#hk-num') === 'PK202601-1', 'premier numéro proposé : PK202601-1');
+  const ajout = async (n, a, br, exo) => { await p.fill('#hk-num', n); await p.fill('#hk-sv', String(a)); await p.fill('#hk-br', String(br)); await p.fill('#hk-exo', String(exo)); await p.click('text=Ajouter'); await p.waitForTimeout(200); };
+  await ajout('PK202601-1', 1200, 300, 40); await ajout('pk202602-1', 900, 150, 0); await ajout('PK202602-2', 100, 0, 10);
+  ok(await p.inputValue('#hk-num') === 'PK202603-1', 'numéro suivant proposé : PK202603-1');
+  await ajout('PK202601-1', 5, 0, 0);
+  ok(await p.evaluate(() => Object.keys(getJSON('fact_historique', {}).commandes).length) === 3, 'commande déjà saisie : refusée');
+  await ajout('PK202613-1', 5, 0, 0);
+  ok(await p.evaluate(() => Object.keys(getJSON('fact_historique', {}).commandes).length) === 3, 'mois 13 : refusé');
+  const tab = await p.evaluate(() => [...document.querySelectorAll('.hk-tab')[0].querySelectorAll('tbody tr')].map(tr => [...tr.cells].map(c => (c.querySelector('input') ? c.querySelector('input').value : c.textContent).replace(/\s/g, '')).join('|')));
+  ok(tab[0] === 'Janvier2026|1200|300|40|1540|' && tab[2] === 'Février2026|1000|150|10|1160|' && tab[5] === 'Total2026|2200|450|50|2700|', 'regroupement par mois et totaux (' + tab.join(' ; ') + ')');
+  ok(await p.evaluate(() => [...document.querySelectorAll('.hk-kpi b')].map(x => x.textContent.replace(/\s/g, '')).slice(0, 5).join('|')) === '3|2700|2200|450|50', 'compteurs : 3 commandes, 2 700 pièces, 2 200 / 450 / 50');
+  // correction d'une quantité et suppression
+  await p.locator('tr', {hasText:'PK202602-2'}).locator('.hk-q').nth(0).fill('150'); await p.locator('tr', {hasText:'PK202602-2'}).locator('.hk-q').nth(0).dispatchEvent('change'); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => Object.values(getJSON('fact_historique', {}).commandes).find(c => c.num === 'PK202602-2').sv) === 150, 'quantité corrigée directement dans le tableau');
+  p.once('dialog', d => d.accept()); await p.locator('tr', {hasText:'PK202602-2'}).locator('button').click(); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => Object.keys(getJSON('fact_historique', {}).commandes).length) === 2, 'commande supprimée de l\'historique');
+  // factures : numéros manquants proposés d'abord
+  const l = p.locator('#hk-fact .hk-lf');
+  ok(await l.nth(0).locator('.hk-fn').inputValue() === 'FA26/001' && await l.nth(2).locator('.hk-fn').inputValue() === 'FA26/003', 'saisie rapide : propose FA26/001, 002, 003 (numéros manquants)');
+  await l.nth(0).locator('.hk-fd').fill('2026-01-31'); await l.nth(0).locator('.hk-fm').fill('15230.5'); await l.nth(0).locator('.hk-fc').fill('pk202601-1');
+  await l.nth(1).locator('.hk-fd').fill('2025-02-27'); await l.nth(1).locator('.hk-fm').fill('9870');
+  await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => Object.keys(factToutes('tek')).length) === 1, 'date d\'une autre année : rien n\'est enregistré');
+  await l.nth(1).locator('.hk-fd').fill('2026-02-27'); await l.nth(1).locator('.hk-fp').uncheck();
+  await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
+  const F = await p.evaluate(() => Object.values(factToutes('tek')).filter(f => f.numero !== 'FA26/027').map(f => ({n:f.numero, d:f.date, ech:f.echeance, ttc:factTotaux(f).ttc, st:factStatut(f, factToutes('tek')), o:f.objet, or:f.origine.type})));
+  ok(F.length === 2 && F[0].n === 'FA26/001' && F[0].ttc === 15230.5 && F[0].st === 'payee' && F[0].o === 'PK202601-1' && F[0].or === 'saisie', 'FA26/001 enregistrée : 15 230,50 €, payée, commande PK202601-1');
+  ok(F[1].n === 'FA26/002' && F[1].ttc === 9870 && F[1].st !== 'payee' && F[1].ech === '2026-03-29', 'FA26/002 non payée : échéance à 30 jours');
+  ok(await p.evaluate(() => getJSON('fact_compteurs', {}).FA['2026']) === 28, 'compteur inchangé (28) : la prochaine facture reste FA26/029');
+  ok(await p.evaluate(() => /FA26\/003/.test(document.querySelector('.hk-manq').textContent) && !/FA26\/001/.test(document.querySelector('.hk-manq').textContent)), 'numéros manquants mis à jour');
+  // doublon refusé
+  await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fn').fill('FA26/027'); await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fd').fill('2026-10-11'); await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fm').fill('5');
+  await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => Object.keys(factToutes('tek')).length) === 3, 'numéro existant : refusé');
+  // même écran depuis Suivi des Commandes
+  await p.evaluate(() => { activeModule = 'commandes'; renderShell(); nav('cmd-historique'); }); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => !!document.querySelector('.hk-tab') && [...document.querySelectorAll('.sidebar nav button[data-tab]')].map(x => x.textContent.trim()).join('|') === 'Commandes|Historique'), 'Suivi des Commandes : onglet « Historique » (même écran)');
+  // lecture seule
+  await prep('viewer'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => !document.getElementById('hk-num') && !document.getElementById('hk-fact') && document.querySelectorAll('.hk-tab .hk-q').length === 0 && /PK202601-1/.test(document.body.innerText)), 'compte en lecture : consultation sans saisie');
+  ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
+  console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur');
+  await b.close(); s.close(); process.exit(echecs ? 1 : 0);
+})();
