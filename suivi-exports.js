@@ -1028,7 +1028,7 @@ function etatCommandeGrid(e, lot, opt){
     .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : [SV.titreEmb, "Reste"])
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = CM ? 28 : 40;
-  var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"}, tCtl = 0;
+  var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"}, tCtl = 0, ctlNote = [];
   refs.forEach(function(x){
     var rr = r + 1, col = couleurLib(x.lib), mod = modelOf(x.lib) || x.lib;
     if (mod !== pm){ mt = r; pm = mod; } tm[mt] = r;
@@ -1044,7 +1044,7 @@ function etatCommandeGrid(e, lot, opt){
       gset(g, r, cSt, "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
       cols.forEach(function(c, i){ var v = rx.ex[c.id] || 0; gset(g, r, cE + i, v || "", c.av ? C : {b:1, sz:10, al:"c", bd:"t"}); });
       gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
-      var s1 = cE; tCtl += ch.controle;
+      var s1 = cE; tCtl += ch.controle; if (ch.controle) ctlNote.push({lib:x.lib, size:x.size, q:ch.controle});
       /* les pièces contrôlées (pas encore emballées) n'ont pas de colonne : elles sont retirées du reste (16/11/2026) */
       gset(g, r, cR, ch.reste, {b:1, sz:10, al:"c", bd:"t"});
       g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + ")" + (ch.controle ? "-" + ch.controle : "") + ")";
@@ -1066,6 +1066,13 @@ function etatCommandeGrid(e, lot, opt){
   if (!CM){ var s0 = cE, tE = tCtl; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
     g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cEmb) + (r + 1) + ")" + (tCtl ? "-" + tCtl : "") + ")"; }
   g.rows[r].h = 18; g.sticky = 3;
+  /* renvoi sous le tableau : pièces contrôlées pas encore emballées (déjà retirées du reste, sans colonne à elles) */
+  if (!CM && ctlNote.length){
+    var last = cR, par = {}, ordre = [];
+    ctlNote.forEach(function(n){ if (!par[n.lib]){ par[n.lib] = []; ordre.push(n.lib); } par[n.lib].push(n.size + " : " + n.q); });
+    r += 2; gset(g, r, 0, "Contrôlés, pas encore emballés (déjà déduits du reste) — " + tCtl + " pièce" + (tCtl > 1 ? "s" : ""), {b:1, sz:10, al:"l"}); gmerge(g, r, 0, r, last); g.rows[r].h = 16;
+    ordre.forEach(function(lib){ r++; gset(g, r, 0, "• " + nomDoc(lib) + " — " + par[lib].join(" · "), {sz:10, al:"l"}); gmerge(g, r, 0, r, last); g.rows[r].h = 15; });
+  }
   return g;
 }
 /* état de la commande (tout le lot, tous ses exports) : depuis le suivi, la commande ou l'archive */
