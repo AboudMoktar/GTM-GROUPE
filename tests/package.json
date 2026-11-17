@@ -52,7 +52,8 @@
     "facture-export": "node facture-export.js",
     "apercu-fermer": "node apercu-fermer.js",
     "sous-pages": "node sous-pages.js",
-    "ouverture-lente": "node ouverture-lente.js"
+    "ouverture-lente": "node ouverture-lente.js",
+    "facture-suppression": "node facture-suppression.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

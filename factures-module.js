@@ -11,8 +11,8 @@
 //            tva, timbre (montant du timbre fiscal, 0 si aucun), paiements:[{date, montant, mode, ref}],
 //            relances:[date], origine:{type, id, du, au, etape}, factureLiee (avoir → facture), notes}
 // Le numéro (FA-2026-001, AV-2026-001) n'est attribué qu'à l'émission, pour une
-// numérotation continue sans trou. Une facture émise ne se supprime pas : on la
-// corrige par un avoir.
+// numérotation continue sans trou. Une facture émise se corrige normalement par un avoir ; seul un administrateur peut la
+// supprimer (erreur, doublon) : voir factSupprimerEmise.
 //
 // Factures préparées automatiquement :
 //  - MGT : devis accepté, ticket SAV (main d'œuvre, déplacements, pièces), contrat de maintenance ;
@@ -266,6 +266,7 @@ function renderFactEdit(main){
       ${f.statut === 'brouillon' ? `<button class="btn btn-primary" style="flex:1 1 100%;" onclick="factEmettre('${id}')">Émettre ${avoir ? 'l\'avoir' : 'la facture'}</button>
         <button class="btn btn-ghost" style="flex:1;color:var(--bad);" onclick="factSupprimer('${id}')">Supprimer le brouillon</button>` : ''}
       ${f.statut === 'emise' && !avoir ? `<button class="btn btn-ghost" style="flex:1;" onclick="factCreerAvoir('${id}')">Créer un avoir</button>` : ''}
+      ${f.statut === 'emise' && factPeutSupprimerEmise() ? `<button class="btn btn-ghost" style="flex:1 1 100%;color:var(--bad);border-color:var(--bad);" onclick="factSupprimerEmise('${id}')">Supprimer ${avoir ? 'l\'avoir' : 'la facture'} ${esc(f.numero || '')}</button>` : ''}
       ${st === 'retard' ? `<button class="btn btn-ghost" style="flex:1;" onclick="factRelancer('${id}')">Lettre de relance</button>` : ''}
     </div>` : ''}`;
 }
@@ -306,6 +307,39 @@ window.factSupprimer = (id) => {
   const o = f.origine, col = o && {devis:'devis', ticket:'tickets', contrat:'contrats'}[o.type];
   if(col){ const x = mgtGet(col); if(x[o.id] && x[o.id].factureId === id){ delete x[o.id].factureId; mgtSet(col, x); } }
   delete l[id]; factEnregistrer(soc, l); nav('fact-liste');
+};
+// Supprimer une facture (ou un avoir) déjà émise : réservé aux administrateurs, pour corriger une erreur
+// (facture en double, essai, mauvaise saisie). Confirmation en retapant le numéro. Si c'est le dernier
+// numéro de l'année, le compteur recule : le prochain document reprend ce numéro, sans trou.
+// Une facture qui a un avoir doit d'abord perdre son avoir. L'export, le devis, le ticket ou le contrat
+// d'origine redevient facturable. La suppression est tracée dans le journal (comme toute modification).
+function factPeutSupprimerEmise(){ return !!currentUser && currentUser.role === 'admin'; }
+function factRangNumero(num){
+  const m = String(num || '').match(/^(FA|AV)(?:-(\d{4})-|(\d{2})\/)(\d+)$/);
+  if(!m) return null;
+  return {p:m[1], annee:m[2] || ('20' + m[3]), rang:parseInt(m[4], 10)};
+}
+window.factSupprimerEmise = (id) => {
+  const soc = factSoc(), l = factToutes(soc), f = l[id];
+  if(!f || f.statut !== 'emise' || !factPeutSupprimerEmise()) return;
+  const doc = f.type === 'avoir' ? 'l\'avoir' : 'la facture';
+  if(f.type !== 'avoir' && Object.values(l).some(a => a.type === 'avoir' && a.factureLiee === id)){ showToast('Cette facture a un avoir : supprimez d\'abord l\'avoir'); return; }
+  const r = factRangNumero(f.numero), cle = factCle(soc, 'fact_compteurs'), c = getJSON(cle, {}) || {};
+  const dernier = !!(r && c[r.p] && Number(c[r.p][r.annee]) === r.rang);
+  const t = factTotaux(f, l);
+  const msg = 'Supprimer définitivement ' + doc + ' ' + f.numero + ' (' + fmtDT(t.ttc) + ') ?\n\n'
+    + ((f.paiements || []).length ? '⚠ Elle a ' + f.paiements.length + ' paiement(s) enregistré(s) : ils seront supprimés aussi.\n' : '')
+    + (dernier ? 'C\'est le dernier numéro : le prochain document reprendra le numéro ' + f.numero + '.\n' : '⚠ Ce n\'est pas le dernier numéro : il restera un trou dans la numérotation.\n')
+    + '\nPour confirmer, tapez le numéro : ' + f.numero;
+  const rep = prompt(msg, '');
+  if(rep === null) return;
+  if(rep.trim().toUpperCase() !== String(f.numero).toUpperCase()){ showToast('Numéro différent : rien n\'a été supprimé'); return; }
+  const o = f.origine, col = o && {devis:'devis', ticket:'tickets', contrat:'contrats'}[o.type];
+  if(col && typeof mgtGet === 'function'){ const x = mgtGet(col); if(x[o.id] && x[o.id].factureId === id){ delete x[o.id].factureId; mgtSet(col, x); } }
+  delete l[id]; factEnregistrer(soc, l);
+  if(dernier){ c[r.p][r.annee] = r.rang - 1; setJSON(cle, c); }
+  showToast((f.type === 'avoir' ? 'Avoir ' : 'Facture ') + f.numero + ' supprimé' + (f.type === 'avoir' ? '' : 'e'));
+  nav('fact-liste');
 };
 window.factCreerAvoir = (id) => {
   const soc = factSoc(), f = factToutes(soc)[id]; if(!f) return;
