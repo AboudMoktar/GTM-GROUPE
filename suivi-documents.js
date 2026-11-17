@@ -95,7 +95,7 @@ function groupes(lot){
       .sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : a.n - b.n; });
     exs.forEach(function(e){
       var titre = "🚚 Export N°" + e.n + " du " + dmyL(e.d) + " · " + (e.nat || e.cl) + (e.st === "fini" ? " · expédié" : " · en cours");
-      function d(quoi, t, s, o){ return {t:t, s:s, o:o, sansOri:quoi === "fiches", apercu:function(){ X().imprimerX(e, quoi, quoi === "fiches" ? null : ori(this)); }, pdf:function(){ X().pdfDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }, excel:function(){ X().excelDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }}; }
+      function d(quoi, t, s, o){ return {t:t, s:s, o:o, sansOri:quoi === "fiches", fiches:quoi === "fiches", apercu:function(){ X().imprimerX(e, quoi, quoi === "fiches" ? null : ori(this)); }, pdf:function(){ X().pdfDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }, excel:function(){ X().excelDoc(e, quoi, quoi === "fiches" ? null : ori(this)); }}; }
       out.push({t:titre, docs:[
         d("fiches", "Fiches cartons", "Une fiche par carton, avec le logo", "landscape"),
         d("colis", "Liste de colisage", "Commande de chaque ligne, total, nombre de colis, poids", "landscape"),
@@ -137,7 +137,8 @@ window.vDocuments = function(v){
     var c = el("div", {class:"card dc-grp"}, el("h2", null, g.t)), l = el("div", {class:"dc-l"});
     g.docs.forEach(function(d){
       l.appendChild(el("div", {class:"dc-d", "data-doc":d.t},
-        el("div", null, el("div", {class:"dc-n"}, d.t, el("span", {class:"dc-f", text:"A4 " + (ori(d) === "landscape" ? "paysage" : "portrait")})), el("div", {class:"dc-s", text:d.s})),
+        el("div", null, el("div", {class:"dc-n"}, d.t, el("span", {class:"dc-f", text:d.fiches && typeof etqChoix === "function" ? "A4 " + (etqChoix().ori === "landscape" ? "paysage" : "portrait") + " · " + etqChoix().n + " par feuille" : "A4 " + (ori(d) === "landscape" ? "paysage" : "portrait")})), el("div", {class:"dc-s", text:d.s}),
+          d.fiches && typeof etqChoixUI === "function" ? etqChoixUI() : null),
         el("div", {class:"dc-b"},
           d.sansOri ? null : el("div", {class:"dc-o", role:"group", "aria-label":"Orientation de l'impression"},
             [["portrait", "▯ Portrait"], ["landscape", "▭ Paysage"]].map(function(o){ return el("button", {type:"button", class:ori(d) === o[0] ? "on" : "", "data-ori":o[0], "aria-pressed":String(ori(d) === o[0]), text:o[1], onclick:function(){ choisirOri(d, o[0]); render(true); }}); })),
