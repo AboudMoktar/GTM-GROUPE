@@ -3,8 +3,8 @@
   "short_name": "GTM",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#7b1634",
-  "theme_color": "#0d3441",
+  "background_color": "#0B1F3A",
+  "theme_color": "#0B1F3A",
   "lang": "fr",
   "icons": [
     {

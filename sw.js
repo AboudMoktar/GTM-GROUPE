@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v293';
+const CACHE_NAME = 'groupe-v294';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -126,6 +126,30 @@ function isAppShellDocument(request){
   return url.origin === self.location.origin && (url.pathname.endsWith('/') || url.pathname.endsWith('index.html'));
 }
 
+// Réseau d'abord, mais jamais d'attente sans fin : si le réseau ne répond pas en
+// DELAI_RESEAU ms et que le fichier est en cache, on affiche la version en cache
+// (le téléchargement continue en arrière-plan et met le cache à jour pour la
+// prochaine ouverture). Sans cela, une connexion lente ou bloquée (PC de bureau,
+// Wi-Fi faible) laissait la fenêtre de l'application vide (couleur unie) au lancement.
+const DELAI_RESEAU = 3000;
+function reseauDabord(request, estPage){
+  const reseau = fetch(request, {cache:'no-cache'}).then(function(response){
+    if(response && response.ok){
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then(function(cache){ cache.put(request, copy); });
+    }
+    return response;
+  });
+  const secours = function(){
+    return caches.match(request).then(function(cached){ return cached || (estPage ? caches.match('./index.html') : undefined); });
+  };
+  return secours().then(function(cached){
+    if(!cached) return reseau.catch(function(){ return secours(); });
+    const delai = new Promise(function(resolve){ setTimeout(function(){ resolve(cached); }, DELAI_RESEAU); });
+    return Promise.race([reseau.catch(function(){ return cached; }), delai]);
+  });
+}
+
 self.addEventListener('fetch', function(event){
   if(event.request.method !== 'GET') return;
 
@@ -134,17 +158,7 @@ self.addEventListener('fetch', function(event){
   // sans avoir besoin de rouvrir l'app une seconde fois. Le cache ne sert que
   // de secours si l'appareil est hors connexion.
   if(isAppShellDocument(event.request) || isSiteCode(event.request)){
-    event.respondWith(
-      fetch(event.request, {cache:'no-cache'}).then(function(response){
-        if(response && response.ok){
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
-        }
-        return response;
-      }).catch(function(){
-        return caches.match(event.request).then(function(cached){ return cached || caches.match('./index.html'); });
-      })
-    );
+    event.respondWith(reseauDabord(event.request, isAppShellDocument(event.request)));
     return;
   }
 
