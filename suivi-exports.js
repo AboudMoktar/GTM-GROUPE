@@ -1098,9 +1098,9 @@ function etatGridX(e, colis){
 var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}#pk-doc-zone .grl-recap{margin-top:8mm;break-inside:avoid;page-break-inside:avoid}</style>';
 function suffixe(){ return ui.xpSansLot ? "_sans_lot" : ""; }
 function imprimerX(e, quoi, o){
-  var colis = colisExport(e), pp = PP_CHOIX.indexOf(ui.etqPP) >= 0 ? ui.etqPP : "4L", lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
+  var colis = colisExport(e), pp = etqChoix(), lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
   avecDest(e, function(){
-    if (quoi === "fiches") return imprimerDoc(docCartonsHtml(e.cl, colis, pp, lot), pp === "4L" ? "A4 landscape" : "A4 portrait", "8mm", titreFichier(e, "Fiches_cartons"));
+    if (quoi === "fiches") return imprimerDoc(docCartonsHtml(e.cl, colis, pp, lot), etqFormat(), "8mm", titreFichier(e, "Fiches_cartons"));
     if (quoi === "colis"){ var gc = colisageGridX(e, colis, sl); if (o){ gc.landscape = o === "landscape"; gc.fixeOri = true; } var oc = oriUnePage(gc); return imprimerDoc(GRL_CSS + grilleHtml(gc), "A4 " + oc, "10mm", titreFichier(e, "Colisage") + suf); }
     if (quoi === "total"){ if (o) setOri("tot", o); return imprimerDoc(totalHtml(e, colis, sl), "A4 " + ori("tot"), "10mm", titreFichier(e, "Liste_total") + suf); }
     if (quoi === "etat"){ var oe = o || "portrait", ets = etatsCommandes(e); ets.forEach(function(x){ x.grid.landscape = oe === "landscape"; x.grid.fixeOri = true; }); return imprimerDoc(GRL_CSS + ets.map(function(x, i){ return '<div' + (i ? ' class="grl-saut"' : '') + '>' + grilleHtml(x.grid) + '</div>'; }).join(""), "A4 " + oe, "10mm", titreFichier(e, "Etat_commandes")); }
@@ -1116,7 +1116,7 @@ function feuillesDoc(e, quoi, o){
 }
 function feuillesDocBrut(e, quoi){
   var colis = colisExport(e), sl = !!ui.xpSansLot;
-  if (quoi === "fiches"){ var f = fichesCartonsGrid(libelleLots(e), e.cl, colis, ui.etqPP === 1 || ui.etqPP === 2 ? 2 : "4L"); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
+  if (quoi === "fiches"){ var f = fichesCartonsGrid(libelleLots(e), e.cl, colis, etqModeGrille()); f.grid.img = logoOctets(); f.grid.anchors = f.anchors;
     return [{name:"Fiches cartons", grid:f.grid, first:1, image:{data:logoOctets(), ext:"jpeg"}, anchors:f.anchors}]; }
   if (quoi === "colis") return [{name:"Liste de colisage", grid:colisageGridX(e, colis, sl)}];
   if (quoi === "total") return (sl ? [{name:"Liste total", grid:totalCommandeGrid(e, colis, null)}] : lotsExport(e).map(function(l){ return {name:"Liste total " + l, grid:totalCommandeGrid(e, colis, l)}; }))
@@ -1136,34 +1136,31 @@ function niceLabelX(e){
   });
 }
 function docsCard(e){
-  if (PP_CHOIX.indexOf(ui.etqPP) < 0) ui.etqPP = "4L";
   var sansLot = !!ui.xpSansLot;
   var c = el("div", {class:"card cartons"}, el("h2", {text:"Documents de l'export"}));
   var sl = el("div", {class:"seg", style:"flex-wrap:wrap"}, el("span", {class:"mut", style:"align-self:center;font-weight:600", text:"Colisage et liste total :"}));
   [[false, "Avec les lots (par commande)"], [true, "Sans lot"]].forEach(function(o){ sl.appendChild(el("button", {class:sansLot === o[0] ? "on" : "", text:o[1], onclick:function(){ ui.xpSansLot = o[0]; render(true); }})); });
   c.appendChild(sl);
-  var pp = el("div", {class:"seg xp-pp"}, el("span", {class:"mut", style:"align-self:center", text:"Par page :"}));
-  PP_CHOIX.forEach(function(n){ pp.appendChild(el("button", {class:ui.etqPP === n ? "on" : "", text:n === "4L" ? "4 paysage" : String(n), onclick:function(){ ui.etqPP = n; render(true); }})); });
+  var pp = etqChoixUI();
   var docs = [
     ["fiches", "📦 Fiches cartons", "Une fiche à coller sur chaque carton", pp],
-    ["colis", "📋 Liste de colisage", sansLot ? "Sans N° de commande" : "Avec le N° de commande de chaque ligne"],
-    ["total", "🧾 Liste total", sansLot ? "Tout l'export, au format de la commande" : "Au format de la commande, une page par commande"]
+    ["colis", "📋 Liste de colisage", sansLot ? "Sans N° de commande" : "Avec le N° de commande de chaque ligne", oriSeg("col"), "col"],
+    ["total", "🧾 Liste total", sansLot ? "Tout l'export, au format de la commande" : "Au format de la commande, une page par commande", oriSeg("tot"), "tot"]
   ];
-  if (!sansLot) docs.push(["etat", "📊 État des commandes", "Au format de la commande : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES, total, exporté, reste"]);
+  if (!sansLot) docs.push(["etat", "📊 État des commandes", "Au format de la commande : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES, total, exporté, reste", oriSeg("etat"), "etat"]);
   var L = el("div", {class:"xp-docs"});
   docs.forEach(function(d){
     L.appendChild(el("div", {class:"xp-doc", "data-doc":d[0]},
       el("div", {class:"xp-doc-i"}, el("div", {class:"xp-doc-n", text:d[1]}), el("div", {class:"mut xp-doc-s", text:d[2]}), d[3] || null),
       el("div", {class:"xp-doc-b"},
-        el("button", {class:"btn small", text:"🖨 Imprimer", onclick:function(){ imprimerX(e, d[0]); }}),
-        el("button", {class:"btn small sec", text:"📕 PDF", title:"Fichier PDF : s'imprime avec n'importe quel lecteur PDF", onclick:function(){ pdfDoc(e, d[0]); }}),
-        el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ excelDoc(e, d[0]); }}))));
+        el("button", {class:"btn small", text:"🖨 Imprimer", onclick:function(){ imprimerX(e, d[0], d[4] ? ori(d[4]) : undefined); }}),
+        el("button", {class:"btn small sec", text:"📕 PDF", title:"Fichier PDF : s'imprime avec n'importe quel lecteur PDF", onclick:function(){ pdfDoc(e, d[0], d[4] ? ori(d[4]) : undefined); }}),
+        el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ excelDoc(e, d[0], d[4] ? ori(d[4]) : undefined); }}))));
   });
   L.appendChild(el("div", {class:"xp-doc", "data-doc":"nicelabel"},
     el("div", {class:"xp-doc-i"}, el("div", {class:"xp-doc-n", text:"🏷 Base NiceLabel"}), el("div", {class:"mut xp-doc-s", text:"Pour imprimer les étiquettes des cartons"})),
     el("div", {class:"xp-doc-b"}, el("button", {class:"btn small sec", text:"📗 Excel", onclick:function(){ niceLabelX(e); }}))));
   c.appendChild(L);
-  c.appendChild(el("details", {class:"xp-reg"}, el("summary", {text:"Orientation d'impression (portrait / paysage)"}), oriBloc()));
   return c;
 }
 /* pour les tests */

@@ -54,7 +54,8 @@
     "sous-pages": "node sous-pages.js",
     "ouverture-lente": "node ouverture-lente.js",
     "facture-suppression": "node facture-suppression.js",
-    "historique-tek": "node historique-tek.js"
+    "historique-tek": "node historique-tek.js",
+    "fiches-cartons-pages": "node fiches-cartons-pages.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
