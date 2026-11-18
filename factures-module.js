@@ -86,6 +86,24 @@ function factStatut(f, toutes){
 }
 // Ajoute _id à chaque facture (utile pour rattacher les avoirs).
 function factListe(soc){ const l = factToutes(soc); Object.keys(l).forEach(id => { l[id]._id = id; }); return l; }
+// Tri de la liste : brouillons d'abord (les plus récents en haut), puis factures et avoirs par numéro
+// décroissant (année puis rang : FA26/030, FA26/029, …), quelle que soit la date saisie.
+function factAttendExpedition(f){ return !!(f && f.origine && f.origine.type === 'export' && typeof percExportStatut === 'function' && percExportStatut(f.origine.exportId) === 'cours'); }
+function factCleNumero(n){
+  const m = String(n || '').match(/(\d{2,4})\D(\d+)$/) || String(n || '').match(/-(\d{4})-(\d+)$/);
+  if(!m) return [0, 0];
+  const an = m[1].length === 2 ? 2000 + Number(m[1]) : Number(m[1]);
+  return [an, Number(m[2])];
+}
+function factTriListe(a, c){
+  const fa = a[1], fc = c[1], ba = fa.statut === 'brouillon', bc = fc.statut === 'brouillon';
+  if(ba !== bc) return ba ? -1 : 1;
+  if(ba) return (fc.date || '').localeCompare(fa.date || '');
+  const ka = factCleNumero(fa.numero), kc = factCleNumero(fc.numero);
+  if(ka[0] !== kc[0]) return kc[0] - ka[0];
+  if((fa.type === 'avoir') !== (fc.type === 'avoir')) return (fc.date || '').localeCompare(fa.date || '') || (fa.type === 'avoir' ? -1 : 1);
+  return kc[1] - ka[1] || (fc.date || '').localeCompare(fa.date || '');
+}
 function factIndicateurs(soc){
   const l = factListe(soc), mois = getTodayISO().slice(0, 7);
   let aEncaisser = 0, impayees = 0, retard = 0, montantRetard = 0, caMois = 0;
@@ -180,7 +198,7 @@ function renderFactListe(main){
   const filtres = [['tous', 'Toutes'], ['apayer', 'À encaisser'], ['retard', 'En retard'], ['payee', 'Payées'], ['brouillon', 'Brouillons'], ['avoir', 'Avoirs']];
   const ok = (st) => factFiltre === 'tous' || factFiltre === st || (factFiltre === 'apayer' && ['impayee', 'partielle', 'retard'].indexOf(st) >= 0);
   const rows = Object.entries(l).filter(([, f]) => ok(factStatut(f, l)))
-    .sort((a, c) => (c[1].statut === 'brouillon') - (a[1].statut === 'brouillon') || ((c[1].date || '') + (c[1].numero || '')).localeCompare((a[1].date || '') + (a[1].numero || '')));
+    .sort(factTriListe);
   b.innerHTML = `
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div onclick="factFiltre='apayer'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
@@ -263,7 +281,8 @@ function renderFactEdit(main){
       ${(f.relances || []).length ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Relancée le ${f.relances.map(mgtDate).join(', ')}</div>` : ''}
     </div>` : ''}
     ${edDroit ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-      ${f.statut === 'brouillon' ? `<button class="btn btn-primary" style="flex:1 1 100%;" onclick="factEmettre('${id}')">Émettre ${avoir ? 'l\'avoir' : 'la facture'}</button>
+      ${f.statut === 'brouillon' && factAttendExpedition(f) ? `<div style="flex:1 1 100%;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.12);font-size:13px;">📦 Export ${esc((f.origine && f.origine.label) || '')} pas encore expédié : la facture se prépare, se modifie et s'imprime, mais elle n'est émise (numéro, chiffre d'affaires, à encaisser) qu'après la validation de l'export (« Fini »).</div>` : ''}
+      ${f.statut === 'brouillon' ? `<button class="btn btn-primary" style="flex:1 1 100%;" ${factAttendExpedition(f) ? 'disabled title="Export pas encore expédié"' : ''} onclick="factEmettre('${id}')">Émettre ${avoir ? 'l\'avoir' : 'la facture'}</button>
         <button class="btn btn-ghost" style="flex:1;color:var(--bad);" onclick="factSupprimer('${id}')">Supprimer le brouillon</button>` : ''}
       ${f.statut === 'emise' && !avoir ? `<button class="btn btn-ghost" style="flex:1;" onclick="factCreerAvoir('${id}')">Créer un avoir</button>` : ''}
       ${f.statut === 'emise' && factPeutSupprimerEmise() ? `<button class="btn btn-ghost" style="flex:1 1 100%;color:var(--bad);border-color:var(--bad);" onclick="factSupprimerEmise('${id}')">Supprimer ${avoir ? 'l\'avoir' : 'la facture'} ${esc(f.numero || '')}</button>` : ''}

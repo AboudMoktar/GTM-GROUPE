@@ -386,7 +386,7 @@ function ficheExport(v, e, arch){
   var acts = el("div", {class:"actions", style:"margin:12px 0 0"});
   if (!fini) acts.appendChild(el("button", {class:"btn", text:"+ Ajouter un carton", onclick:function(){ ui.xp = {id:e.id, carton:{nouveau:true}}; render(); }}));
   /* facture TEK-TREND préparée à partir des cartons de l'export (module Facturation) */
-  if (typeof HOST !== "undefined" && HOST && typeof HOST.facturerExport === "function" && VUE !== "gadh" && e.cartons.length && fini)
+  if (typeof HOST !== "undefined" && HOST && typeof HOST.facturerExport === "function" && VUE !== "gadh" && e.cartons.length)
     acts.appendChild(el("button", {class:"btn sec", "data-xp":"facture", text:"🧾 Facture", title:"Prépare la facture à partir des cartons de cet export (modifiable ensuite)", onclick:function(){ facturerExport(e); }}));
   acts.appendChild(el("button", {class:"btn sec", text:"✏️ Modifier les informations", title:"N°, date, nature, destinataire, commentaire", onclick:function(){ ui.tab = "exp"; ui.xp = {id:e.id, modif:true, retourArch:!!arch}; render(); }}));
   head.appendChild(acts);
@@ -510,8 +510,8 @@ function factureGrid(e){
 }
 function facturerExport(e, forcer){
   if (typeof dirty !== "undefined" && dirty){ toast("Enregistrement en cours : réessayez dans un instant."); return; }
-  /* la facture se fait quand l'export est expédié (validé « Fini »), pas avant (18/11/2026) */
-  if (e.st !== "fini"){ toast("La facture se fait quand l'export est expédié : validez d'abord l'export (« Fini »)."); return; }
+  /* la facture se prépare à tout moment (brouillon : voir, modifier, imprimer) ; elle n'est émise et ne compte
+     (numéro, chiffre d'affaires, à encaisser) qu'après l'expédition de l'export (validation « Fini ») — 18/11/2026 */
   var r = HOST.facturerExport(demandeFacture(e), !!forcer);
   if (!r){ toast("Facturation indisponible."); return; }
   if (r.existe){

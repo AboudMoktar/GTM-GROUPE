@@ -68,7 +68,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.locator('#pk-fact-apercu [data-ap="Fermer"]').click();
   ok(await p.locator('#pk-fact-apercu').count() === 0 && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 0, 'aperçu fermé, toujours aucune facture enregistrée');
   await fr().evaluate(() => { ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
-  ok(await fr().locator('[data-xp="facture"]').count() === 0, 'export en cours (pas encore expédié) : pas de bouton « Facture »');
+  ok(await fr().locator('[data-xp="facture"]').count() === 1, 'export en cours (pas encore expédié) : bouton « Facture » présent (brouillon)');
   await fr().evaluate(() => { S.exports[0].st = 'fini'; S.exports[0].dv = '2026-11-21'; persist(); ui.tab = 'exp'; ui.xp = null; ui.xpa = {id:'E1'}; ui.tab = 'arch'; ui.amodeX = 'exp'; render(); });
   await fr().waitForFunction(() => typeof dirty === 'undefined' || !dirty, null, {timeout:10000}).catch(() => {}); await p.waitForTimeout(300);
   await fr().locator('[data-xp="facture"]').click();
@@ -139,9 +139,13 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
     const l = factToutes('tek'), id = Object.keys(l).find(k => l[k].origine && l[k].origine.type === 'export' && l[k].statut === 'brouillon'); if (!id) return 'pas de brouillon';
     const docs = suiviLireDocs(), ex = docs.exports.liste.find(x => x.id === l[id].origine.exportId); const avant = ex.st; ex.st = 'cours'; memoryCache['grp1_suivi_d_exports'] = docs.exports;
     window.confirm = () => true; factEmettre(id); const r1 = factToutes('tek')[id].statut;
-    ex.st = 'fini'; memoryCache['grp1_suivi_d_exports'] = docs.exports; factEmettre(id); const r2 = factToutes('tek')[id].statut;
-    return st + '|' + r1 + '|' + r2; });
-  ok(blq === 'true|brouillon|emise', 'émission bloquée si l\'export n\'est pas expédié, possible une fois expédié (' + blq + ')');
+    factId = id; nav('fact-edit'); const ui1 = !!document.body.textContent.match(/pas encore expédié/) && !!document.querySelector('button[disabled][onclick^="factEmettre"]');
+    ex.st = 'fini'; memoryCache['grp1_suivi_d_exports'] = docs.exports; nav('fact-edit'); const ui2 = !document.querySelector('button[disabled][onclick^="factEmettre"]'); factEmettre(id); const r2 = factToutes('tek')[id].statut;
+    return st + '|' + r1 + '|' + r2 + '|' + ui1 + '|' + ui2; });
+  ok(blq === 'true|brouillon|emise|true|true', 'émission bloquée si l\'export n\'est pas expédié, possible une fois expédié (' + blq + ')');
+  const tri = await p.evaluate(() => { const L = [['a',{statut:'emise',numero:'FA26/029',date:'2026-11-10'}],['b',{statut:'emise',numero:'FA26/030',date:'2026-09-01'}],['c',{statut:'brouillon',date:'2026-11-01'}],['d',{statut:'emise',numero:'FA26/005',date:'2026-12-01'}],['e',{statut:'emise',numero:'FA25/120',date:'2025-12-30'}]];
+    return L.sort(factTriListe).map(x => x[0]).join(''); });
+  ok(tri === 'cbade', 'liste triée : brouillons, puis numéros décroissants (' + tri + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur'); process.exit(echecs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
