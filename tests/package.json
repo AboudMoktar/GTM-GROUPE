@@ -57,7 +57,8 @@
     "historique-tek": "node historique-tek.js",
     "fiches-cartons-pages": "node fiches-cartons-pages.js",
     "etat-controles": "node etat-controles.js",
-    "mise-a-jour": "node mise-a-jour-sans-rechargement.js"
+    "mise-a-jour": "node mise-a-jour-sans-rechargement.js",
+    "direction-ca": "node direction-ca.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
