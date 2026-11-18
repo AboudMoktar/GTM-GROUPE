@@ -6,7 +6,8 @@
    chaque étape (cumuls des mouvements du suivi), sous-totaux par modèle et total.
    - Reste à produire = quantité commandée − pièces déjà contrôlées, emballées ou expédiées
      (la plus avancée des trois ; jamais négatif ; 18/11/2026). Un surplus expédié est indiqué à part.
-   - Avancement = quantité expédiée / quantité commandée.
+   - Avancement = pièces contrôlées, emballées ou expédiées (la plus avancée, au plus la commande)
+     / quantité commandée (18/11/2026) ; « Terminée » reste réservé à une commande tout expédiée.
    - Tri, filtres, recherche, colonnes redimensionnables (largeurs gardées sur
      l'appareil), cases à cocher (pour les exports).
    Étape 1 : consultation. Les étapes « En assemblage (GADH) » et « Prêt à
@@ -124,14 +125,14 @@ function lignesPilotage(lot){
     var c = couleurDe(r.lib), o = {id:r.id, model:r.model, lib:r.lib, coul:c.t, cbg:c.bg, cfg:c.fg, size:r.size, client:r.client, fr:r.fr, ord:r.lib in lo ? lo[r.lib] : 1000};
     ETAPES_TEK.forEach(function(e){ o[e[0]] = r.s[e[0]] || 0; });
     if (G){ o.rest = Math.max(0, o.gadh - o.ret); o.surplus = 0; o.av = pct(o.ret, o.gadh); }
-    else { o.rest = Math.max(0, o.fr - Math.max(o.ctl, o.emb, o.exp)); o.aExp = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.exp, o.fr); }
+    else { o.rest = Math.max(0, o.fr - Math.max(o.ctl, o.emb, o.exp)); o.aExp = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.fr - o.rest, o.fr); }
     return o;
   });
 }
 function sommer(rows){
   var t = {fr:0, rest:0, aExp:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });
   rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.aExp += (r.aExp === undefined ? r.rest : r.aExp); t.surplus += r.surplus; ETAPES_TEK.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
-  t.av = G ? pct(t.ret, t.gadh) : pct(t.exp, t.fr);
+  t.av = G ? pct(t.ret, t.gadh) : pct(t.fr - t.rest, t.fr);
   return t;
 }
 /* une étape qui dépasse l'étape précédente (sauf coupe > commande, contrôle / emballage > confection) */
@@ -209,7 +210,11 @@ function grilleExcel(lot, rows, portee, grp){
     var av = ["ctl", "emb", "exp"].filter(function(k){ return ci[k] !== undefined; }).map(function(k){ return L(ci[k]) + rr; });
     return "MAX(0," + L(ci[kFr]) + rr + "-MAX(0" + (av.length ? "," + av.join(",") : "") + "))";
   }
-  function fAv(rr){ return "IF(" + L(ci[kFr]) + rr + "=0,0," + L(ci[kFin]) + rr + "/" + L(ci[kFr]) + rr + ")"; }
+  function fAv(rr){
+    if (G) return "IF(" + L(ci[kFr]) + rr + "=0,0," + L(ci[kFin]) + rr + "/" + L(ci[kFr]) + rr + ")";
+    var F = L(ci[kFr]) + rr, fait = ci.rest !== undefined ? F + "-" + L(ci.rest) + rr : F + "-(" + fRest(rr) + ")";
+    return "IF(" + F + "=0,0,(" + fait + ")/" + F + ")";
+  }
   function ligne(x){
     var rr = r + 1;
     cx.forEach(function(c, i){
@@ -264,7 +269,7 @@ function recapExcel(lot, gS){
     gset(g, r, 2, gS.T[kFr] ? v / gS.T[kFr] : 0, {sz:11, al:"c", bd:"t", nf:"pct"}); g.rows[r].cells[2].f = "IF(B" + rFr + "=0,0,B" + (r + 1) + "/B" + rFr + ")";
     g.rows[r].h = 18; r++;
   });
-  gset(g, r, 0, G ? "Retourné (sur reçu)" : "Avancement (expédiée ÷ commandée)", {b:1, sz:11, al:"l", bd:"t", bg:"1D3557", fg:"FFFFFF"}); gset(g, r, 1, "", {bd:"t", bg:"1D3557"});
+  gset(g, r, 0, G ? "Retourné (sur reçu)" : "Avancement (contrôlée, emballée ou expédiée ÷ commandée)", {b:1, sz:11, al:"l", bd:"t", bg:"1D3557", fg:"FFFFFF"}); gset(g, r, 1, "", {bd:"t", bg:"1D3557"});
   gset(g, r, 2, gS.T.av / 100, {b:1, sz:12, al:"c", bd:"t", nf:"pct", bg:"1D3557", fg:"FFFFFF"}); g.rows[r].cells[2].f = ref("av"); g.rows[r].h = 20;
   return g;
 }
@@ -514,7 +519,7 @@ window.vPilotage = function(v){
     zone.appendChild(tableau(vis, T));
     majBarre();
     var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. Les cases modifiées passent en orange : rien n'est enregistré avant « ✔ Valider » et la confirmation. " : "";
-    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − pièces déjà contrôlées, emballées ou expédiées. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
+    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − pièces déjà contrôlées, emballées ou expédiées. Avancement = pièces contrôlées, emballées ou expédiées ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
     /* après un enregistrement : retour à la case suivante et à la même position dans le tableau */
     var tw = zone.querySelector(".ph-tw");
     if (tw){ if (P.scroll){ tw.scrollTop = P.scroll[0]; tw.scrollLeft = P.scroll[1]; } tw.addEventListener("scroll", function(){ P.scroll = [tw.scrollTop, tw.scrollLeft]; }); }
