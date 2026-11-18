@@ -30,6 +30,8 @@ function ddDonnees(){
   SOCIETE_KEYS.forEach(s => { D.fact[s] = ddSecuriser(() => factIndicateurs(s), {aEncaisser:0, retard:0}); });
   D.aEncaisser = SOCIETE_KEYS.reduce((t, s) => t + (D.fact[s].aEncaisser || 0), 0);
   D.retard = SOCIETE_KEYS.reduce((t, s) => t + (D.fact[s].retard || 0), 0);
+  D.an = getTodayISO().slice(0, 4);
+  D.ca = {}; SOCIETE_KEYS.forEach(soc => { D.ca[soc] = ddSecuriser(() => ddChiffreAffaires(soc, D.an), {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0}); });
   D.mgt = ddSecuriser(() => mgtIndicateurs(), {pipeline:0, offresEnCours:0});
   D.sav = ddSecuriser(() => savIndicateurs(), {ticketsActifs:0, machinesArret:0});
   D.serie = [];
@@ -48,6 +50,36 @@ function ddDonnees(){
     return l.sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 8);
   }, []);
   return D;
+}
+
+// Chiffre d'affaires de l'année (factures émises, avoirs déduits) : encaissé, reste à encaisser, dont en retard.
+function ddChiffreAffaires(soc, an){
+  const l = factListe(soc), r = {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0};
+  Object.values(l).forEach(f => {
+    if(f.statut !== 'emise' || !String(f.date || '').startsWith(an)) return;
+    const t = factTotaux(f, l);
+    if(f.type === 'avoir'){ r.ca -= t.ttc; return; }
+    r.ca += t.ttc; r.n++; r.enc += Math.min(t.paye, t.ttc); r.reste += t.reste;
+    if(factStatut(f, l) === 'retard'){ r.retard += t.reste; r.nRet++; }
+  });
+  return r;
+}
+function ddBlocCA(D){
+  const tot = SOCIETE_KEYS.reduce((t, k) => { const c = D.ca[k]; ['ca', 'enc', 'reste', 'retard', 'nRet', 'n'].forEach(x => t[x] += c[x] || 0); return t; }, {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0});
+  const barre = (c) => { const b = Math.max(c.enc + c.reste, 0.01), p = v => Math.max(0, v / b * 100).toFixed(2);
+    return `<div class="dd-ca-bar" title="Encaissé ${ddEur(c.enc)} · à encaisser ${ddEur(c.reste - c.retard)} · en retard ${ddEur(c.retard)}"><i style="width:${p(c.enc)}%;background:#16a34a;"></i><i style="width:${p(c.reste - c.retard)}%;background:#2563eb;"></i><i style="width:${p(c.retard)}%;background:#dc2626;"></i></div>`; };
+  const ligne = (k) => { const c = D.ca[k], S = SOCIETES[k];
+    return `<tr onclick="kpiAller('${k}', 'factures', 'fact-liste')" style="cursor:pointer;"><td><b>${S.nom}</b><span>${c.n} facture(s)</span></td><td class="n">${ddEur(c.ca, 2)}</td><td class="n ok">${ddEur(c.enc, 2)}</td><td class="n">${ddEur(c.reste, 2)}</td><td class="n ${c.retard > 0.004 ? 'bad' : ''}">${ddEur(c.retard, 2)}${c.nRet ? `<span>${c.nRet} facture(s)</span>` : ''}</td><td>${barre(c)}</td></tr>`; };
+  return `<div class="dd-card dd-ca"><div class="dd-ct"><h3>Chiffre d'affaires ${D.an}</h3><span><i style="background:#16a34a"></i>Encaissé <i style="background:#2563eb"></i>À encaisser <i style="background:#dc2626"></i>En retard</span></div>
+    <div class="dd-ca-tots">
+      <div><span>Chiffre d'affaires</span><b>${ddEur(tot.ca, 2)}</b></div>
+      <div class="ok"><span>Encaissé</span><b>${ddEur(tot.enc, 2)}</b><em>${tot.ca > 0 ? Math.round(tot.enc / tot.ca * 100) + ' %' : ''}</em></div>
+      <div><span>Reste à encaisser</span><b>${ddEur(tot.reste, 2)}</b></div>
+      <div class="${tot.retard > 0.004 ? 'bad' : ''}"><span>Dont en retard</span><b>${ddEur(tot.retard, 2)}</b><em>${tot.nRet ? tot.nRet + ' facture(s)' : 'aucune'}</em></div>
+    </div>
+    <div class="dd-scroll" style="max-height:none;"><table class="dd-ca-tab"><thead><tr><th>Société</th><th>Chiffre d'affaires</th><th>Encaissé</th><th>Reste</th><th>En retard</th><th></th></tr></thead>
+      <tbody>${SOCIETE_KEYS.map(ligne).join('')}</tbody></table></div>
+    <div class="dd-ca-note">Factures émises en ${D.an}, avoirs déduits. Touchez une société pour ouvrir ses factures.</div></div>`;
 }
 
 // --- Graphiques en SVG ---
@@ -147,6 +179,7 @@ window.renderDirection = function(){
       <h3 class="dd-titre">Indicateurs globaux</h3>
       <div class="dd-jauges4">${ddJaugeP('Rendement TEK-TREND', D.rendTek, "kpiAller('tek', 'rendement', 'stats')")}${ddJaugeP('Rendement GADH', D.rendGadh, "kpiAller('gadh', 'gadh', 'gadh-stats')")}${ddJaugeP('Présence du personnel', D.presence, "kpiAller('tek', 'rh')")}${ddJaugeP('Commandes expédiées', D.avancement, "kpiAller('tek', 'commandes')")}</div>
       <div class="dd-boites">${boites}</div>
+      ${ddSecuriser(() => ddBlocCA(D), '')}
       <div class="dd-g dd-g3">
         <div class="dd-card dd-plat"><div class="dd-ct"><h3>À surveiller</h3><button class="dd-lien" onclick="notifOuvrir()">Tout voir</button></div><div class="dd-scroll">${alertes || '<div class="dd-vide">Rien à signaler</div>'}</div></div>
         <div class="dd-card dd-plat"><div class="dd-ct"><h3>Commandes en cours</h3><span>${D.lotsEnCours.length}</span></div><div class="dd-scroll">${D.lotsEnCours.map(l => ddBarreLot(l, false)).join('') || '<div class="dd-vide">Aucune commande en cours</div>'}</div></div>
@@ -214,3 +247,17 @@ ddCss2.textContent = `
 .dd-bx-warn{--c:#e69a0c;background:linear-gradient(145deg,rgba(230,154,12,.11),transparent 65%),var(--surface);} .dd-bx-nul{--c:#94a3b8;}
 @media(max-width:480px){.dd-jp-v{font-size:28px;} .dd-jp-svg{width:56px;height:56px;} .dd-bx-v{font-size:24px;}}`;
 document.head.appendChild(ddCss2);
+const ddCss3 = document.createElement('style');
+ddCss3.textContent = `
+.dd-ca{margin-bottom:14px;}
+.dd-ca-tots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.dd-ca-tots div{border:1px solid var(--border);border-radius:12px;padding:10px 12px;} .dd-ca-tots span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);}
+.dd-ca-tots b{display:block;font-size:22px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;} .dd-ca-tots em{font-style:normal;font-size:12px;color:var(--ink-soft);}
+.dd-ca-tots .ok b{color:#15803d;} .dd-ca-tots .bad b{color:#dc2626;} .dd-ca-tots .bad{border-color:rgba(220,38,38,.4);background:rgba(220,38,38,.05);}
+.dd-ca-tab{width:100%;border-collapse:collapse;font-size:13.5px;} .dd-ca-tab th{text-align:left;font-size:11px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.dd-ca-tab td{padding:9px 8px;border-bottom:1px solid var(--border-soft);vertical-align:middle;} .dd-ca-tab tbody tr:hover td{background:var(--accent-bg);}
+.dd-ca-tab td span{display:block;font-size:11.5px;color:var(--ink-soft);font-weight:500;} .dd-ca-tab .n{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;} .dd-ca-tab .ok{color:#15803d;} .dd-ca-tab .bad{color:#dc2626;}
+.dd-ca-bar{display:flex;height:10px;min-width:120px;border-radius:99px;overflow:hidden;background:var(--surface-3);} .dd-ca-bar i{display:block;height:100%;}
+.dd-ca-note{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+@media (max-width:760px){ .dd-ca-tots{grid-template-columns:repeat(2,minmax(0,1fr));} .dd-ca-tab th:last-child,.dd-ca-tab td:last-child{display:none;} .dd-ca-tots b{font-size:18px;} }`;
+document.head.appendChild(ddCss3);
