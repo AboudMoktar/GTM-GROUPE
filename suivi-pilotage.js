@@ -4,8 +4,8 @@
    Tableau de pilotage d'un lot : en-tête de la commande, chiffres clés, frise des
    étapes, puis une ligne par référence × taille × client avec les quantités de
    chaque étape (cumuls des mouvements du suivi), sous-totaux par modèle et total.
-   - Reste à produire = quantité commandée − quantité expédiée (jamais négatif ;
-     un surplus éventuel est indiqué à part).
+   - Reste à produire = quantité commandée − pièces déjà contrôlées, emballées ou expédiées
+     (la plus avancée des trois ; jamais négatif ; 18/11/2026). Un surplus expédié est indiqué à part.
    - Avancement = quantité expédiée / quantité commandée.
    - Tri, filtres, recherche, colonnes redimensionnables (largeurs gardées sur
      l'appareil), cases à cocher (pour les exports).
@@ -124,13 +124,13 @@ function lignesPilotage(lot){
     var c = couleurDe(r.lib), o = {id:r.id, model:r.model, lib:r.lib, coul:c.t, cbg:c.bg, cfg:c.fg, size:r.size, client:r.client, fr:r.fr, ord:r.lib in lo ? lo[r.lib] : 1000};
     ETAPES_TEK.forEach(function(e){ o[e[0]] = r.s[e[0]] || 0; });
     if (G){ o.rest = Math.max(0, o.gadh - o.ret); o.surplus = 0; o.av = pct(o.ret, o.gadh); }
-    else { o.rest = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.exp, o.fr); }
+    else { o.rest = Math.max(0, o.fr - Math.max(o.ctl, o.emb, o.exp)); o.aExp = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.exp, o.fr); }
     return o;
   });
 }
 function sommer(rows){
-  var t = {fr:0, rest:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });
-  rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.surplus += r.surplus; ETAPES_TEK.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
+  var t = {fr:0, rest:0, aExp:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });
+  rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.aExp += (r.aExp === undefined ? r.rest : r.aExp); t.surplus += r.surplus; ETAPES_TEK.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
   t.av = G ? pct(t.ret, t.gadh) : pct(t.exp, t.fr);
   return t;
 }
@@ -148,7 +148,7 @@ function appliquerFiltres(rows){
     if (f.size && r.size !== f.size) return false; if (f.client && r.client !== f.client) return false;
     if (f.etat === "rien" && (r.cp || r.exp)) return false;
     if (f.etat === "cours" && !(r.rest > 0 && (r.cp || r.gadh || r.exp))) return false;
-    if (f.etat === "fini" && r.rest > 0) return false;
+    if (f.etat === "fini" && (r.aExp === undefined ? r.rest : r.aExp) > 0) return false;
     if (f.etat === "reste" && !(r.rest > 0)) return false;
     if (q && (r.lib + " " + r.model + " " + r.size + " " + r.coul + " " + r.client).toLowerCase().indexOf(q) < 0) return false;
     return true;
@@ -172,7 +172,7 @@ function grouper(rows){
 function etatLot(lot, T){
   var L = S.lots[lot] || {};
   if (!T.fr) return {t:"Sans quantité", c:"att"};
-  if (T.rest === 0) return {t:"✔ Terminée", c:"fini"};
+  if ((T.aExp === undefined ? T.rest : T.aExp) === 0) return {t:"✔ Terminée", c:"fini"};   /* terminée = tout expédié */
   if (L.closed) return {t:"Clôturée", c:"fini"};
   if (L.livraison && L.livraison < today()) return {t:"En retard", c:"retard"};
   if (!lotReady(lot)) return {t:"À valider", c:"att"};
@@ -204,7 +204,11 @@ function grilleExcel(lot, rows, portee, grp){
   cx.forEach(function(c, i){ gset(g, X_ENT, i, c.t, H); }); g.rows[X_ENT].h = 32;
   var SA = saisissables(), r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
   var kFr = G ? "gadh" : "fr", kFin = G ? "ret" : "exp";
-  function fRest(rr){ return "MAX(0," + L(ci[kFr]) + rr + "-" + L(ci[kFin]) + rr + ")"; }
+  function fRest(rr){
+    if (G) return "MAX(0," + L(ci[kFr]) + rr + "-" + L(ci[kFin]) + rr + ")";
+    var av = ["ctl", "emb", "exp"].filter(function(k){ return ci[k] !== undefined; }).map(function(k){ return L(ci[k]) + rr; });
+    return "MAX(0," + L(ci[kFr]) + rr + "-MAX(0" + (av.length ? "," + av.join(",") : "") + "))";
+  }
   function fAv(rr){ return "IF(" + L(ci[kFr]) + rr + "=0,0," + L(ci[kFin]) + rr + "/" + L(ci[kFr]) + rr + ")"; }
   function ligne(x){
     var rr = r + 1;
@@ -446,7 +450,7 @@ window.vPilotage = function(v){
     kp.appendChild(carte("Qté commandée" + (filtre ? " (filtre)" : ""), fmt(T.fr) + " pcs", null, "#1d3557", vis.length + " ligne(s)"));
     ETAPES.forEach(function(e){ kp.appendChild(carte(e[1], fmt(T[e[0]]) + " pcs", pct(T[e[0]], T.fr), e[3])); });
     if (G) kp.appendChild(carte("Encore à la GADH", fmt(T.rest) + " pcs", null, "#b42318", "reçue − retournée"));
-    else kp.appendChild(carte("Reste à produire", fmt(T.rest) + " pcs", null, "#b42318", T.surplus ? "+ " + fmt(T.surplus) + " en surplus" : "commandée − expédiée"));
+    else kp.appendChild(carte("Reste à produire", fmt(T.rest) + " pcs", null, "#b42318", T.surplus ? "+ " + fmt(T.surplus) + " en surplus" : "commandée − (contrôlée, emballée ou expédiée)"));
     kp.appendChild(carte(G ? "Retourné (sur reçu)" : "Avancement", fmtPct(T.av), T.av, T.av >= 100 ? "#1f9254" : "#2563eb"));
     zone.appendChild(kp);
     /* frise des étapes */
@@ -510,7 +514,7 @@ window.vPilotage = function(v){
     zone.appendChild(tableau(vis, T));
     majBarre();
     var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. Les cases modifiées passent en orange : rien n'est enregistré avant « ✔ Valider » et la confirmation. " : "";
-    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − expédiée. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
+    zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − pièces déjà contrôlées, emballées ou expédiées. Avancement = expédiée ÷ commandée. ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
     /* après un enregistrement : retour à la case suivante et à la même position dans le tableau */
     var tw = zone.querySelector(".ph-tw");
     if (tw){ if (P.scroll){ tw.scrollTop = P.scroll[0]; tw.scrollLeft = P.scroll[1]; } tw.addEventListener("scroll", function(){ P.scroll = [tw.scrollTop, tw.scrollLeft]; }); }
