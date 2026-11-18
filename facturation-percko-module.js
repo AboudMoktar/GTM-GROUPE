@@ -178,6 +178,14 @@ function percValeurMatiere(f){
   return {pieces, exos, valeur:Math.round((pieces * V.piece + exos * V.exo) * 100) / 100};
 }
 const PERC_COMPO_FAM = {pharma:'PHARMA', sport:'SPORT', gilet:'GILET-NOIR', pro:'LYNE-PRO'};
+// État d'un export du suivi PERCKO : 'fini' (expédié, validé), 'cours', ou null (introuvable)
+function percExportStatut(exportId){
+  try {
+    const d = typeof suiviLireDocs === 'function' ? suiviLireDocs() : {}, l = (d.exports && d.exports.liste) || [];
+    const e = l.find(x => x && x.id === exportId); return e ? (e.st === 'fini' ? 'fini' : 'cours') : null;
+  } catch(e){ return null; }
+}
+window.percExportStatut = percExportStatut;
 function percFactureDeLExport(exportId){
   return Object.entries(factToutes('tek')).filter(([, f]) => f.type !== 'avoir' && f.origine && f.origine.type === 'export' && f.origine.exportId === exportId).map(([id, f]) => ({id, f}));
 }

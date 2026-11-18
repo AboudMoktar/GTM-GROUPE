@@ -68,6 +68,9 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.locator('#pk-fact-apercu [data-ap="Fermer"]').click();
   ok(await p.locator('#pk-fact-apercu').count() === 0 && await p.evaluate(() => Object.keys(factToutes('tek')).length) === 0, 'aperçu fermé, toujours aucune facture enregistrée');
   await fr().evaluate(() => { ui.tab = 'exp'; ui.xp = {id:'E1'}; render(); });
+  ok(await fr().locator('[data-xp="facture"]').count() === 0, 'export en cours (pas encore expédié) : pas de bouton « Facture »');
+  await fr().evaluate(() => { S.exports[0].st = 'fini'; S.exports[0].dv = '2026-11-21'; persist(); ui.tab = 'exp'; ui.xp = null; ui.xpa = {id:'E1'}; ui.tab = 'arch'; ui.amodeX = 'exp'; render(); });
+  await fr().waitForFunction(() => typeof dirty === 'undefined' || !dirty, null, {timeout:10000}).catch(() => {}); await p.waitForTimeout(300);
   await fr().locator('[data-xp="facture"]').click();
   await p.waitForFunction(() => activeModule === 'factures' && typeof factId !== 'undefined' && !!factId);
   const F = await p.evaluate(() => { const f = factToutes('tek')[factId], t = factTotaux(f); return {statut:f.statut, objet:f.objet, origine:f.origine, percko:f.percko, ht:t.ht, lignes:f.lignes.map(l => [l.ref, l.designation.replace('\n', ' '), l.qte, l.pu].join(' ; '))}; });
@@ -131,6 +134,14 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(await p.evaluate(() => percTarif().find(a => a.code === 'ART023').prix === 14.78 && percTarif().find(a => a.code === 'ART001').prix === 10), 'prix modifié enregistré, les autres conservés');
   // le code ne contient aucun prix du tarif d'export (dépôt public)
   ok(await p.evaluate(() => { memoryCache['grp1_fact_params'] = {}; return percTarif().every(a => a.prix === 0) && percValeurs().piece === 0 && percValeurs().exo === 0; }), 'sans réglages, aucun prix ni valeur : ils ne sont pas dans le code');
+  // émission bloquée tant que l'export d'origine n'est pas expédié
+  const blq = await p.evaluate(() => { const st = typeof percExportStatut === 'function';
+    const l = factToutes('tek'), id = Object.keys(l).find(k => l[k].origine && l[k].origine.type === 'export' && l[k].statut === 'brouillon'); if (!id) return 'pas de brouillon';
+    const docs = suiviLireDocs(), ex = docs.exports.liste.find(x => x.id === l[id].origine.exportId); const avant = ex.st; ex.st = 'cours'; memoryCache['grp1_suivi_d_exports'] = docs.exports;
+    window.confirm = () => true; factEmettre(id); const r1 = factToutes('tek')[id].statut;
+    ex.st = 'fini'; memoryCache['grp1_suivi_d_exports'] = docs.exports; factEmettre(id); const r2 = factToutes('tek')[id].statut;
+    return st + '|' + r1 + '|' + r2; });
+  ok(blq === 'true|brouillon|emise', 'émission bloquée si l\'export n\'est pas expédié, possible une fois expédié (' + blq + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur'); process.exit(echecs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
