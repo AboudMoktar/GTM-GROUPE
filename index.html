@@ -3157,35 +3157,33 @@ window.onload = init;
 <link rel="stylesheet" href="./accueil.css">
 <link rel="stylesheet" href="./modules-charte.css">
 <script>
+// Bandeau « nouvelle version prête » : l'utilisateur choisit le moment (rien n'est rechargé sans lui).
+function gtmProposerMiseAJour(){
+  if(document.getElementById('gtm-maj')) return;
+  var b = document.createElement('div');
+  b.id = 'gtm-maj'; b.setAttribute('role', 'status');
+  b.style.cssText = 'position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 20px);padding:10px 14px;border-radius:12px;background:#0B1F3A;color:#fff;font:600 14px/1.3 Inter,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);';
+  b.innerHTML = '<span>Une nouvelle version de l\'application est prête.</span>'
+    + '<button type="button" id="gtm-maj-ok" style="border:0;border-radius:9px;padding:8px 14px;background:#1677E8;color:#fff;font:700 14px Inter,system-ui,sans-serif;cursor:pointer;">Mettre à jour</button>'
+    + '<button type="button" id="gtm-maj-non" style="border:1px solid rgba(255,255,255,.4);border-radius:9px;padding:7px 12px;background:transparent;color:#fff;font:600 13px Inter,system-ui,sans-serif;cursor:pointer;">Plus tard</button>';
+  document.body.appendChild(b);
+  document.getElementById('gtm-maj-ok').onclick = function(){ location.reload(); };
+  document.getElementById('gtm-maj-non').onclick = function(){ b.remove(); };
+}
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./sw.js').then(function(reg){
-      // Sans ce qui suit, une mise à jour publiée (correction de bug, nouvelle
-      // fonctionnalité) peut rester invisible pendant longtemps sur un appareil déjà
-      // ouvert : le navigateur ne vérifie une nouvelle version qu'à certains moments
-      // précis, et même quand il la trouve, la page déjà ouverte continue de faire
-      // tourner l'ancien code tant qu'elle n'est pas rechargée. On force donc : (1) une
-      // vérification immédiate puis régulière, et (2) un rechargement automatique dès
-      // qu'une nouvelle version prend le relais.
-      // Important : « controllerchange » se déclenche aussi la toute première fois
-      // qu'un Service Worker prend le contrôle de la page (ex. juste après avoir vidé
-      // le cache du téléphone) — pas seulement lors d'une vraie mise à jour. Sans cette
-      // distinction, la page se rechargeait dès son tout premier chargement, donnant
-      // l'impression que l'application plantait (rechargement en boucle au démarrage).
+      // Mise à jour publiée : on vérifie tout de suite puis toutes les 5 minutes, mais on ne recharge
+      // JAMAIS la page tout seul. Avant (jusqu'au 18/11/2026), l'arrivée d'une nouvelle version
+      // rechargeait aussitôt l'application : elle « se fermait et se rouvrait » au démarrage, et parfois
+      // en pleine saisie (données en cours perdues). Désormais un bandeau discret propose
+      // « Mettre à jour » ; sinon la nouvelle version est prise à la prochaine ouverture.
+      // « controllerchange » se déclenche aussi la toute première fois qu'un Service Worker prend
+      // le contrôle de la page (premier chargement) : ce n'est pas une mise à jour, rien à proposer.
       var dejaControlee = !!navigator.serviceWorker.controller;
-      var dejaRecharge = false;
       navigator.serviceWorker.addEventListener('controllerchange', function(){
-        if(!dejaControlee){ dejaControlee = true; return; } // première prise de contrôle : rien à recharger
-        if(dejaRecharge) return; // évite une boucle si ça se déclenche plusieurs fois
-        // Garde-fou supplémentaire : si un rechargement pour mise à jour a déjà eu lieu
-        // il y a moins de 20 secondes, quelque chose tourne mal (ex. deux versions qui
-        // s'activent tour à tour) — on n'insiste pas, pour ne jamais recharger en boucle.
-        var dernier = 0;
-        try { dernier = Number(sessionStorage.getItem('__gtm_maj_ts') || 0); } catch(e) {}
-        if(Date.now() - dernier < 20000) return;
-        try { sessionStorage.setItem('__gtm_maj_ts', String(Date.now())); } catch(e) {}
-        dejaRecharge = true;
-        location.reload();
+        if(!dejaControlee){ dejaControlee = true; return; }
+        gtmProposerMiseAJour();
       });
       reg.update().catch(function(){});
       setInterval(function(){ reg.update().catch(function(){}); }, 5 * 60 * 1000);
