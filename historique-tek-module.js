@@ -51,6 +51,20 @@ function hManquants(annee){
   return out;
 }
 function hEcheance(d){ const P = factParams('tek'), j = Number(P.delai) || 30, x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + j); return x.toISOString().slice(0, 10); }
+// facture saisie dans l'historique (montant seul) : modifiable directement dans la liste
+function hEstHisto(f){ return !!(f.origine && f.origine.type === 'saisie' && /historique/.test(f.origine.label || '') && (f.lignes || []).length <= 1); }
+function hLigneListe(x, ed){
+  const f = x.f, st = factStatut(f, factToutes('tek')), etat = st === 'payee' ? 'Payée' : st === 'retard' ? '<span style="color:var(--bad);">En retard</span>' : 'À encaisser';
+  if(!(ed && hEstHisto(f))) return `<tr class="hk-clic" onclick="factOuvrir('${x.id}')"><td><b>${esc(f.numero)}</b></td><td>${mgtDate(f.date)}</td><td class="hk-t">${hE(x.t.ttc)} €</td><td><span class="hk-obj">${esc(f.objet || (f.origine && f.origine.label) || '')}</span></td><td>${etat}</td><td></td></tr>`;
+  const paye = (f.paiements || []).length > 0 || x.t.ttc === 0;
+  return `<tr class="hk-le" data-id="${x.id}" oninput="histModif(this)" onchange="histModif(this)">
+    <td><input class="mgt-in hk-en" value="${esc(f.numero)}" style="font-weight:700;text-transform:uppercase;"></td>
+    <td><input class="mgt-in hk-ed" type="date" value="${esc(f.date || '')}"></td>
+    <td><input class="mgt-in hk-em" type="number" min="0" step="0.01" inputmode="decimal" value="${x.t.ttc ? Math.round(x.t.ttc * 100) / 100 : ''}" placeholder="0,00"></td>
+    <td><input class="mgt-in hk-ec" value="${esc(f.objet || '')}" placeholder="(facultatif)"></td>
+    <td style="text-align:center;"><input class="hk-ep" type="checkbox" ${paye ? 'checked' : ''} style="width:22px;height:22px;" title="${st === 'retard' ? 'En retard' : st === 'payee' ? 'Payée' : 'À encaisser'}"></td>
+    <td><button class="icon-btn" title="Supprimer cette facture" onclick="histSupprFact('${x.id}')">✕</button></td></tr>`;
+}
 function hNumFact(annee, rang){ return 'FA' + String(annee).slice(2) + '/' + String(rang).padStart(3, '0'); }
 
 function renderHistorique(main){
@@ -103,13 +117,16 @@ function renderHistorique(main){
         <button class="btn btn-ghost" onclick="histPlusFact()">+ Ligne</button>
         <button class="btn btn-primary" style="flex:1;min-width:200px;" onclick="histEnregistrerFact()">Enregistrer les factures</button></div>` : ''}
       ${manq.length ? `<div class="hk-manq">Numéros manquants : ${manq.slice(0, 40).map(r => hNumFact(hAnnee, r)).join(', ')}${manq.length > 40 ? '…' : ''}</div>` : ''}
-      <div class="hk-scroll" style="margin-top:10px;"><table class="hk-tab">
-        <thead><tr><th>N° facture</th><th>Date</th><th>Montant</th><th>État</th></tr></thead>
-        <tbody>${facts.length ? facts.map(x => { const st = factStatut(x.f, factToutes('tek')); return `<tr class="hk-clic" onclick="factOuvrir('${x.id}')"><td><b>${esc(x.f.numero)}</b>${x.f.objet ? ` <span class="hk-obj">${esc(x.f.objet)}</span>` : ''}</td><td>${mgtDate(x.f.date)}</td><td class="hk-t">${hE(x.t.ttc)} €</td><td>${st === 'payee' ? 'Payée' : st === 'retard' ? '<span style="color:var(--bad);">En retard</span>' : 'À encaisser'}</td></tr>`; }).join('')
-          : `<tr><td colspan="4" class="hk-vide">Aucune facture ${hAnnee}</td></tr>`}
-          ${facts.length ? `<tr class="hk-total"><td>Total ${hAnnee}</td><td></td><td class="hk-t">${hE(totF)} €</td><td></td></tr>
-            <tr class="hk-total hk-enc"><td>Total encaissé</td><td></td><td class="hk-t">${hE(totEnc)} €</td><td></td></tr>
-            <tr class="hk-total hk-rest"><td>Reste à encaisser</td><td></td><td class="hk-t">${hE(totRest)} €</td><td></td></tr>` : ''}</tbody></table></div>
+      <div class="hk-scroll" style="margin-top:10px;"><table class="hk-tab hk-liste">
+        <thead><tr><th>N° facture</th><th>Date</th><th>Montant €</th><th>Commande</th><th>${ed ? 'Payée' : 'État'}</th><th></th></tr></thead>
+        <tbody id="hk-liste">${facts.length ? facts.map(x => hLigneListe(x, ed)).join('')
+          : `<tr><td colspan="6" class="hk-vide">Aucune facture ${hAnnee}</td></tr>`}
+          ${facts.length ? `<tr class="hk-total"><td>Total ${hAnnee}</td><td></td><td class="hk-t">${hE(totF)} €</td><td colspan="3"></td></tr>
+            <tr class="hk-total hk-enc"><td>Total encaissé</td><td></td><td class="hk-t">${hE(totEnc)} €</td><td colspan="3"></td></tr>
+            <tr class="hk-total hk-rest"><td>Reste à encaisser</td><td></td><td class="hk-t">${hE(totRest)} €</td><td colspan="3"></td></tr>` : ''}</tbody></table></div>
+      ${ed && facts.some(x => hEstHisto(x.f)) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+        <button class="btn btn-primary" id="hk-maj" style="flex:1;min-width:220px;" onclick="histEnregistrerModifs()" disabled>Enregistrer les modifications</button>
+        <span style="font-size:12.5px;color:var(--ink-soft);">Les factures saisies à la main se modifient directement ici ; les autres s'ouvrent en touchant leur ligne.</span></div>` : ''}
     </div>`;
 }
 // lignes vides de la saisie rapide : numéros manquants d'abord, puis la suite
@@ -125,6 +142,48 @@ function hLigneFact(num){
     <td><input class="mgt-in hk-fc" placeholder="(facultatif)"></td>
     <td style="text-align:center;"><input class="hk-fp" type="checkbox" checked style="width:22px;height:22px;"></td></tr>`;
 }
+window.histModif = (tr) => { tr.classList.add('hk-mod'); const b = document.getElementById('hk-maj'); if(b) b.disabled = false; };
+// le compteur suit le plus grand numéro de l'année : la prochaine facture prend le numéro suivant
+function hRecalerCompteur(annees){
+  const l = factToutes('tek'), cle = factCle('tek', 'fact_compteurs'), cpt = getJSON(cle, {}) || {}, t = cpt.FA || {};
+  annees.forEach(an => { const yy = String(an).slice(2); let max = 0;
+    Object.values(l).forEach(f => { if(f.type !== 'avoir' && f.statut === 'emise' && f.numero && f.numero.indexOf('FA' + yy + '/') === 0) max = Math.max(max, parseInt(f.numero.split('/')[1], 10) || 0); });
+    t[an] = max; });
+  cpt.FA = t; setJSON(cle, cpt);
+}
+window.histEnregistrerModifs = () => {
+  if(!hPeutModifier()) return;
+  const l = factToutes('tek'), lignes = [...document.querySelectorAll('#hk-liste .hk-le.hk-mod')], erreurs = [], annees = new Set([hAnnee]);
+  if(!lignes.length){ showToast('Aucune modification'); return; }
+  const autres = new Set(Object.entries(l).filter(([id]) => !lignes.some(tr => tr.dataset.id === id)).map(([, f]) => f.numero).filter(Boolean)), vus = new Set();
+  const maj = [];
+  lignes.forEach(tr => {
+    tr.classList.remove('hk-err'); tr.removeAttribute('title');
+    const num = tr.querySelector('.hk-en').value.toUpperCase().replace(/\s+/g, ''), date = tr.querySelector('.hk-ed').value, brut = tr.querySelector('.hk-em').value.trim(), m = brut ? parseFloat(brut.replace(',', '.')) : 0;
+    const err = (t) => { tr.classList.add('hk-err'); tr.title = t; erreurs.push(t); };
+    if(!/^FA\d{2}\/\d{1,4}$/.test(num)) return err('N° attendu au format FA26/001');
+    if(autres.has(num) || vus.has(num)) return err(num + ' existe déjà');
+    if(!date) return err('Date manquante pour ' + num);
+    if('20' + num.slice(2, 4) !== date.slice(0, 4)) return err(num + ' : la date n\'est pas de l\'année 20' + num.slice(2, 4));
+    if(!(m >= 0)) return err('Montant illisible pour ' + num);
+    vus.add(num); maj.push({tr, num, date, m:Math.round(m * 100) / 100, cmd:tr.querySelector('.hk-ec').value.trim().toUpperCase(), paye:tr.querySelector('.hk-ep').checked});
+  });
+  maj.forEach(x => { const f = l[x.tr.dataset.id]; if(!f) return; annees.add(f.date ? f.date.slice(0, 4) : hAnnee); annees.add(x.date.slice(0, 4));
+    f.numero = x.num; f.date = x.date; f.echeance = hEcheance(x.date); f.objet = x.cmd;
+    f.lignes = [{designation:'Facture ' + x.num + (x.cmd ? ' — commande ' + x.cmd : ''), qte:1, pu:x.m, remise:0}];
+    f.paiements = x.paye && x.m > 0 ? [{date:x.date, montant:x.m, mode:'virement', ref:''}] : []; });
+  if(maj.length){ factEnregistrer('tek', l); hRecalerCompteur([...annees]); }
+  const garder = erreurs.length;
+  nav(activeTab);
+  showToast(maj.length + ' facture(s) modifiée(s)' + (garder ? ' — ' + garder + ' non modifiée(s) : ' + erreurs[0] : ''));
+};
+window.histSupprFact = (id) => {
+  if(!hPeutModifier()) return;
+  const l = factToutes('tek'), f = l[id]; if(!f || !hEstHisto(f)) return;
+  if(!confirm('Supprimer la facture ' + f.numero + ' de l\'historique ?')) return;
+  const an = (f.date || hAnnee).slice(0, 4); delete l[id]; factEnregistrer('tek', l); hRecalerCompteur([an]);
+  showToast('Facture ' + f.numero + ' supprimée'); nav(activeTab);
+};
 window.histAnnee = (a) => { hAnnee = a; hLignesFact = 3; nav(activeTab); };
 window.histPlusFact = () => {
   const t = document.getElementById('hk-fact'); if(!t) return;
@@ -226,6 +285,7 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-tots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 10px;} .hk-tots div{border:1px solid var(--border);border-radius:10px;padding:8px 10px;} .hk-tots span{display:block;font-size:12px;color:var(--ink-soft);} .hk-tots b{font-size:17px;font-variant-numeric:tabular-nums;}
 .hk-enc td{color:#15803d;border-top:1px solid var(--border)!important;} .hk-rest td{color:#b42318;border-top:1px solid var(--border)!important;}
 .hk-manq{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12);font-size:12.5px;}
+.hk-le.hk-mod td{background:rgba(22,119,232,.07);} .hk-liste input{width:100%;min-width:80px;}
 .hk-clic{cursor:pointer;} .hk-clic:hover td{background:var(--accent-bg);} .hk-obj{font-size:12px;color:var(--ink-soft);}
 @media (max-width:900px){ .hk-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (max-width:600px){ .hk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .hk-tab{font-size:12.5px;} .hk-tab .hk-q{min-width:58px;} #hk-num{min-width:130px;}

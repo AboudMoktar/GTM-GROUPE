@@ -1332,33 +1332,41 @@ function init(){
 }
 
 function renderLogin(err){
+  // Écran de connexion au style des écrans d'accueil (accueil.css) : bandeau bleu nuit avec la photo de l'atelier,
+  // carte de connexion sur fond clair, les trois logos officiels (fichiers d'origine, jamais modifiés).
+  const nomGroupe = (clair, id) => typeof gtmhNomGroupe === 'function' ? gtmhNomGroupe(clair, id) : '<div class="gtmh-wm' + (clair ? ' clair' : '') + '"><b>GTM</b><b class="gtmh-wm-groupe">GROUPE</b></div>';
   document.getElementById('app').innerHTML = `
-  <div class="login-wrap">
-    <div class="login-card login-split">
-      <aside class="login-brand">
-        <div class="lb-titre">GTM <span>GROUPE</span></div>
-        <div class="lb-sous">Plateforme de gestion du groupe</div>
-        <div class="lb-logos">
-          ${['tek', 'gadh', 'mgt'].map(k => `<span class="lb-chip">${societeLogo(k, 52, societeMot(k), 120)}</span>`).join('')}
+  <div class="gtmh gtmh-soc gtmh-login">
+    <aside class="gtmh-hero">
+      <div class="gtmh-hero-txt">
+        ${nomGroupe(true, 'gtmhArcLogin')}
+        <p class="gtmh-slogan">Ensemble<br>pour plus de performance</p>
+      </div>
+    </aside>
+    <div class="gtmh-scene">
+      <main class="gtmh-centre">
+        <div class="gtmh-login-carte">
+          <div class="gtmh-entete">${nomGroupe(false, 'gtmhArcLoginT')}<div class="gtmh-entete-soc">Plateforme de gestion du groupe</div></div>
+          <h1>Connexion</h1>
+          <p class="gtmh-qui">Accédez à votre espace de travail.</p>
+          <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
+          <form id="login-form">
+            <div class="field"><label for="login-user">Utilisateur</label><input type="text" id="login-user" required autocomplete="username"></div>
+            <div class="field">
+              <label for="login-pass">Mot de passe</label>
+              <div class="pw-field">
+                <input type="password" id="login-pass" required autocomplete="current-password">
+                <button type="button" class="pw-toggle" onclick="togglePwVisibility()" aria-label="Afficher le mot de passe">${ICONS.eye}</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block gtmh-login-btn">Se connecter</button>
+          </form>
         </div>
-        <div class="lb-pied">TEK-TREND · GADH TUNISIA · MGT</div>
-      </aside>
-      <section class="login-cote">
-      <h2 class="lc-titre">Connexion</h2>
-      <p class="lc-sous">Accédez à votre espace de travail.</p>
-      <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
-      <form id="login-form">
-        <div class="field"><label>Utilisateur</label><input type="text" id="login-user" required autocomplete="username"></div>
-        <div class="field">
-          <label>Mot de passe</label>
-          <div class="pw-field">
-            <input type="password" id="login-pass" required autocomplete="current-password">
-            <button type="button" class="pw-toggle" onclick="togglePwVisibility()" aria-label="Afficher le mot de passe">${ICONS.eye}</button>
-          </div>
+        <div class="gtmh-login-logos">
+          ${['tek', 'gadh', 'mgt'].map(k => `<span class="gtmh-login-logo" title="${SOCIETES[k] ? SOCIETES[k].nom : ''}">${societeLogo(k, 52, societeMot(k), 140)}</span>`).join('')}
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
-      </form>
-      </section>
+        <div class="gtmh-entete-soc gtmh-login-soc">TEK-TREND <i>|</i> GADH TUNISIA <i>|</i> MGT</div>
+      </main>
     </div>
   </div>`;
   window.togglePwVisibility = () => {

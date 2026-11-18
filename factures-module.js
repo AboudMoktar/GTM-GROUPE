@@ -293,6 +293,9 @@ window.factEmettre = (id) => {
   const c = factClients(soc)[f.clientId];
   if(!c){ showToast('Choisissez le client'); return; }
   if(!(f.lignes || []).some(x => x.designation && factMontantLigne(x) > 0)){ showToast('Ajoutez au moins une ligne chiffrée'); return; }
+  // facture d'un export PERCKO : émise seulement quand l'export est expédié (validé « Fini » dans le suivi)
+  if(f.origine && f.origine.type === 'export' && typeof percExportStatut === 'function' && percExportStatut(f.origine.exportId) === 'cours'){
+    showToast('Export ' + (f.origine.label || '') + ' pas encore expédié : la facture sera émise après sa validation (« Fini »)'); return; }
   if(!confirm('Émettre ' + (f.type === 'avoir' ? 'cet avoir' : 'cette facture') + ' ? Elle recevra son numéro définitif et ne sera plus modifiable.')) return;
   f.client = {nom:c.nom, adresse:c.adresse || '', mf:c.mf || ''};
   f.numero = factNumero(soc, f.type, (f.date || getTodayISO()).slice(0, 4));
