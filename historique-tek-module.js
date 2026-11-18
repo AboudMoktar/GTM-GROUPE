@@ -59,7 +59,7 @@ function renderHistorique(main){
   const body = mgtSection(main, 'Historique ' + hAnnee,
     `<select class="mgt-in" style="width:auto;" onchange="histAnnee(this.value)">${[...annees].sort().reverse().map(a => `<option ${a === hAnnee ? 'selected' : ''}>${a}</option>`).join('')}</select>`);
   const cmds = hCommandes(hAnnee), tot = cmds.reduce((s, c) => { s.sv += +c.sv || 0; s.br += +c.br || 0; s.exo += +c.exo || 0; return s; }, {sv:0, br:0, exo:0});
-  const facts = hFactures(hAnnee), totF = facts.reduce((s, x) => s + x.t.ttc, 0), manq = hManquants(hAnnee);
+  const facts = hFactures(hAnnee), totF = facts.reduce((s, x) => s + x.t.ttc, 0), totRest = facts.reduce((s, x) => s + x.t.reste, 0), totEnc = Math.max(0, totF - totRest), manq = hManquants(hAnnee);
   const kpi = (v, l) => `<div class="card hk-kpi"><b>${v}</b><span>${l}</span></div>`;
   // regroupement par mois
   const parMois = {}; cmds.forEach(c => { (parMois[c.mois] = parMois[c.mois] || []).push(c); });
@@ -93,7 +93,9 @@ function renderHistorique(main){
     </div>
     <div class="card">
       <h3 style="margin:0 0 4px;font-size:15px;">Factures ${hAnnee}</h3>
+      ${facts.length ? `<div class="hk-tots"><div><span>Total facturé</span><b>${hE(totF)} €</b></div><div><span>Encaissé</span><b style="color:#15803d;">${hE(totEnc)} €</b></div><div><span>Reste à encaisser</span><b style="color:${totRest > 0.004 ? '#b42318' : 'inherit'};">${hE(totRest)} €</b></div></div>` : ''}
       ${ed ? `<p style="margin:0 0 8px;font-size:12.5px;color:var(--ink-soft);">Saisie rapide des factures déjà faites : numéro, date et montant. Elles s'ajoutent à la liste des factures.</p>
+      <p style="margin:0 0 8px;font-size:12.5px;color:var(--ink-soft);">Facture sans montant (annulée, à zéro) : laissez le montant vide, elle est enregistrée à 0 €.</p>
       <div class="hk-scroll"><table class="hk-tab hk-fs">
         <thead><tr><th>N° facture</th><th>Date</th><th>Montant €</th><th>Commande</th><th>Payée</th></tr></thead>
         <tbody id="hk-fact">${hLignesSaisie()}</tbody></table></div>
@@ -105,7 +107,9 @@ function renderHistorique(main){
         <thead><tr><th>N° facture</th><th>Date</th><th>Montant</th><th>État</th></tr></thead>
         <tbody>${facts.length ? facts.map(x => { const st = factStatut(x.f, factToutes('tek')); return `<tr class="hk-clic" onclick="factOuvrir('${x.id}')"><td><b>${esc(x.f.numero)}</b>${x.f.objet ? ` <span class="hk-obj">${esc(x.f.objet)}</span>` : ''}</td><td>${mgtDate(x.f.date)}</td><td class="hk-t">${hE(x.t.ttc)} €</td><td>${st === 'payee' ? 'Payée' : st === 'retard' ? '<span style="color:var(--bad);">En retard</span>' : 'À encaisser'}</td></tr>`; }).join('')
           : `<tr><td colspan="4" class="hk-vide">Aucune facture ${hAnnee}</td></tr>`}
-          ${facts.length ? `<tr class="hk-total"><td>Total ${hAnnee}</td><td></td><td class="hk-t">${hE(totF)} €</td><td></td></tr>` : ''}</tbody></table></div>
+          ${facts.length ? `<tr class="hk-total"><td>Total ${hAnnee}</td><td></td><td class="hk-t">${hE(totF)} €</td><td></td></tr>
+            <tr class="hk-total hk-enc"><td>Total encaissé</td><td></td><td class="hk-t">${hE(totEnc)} €</td><td></td></tr>
+            <tr class="hk-total hk-rest"><td>Reste à encaisser</td><td></td><td class="hk-t">${hE(totRest)} €</td><td></td></tr>` : ''}</tbody></table></div>
     </div>`;
 }
 // lignes vides de la saisie rapide : numéros manquants d'abord, puis la suite
@@ -156,30 +160,39 @@ window.histEnregistrerFact = () => {
   const l = factToutes('tek'), existants = new Set(Object.values(l).map(f => f.numero).filter(Boolean));
   const cl = factClients('tek'), cid = Object.keys(cl).find(k => (cl[k].nom || '').toUpperCase() === 'PERCKO') || Object.keys(cl)[0];
   if(!cid){ showToast('Ajoutez d\'abord le client PERCKO (Facturation › Clients)'); return; }
-  const lignes = [...document.querySelectorAll('#hk-fact .hk-lf')], aCreer = [], vus = new Set();
+  const lignes = [...document.querySelectorAll('#hk-fact .hk-lf')], aCreer = [], vus = new Set(), erreurs = [];
   for(const tr of lignes){
-    const num = tr.querySelector('.hk-fn').value.toUpperCase().replace(/\s+/g, ''), date = tr.querySelector('.hk-fd').value, m = parseFloat(tr.querySelector('.hk-fm').value);
-    if(!date && !(m > 0)) continue;                                          // ligne laissée vide
-    tr.classList.remove('hk-err');
-    const err = (t) => { tr.classList.add('hk-err'); showToast(t); return true; };
-    if(!/^FA\d{2}\/\d{1,4}$/.test(num) && err('N° attendu au format FA26/001')) return;
-    if((existants.has(num) || vus.has(num)) && err('La facture ' + num + ' existe déjà')) return;
-    if(!date && err('Date manquante pour ' + num)) return;
-    if('20' + num.slice(2, 4) !== date.slice(0, 4) && err('Le numéro ' + num + ' ne correspond pas à l\'année de la date')) return;
-    if(!(m > 0) && err('Montant manquant pour ' + num)) return;
+    const num = tr.querySelector('.hk-fn').value.toUpperCase().replace(/\s+/g, ''), date = tr.querySelector('.hk-fd').value, brut = tr.querySelector('.hk-fm').value.trim(), m = parseFloat(brut.replace(',', '.'));
+    tr.classList.remove('hk-err'); tr.removeAttribute('title');
+    if(!date && !brut) continue;                                             // ligne laissée vide : ignorée
+    const err = (t) => { tr.classList.add('hk-err'); tr.title = t; erreurs.push(t); };
+    if(!/^FA\d{2}\/\d{1,4}$/.test(num)){ err('N° attendu au format FA26/001'); continue; }
+    if(existants.has(num) || vus.has(num)){ err(num + ' existe déjà' + (existants.has(num) ? ' (voir la liste ci-dessous)' : ' (en double dans la saisie)')); continue; }
+    if(!date){ err('Date manquante pour ' + num); continue; }
+    if('20' + num.slice(2, 4) !== date.slice(0, 4)){ err(num + ' : la date n\'est pas de l\'année 20' + num.slice(2, 4)); continue; }
+    if(brut && !(m >= 0)){ err('Montant illisible pour ' + num); continue; }
     vus.add(num);
-    aCreer.push({num, date, m:Math.round(m * 100) / 100, cmd:tr.querySelector('.hk-fc').value.trim().toUpperCase(), paye:tr.querySelector('.hk-fp').checked});
+    // facture sans montant (annulée, à zéro) : enregistrée à 0 pour garder la numérotation complète
+    aCreer.push({tr, num, date, m:brut ? Math.round(m * 100) / 100 : 0, cmd:tr.querySelector('.hk-fc').value.trim().toUpperCase(), paye:tr.querySelector('.hk-fp').checked});
   }
-  if(!aCreer.length){ showToast('Remplissez au moins une ligne : date et montant'); return; }
+  if(!aCreer.length){ showToast(erreurs.length ? erreurs[0] : 'Remplissez au moins une ligne : numéro et date'); return; }
   const c = cl[cid];
   aCreer.forEach(x => factCreer('tek', {numero:x.num, statut:'emise', date:x.date, echeance:hEcheance(x.date), clientId:cid, client:{nom:c.nom, adresse:c.adresse || '', mf:c.mf || ''},
     objet:x.cmd, lignes:[{designation:'Facture ' + x.num + (x.cmd ? ' — commande ' + x.cmd : ''), qte:1, pu:x.m, remise:0}], devise:'EUR', tva:0, timbre:0,
-    paiements:x.paye ? [{date:x.date, montant:x.m, mode:'virement', ref:''}] : [], relances:[], origine:{type:'saisie', label:'historique (montant seul)'}}));
+    paiements:x.paye && x.m > 0 ? [{date:x.date, montant:x.m, mode:'virement', ref:''}] : [], relances:[], origine:{type:'saisie', label:'historique (montant seul)'}}));
   // compteur : la prochaine facture continue après le plus grand numéro
   const cle = factCle('tek', 'fact_compteurs'), cpt = getJSON(cle, {}) || {}, t = cpt.FA || {};
   aCreer.forEach(x => { const an = '20' + x.num.slice(2, 4), r = parseInt(x.num.split('/')[1], 10); if((t[an] || 0) < r) t[an] = r; });
   cpt.FA = t; setJSON(cle, cpt);
-  showToast(aCreer.length + ' facture(s) enregistrée(s)'); hLignesFact = 3; nav(activeTab);
+  // les lignes en erreur restent à l'écran (avec leur saisie) pour être corrigées ; les autres sont enregistrées
+  const garder = lignes.filter(tr => tr.classList.contains('hk-err')).map(tr => ({num:tr.querySelector('.hk-fn').value, date:tr.querySelector('.hk-fd').value, m:tr.querySelector('.hk-fm').value, cmd:tr.querySelector('.hk-fc').value, paye:tr.querySelector('.hk-fp').checked, t:tr.title}));
+  hLignesFact = Math.max(1, 3 - garder.length); nav(activeTab);
+  const zt = document.getElementById('hk-fact');
+  if(zt && garder.length){
+    zt.insertAdjacentHTML('afterbegin', garder.map(g => hLigneFact(g.num)).join(''));
+    [...zt.querySelectorAll('.hk-lf')].slice(0, garder.length).forEach((tr, i) => { const g = garder[i]; tr.querySelector('.hk-fd').value = g.date; tr.querySelector('.hk-fm').value = g.m; tr.querySelector('.hk-fc').value = g.cmd; tr.querySelector('.hk-fp').checked = g.paye; tr.classList.add('hk-err'); tr.title = g.t; });
+  }
+  showToast(aCreer.length + ' facture(s) enregistrée(s)' + (garder.length ? ' — ' + garder.length + ' ligne(s) à corriger (en rouge) : ' + garder[0].t : ''));
 };
 
 // --- Raccordement : Facturation › Historique (TEK-TREND) et Suivi des Commandes › Historique ---
@@ -210,6 +223,8 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-mois td{background:var(--accent-bg);font-weight:800;color:var(--ink);} .hk-total td{font-weight:800;border-top:2px solid var(--border);}
 .hk-vide{text-align:center;color:var(--ink-faint);padding:14px!important;} .hk-ajout td{padding-top:10px;}
 .hk-fs input{width:100%;min-width:90px;} .hk-err td{background:rgba(220,38,38,.08);}
+.hk-tots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 10px;} .hk-tots div{border:1px solid var(--border);border-radius:10px;padding:8px 10px;} .hk-tots span{display:block;font-size:12px;color:var(--ink-soft);} .hk-tots b{font-size:17px;font-variant-numeric:tabular-nums;}
+.hk-enc td{color:#15803d;border-top:1px solid var(--border)!important;} .hk-rest td{color:#b42318;border-top:1px solid var(--border)!important;}
 .hk-manq{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12);font-size:12.5px;}
 .hk-clic{cursor:pointer;} .hk-clic:hover td{background:var(--accent-bg);} .hk-obj{font-size:12px;color:var(--ink-soft);}
 @media (max-width:900px){ .hk-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }

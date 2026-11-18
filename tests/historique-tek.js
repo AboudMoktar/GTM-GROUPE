@@ -38,19 +38,26 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(await l.nth(0).locator('.hk-fn').inputValue() === 'FA26/001' && await l.nth(2).locator('.hk-fn').inputValue() === 'FA26/003', 'saisie rapide : propose FA26/001, 002, 003 (numéros manquants)');
   await l.nth(0).locator('.hk-fd').fill('2026-01-31'); await l.nth(0).locator('.hk-fm').fill('15230.5'); await l.nth(0).locator('.hk-fc').fill('pk202601-1');
   await l.nth(1).locator('.hk-fd').fill('2025-02-27'); await l.nth(1).locator('.hk-fm').fill('9870');
+  await l.nth(2).locator('.hk-fd').fill('2026-03-05');                         // FA26/003 sans montant
   await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
-  ok(await p.evaluate(() => Object.keys(factToutes('tek')).length) === 1, 'date d\'une autre année : rien n\'est enregistré');
-  await l.nth(1).locator('.hk-fd').fill('2026-02-27'); await l.nth(1).locator('.hk-fp').uncheck();
+  const e1 = await p.evaluate(() => ({n:Object.values(factToutes('tek')).map(f => f.numero).sort().join(','), rouge:[...document.querySelectorAll('#hk-fact .hk-err')].map(tr => tr.querySelector('.hk-fn').value + '|' + tr.querySelector('.hk-fd').value + '|' + tr.querySelector('.hk-fm').value)}));
+  ok(e1.n === 'FA26/001,FA26/003,FA26/027', 'lignes justes enregistrées malgré une ligne en erreur (' + e1.n + ')');
+  ok(e1.rouge.join() === 'FA26/002|2025-02-27|9870', 'ligne en erreur gardée en rouge avec sa saisie, à corriger');
+  ok(await p.evaluate(() => { const f = Object.values(factToutes('tek')).find(x => x.numero === 'FA26/003'); return factTotaux(f).ttc === 0 && factStatut(f, factToutes('tek')) === 'payee' && !(f.paiements || []).length; }), 'facture sans montant : enregistrée à 0 €, sans paiement');
+  await p.locator('#hk-fact .hk-err .hk-fd').fill('2026-02-27'); await p.locator('#hk-fact .hk-err .hk-fp').uncheck();
   await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
-  const F = await p.evaluate(() => Object.values(factToutes('tek')).filter(f => f.numero !== 'FA26/027').map(f => ({n:f.numero, d:f.date, ech:f.echeance, ttc:factTotaux(f).ttc, st:factStatut(f, factToutes('tek')), o:f.objet, or:f.origine.type})));
-  ok(F.length === 2 && F[0].n === 'FA26/001' && F[0].ttc === 15230.5 && F[0].st === 'payee' && F[0].o === 'PK202601-1' && F[0].or === 'saisie', 'FA26/001 enregistrée : 15 230,50 €, payée, commande PK202601-1');
-  ok(F[1].n === 'FA26/002' && F[1].ttc === 9870 && F[1].st !== 'payee' && F[1].ech === '2026-03-29', 'FA26/002 non payée : échéance à 30 jours');
+  const F = await p.evaluate(() => Object.values(factToutes('tek')).filter(f => f.numero !== 'FA26/027').sort((a, b) => a.numero < b.numero ? -1 : 1).map(f => ({n:f.numero, d:f.date, ech:f.echeance, ttc:factTotaux(f).ttc, st:factStatut(f, factToutes('tek')), o:f.objet, or:f.origine.type})));
+  ok(F.length === 3 && F[0].n === 'FA26/001' && F[0].ttc === 15230.5 && F[0].st === 'payee' && F[0].o === 'PK202601-1' && F[0].or === 'saisie', 'FA26/001 enregistrée : 15 230,50 €, payée, commande PK202601-1');
+  ok(F[1].n === 'FA26/002' && F[1].ttc === 9870 && F[1].st !== 'payee' && F[1].ech === '2026-03-29', 'FA26/002 corrigée puis enregistrée, non payée : échéance à 30 jours');
   ok(await p.evaluate(() => getJSON('fact_compteurs', {}).FA['2026']) === 28, 'compteur inchangé (28) : la prochaine facture reste FA26/029');
-  ok(await p.evaluate(() => /FA26\/003/.test(document.querySelector('.hk-manq').textContent) && !/FA26\/001/.test(document.querySelector('.hk-manq').textContent)), 'numéros manquants mis à jour');
+  ok(await p.evaluate(() => /FA26\/004/.test(document.querySelector('.hk-manq').textContent) && !/FA26\/00[123]/.test(document.querySelector('.hk-manq').textContent)), 'numéros manquants mis à jour');
+  const tots = await p.evaluate(() => [...document.querySelectorAll('.hk-tots b')].map(b => b.textContent.replace(/\s/g, '')).join('|'));
+  ok(tots === '25120,50€|15230,50€|9890,00€', 'total facturé, encaissé, reste à encaisser (' + tots + ')');
+  ok(await p.evaluate(() => /Total encaissé/.test(document.body.innerText) && /Reste à encaisser/.test(document.body.innerText)), 'lignes « Total encaissé » et « Reste à encaisser » sous la liste');
   // doublon refusé
   await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fn').fill('FA26/027'); await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fd').fill('2026-10-11'); await p.locator('#hk-fact .hk-lf').nth(0).locator('.hk-fm').fill('5');
   await p.click('text=Enregistrer les factures'); await p.waitForTimeout(300);
-  ok(await p.evaluate(() => Object.keys(factToutes('tek')).length) === 3, 'numéro existant : refusé');
+  ok(await p.evaluate(() => Object.keys(factToutes('tek')).length === 4 && document.querySelectorAll('#hk-fact .hk-err').length === 1), 'numéro existant : refusé, ligne gardée en rouge');
   // même écran depuis Suivi des Commandes
   await p.evaluate(() => { activeModule = 'commandes'; renderShell(); nav('cmd-historique'); }); await p.waitForTimeout(300);
   ok(await p.evaluate(() => !!document.querySelector('.hk-tab') && [...document.querySelectorAll('.sidebar nav button[data-tab]')].map(x => x.textContent.trim()).join('|') === 'Commandes|Historique'), 'Suivi des Commandes : onglet « Historique » (même écran)');
