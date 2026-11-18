@@ -28,17 +28,17 @@ async function donnees(p){
   r.push(['Pilotage : première vue de l\'onglet Suivi', await p.locator('.seg button.on', {hasText: 'Pilotage'}).count() === 1 && await p.locator('.ph-t').count() === 1]);
   r.push(['en-tête : lot, année, état', /PK202612-1/.test(await txt('.ph-titre')) && /2026/.test(await txt('.ph-head')) && /En cours/.test(await txt('.ph-etat'))]);
   const kpi = await p.$$eval('.ph-kpi', ks => ks.map(k => k.querySelector('small').textContent + '=' + k.querySelector('b').textContent.replace(/\s/g, '')));
-  r.push(['chiffres clés (commandée, coupée … expédiée, reste, avancement)', kpi.length === 9 && kpi[0] === 'Qté commandée=800pcs' && kpi[1] === 'Qté coupée=545pcs' && kpi[6] === 'Expédiée=170pcs' && kpi[7] === 'Reste à produire=630pcs' && kpi[8] === 'Avancement=21,3%']);
+  r.push(['chiffres clés (commandée, coupée … expédiée, reste, avancement)', kpi.length === 9 && kpi[0] === 'Qté commandée=800pcs' && kpi[1] === 'Qté coupée=545pcs' && kpi[6] === 'Expédiée=170pcs' && kpi[7] === 'Reste à produire=620pcs' && kpi[8] === 'Avancement=21,3%']);
   r.push(['pas de colonne « Qté finie »', !/fini/i.test(await txt('.ph-t thead'))]);
   const D = await p.evaluate(() => { const L = pkPilotage.lignesPilotage('PK202612-1'), g = L.find(x => x.id === 'G_S'); return {n: L.length, g, T: pkPilotage.sommer(L), coul: pkPilotage.couleurDe('PHARMA_FEMME COL V ROSE POUDRE').t}; });
   r.push(['une ligne par référence × taille × client', D.n === 6]);
-  r.push(['reste = commandée − expédiée ; avancement = expédiée ÷ commandée', D.g.rest === 20 && D.g.av === 60 && D.T.rest === 630 && D.T.exp === 170]);
+  r.push(['reste = commandée − (contrôlée, emballée ou expédiée) ; avancement = expédiée ÷ commandée', D.g.rest === 10 && D.g.av === 60 && D.T.rest === 620 && D.T.exp === 170]);
   r.push(['couleur lue dans le libellé', D.coul === 'ROSE POUDRE' || D.coul === 'ROSE']);
   const val = (td) => (td.querySelector('.v') || td).textContent.trim();
   const st = await p.$$eval('.ph-t tr.st', rs => rs.map(x => [...x.children].map(td => (td.querySelector('.v') || td).textContent.trim())));
-  r.push(['sous-total par modèle', st.length === 3 && st[0][1] === 'Sous-total PHARMA-HOMME' && st[0][2] === '220' && st[0][8] === '170' && st[0][9] === '50']);
+  r.push(['sous-total par modèle', st.length === 3 && st[0][1] === 'Sous-total PHARMA-HOMME' && st[0][2] === '220' && st[0][8] === '170' && st[0][9] === '40']);
   const tg = await p.$$eval('.ph-t tr.tg td', ts => ts.map(td => (td.querySelector('.v') || td).textContent.trim()));
-  r.push(['total général', tg[1] === 'TOTAL GÉNÉRAL' && tg[2] === '800' && tg[8] === '170' && tg[9] === '630' && /21,3/.test(tg[10])]);
+  r.push(['total général', tg[1] === 'TOTAL GÉNÉRAL' && tg[2] === '800' && tg[8] === '170' && tg[9] === '620' && /21,3/.test(tg[10])]);
   r.push(['modèle affiché une fois par groupe', await p.locator('.ph-t td.mod').count() === 3]);
   // recherche
   await p.fill('.ph-outils input[type=search]', 'rose'); await p.waitForTimeout(150);
