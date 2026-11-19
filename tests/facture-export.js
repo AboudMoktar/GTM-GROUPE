@@ -136,15 +136,22 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(await p.evaluate(() => percTarif().find(a => a.code === 'ART023').prix === 14.78 && percTarif().find(a => a.code === 'ART001').prix === 10), 'prix modifié enregistré, les autres conservés');
   // le code ne contient aucun prix du tarif d'export (dépôt public)
   ok(await p.evaluate(() => { memoryCache['grp1_fact_params'] = {}; return percTarif().every(a => a.prix === 0) && percValeurs().piece === 0 && percValeurs().exo === 0; }), 'sans réglages, aucun prix ni valeur : ils ne sont pas dans le code');
-  // émission bloquée tant que l'export d'origine n'est pas expédié
-  const blq = await p.evaluate(() => { const st = typeof percExportStatut === 'function';
+  // 19/11/2026 : numéro dès la création ; « Valider la facture » à tout moment (compte dans le CA), elle reste modifiable ;
+  // numéro modifiable tant que l'export n'est pas expédié (contrôle du format et des doublons, compteur recalé)
+  const blq = await p.evaluate(() => {
     const l = factToutes('tek'), id = Object.keys(l).find(k => l[k].origine && l[k].origine.type === 'export' && l[k].statut === 'brouillon'); if (!id) return 'pas de brouillon';
-    const docs = suiviLireDocs(), ex = docs.exports.liste.find(x => x.id === l[id].origine.exportId); const avant = ex.st; ex.st = 'cours'; memoryCache['grp1_suivi_d_exports'] = docs.exports;
-    window.confirm = () => true; factEmettre(id); const r1 = factToutes('tek')[id].statut;
-    factId = id; nav('fact-edit'); const ui1 = !!document.body.textContent.match(/pas encore expédié/) && !!document.querySelector('button[disabled][onclick^="factEmettre"]');
-    ex.st = 'fini'; memoryCache['grp1_suivi_d_exports'] = docs.exports; nav('fact-edit'); const ui2 = !document.querySelector('button[disabled][onclick^="factEmettre"]'); factEmettre(id); const r2 = factToutes('tek')[id].statut;
-    return st + '|' + r1 + '|' + r2 + '|' + ui1 + '|' + ui2; });
-  ok(blq === 'true|brouillon|emise|true|true', 'émission bloquée si l\'export n\'est pas expédié, possible une fois expédié (' + blq + ')');
+    const docs = suiviLireDocs(), ex = docs.exports.liste.find(x => x.id === l[id].origine.exportId); ex.st = 'cours'; memoryCache['grp1_suivi_d_exports'] = docs.exports;
+    const num0 = l[id].numero, ca0 = factIndicateurs('tek').ca !== undefined ? JSON.stringify(factIndicateurs('tek')) : '';
+    factId = id; nav('fact-edit');
+    const btn = document.querySelector('button[onclick^="factEmettre"]'), ui1 = !!btn && !btn.disabled && /Valider la facture/.test(btn.textContent) && !!document.getElementById('fe-numero') && !document.getElementById('fe-numero').disabled;
+    window.confirm = () => true; factEmettre(id); const f1 = factToutes('tek')[id];
+    nav('fact-edit'); const ui2 = !document.querySelector('.mgt-ligne textarea').disabled && /validée/.test(document.body.textContent);
+    factMajNumero('fa26/40'); const n1 = factToutes('tek')[id].numero, cpt1 = getJSON('fact_compteurs').FA['2026'];
+    const autre = Object.keys(l).find(k => k !== id && l[k].numero); if (autre) factMajNumero(l[autre].numero); const n2 = factToutes('tek')[id].numero;
+    factMajNumero('n°12'); const n3 = factToutes('tek')[id].numero;
+    ex.st = 'fini'; memoryCache['grp1_suivi_d_exports'] = docs.exports; nav('fact-edit'); const ui3 = document.getElementById('fe-numero').disabled;
+    return [/^FA\d{2}\/\d{3}$/.test(num0), f1.statut, f1.numero === num0, ui1, ui2, n1, cpt1, n2, n3, ui3].join('|'); });
+  ok(blq === 'true|emise|true|true|true|FA26/040|40|FA26/040|FA26/040|true', 'numéro donné dès la création ; validation avant l\'expédition (garde son numéro, reste modifiable) ; numéro modifiable jusqu\'à l\'expédition, doublon et format refusés, compteur recalé (' + blq + ')');
   const tri = await p.evaluate(() => { const L = [['a',{statut:'emise',numero:'FA26/029',date:'2026-11-10'}],['b',{statut:'emise',numero:'FA26/030',date:'2026-09-01'}],['c',{statut:'brouillon',date:'2026-11-01'}],['d',{statut:'emise',numero:'FA26/005',date:'2026-12-01'}],['e',{statut:'emise',numero:'FA25/120',date:'2025-12-30'}]];
     return L.sort(factTriListe).map(x => x[0]).join(''); });
   ok(tri === 'cbade', 'liste triée : brouillons, puis numéros décroissants (' + tri + ')');

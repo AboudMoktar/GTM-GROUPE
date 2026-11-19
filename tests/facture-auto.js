@@ -24,4 +24,9 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.waitForTimeout(2000);
   const c = await p.evaluate(() => JSON.stringify(Object.values(factToutes('tek')).map(f => [f.statut, f.percko.colis, f.lignes.map(l => l.ref + ':' + l.qte)])));
   ok(c === '[["brouillon",2,["ART001:17"]]]', 'carton ajouté : la même facture est remise à jour, sans doublon (' + c + ')');
+  // deux nouveaux exports, encore vides : chacun reçoit tout de suite sa facture numérotée, à la suite
+  await fr.evaluate(() => { commit(function(){ S.exports.push({id:'E2', n:4, d:'2026-11-25', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', com:'', cartons:[]}, {id:'E3', n:5, d:'2026-11-28', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', com:'', cartons:[]}); }); });
+  await p.waitForTimeout(2000);
+  const n = await p.evaluate(() => { const L = Object.values(factToutes('tek')), num = id => (L.find(f => f.origine && f.origine.exportId === id) || {}).numero; return [num('E1'), num('E2'), num('E3'), L.filter(f => f.statut === 'emise').length, getJSON('fact_compteurs').FA['2026']].join('|'); });
+  ok(n === 'FA26/027|FA26/028|FA26/029|0|29', 'numéros donnés dès la création de chaque export, à la suite ; aucune ne compte avant validation (' + n + ')');
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'aucune erreur'); process.exit(echecs ? 1 : 0); })();

@@ -50,7 +50,7 @@ window.grpSuiviStore = {
   imprimer: (html, titre) => suiviImprimer(html, titre),
   apercu: (full, titre, format, marge) => suiviApercu(full, titre, format, marge),
   // Facture TEK-TREND préparée à partir d'un export (voir facturation-percko-module.js)
-  synchroFactureExport: (x, creer) => (activeModule !== 'gadh' && typeof percSynchroFactureExport === 'function') ? percSynchroFactureExport(x, creer) : 0,
+  synchroFactureExport: (x, creer, final) => (activeModule !== 'gadh' && typeof percSynchroFactureExport === 'function') ? percSynchroFactureExport(x, creer, final) : 0,
   facturerExport: (x, forcer) => (activeModule !== 'gadh' && typeof percFacturerExport === 'function') ? percFacturerExport(x, forcer) : {ok:false, message:'Facturation indisponible ici.'},
   apercuFactureModele: (x, mode) => (activeModule !== 'gadh' && typeof percApercuFactureExport === 'function') ? percApercuFactureExport(x, mode) : false,
   apercuFacture: (x) => (activeModule !== 'gadh' && typeof percApercuFacture === 'function') ? percApercuFacture(x) : null,
