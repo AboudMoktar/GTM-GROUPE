@@ -28,6 +28,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
     mgt_crm_listing: {'ART-0001': art({id: 'ART-0001', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-100', designation: 'MACHINE ESSAI A', prixCatalogue: 1000, remise: 0.4, prixAchat: 600, prixVente: 1200}),
       'ART-0002': art({id: 'ART-0002', groupe: 'MORGAN', marque: 'MORGAN', categorie: 'PIECES', reference: 'B-75-631', designation: 'ENCODER ESSAI', prixCatalogue: 200, prixAchat: 150, prixVente: 250}),
       'ART-0003': art({id: 'ART-0003', groupe: 'AUTRES', marque: 'LOTUS', categorie: 'MACHINES', reference: 'LTS 500', designation: 'PRESSE ESSAI', prixCatalogue: null, prixAchat: 5035, prixVente: 6000}),
+      'ART-0005': art({id: 'ART-0005', groupe: 'MORGAN', marque: 'MORGAN', categorie: 'MACHINES', reference: 'MG-900', designation: 'MACHINE MORGAN ESSAI', prixCatalogue: 1000, prixAchat: 900, prixVente: 1100}),
       'ART-0004': art({id: 'ART-0004', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-200', designation: 'MACHINE ESSAI B', prixCatalogue: 700, prixAchat: 420, prixVente: 700})}},
     users_v2: {[u.uid]: {nom: d.label, username: 'sysadmin', role: d.role, profil: 'sysadmin', groupe: true, societes: d.societes},
       [u2.uid]: {nom: d2.label, username: 'direction', role: d2.role, profil: 'direction', groupe: !!d2.groupe, societes: d2.societes}}});
@@ -37,7 +38,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
     const ctx = await b.newContext({viewport: {width: 1366, height: 900}, serviceWorkers: 'block', locale: 'fr-FR', acceptDownloads: true});
     await ctx.route(x => { const t = String(x); return !(t.startsWith('http://localhost') || t.startsWith('http://127.0.0.1')); }, rt => { const m = /firebasejs\/[\d.]+\/(firebase-[a-z-]+-compat\.js)$/.exec(rt.request().url()); if(m && fs.existsSync(path.join(SDK, m[1]))) return rt.fulfill({contentType: 'application/javascript', body: fs.readFileSync(path.join(SDK, m[1]))}); return rt.abort(); });
     const p = await ctx.newPage(); p.on('pageerror', e => err.push(login + ': ' + e.message)); p.on('dialog', x => { cons.push(login + ' (dialogue) : ' + x.message()); x.accept(); });
-    p.on('console', m => { if(m.type() === 'error' && /CALENDRIER|LISTING|EXPORT OFFRES|introuvable/.test(m.text())) cons.push(login + ': ' + m.text()); });
+    p.on('console', m => { if(m.type() === 'error' && /CALENDRIER|LISTING|EXPORT OFFRES|introuvable|APERCU|OFFRES POS|NOTES|PROFORMA/.test(m.text())) cons.push(login + ': ' + m.text()); });
     await p.goto('http://localhost:8790/index.html'); await p.waitForSelector('#login-user');
     await p.fill('#login-user', login); await p.fill('#login-pass', MDP); await p.click('#login-form button[type=submit]');
     await p.waitForFunction(() => typeof currentUser !== 'undefined' && currentUser && !document.getElementById('login-user'), null, {timeout: 30000}); await p.waitForTimeout(2500);
@@ -54,7 +55,9 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   // ---------- prix de vente standard = prix catalogue ----------
   await fr.evaluate(() => MGT_LISTING_STD.ready); await p.waitForTimeout(2500);
   const Lg = (await base()).mgt_crm_listing, A1 = lire(Lg['ART-0001']), A3 = lire(Lg['ART-0003']), A4 = lire(Lg['ART-0004']);
-  r.push(['Listing : prix de vente = prix catalogue (1 200 → 1 000)', A1.prixVente === 1000 && lire(Lg['ART-0002']).prixVente === 200]);
+  r.push(['Listing : prix de vente = prix catalogue (1 200 → 1 000)', A1.prixVente === 1000]);
+  const A2 = lire(Lg['ART-0002']), A5 = lire(Lg['ART-0005']);
+  r.push(['V4.6.9V2 règles Morgan : pièce vente = catalogue + 25 % (250), achat = − 25 % (150) ; machine achat = − 35 % (650), vente = catalogue (1 000)', A2.prixVente === 250 && A2.prixAchat === 150 && A5.prixAchat === 650 && A5.prixVente === 1000]);
   r.push(['ancien prix gardé dans l\'historique, date du tarif gardée', (A1.historiquePrix || []).some(h => h.source === 'STANDARDISATION' && h.precedent.prixVente === 1200) && A1.dateMaj === '2026-02-20']);
   r.push(['sans prix catalogue : plus de prix de vente', A3.prixVente == null && A3.prixAchat === 5035]);
   r.push(['article déjà au prix standard : inchangé', A4.prixVente === 700 && !A4.historiquePrix]);
@@ -87,6 +90,48 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const dl2 = p.waitForEvent('download', {timeout: 20000}).catch(() => null);
   await fr.evaluate(() => MGT_OFFER_EXPORTS.run('client', 'pdf', '1', 0)); const f2 = await dl2;
   r.push(['offre client en PDF', !!f2 && /\.pdf$/.test(f2.suggestedFilename())]);
+  // ---------- V4.6.9T/V : filtres du calendrier ----------
+  await fr.evaluate(() => openModule('calendar')); await p.waitForTimeout(1000);
+  await fr.click('#mgtCalSeg [data-mc-view="day"]'); await p.waitForTimeout(500);
+  r.push(['V4.6.9T calendrier : barre de filtres Commercial / Ville / Mes actions', await fr.locator('#calFltBar').count() === 1 && !!(await fr.evaluate(() => window.MGT_CALF && MGT_CALF.ui))]);
+  if(process.env.CAPTURES){ await fr.click('#mgtCalSeg [data-mc-view="week"]'); await p.waitForTimeout(700); await p.screenshot({path: process.env.CAPTURES + '/v7-calendrier-filtres.png'}); await fr.click('#mgtCalSeg [data-mc-view="day"]'); await p.waitForTimeout(500); }
+  await fr.evaluate(() => { MGT_CALF.set('commercial', 'Personne Inconnue'); renderCalendar(); }); await p.waitForTimeout(600);
+  const filtre = await fr.locator('#planningCalendar').textContent();
+  await fr.evaluate(() => { MGT_CALF.clear(); renderCalendar(); }); await p.waitForTimeout(900);
+  r.push(['filtre Commercial : actions d\'un autre commercial masquées, puis réaffichées', /0 action/.test(filtre) && !/Visite · Ali/.test(filtre) && /2 actions/.test(await fr.locator('#planningCalendar').textContent())]);
+  // ---------- V4.6.9V1 : POS, aperçu ; V4.6.9V7 : proforma ----------
+  await fr.evaluate(() => openModule('offres')); await p.waitForTimeout(1200);
+  r.push(['V4.6.9V1 / V7 : modules POS, aperçu et proforma chargés', await fr.evaluate(() => !!(window.MGT_OFFERS_POS && window.MGT_OFFER_PREVIEW && window.MGT_PROFORMA))]);
+  await fr.evaluate(() => MGT_OFFER_PREVIEW.openCard('1', 0)); await p.waitForTimeout(1500);
+  const onglets = await fr.locator('#ofpModal [data-ofp-kind]').allTextContents();
+  r.push(['aperçu de l\'offre : onglets client / proforma / interne', onglets.length === 3 && /proforma/i.test(onglets.join())]);
+  await fr.click('#ofpModal [data-ofp-kind="proforma"]'); await p.waitForTimeout(1500);
+  if(process.env.CAPTURES) await p.screenshot({path: process.env.CAPTURES + '/v7-proforma.png'});
+  const pf = await fr.evaluate(async () => { try { const x = await MGT_PROFORMA.save(true); return x.numero; } catch(e) { return 'erreur ' + e.message; } }); await p.waitForTimeout(1500);
+  const offre = lire((await base()).mgt_crm_clients['1']).Offres[0];
+  r.push(['proforma enregistrée dans l\'offre avec un numéro FAPRO… (' + pf + ')', /^FAPRO\d{8}-\d+/.test(pf) && offre.proforma && offre.proforma.numero === pf]);
+  const dl3 = p.waitForEvent('download', {timeout: 20000}).catch(() => null);
+  await fr.click('#ofpModal [data-ofp="pdf"]').catch(() => {}); const f3 = await dl3;
+  r.push(['proforma exportée en PDF', !!f3 && /\.pdf$/i.test(f3.suggestedFilename())]);
+  await fr.click('#ofpModal [data-ofp="close"]').catch(() => {}); await p.waitForTimeout(400);
+  // ---------- V4.6.9V3–V6 : import de notes, rapport de visite ----------
+  r.push(['V4.6.9V4 : tuile « Importer des notes » sur l\'accueil', await fr.evaluate(() => { openModule('dashboard'); return new Promise(ok => setTimeout(() => ok(!!document.querySelector('[data-ni-home]')), 800)); })]);
+  await fr.evaluate(() => MGT_NOTES.open({cid: '1'})); await p.waitForTimeout(800);
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAKklEQVR42u3OMQEAAAgDoK1/aI3hAQUI6CRLJBKJRCKRSCQSiUQikUgkkucBVu4Bf5tq9tgAAAAASUVORK5CYII=', 'base64');
+  await fr.locator('#niFiles').setInputFiles({name: 'page1.png', mimeType: 'image/png', buffer: png}); await p.waitForTimeout(800);
+  await fr.fill('#niText', 'Visite atelier : presse à revoir.'); await fr.fill('#niObjet', 'Visite essai');
+  if(process.env.CAPTURES) await p.screenshot({path: process.env.CAPTURES + '/v7-import-notes.png'});
+  await fr.click('[data-ni="save"]'); await p.waitForTimeout(2500);
+  const rv = (lire((await base()).mgt_crm_clients['1']).RapportsVisite || [])[0] || {};
+  r.push(['rapport de visite enregistré dans la fiche client', rv.objet === 'Visite essai' && /presse/.test(rv.compteRendu || '')]);
+  r.push(['photo du rapport rangée à part (fichier), pas dans la fiche client', (rv.photos || []).length === 1 && !!rv.photos[0].fid && !rv.photos[0].data]);
+  await fr.evaluate((id) => { MGT_NOTES.view('1', id); }, rv.id); await p.waitForTimeout(2000);
+  r.push(['rapport consulté : photo relue et affichée', /<img src="data:image/.test(await fr.evaluate(() => (document.getElementById('niFrame') || {}).srcdoc || ''))]);
+  const dl4 = p.waitForEvent('download', {timeout: 20000}).catch(() => null);
+  if(process.env.CAPTURES) await p.screenshot({path: process.env.CAPTURES + '/v7-rapport-visite.png'});
+  await fr.click('[data-niv="pdf"]').catch(() => {}); const f4 = await dl4;
+  r.push(['rapport de visite en PDF', !!f4 && /\.pdf$/i.test(f4.suggestedFilename())]);
+  await fr.click('[data-niv="close"]').catch(() => {});
   // ---------- droits : Direction (consultation) ----------
   const D = await session('direction');
   await D.fr.evaluate(() => openModule('calendar')); await D.p.waitForTimeout(1200);
@@ -95,7 +140,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   await D.fr.evaluate(async () => { const a = MGT_CAL.all().find(x => String(x.id) === 'E3'); try { await deleteCalendarAction(a); } catch(e) {} }); await D.p.waitForTimeout(1200);
   r.push(['Direction : suppression refusée sans confirmation', JSON.stringify(lire((await base()).mgt_crm_clients['1']).Planning) === avant && !cons.some(x => /direction \(dialogue\).*(Supprimer|supprimer l)/.test(x) && !/Droit insuffisant/.test(x))]);
   r.push(['Direction : la mise au prix standard ne s\'exécute pas (consultation)', (await D.fr.evaluate(() => MGT_LISTING_STD.state().changed)) === 0]);
-  r.push(['aucun message « introuvable » des nouveaux modules', !cons.some(x => /introuvable|CALENDRIER|EXPORT OFFRES/.test(x) && !/dialogue/.test(x))]);
+  r.push(['aucun message « introuvable » des nouveaux modules', !cons.some(x => /introuvable|CALENDRIER|EXPORT OFFRES|dependances absentes/.test(x) && !/dialogue/.test(x))]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if(err.length) console.log(err); if(cons.length) console.log(cons);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
