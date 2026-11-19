@@ -147,7 +147,7 @@ window.histModif = (tr) => { tr.classList.add('hk-mod'); const b = document.getE
 function hRecalerCompteur(annees){
   const l = factToutes('tek'), cle = factCle('tek', 'fact_compteurs'), cpt = getJSON(cle, {}) || {}, t = cpt.FA || {};
   annees.forEach(an => { const yy = String(an).slice(2); let max = 0;
-    Object.values(l).forEach(f => { if(f.type !== 'avoir' && f.statut === 'emise' && f.numero && f.numero.indexOf('FA' + yy + '/') === 0) max = Math.max(max, parseInt(f.numero.split('/')[1], 10) || 0); });
+    Object.values(l).forEach(f => { if(f.type !== 'avoir' && f.numero && f.numero.indexOf('FA' + yy + '/') === 0) max = Math.max(max, parseInt(f.numero.split('/')[1], 10) || 0); });
     t[an] = max; });
   cpt.FA = t; setJSON(cle, cpt);
 }

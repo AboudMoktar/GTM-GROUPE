@@ -88,6 +88,25 @@ function factStatut(f, toutes){
 function factListe(soc){ const l = factToutes(soc); Object.keys(l).forEach(id => { l[id]._id = id; }); return l; }
 // Tri de la liste : brouillons d'abord (les plus récents en haut), puis factures et avoirs par numéro
 // décroissant (année puis rang : FA26/030, FA26/029, …), quelle que soit la date saisie.
+// Facture d'export TEK-TREND : numérotée dès la création de l'export, validée par l'utilisateur (elle compte alors
+// dans le chiffre d'affaires) et toujours modifiable ; son numéro se corrige tant que l'export n'est pas expédié.
+function factEstExport(f){ return !!(f && f.origine && f.origine.type === 'export' && f.type !== 'avoir'); }
+// Compteur de l'année recalé sur le plus grand numéro FAaa/NNN utilisé (factures validées ET brouillons numérotés).
+function factRecalerCompteurTek(annee){
+  const yy = String(annee).slice(2), cle = factCle('tek', 'fact_compteurs'), c = getJSON(cle, {}) || {}, t = c.FA || {}; let max = 0;
+  Object.values(factToutes('tek')).forEach(f => { const m = f.type !== 'avoir' && String(f.numero || '').match(new RegExp('^FA' + yy + '/(\\d+)$')); if(m) max = Math.max(max, parseInt(m[1], 10)); });
+  t[annee] = max; c.FA = t; setJSON(cle, c);
+}
+window.factMajNumero = (v) => {
+  const soc = factSoc(), l = factToutes(soc), f = l[factId]; if(!f) return;
+  const n = String(v || '').trim().toUpperCase().replace(/\s+/g, ''), m = n.match(/^FA(\d{2})\/(\d{1,4})$/);
+  if(!m){ showToast('Numéro attendu sous la forme FA26/031'); nav('fact-edit'); return; }
+  const num = 'FA' + m[1] + '/' + m[2].padStart(3, '0');
+  if(Object.entries(l).some(([k, x]) => k !== factId && x.type !== 'avoir' && x.numero === num)){ showToast('Le numéro ' + num + ' est déjà utilisé'); nav('fact-edit'); return; }
+  const ancien = f.numero; f.numero = num; factEnregistrer(soc, l);
+  factRecalerCompteurTek('20' + m[1]); if(ancien && ancien.slice(2, 4) !== m[1]) factRecalerCompteurTek('20' + ancien.slice(2, 4));
+  showToast('Numéro ' + num + ' enregistré'); nav('fact-edit');
+};
 function factAttendExpedition(f){ return !!(f && f.origine && f.origine.type === 'export' && typeof percExportStatut === 'function' && percExportStatut(f.origine.exportId) === 'cours'); }
 function factCleNumero(n){
   const m = String(n || '').match(/(\d{2,4})\D(\d+)$/) || String(n || '').match(/-(\d{4})-(\d+)$/);
@@ -232,7 +251,7 @@ window.factNouvelle = () => {
 function renderFactEdit(main){
   const soc = factSoc(), toutes = factListe(soc), f = toutes[factId];
   if(!f){ nav('fact-liste'); return; }
-  const id = factId, edDroit = canEditFact(soc), ed = edDroit && f.statut === 'brouillon', dis = ed ? '' : 'disabled';
+  const id = factId, edDroit = canEditFact(soc), ed = edDroit && (f.statut === 'brouillon' || (soc === 'tek' && factEstExport(f))), dis = ed ? '' : 'disabled';
   const t = factTotaux(f, toutes), st = factStatut(f, toutes), avoir = f.type === 'avoir';
   const titre = (avoir ? 'Avoir ' : 'Facture ') + (f.numero ? esc(f.numero) : '(brouillon)');
   const liee = f.factureLiee && toutes[f.factureLiee];
@@ -247,6 +266,7 @@ function renderFactEdit(main){
       ${mgtChamp('Objet', 'fe-objet', f.objet, 'text', `${dis} onchange="factMaj('objet', this.value)"`)}
       <div style="display:flex;gap:8px;"><div style="flex:1;">${mgtChamp('Date', 'fe-date', f.date, 'date', `${dis} onchange="factMaj('date', this.value)"`)}</div>
         ${avoir ? '' : `<div style="flex:1;">${mgtChamp('Échéance', 'fe-echeance', f.echeance, 'date', `${edDroit ? '' : 'disabled'} onchange="factMaj('echeance', this.value)"`)}</div>`}</div>
+      ${soc === 'tek' && factEstExport(f) && f.numero ? mgtChamp('N° de facture' + (factAttendExpedition(f) ? ' (modifiable jusqu\'à l\'expédition)' : ''), 'fe-numero', f.numero, 'text', `${edDroit && factAttendExpedition(f) ? '' : 'disabled'} onchange="factMajNumero(this.value)"`) : ''}
     </div>
     <div class="card" style="padding:10px;">
       <h3 style="margin:0 0 8px;font-size:14px;">Lignes</h3>
@@ -283,8 +303,10 @@ function renderFactEdit(main){
       ${(f.relances || []).length ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Relancée le ${f.relances.map(mgtDate).join(', ')}</div>` : ''}
     </div>` : ''}
     ${edDroit ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-      ${f.statut === 'brouillon' && factAttendExpedition(f) ? `<div style="flex:1 1 100%;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.12);font-size:13px;">📦 Export ${esc((f.origine && f.origine.label) || '')} pas encore expédié : la facture se prépare, se modifie et s'imprime, mais elle n'est émise (numéro, chiffre d'affaires, à encaisser) qu'après la validation de l'export (« Fini »).</div>` : ''}
-      ${f.statut === 'brouillon' ? `<button class="btn btn-primary" style="flex:1 1 100%;" ${factAttendExpedition(f) ? 'disabled title="Export pas encore expédié"' : ''} onclick="factEmettre('${id}')">Émettre ${avoir ? 'l\'avoir' : 'la facture'}</button>
+      ${soc === 'tek' && factEstExport(f) ? `<div style="flex:1 1 100%;padding:10px 12px;border-radius:10px;background:${f.statut === 'emise' ? 'rgba(22,163,74,.10)' : 'rgba(245,158,11,.12)'};font-size:13px;">${f.statut === 'emise'
+        ? `✅ Facture ${esc(f.numero || '')} validée : comptée dans le chiffre d'affaires. Elle reste modifiable${factAttendExpedition(f) ? ` et suit les cartons de l'export ${esc((f.origine && f.origine.label) || '')} jusqu'à son expédition` : ''}.`
+        : `📝 Facture ${esc(f.numero || '')} préparée pour l'export ${esc((f.origine && f.origine.label) || '')} : elle ne compte pas dans le chiffre d'affaires tant que vous ne l'avez pas validée.`}</div>` : ''}
+      ${f.statut === 'brouillon' ? `<button class="btn btn-primary" style="flex:1 1 100%;" onclick="factEmettre('${id}')">${soc === 'tek' && factEstExport(f) ? 'Valider la facture' : 'Émettre ' + (avoir ? 'l\'avoir' : 'la facture')}</button>
         <button class="btn btn-ghost" style="flex:1;color:var(--bad);" onclick="factSupprimer('${id}')">Supprimer le brouillon</button>` : ''}
       ${f.statut === 'emise' && !avoir ? `<button class="btn btn-ghost" style="flex:1;" onclick="factCreerAvoir('${id}')">Créer un avoir</button>` : ''}
       ${f.statut === 'emise' && factPeutSupprimerEmise() ? `<button class="btn btn-ghost" style="flex:1 1 100%;color:var(--bad);border-color:var(--bad);" onclick="factSupprimerEmise('${id}')">Supprimer ${avoir ? 'l\'avoir' : 'la facture'} ${esc(f.numero || '')}</button>` : ''}
@@ -319,14 +341,14 @@ window.factEmettre = (id) => {
   const c = factClients(soc)[f.clientId];
   if(!c){ showToast('Choisissez le client'); return; }
   if(!(f.lignes || []).some(x => x.designation && factMontantLigne(x) > 0)){ showToast('Ajoutez au moins une ligne chiffrée'); return; }
-  // facture d'un export PERCKO : émise seulement quand l'export est expédié (validé « Fini » dans le suivi)
-  if(f.origine && f.origine.type === 'export' && typeof percExportStatut === 'function' && percExportStatut(f.origine.exportId) === 'cours'){
-    showToast('Export ' + (f.origine.label || '') + ' pas encore expédié : la facture sera émise après sa validation (« Fini »)'); return; }
-  if(!confirm('Émettre ' + (f.type === 'avoir' ? 'cet avoir' : 'cette facture') + ' ? Elle recevra son numéro définitif et ne sera plus modifiable.')) return;
+  // facture d'un export TEK-TREND : déjà numérotée ; validée quand vous le décidez, elle compte dans le chiffre d'affaires et reste modifiable
+  const exp = soc === 'tek' && factEstExport(f) && f.numero;
+  if(!confirm(exp ? 'Valider la facture ' + f.numero + ' ? Elle comptera dans le chiffre d\'affaires et restera modifiable.'
+    : 'Émettre ' + (f.type === 'avoir' ? 'cet avoir' : 'cette facture') + ' ? Elle recevra son numéro définitif et ne sera plus modifiable.')) return;
   f.client = {nom:c.nom, adresse:c.adresse || '', mf:c.mf || ''};
-  f.numero = factNumero(soc, f.type, (f.date || getTodayISO()).slice(0, 4));
+  if(!exp) f.numero = factNumero(soc, f.type, (f.date || getTodayISO()).slice(0, 4));
   f.statut = 'emise';
-  factEnregistrer(soc, l); showToast((f.type === 'avoir' ? 'Avoir ' : 'Facture ') + f.numero + ' émis' + (f.type === 'avoir' ? '' : 'e'));
+  factEnregistrer(soc, l); showToast((f.type === 'avoir' ? 'Avoir ' : 'Facture ') + f.numero + (exp ? ' validée' : ' émis' + (f.type === 'avoir' ? '' : 'e')));
   nav('fact-edit');
 };
 // Supprimer un brouillon libère le devis, ticket ou contrat d'origine.
@@ -335,7 +357,9 @@ window.factSupprimer = (id) => {
   if(!f || f.statut !== 'brouillon' || !confirm('Supprimer ce brouillon ?')) return;
   const o = f.origine, col = o && {devis:'devis', ticket:'tickets', contrat:'contrats'}[o.type];
   if(col){ const x = mgtGet(col); if(x[o.id] && x[o.id].factureId === id){ delete x[o.id].factureId; mgtSet(col, x); } }
-  delete l[id]; factEnregistrer(soc, l); nav('fact-liste');
+  delete l[id]; factEnregistrer(soc, l);
+  if(soc === 'tek' && /^FA\d{2}\//.test(f.numero || '')) factRecalerCompteurTek('20' + f.numero.slice(2, 4));   // numéro réservé libéré s'il était le dernier
+  nav('fact-liste');
 };
 // Supprimer une facture (ou un avoir) déjà émise : réservé aux administrateurs, pour corriger une erreur
 // (facture en double, essai, mauvaise saisie). Confirmation en retapant le numéro. Si c'est le dernier

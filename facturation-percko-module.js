@@ -211,7 +211,7 @@ window.percArticlesListe = percArticlesListe;
 // n'est pas expédié, des cartons s'ajoutent ou changent. Les lignes d'articles sont recalculées (prix modifié à la main
 // conservé pour le même article), les lignes ajoutées à la main (frais, déclarations…) sont gardées telles quelles.
 function percBrouillonSynchronise(f, x){
-  if(!f || f.statut !== 'brouillon' || !x || !Array.isArray(x.pieces)) return null;
+  if(!f || (f.statut !== 'brouillon' && f.statut !== 'emise') || !x || !Array.isArray(x.pieces)) return null;
   const L = percLignesExport(x.pieces); if(!L.lignes.length) return null;
   const anc = (f.lignes || []).filter(l => l.exp), autres = (f.lignes || []).filter(l => !l.exp), puAnc = {};
   anc.forEach(l => { puAnc[l.designation] = l; });
@@ -237,21 +237,30 @@ function percSynchroBrouillon(id, x, enregistrer){
   return g;
 }
 // creer : l'export est en cours et n'a encore aucune facture → son brouillon est créé tout seul.
-window.percSynchroFactureExport = function(x, creer){
+// 19/11/2026 : la facture d'un export reçoit son NUMÉRO dès la création de l'export (brouillon numéroté : ne compte
+// pas) ; elle compte dans le chiffre d'affaires quand on la VALIDE (bouton « Valider la facture ») et reste modifiable.
+// Tant que l'export n'est pas expédié, brouillon ou facture validée suivent ses cartons ; à la validation « Fini » de
+// l'export (final), dernière mise à jour ; ensuite, plus rien n'est touché.
+function percPeutSuivre(f, final){ return f.statut === 'brouillon' || (f.statut === 'emise' && f.type !== 'avoir' && (final || (typeof percExportStatut === 'function' && percExportStatut(f.origine && f.origine.exportId) === 'cours'))); }
+function percNumeroterSiBesoin(id){
+  const l = factToutes('tek'), f = l[id]; if(!f || f.numero || f.type === 'avoir') return false;
+  f.numero = factNumero('tek', 'facture', (f.date || getTodayISO()).slice(0, 4)); factEnregistrer('tek', l); return true;
+}
+window.percSynchroFactureExport = function(x, creer, final){
   if(!x || !x.exportId || typeof canEditFact !== 'function' || !canEditFact('tek')) return 0;
   const deja = percFactureDeLExport(x.exportId);
-  if(!deja.length){ if(!creer) return 0; const r = percFacturerExport(x); return r && r.ok ? 1 : 0; }
-  let n = 0; deja.forEach(d => { if(d.f.statut === 'brouillon' && percSynchroBrouillon(d.id, x, true)) n++; });
+  if(!deja.length){ if(!creer) return 0; const r = percFacturerExport(x, false, true); return r && r.ok ? 1 : 0; }
+  let n = 0; deja.forEach(d => { if(percNumeroterSiBesoin(d.id)) n++; if(percPeutSuivre(d.f, final) && percSynchroBrouillon(d.id, x, true)) n++; });
   return n;
 };
 // Appelée par le suivi (bouton « Facture » d'un export). x : {exportId, n, d, nat, colis, poidsBrut, pieces:[…]}
-window.percFacturerExport = function(x, forcer){
+window.percFacturerExport = function(x, forcer, auto){
   if(!canEditFact('tek')) return {ok:false, message:'Votre profil ne permet pas de créer une facture TEK-TREND.'};
   const deja = percFactureDeLExport(x.exportId);
-  if(deja.length && !forcer) deja.forEach(d => { if(d.f.statut === 'brouillon') percSynchroBrouillon(d.id, x, true); });
+  if(deja.length && !forcer) deja.forEach(d => { percNumeroterSiBesoin(d.id); if(percPeutSuivre(d.f)) percSynchroBrouillon(d.id, x, true); });
   if(deja.length && !forcer) return {ok:false, existe:deja.map(d => ({id:d.id, numero:d.f.numero || 'brouillon', statut:d.f.statut}))};
   const L = percLignesExport(x.pieces);
-  if(!L.lignes.length) return {ok:false, message:'Cet export ne contient aucune pièce à facturer.'};
+  if(!L.lignes.length && !auto) return {ok:false, message:'Cet export ne contient aucune pièce à facturer.'};
   const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, today = getTodayISO();
   const clients = factClients('tek'), cid = Object.keys(clients).find(k => (clients[k].nom || '').toUpperCase() === 'PERCKO') || Object.keys(clients)[0] || '';
   const jj = x.d ? x.d.slice(8, 10) + '/' + x.d.slice(5, 7) + '/' + x.d.slice(2, 4) : '';
@@ -259,6 +268,7 @@ window.percFacturerExport = function(x, forcer){
   const id = factCreer('tek', {clientId:cid, objet:'Export N°' + x.n + (jj ? ' du ' + jj : ''), devise:'EUR', tva:0, timbre:0, echeance:today, notes:'', lignes:L.lignes,
     origine:{type:'export', exportId:x.exportId, label:'N°' + x.n + (jj ? ' du ' + jj : '')},
     percko:{destination:dest, codeClient:D.code, livraison:D.livraison, transport:D.transport || '', colis:x.colis || '', poidsBrut:x.poidsBrut || '', poidsNet:'', valeurMatiere:'', valeurAuto:true, composition:compo}});
+  percNumeroterSiBesoin(id);   // numéro donné dès la création (brouillon : ne compte pas avant validation)
   return {ok:true, id, sansPrix:L.lignes.filter(l => !l.pu).length, inconnus:L.inconnus};
 };
 // Données de la facture d'un export pour l'onglet « Documents » du suivi (aperçu, PDF, Excel), SANS rien enregistrer :
@@ -266,7 +276,7 @@ window.percFacturerExport = function(x, forcer){
 // Facture d'un export, en mémoire : celle déjà préparée (émise de préférence, sinon le brouillon le plus récent), sinon calculée.
 function percFactureDunExport(x){
   const deja = percFactureDeLExport(x.exportId), emises = deja.filter(d => d.f.statut === 'emise');
-  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; let f0 = factListe('tek')[c.id] || c.f; if(f0.statut === 'brouillon'){ const g = percBrouillonSynchronise(f0, x); if(g) f0 = g; }
+  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; let f0 = factListe('tek')[c.id] || c.f; if(percPeutSuivre(f0)){ const g = percBrouillonSynchronise(f0, x); if(g) f0 = g; }
     // brouillon dont la valeur matière n'a pas été saisie : montrée calculée, comme à l'ouverture de la facture
     if(f0.statut === 'brouillon' && f0.percko && percValeurEstAuto(f0.percko)){ const vm = percValeurMatiere(f0); if(vm) return {f:Object.assign({}, f0, {percko:Object.assign({}, f0.percko, {valeurMatiere:vm.valeur})}), existe:true}; }
     return {f:f0, existe:true}; }
@@ -289,7 +299,7 @@ window.percApercuFacture = function(x){
   const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, P = factParams('tek');
   let f;
   if(deja.length) f = deja[deja.length - 1].f.statut === 'emise' ? deja[deja.length - 1].f : deja[0].f;
-  if(f && f.statut === 'brouillon'){ const g = percBrouillonSynchronise(f, x); if(g) f = g; }
+  if(f && percPeutSuivre(f)){ const g = percBrouillonSynchronise(f, x); if(g) f = g; }
   else {
     const L = percLignesExport(x.pieces), compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
     f = {numero:'', statut:'apercu', date:getTodayISO(), echeance:getTodayISO(), lignes:L.lignes, tva:0, timbre:0, devise:'EUR',
