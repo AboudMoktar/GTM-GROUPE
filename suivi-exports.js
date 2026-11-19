@@ -508,6 +508,19 @@ function factureGrid(e){
   g.facture = {existe:F.existe, statut:F.statut, numero:F.numero, ht:F.ht, sansPrix:F.sansPrix, tete:tete};
   return g;
 }
+/* Facture automatique et synchronisée (19/11/2026) : à chaque enregistrement du suivi (et à chaque mise à jour reçue
+   d'un autre appareil), chaque export en cours a sa facture en brouillon, créée si besoin, remise à jour sur ses
+   cartons ; un export validé (« Fini ») met à jour son brouillon une dernière fois. Une facture émise n'est jamais touchée. */
+var SYNC_FACT_T = null;
+window.synchroFacturesExports = function(){ synchroFacturesExports(); };
+function synchroFacturesExports(){
+  if (typeof HOST === "undefined" || !HOST || typeof HOST.synchroFactureExport !== "function" || VUE === "gadh") return;
+  clearTimeout(SYNC_FACT_T);
+  SYNC_FACT_T = setTimeout(function(){
+    try { (S.exports || []).forEach(function(e){ if (e && e.cartons && e.cartons.length) HOST.synchroFactureExport(demandeFacture(e), e.st !== "fini"); }); }
+    catch (x) { console.error(x); }
+  }, 400);
+}
 function facturerExport(e, forcer){
   if (typeof dirty !== "undefined" && dirty){ toast("Enregistrement en cours : réessayez dans un instant."); return; }
   /* la facture se prépare à tout moment (brouillon : voir, modifier, imprimer) ; elle n'est émise et ne compte

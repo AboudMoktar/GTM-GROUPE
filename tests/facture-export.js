@@ -19,7 +19,9 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.waitForTimeout(1200);
   const fr = () => p.frames().find(f => /suivi-commandes/.test(f.url()));
   await fr().waitForFunction(() => typeof S === 'object' && typeof render === 'function' && typeof pkExports === 'object');
+  // ce test suit le parcours à la main (aperçu, puis bouton « Facture ») : la création automatique (facture-auto.js) est coupée ici
   await fr().evaluate(() => {
+    window.synchroFacturesExports = function(){};
     const L = (id, client, model, lib, size) => { S.lines.push({id, lot:'PKT', client, model, lib, size, qty:500, cc:0}); ['cp', 'gadh', 'asm', 'ret'].forEach((st, q) => S.moves.push({id:'M' + id + q, date:'2026-11-10', lineId:id, stage:st, qty:500, nc:0, note:''})); };
     L('a1', 'NEOLYS', 'PHARMA-HOMME', 'PHARMA_HOMME COL V NOIR', 'S'); L('a2', 'NEOLYS', 'PHARMA-HOMME', 'PHARMA_HOMME COL V NOIR', 'M'); L('a3', 'NEOLYS', 'PHARMA-HOMME', 'PHARMA_HOMME COL V NOIR', 'XL');
     L('a4', 'NEOLYS', 'PHARMA-HOMME', 'PHARMA_HOMME COL V SABLE', 'XXXL');

@@ -252,6 +252,7 @@ function renderFactEdit(main){
       <h3 style="margin:0 0 8px;font-size:14px;">Lignes</h3>
       ${(f.lignes || []).map((l, i) => `<div class="mgt-ligne">
         <div style="display:flex;gap:6px;align-items:flex-start;">
+          ${soc === 'tek' ? `<input class="mgt-in" data-ref list="fact-articles" placeholder="ART…" title="Article" style="width:92px;flex:0 0 92px;font-weight:600;${l.ref ? '' : 'border-color:#d97706;'}" value="${esc(l.ref || '')}" ${dis} onchange="factMajRef(${i}, this.value)">` : ''}
           <textarea rows="2" class="mgt-in" placeholder="Désignation" ${dis} onchange="factMajLigne(${i}, 'designation', this.value)">${esc(l.designation)}</textarea>
           ${ed ? `<button class="icon-btn" title="Retirer la ligne" onclick="factRetirerLigne(${i})">✕</button>` : ''}
         </div>
@@ -263,6 +264,7 @@ function renderFactEdit(main){
         </div>
       </div>`).join('')}
       ${ed ? `<button class="btn btn-ghost" style="margin-top:8px;padding:6px 12px;font-size:12px;" onclick="factAjouterLigne()">+ Ligne</button>` : ''}
+      ${soc === 'tek' && typeof percArticlesListe === 'function' ? `<datalist id="fact-articles">${percArticlesListe().map(a => `<option value="${esc(a.code)}">${esc(a.lib)}${a.prix ? ' — ' + a.prix : ''}</option>`).join('')}</datalist>` : ''}
       <div style="margin-top:12px;font-size:14px;line-height:1.9;text-align:right;">
         <div>Total HT : <b>${fmtDT(t.ht)}</b></div>
         ${soc === 'tek' ? '' : `<div>TVA <input class="mgt-in" type="number" min="0" max="100" step="1" value="${f.tva}" ${dis} style="width:64px;display:inline-block;padding:4px 6px;" onchange="factMaj('tva', parseFloat(this.value)||0)"> % : <b>${fmtDT(t.tva)}</b></div>
@@ -300,11 +302,16 @@ function factOrigineLabel(o){
 }
 function factModifier(fn, redessiner){
   const soc = factSoc(), l = factToutes(soc), f = l[factId]; if(!f) return;
-  fn(f); factEnregistrer(soc, l);
+  fn(f); if(soc === 'tek' && f.origine && f.origine.type === 'export' && typeof percRefsAuto === 'function') percRefsAuto(f);
+  factEnregistrer(soc, l);
   if(redessiner !== false) nav('fact-edit');
 }
 window.factMaj = (champ, v) => factModifier(f => { f[champ] = v; }, champ !== 'objet' && champ !== 'notes');
 window.factMajLigne = (i, champ, v) => factModifier(f => { f.lignes[i][champ] = champ === 'designation' ? v : (parseFloat(v) || 0); if(champ === 'qte' && f.lignes[i].exp) f.lignes[i].qteMain = true; }, champ !== 'designation');
+// Article d'une ligne : code en majuscules ; un article du tarif remplit le prix s'il manque.
+window.factMajRef = (i, v) => factModifier(f => { const c = String(v || '').trim().toUpperCase(), l = f.lignes[i]; l.ref = c; l.code = c; l.refMain = true;
+  const a = typeof percArticlesListe === 'function' ? percArticlesListe().find(x => x.code === c) : null;
+  if(a && a.prix && !(Number(l.pu) > 0)) l.pu = a.prix; });
 window.factAjouterLigne = () => factModifier(f => { f.lignes.push({designation:'', qte:1, pu:0, remise:0}); });
 window.factRetirerLigne = (i) => factModifier(f => { f.lignes.splice(i, 1); });
 window.factEmettre = (id) => {

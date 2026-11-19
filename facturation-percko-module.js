@@ -189,6 +189,24 @@ window.percExportStatut = percExportStatut;
 function percFactureDeLExport(exportId){
   return Object.entries(factToutes('tek')).filter(([, f]) => f.type !== 'avoir' && f.origine && f.origine.type === 'export' && f.origine.exportId === exportId).map(([id, f]) => ({id, f}));
 }
+// Article (ART…) de chaque ligne d'une facture d'export, affecté tout seul (19/11/2026) : articles du tarif par
+// le calcul des cartons ; exosquelette → son article ; frais, déclarations, transport… → ART0002.
+function percRefsAuto(f){
+  if(!f || !Array.isArray(f.lignes)) return f;
+  const exo = (percTarif().find(a => a.fam === 'exo') || {}).code || 'ART047';
+  f.lignes.forEach(l => { if(l.ref || !String(l.designation || '').trim()) return;
+    if(/EXOSQUELETTE/i.test(l.designation)) l.ref = exo;
+    else if(!l.exp) l.ref = 'ART0002'; });
+  return f;
+}
+window.percRefsAuto = percRefsAuto;
+// Liste des articles proposés dans le champ « Article » d'une ligne (code → libellé, prix)
+function percArticlesListe(){
+  const o = percTarif().map(a => ({code:a.code, lib:a.lib + (a.etiq ? ' ' + a.etiq : ''), prix:a.prix}));
+  o.push({code:'ART0002', lib:'Frais / déclarations / transport', prix:0}); o.push({code:percRefValeur(), lib:'Valeur matière première', prix:0});
+  return o;
+}
+window.percArticlesListe = percArticlesListe;
 // Brouillon d'une facture d'export remis à jour sur les cartons ACTUELS de l'export (19/11/2026) : tant que l'export
 // n'est pas expédié, des cartons s'ajoutent ou changent. Les lignes d'articles sont recalculées (prix modifié à la main
 // conservé pour le même article), les lignes ajoutées à la main (frais, déclarations…) sont gardées telles quelles.
@@ -196,10 +214,10 @@ function percBrouillonSynchronise(f, x){
   if(!f || f.statut !== 'brouillon' || !x || !Array.isArray(x.pieces)) return null;
   const L = percLignesExport(x.pieces); if(!L.lignes.length) return null;
   const anc = (f.lignes || []).filter(l => l.exp), autres = (f.lignes || []).filter(l => !l.exp), puAnc = {};
-  anc.forEach(l => { puAnc[(l.ref || '') + '|' + l.designation] = l; });
-  // prix modifié : gardé ; quantité corrigée à la main sur la facture (qteMain) : gardée aussi
-  const lignes = L.lignes.map(l => { const o = puAnc[(l.ref || '') + '|' + l.designation]; if(!o) return l;
-    const n = Object.assign({}, l); if(Number(o.pu) > 0) n.pu = Number(o.pu); if(o.qteMain){ n.qte = o.qte; n.qteMain = true; } if(Number(o.remise)) n.remise = o.remise; return n; }).concat(autres);
+  anc.forEach(l => { puAnc[l.designation] = l; });
+  // prix modifié : gardé ; quantité corrigée à la main (qteMain) : gardée ; article choisi à la main (refMain) : gardé
+  const lignes = L.lignes.map(l => { const o = puAnc[l.designation]; if(!o) return l;
+    const n = Object.assign({}, l); if(o.refMain && o.ref){ n.ref = o.ref; n.code = o.ref; n.refMain = true; } if(Number(o.pu) > 0) n.pu = Number(o.pu); if(o.qteMain){ n.qte = o.qte; n.qteMain = true; } if(Number(o.remise)) n.remise = o.remise; return n; }).concat(autres);
   const sig = ls => JSON.stringify(ls.map(l => [l.ref || '', l.designation, Number(l.qte) || 0, Number(l.pu) || 0, Number(l.remise) || 0]));
   const p = Object.assign({}, f.percko || {});
   const compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
@@ -207,8 +225,9 @@ function percBrouillonSynchronise(f, x){
   if(x.colis && String(p.colis) !== String(x.colis)){ p.colis = x.colis; change = true; }
   if(x.poidsBrut && String(p.poidsBrut) !== String(x.poidsBrut)){ p.poidsBrut = x.poidsBrut; change = true; }
   if(compo && !p.composition){ p.composition = compo; change = true; }
+  if(lignes.some(l => !l.ref && !l.exp && String(l.designation || '').trim())) change = true;
   if(!change) return null;
-  const g = Object.assign({}, f, {lignes, percko:p});
+  const g = percRefsAuto(Object.assign({}, f, {lignes:lignes.map(l => Object.assign({}, l)), percko:p}));
   if(percValeurEstAuto(p)){ const vm = percValeurMatiere(g); if(vm){ g.percko.valeurMatiere = vm.valeur; g.percko.valeurAuto = true; } }
   return g;
 }
@@ -217,8 +236,12 @@ function percSynchroBrouillon(id, x, enregistrer){
   if(enregistrer){ delete g._id; l[id] = g; factEnregistrer('tek', l); }
   return g;
 }
-window.percSynchroFactureExport = function(x){
-  let n = 0; percFactureDeLExport(x.exportId).forEach(d => { if(d.f.statut === 'brouillon' && percSynchroBrouillon(d.id, x, true)) n++; });
+// creer : l'export est en cours et n'a encore aucune facture → son brouillon est créé tout seul.
+window.percSynchroFactureExport = function(x, creer){
+  if(!x || !x.exportId || typeof canEditFact !== 'function' || !canEditFact('tek')) return 0;
+  const deja = percFactureDeLExport(x.exportId);
+  if(!deja.length){ if(!creer) return 0; const r = percFacturerExport(x); return r && r.ok ? 1 : 0; }
+  let n = 0; deja.forEach(d => { if(d.f.statut === 'brouillon' && percSynchroBrouillon(d.id, x, true)) n++; });
   return n;
 };
 // Appelée par le suivi (bouton « Facture » d'un export). x : {exportId, n, d, nat, colis, poidsBrut, pieces:[…]}
