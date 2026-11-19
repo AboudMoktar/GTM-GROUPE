@@ -304,7 +304,7 @@ function factModifier(fn, redessiner){
   if(redessiner !== false) nav('fact-edit');
 }
 window.factMaj = (champ, v) => factModifier(f => { f[champ] = v; }, champ !== 'objet' && champ !== 'notes');
-window.factMajLigne = (i, champ, v) => factModifier(f => { f.lignes[i][champ] = champ === 'designation' ? v : (parseFloat(v) || 0); }, champ !== 'designation');
+window.factMajLigne = (i, champ, v) => factModifier(f => { f.lignes[i][champ] = champ === 'designation' ? v : (parseFloat(v) || 0); if(champ === 'qte' && f.lignes[i].exp) f.lignes[i].qteMain = true; }, champ !== 'designation');
 window.factAjouterLigne = () => factModifier(f => { f.lignes.push({designation:'', qte:1, pu:0, remise:0}); });
 window.factRetirerLigne = (i) => factModifier(f => { f.lignes.splice(i, 1); });
 window.factEmettre = (id) => {

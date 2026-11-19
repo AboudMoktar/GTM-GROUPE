@@ -130,7 +130,7 @@ function percTarif(){
 // Modèle du suivi → famille tarifaire, genre, col, couleur.
 function percLireModele(model, lib){
   const t = (String(model || '') + ' ' + String(lib || '')).toUpperCase().replace(/[_]/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const fam = /PHARMA/.test(t) ? 'pharma' : /SPORT/.test(t) ? 'sport' : /GILET|GILLET/.test(t) ? 'gilet' : /LYNE|\bPRO\b/.test(t) ? 'pro' : /FLEX/.test(t) ? 'flex' : /SOUTIEN/.test(t) ? 'sg' : /EXO/.test(t) ? 'exo' : '';
+  const fam = /PHARMA/.test(t) ? 'pharma' : /SPORT/.test(t) ? 'sport' : /GILET|GILLET/.test(t) ? 'gilet' : /FLEX/.test(t) ? 'flex' : /LYNE|\bPRO\b/.test(t) ? 'pro' : /SOUTIEN/.test(t) ? 'sg' : /EXO/.test(t) ? 'exo' : '';
   const genre = /FEMME|-F-|\bF\b/.test(t) ? 'F' : 'H';
   const col = /COL ROND|COL R\b/.test(t) ? 'R' : /COL V/.test(t) ? 'V' : '';
   const couleur = /ROSE/.test(t) ? 'ROSE' : /SABLE/.test(t) ? 'SABLE' : /GRIS/.test(t) ? 'GRIS' : /NOIR/.test(t) ? 'NOIR' : '';
@@ -189,10 +189,43 @@ window.percExportStatut = percExportStatut;
 function percFactureDeLExport(exportId){
   return Object.entries(factToutes('tek')).filter(([, f]) => f.type !== 'avoir' && f.origine && f.origine.type === 'export' && f.origine.exportId === exportId).map(([id, f]) => ({id, f}));
 }
+// Brouillon d'une facture d'export remis à jour sur les cartons ACTUELS de l'export (19/11/2026) : tant que l'export
+// n'est pas expédié, des cartons s'ajoutent ou changent. Les lignes d'articles sont recalculées (prix modifié à la main
+// conservé pour le même article), les lignes ajoutées à la main (frais, déclarations…) sont gardées telles quelles.
+function percBrouillonSynchronise(f, x){
+  if(!f || f.statut !== 'brouillon' || !x || !Array.isArray(x.pieces)) return null;
+  const L = percLignesExport(x.pieces); if(!L.lignes.length) return null;
+  const anc = (f.lignes || []).filter(l => l.exp), autres = (f.lignes || []).filter(l => !l.exp), puAnc = {};
+  anc.forEach(l => { puAnc[(l.ref || '') + '|' + l.designation] = l; });
+  // prix modifié : gardé ; quantité corrigée à la main sur la facture (qteMain) : gardée aussi
+  const lignes = L.lignes.map(l => { const o = puAnc[(l.ref || '') + '|' + l.designation]; if(!o) return l;
+    const n = Object.assign({}, l); if(Number(o.pu) > 0) n.pu = Number(o.pu); if(o.qteMain){ n.qte = o.qte; n.qteMain = true; } if(Number(o.remise)) n.remise = o.remise; return n; }).concat(autres);
+  const sig = ls => JSON.stringify(ls.map(l => [l.ref || '', l.designation, Number(l.qte) || 0, Number(l.pu) || 0, Number(l.remise) || 0]));
+  const p = Object.assign({}, f.percko || {});
+  const compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
+  let change = sig(lignes) !== sig(f.lignes || []);
+  if(x.colis && String(p.colis) !== String(x.colis)){ p.colis = x.colis; change = true; }
+  if(x.poidsBrut && String(p.poidsBrut) !== String(x.poidsBrut)){ p.poidsBrut = x.poidsBrut; change = true; }
+  if(compo && !p.composition){ p.composition = compo; change = true; }
+  if(!change) return null;
+  const g = Object.assign({}, f, {lignes, percko:p});
+  if(percValeurEstAuto(p)){ const vm = percValeurMatiere(g); if(vm){ g.percko.valeurMatiere = vm.valeur; g.percko.valeurAuto = true; } }
+  return g;
+}
+function percSynchroBrouillon(id, x, enregistrer){
+  const l = factToutes('tek'), f = l[id], g = percBrouillonSynchronise(f, x); if(!g) return false;
+  if(enregistrer){ delete g._id; l[id] = g; factEnregistrer('tek', l); }
+  return g;
+}
+window.percSynchroFactureExport = function(x){
+  let n = 0; percFactureDeLExport(x.exportId).forEach(d => { if(d.f.statut === 'brouillon' && percSynchroBrouillon(d.id, x, true)) n++; });
+  return n;
+};
 // Appelée par le suivi (bouton « Facture » d'un export). x : {exportId, n, d, nat, colis, poidsBrut, pieces:[…]}
 window.percFacturerExport = function(x, forcer){
   if(!canEditFact('tek')) return {ok:false, message:'Votre profil ne permet pas de créer une facture TEK-TREND.'};
   const deja = percFactureDeLExport(x.exportId);
+  if(deja.length && !forcer) deja.forEach(d => { if(d.f.statut === 'brouillon') percSynchroBrouillon(d.id, x, true); });
   if(deja.length && !forcer) return {ok:false, existe:deja.map(d => ({id:d.id, numero:d.f.numero || 'brouillon', statut:d.f.statut}))};
   const L = percLignesExport(x.pieces);
   if(!L.lignes.length) return {ok:false, message:'Cet export ne contient aucune pièce à facturer.'};
@@ -210,7 +243,7 @@ window.percFacturerExport = function(x, forcer){
 // Facture d'un export, en mémoire : celle déjà préparée (émise de préférence, sinon le brouillon le plus récent), sinon calculée.
 function percFactureDunExport(x){
   const deja = percFactureDeLExport(x.exportId), emises = deja.filter(d => d.f.statut === 'emise');
-  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; const f0 = factListe('tek')[c.id] || c.f;
+  if(deja.length){ const c = (emises.length ? emises : deja).sort((a, b) => String(b.f.date || '').localeCompare(String(a.f.date || '')))[0]; let f0 = factListe('tek')[c.id] || c.f; if(f0.statut === 'brouillon'){ const g = percBrouillonSynchronise(f0, x); if(g) f0 = g; }
     // brouillon dont la valeur matière n'a pas été saisie : montrée calculée, comme à l'ouverture de la facture
     if(f0.statut === 'brouillon' && f0.percko && percValeurEstAuto(f0.percko)){ const vm = percValeurMatiere(f0); if(vm) return {f:Object.assign({}, f0, {percko:Object.assign({}, f0.percko, {valeurMatiere:vm.valeur})}), existe:true}; }
     return {f:f0, existe:true}; }
@@ -233,6 +266,7 @@ window.percApercuFacture = function(x){
   const R = percReglages(), dest = x.nat || 'NEOLYS', D = R.dest[dest] || {code:'', livraison:'', transport:''}, P = factParams('tek');
   let f;
   if(deja.length) f = deja[deja.length - 1].f.statut === 'emise' ? deja[deja.length - 1].f : deja[0].f;
+  if(f && f.statut === 'brouillon'){ const g = percBrouillonSynchronise(f, x); if(g) f = g; }
   else {
     const L = percLignesExport(x.pieces), compo = PERC_COMPO.filter(([k]) => L.familles.some(fm => PERC_COMPO_FAM[fm] === k)).map(c => c[1]).join('\n');
     f = {numero:'', statut:'apercu', date:getTodayISO(), echeance:getTodayISO(), lignes:L.lignes, tva:0, timbre:0, devise:'EUR',

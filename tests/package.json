@@ -50,6 +50,7 @@
     "cartons-rechargement": "node cartons-rechargement.js",
     "molette-nombres": "node molette-nombres.js",
     "facture-export": "node facture-export.js",
+    "facture-export-synchro": "node facture-export-synchro.js",
     "apercu-fermer": "node apercu-fermer.js",
     "sous-pages": "node sous-pages.js",
     "ouverture-lente": "node ouverture-lente.js",
