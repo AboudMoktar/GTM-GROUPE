@@ -17,6 +17,10 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
     memoryCache['grp1_factures'] = {a:F('FA1', '-01-10', 1000, 1000), b:F('FA2', '-02-10', 500, 200, '2000-01-01'), c:F('FA3', '-03-10', 300, 0, '2999-01-01'),
       d:Object.assign(F('AV1', '-03-12', 100, 0), {type:'avoir', factureLiee:'c'}), e:Object.assign(F('B1', '-03-15', 9999, 0), {statut:'brouillon'}), f:F('OLD', '', 7777, 0)};
     memoryCache['grp1_factures'].f.date = (an - 1) + '-12-30';
+    memoryCache['grp1_gadh_factures'] = {g:F('FG1', '-04-10', 200, 50, '2999-01-01')};
+    const auj = getTodayISO();
+    memoryCache['grp1_mgt_crm_clients'] = [{ID:'1', Societe:'A', Factures:[{number:'FA026-001', date:an + '-01-10', amount:400, paid:400, status:'Payée'}, {number:'FA026-002', date:an + '-01-12', amount:600, paid:0, status:'Impayée'}]},
+      {ID:'2', Societe:'B', Factures:[{number:'FA026-003', date:auj, amount:250, paid:0, status:'Impayée'}, {number:'FA025-099', date:(an - 1) + '-11-10', amount:999, paid:0, status:'Impayée'}]}, {ID:'3', Societe:'C'}];
     activeSociete = null; activeModule = null; renderDirection();
   });
   await p.waitForTimeout(400);
@@ -25,7 +29,15 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(Math.abs(r.enc + r.reste - r.ca) < 1e-6, 'encaissé + reste = chiffre d\'affaires');
   const t = await p.evaluate(() => { const c = document.querySelector('.dd-ca'); return c ? {titre:c.querySelector('h3').textContent, tots:[...c.querySelectorAll('.dd-ca-tots b')].map(x => x.textContent.replace(/\s/g, '')), lignes:c.querySelectorAll('.dd-ca-tab tbody tr').length} : null; });
   ok(t && /Chiffre d'affaires \d{4}/.test(t.titre) && t.lignes === 3, 'bloc « Chiffre d\'affaires » dans la vue direction, une ligne par société');
-  ok(t && t.tots[0] === '1700,00€' && t.tots[1] === '1200,00€' && t.tots[2] === '500,00€' && t.tots[3] === '300,00€', 'totaux : CA, encaissé, reste, dont en retard (' + (t && t.tots.join(' | ')) + ')');
+  const g = await p.evaluate(() => [ddChiffreAffaires('gadh', getTodayISO().slice(0, 4)), ddChiffreAffaires('mgt', getTodayISO().slice(0, 4))]);
+  ok(g[0].ca === 200 && g[0].enc === 50 && g[0].reste === 150 && g[0].n === 1, 'GADH : factures du module Facturation GADH comptées (' + JSON.stringify(g[0]) + ')');
+  ok(g[1].ca === 1250 && g[1].enc === 400 && g[1].reste === 850 && g[1].retard === 600 && g[1].nRet === 1 && g[1].n === 3, 'MGT : factures du CRM (année passée exclue), impayée de plus de 30 jours en retard (' + JSON.stringify(g[1]) + ')');
+  ok(t && t.tots[0] === '3150,00€' && t.tots[1] === '1650,00€' && t.tots[2] === '1500,00€' && t.tots[3] === '900,00€', 'totaux des 3 sociétés : CA, encaissé, reste, dont en retard (' + (t && t.tots.join(' | ')) + ')');
+  // instantané : une facture MGT payée dans le CRM → tableau à jour dès réception des données
+  await p.evaluate(() => { const c = memoryCache['grp1_mgt_crm_clients']; c[0].Factures[1].paid = 600; c[0].Factures[1].status = 'Payée'; onFirebaseData(); });
+  await p.waitForTimeout(800);
+  const t2 = await p.evaluate(() => [...document.querySelectorAll('.dd-ca-tots b')].map(x => x.textContent.replace(/\s/g, '')));
+  ok(t2[1] === '2250,00€' && t2[2] === '900,00€' && t2[3] === '300,00€', 'mise à jour automatique dès qu\'une facture est payée (' + t2.join(' | ') + ')');
   if (process.env.CAPTURE) await p.locator('.dd-ca').screenshot({path:process.env.CAPTURE});
   await p.locator('.dd-ca-tab tbody tr').first().click(); await p.waitForTimeout(400);
   ok(await p.evaluate(() => activeSociete === 'tek' && activeModule === 'factures'), 'une ligne ouvre les factures de la société');

@@ -53,7 +53,27 @@ function ddDonnees(){
 }
 
 // Chiffre d'affaires de l'année (factures émises, avoirs déduits) : encaissé, reste à encaisser, dont en retard.
+// MGT : les factures sont dans le CRM (chaque fiche client, champ Factures : montant, payé, statut) et non dans
+// le module Facturation. Lues directement dans les données reçues de la base : chaque facture saisie ou payée
+// dans le CRM est comptée dès qu'elle arrive (le tableau se redessine à chaque mise à jour).
+// En retard : reste à payer plus de DD_MGT_DELAI jours après la date de facture (le CRM n'a pas d'échéance).
+const DD_MGT_DELAI = 30;
+function ddChiffreAffairesMgt(an){
+  const r = {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0};
+  const brut = (typeof memoryCache !== 'undefined' && memoryCache[CACHE_PREFIX + 'mgt_crm_clients']) || getJSON('mgt_crm_clients', []);
+  const clients = Array.isArray(brut) ? brut : Object.values(brut || {});
+  const lim = new Date(Date.now() - DD_MGT_DELAI * 864e5).toISOString().slice(0, 10);
+  clients.forEach(c => { (c && Array.isArray(c.Factures) ? c.Factures : []).forEach(f => {
+    if(!f || f._deleted_at || !String(f.date || '').startsWith(an)) return;
+    const m = Number(f.amount) || 0; if(!m) return;
+    const paye = /pay[ée]e/i.test(f.status || '') && !(Number(f.paid) < m) ? m : Math.max(0, Math.min(Number(f.paid) || 0, m)), reste = Math.max(0, m - paye);
+    r.ca += m; r.n++; r.enc += paye; r.reste += reste;
+    if(reste > 0.004 && String(f.date) < lim){ r.retard += reste; r.nRet++; }
+  }); });
+  return r;
+}
 function ddChiffreAffaires(soc, an){
+  if(soc === 'mgt') return ddChiffreAffairesMgt(an);
   const l = factListe(soc), r = {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0};
   Object.values(l).forEach(f => {
     if(f.statut !== 'emise' || !String(f.date || '').startsWith(an)) return;
@@ -69,7 +89,7 @@ function ddBlocCA(D){
   const barre = (c) => { const b = Math.max(c.enc + c.reste, 0.01), p = v => Math.max(0, v / b * 100).toFixed(2);
     return `<div class="dd-ca-bar" title="Encaissé ${ddEur(c.enc)} · à encaisser ${ddEur(c.reste - c.retard)} · en retard ${ddEur(c.retard)}"><i style="width:${p(c.enc)}%;background:#16a34a;"></i><i style="width:${p(c.reste - c.retard)}%;background:#2563eb;"></i><i style="width:${p(c.retard)}%;background:#dc2626;"></i></div>`; };
   const ligne = (k) => { const c = D.ca[k], S = SOCIETES[k];
-    return `<tr onclick="kpiAller('${k}', 'factures', 'fact-liste')" style="cursor:pointer;"><td><b>${S.nom}</b><span>${c.n} facture(s)</span></td><td class="n">${ddEur(c.ca, 2)}</td><td class="n ok">${ddEur(c.enc, 2)}</td><td class="n">${ddEur(c.reste, 2)}</td><td class="n ${c.retard > 0.004 ? 'bad' : ''}">${ddEur(c.retard, 2)}${c.nRet ? `<span>${c.nRet} facture(s)</span>` : ''}</td><td>${barre(c)}</td></tr>`; };
+    return `<tr onclick="${k === 'mgt' ? "kpiAller('mgt', 'mgt')" : `kpiAller('${k}', 'factures', 'fact-liste')`}" style="cursor:pointer;"><td><b>${S.nom}</b><span>${c.n} facture(s)</span></td><td class="n">${ddEur(c.ca, 2)}</td><td class="n ok">${ddEur(c.enc, 2)}</td><td class="n">${ddEur(c.reste, 2)}</td><td class="n ${c.retard > 0.004 ? 'bad' : ''}">${ddEur(c.retard, 2)}${c.nRet ? `<span>${c.nRet} facture(s)</span>` : ''}</td><td>${barre(c)}</td></tr>`; };
   return `<div class="dd-card dd-ca"><div class="dd-ct"><h3>Chiffre d'affaires ${D.an}</h3><span><i style="background:#16a34a"></i>Encaissé <i style="background:#2563eb"></i>À encaisser <i style="background:#dc2626"></i>En retard</span></div>
     <div class="dd-ca-tots">
       <div><span>Chiffre d'affaires</span><b>${ddEur(tot.ca, 2)}</b></div>
@@ -79,7 +99,7 @@ function ddBlocCA(D){
     </div>
     <div class="dd-scroll" style="max-height:none;"><table class="dd-ca-tab"><thead><tr><th>Société</th><th>Chiffre d'affaires</th><th>Encaissé</th><th>Reste</th><th>En retard</th><th></th></tr></thead>
       <tbody>${SOCIETE_KEYS.map(ligne).join('')}</tbody></table></div>
-    <div class="dd-ca-note">Factures émises en ${D.an}, avoirs déduits. Touchez une société pour ouvrir ses factures.</div></div>`;
+    <div class="dd-ca-note">Factures émises en ${D.an}, avoirs déduits ; MGT : factures du CRM, en retard au-delà de ${DD_MGT_DELAI} jours. Mis à jour automatiquement. Touchez une société pour ouvrir ses factures.</div></div>`;
 }
 
 // --- Graphiques en SVG ---
