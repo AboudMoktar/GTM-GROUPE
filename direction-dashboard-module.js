@@ -85,21 +85,20 @@ function ddChiffreAffaires(soc, an){
   return r;
 }
 function ddBlocCA(D){
-  const tot = SOCIETE_KEYS.reduce((t, k) => { const c = D.ca[k]; ['ca', 'enc', 'reste', 'retard', 'nRet', 'n'].forEach(x => t[x] += c[x] || 0); return t; }, {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0});
+  // 19/11/2026 : chaque société à part, sans total commun (pas de somme TEK-TREND + GADH + MGT)
   const barre = (c) => { const b = Math.max(c.enc + c.reste, 0.01), p = v => Math.max(0, v / b * 100).toFixed(2);
     return `<div class="dd-ca-bar" title="Encaissé ${ddEur(c.enc)} · à encaisser ${ddEur(c.reste - c.retard)} · en retard ${ddEur(c.retard)}"><i style="width:${p(c.enc)}%;background:#16a34a;"></i><i style="width:${p(c.reste - c.retard)}%;background:#2563eb;"></i><i style="width:${p(c.retard)}%;background:#dc2626;"></i></div>`; };
-  const ligne = (k) => { const c = D.ca[k], S = SOCIETES[k];
-    return `<tr onclick="${k === 'mgt' ? "kpiAller('mgt', 'mgt')" : `kpiAller('${k}', 'factures', 'fact-liste')`}" style="cursor:pointer;"><td><b>${S.nom}</b><span>${c.n} facture(s)</span></td><td class="n">${ddEur(c.ca, 2)}</td><td class="n ok">${ddEur(c.enc, 2)}</td><td class="n">${ddEur(c.reste, 2)}</td><td class="n ${c.retard > 0.004 ? 'bad' : ''}">${ddEur(c.retard, 2)}${c.nRet ? `<span>${c.nRet} facture(s)</span>` : ''}</td><td>${barre(c)}</td></tr>`; };
+  const bloc = (k) => { const c = D.ca[k], S = SOCIETES[k], aller = k === 'mgt' ? "kpiAller('mgt', 'mgt')" : `kpiAller('${k}', 'factures', 'fact-liste')`;
+    return `<div class="dd-ca-soc" onclick="${aller}" style="cursor:pointer;"><div class="dd-ca-soch"><b>${S.nom}</b><span>${c.n} facture(s)</span></div>
+      <div class="dd-ca-tots">
+        <div><span>Chiffre d'affaires</span><b>${ddEur(c.ca, 2)}</b></div>
+        <div class="ok"><span>Encaissé</span><b>${ddEur(c.enc, 2)}</b><em>${c.ca > 0 ? Math.round(c.enc / c.ca * 100) + ' %' : ''}</em></div>
+        <div><span>Reste à encaisser</span><b>${ddEur(c.reste, 2)}</b></div>
+        <div class="${c.retard > 0.004 ? 'bad' : ''}"><span>Dont en retard</span><b>${ddEur(c.retard, 2)}</b><em>${c.nRet ? c.nRet + ' facture(s)' : 'aucune'}</em></div>
+      </div>${c.ca > 0 ? barre(c) : ''}</div>`; };
   return `<div class="dd-card dd-ca"><div class="dd-ct"><h3>Chiffre d'affaires ${D.an}</h3><span><i style="background:#16a34a"></i>Encaissé <i style="background:#2563eb"></i>À encaisser <i style="background:#dc2626"></i>En retard</span></div>
-    <div class="dd-ca-tots">
-      <div><span>Chiffre d'affaires</span><b>${ddEur(tot.ca, 2)}</b></div>
-      <div class="ok"><span>Encaissé</span><b>${ddEur(tot.enc, 2)}</b><em>${tot.ca > 0 ? Math.round(tot.enc / tot.ca * 100) + ' %' : ''}</em></div>
-      <div><span>Reste à encaisser</span><b>${ddEur(tot.reste, 2)}</b></div>
-      <div class="${tot.retard > 0.004 ? 'bad' : ''}"><span>Dont en retard</span><b>${ddEur(tot.retard, 2)}</b><em>${tot.nRet ? tot.nRet + ' facture(s)' : 'aucune'}</em></div>
-    </div>
-    <div class="dd-scroll" style="max-height:none;"><table class="dd-ca-tab"><thead><tr><th>Société</th><th>Chiffre d'affaires</th><th>Encaissé</th><th>Reste</th><th>En retard</th><th></th></tr></thead>
-      <tbody>${SOCIETE_KEYS.map(ligne).join('')}</tbody></table></div>
-    <div class="dd-ca-note">Factures émises en ${D.an}, avoirs déduits ; MGT : factures du CRM, en retard au-delà de ${DD_MGT_DELAI} jours. Mis à jour automatiquement. Touchez une société pour ouvrir ses factures.</div></div>`;
+    ${SOCIETE_KEYS.map(bloc).join('')}
+    <div class="dd-ca-note">Chaque société à part. Factures émises en ${D.an}, avoirs déduits ; MGT : factures du CRM, en retard au-delà de ${DD_MGT_DELAI} jours. Mis à jour automatiquement. Touchez une société pour ouvrir ses factures.</div></div>`;
 }
 
 // --- Graphiques en SVG ---
@@ -183,7 +182,7 @@ window.renderDirection = function(){
     ddBoite(D.retGadh.toLocaleString('fr-FR'), 'Pièces retournées GADH', ton0(D.retGadh), "kpiAller('gadh', 'gadh', 'gadh-production')"),
     ddBoite(D.presents.n + '<small>/' + D.presents.total + '</small>', 'Présents aujourd\'hui', ton0(D.presents.n), "kpiAller('tek', 'rh')"),
     ddBoite(D.cmdTek, 'Commandes en cours · ' + D.cmdGadh + ' chez GADH', ton0(D.cmdTek), "kpiAller('tek', 'commandes')"),
-    ddBoite(ddEur(D.aEncaisser), D.retard ? D.retard + ' facture(s) en retard' : 'À encaisser', D.retard ? 'bad' : ton0(D.aEncaisser), "factFiltre='apayer'; kpiAller('tek', 'factures', 'fact-liste')"),
+    ddBoite(ddEur(D.aEncaisser), 'TEK-TREND · à encaisser' + (D.retard ? ' · ' + D.retard + ' en retard' : ''), D.retard ? 'bad' : ton0(D.aEncaisser), "factFiltre='apayer'; kpiAller('tek', 'factures', 'fact-liste')"),
     ddBoite(Math.round(D.mgt.pipeline || 0).toLocaleString('fr-FR') + ' €', 'Pipeline MGT · ' + (D.mgt.offresEnCours || 0) + ' offres', ton0(D.mgt.pipeline), "kpiAller('mgt', 'mgt')")
   ].join('');
   const alertes = D.alertes.slice(0, 6).map(a => `<div class="dd-li"><i style="background:${a.niveau === 'crit' ? 'var(--crit)' : a.niveau === 'warn' ? 'var(--warn)' : 'var(--accent-2)'};"></i><div><b>${esc(a.titre)}</b><span>${SOCIETES[a.soc] ? SOCIETES[a.soc].nom : ''}${a.detail ? ' · ' + esc(a.detail) : ''}</span></div></div>`).join('');
@@ -279,5 +278,8 @@ ddCss3.textContent = `
 .dd-ca-tab td span{display:block;font-size:11.5px;color:var(--ink-soft);font-weight:500;} .dd-ca-tab .n{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;} .dd-ca-tab .ok{color:#15803d;} .dd-ca-tab .bad{color:#dc2626;}
 .dd-ca-bar{display:flex;height:10px;min-width:120px;border-radius:99px;overflow:hidden;background:var(--surface-3);} .dd-ca-bar i{display:block;height:100%;}
 .dd-ca-note{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+.dd-ca-soc{border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;} .dd-ca-soc:hover{background:var(--accent-bg);}
+.dd-ca-soch{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;} .dd-ca-soch b{font-size:16px;font-weight:800;} .dd-ca-soch span{font-size:12px;color:var(--ink-soft);}
+.dd-ca-soc .dd-ca-tots{margin-bottom:10px;}
 @media (max-width:760px){ .dd-ca-tots{grid-template-columns:repeat(2,minmax(0,1fr));} .dd-ca-tab th:last-child,.dd-ca-tab td:last-child{display:none;} .dd-ca-tots b{font-size:18px;} }`;
 document.head.appendChild(ddCss3);
