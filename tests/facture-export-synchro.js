@@ -42,9 +42,22 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(R.ok, 'brouillon créé depuis l\'export en cours');
   ok(R.apercu === '105,50,2,1' && R.stockeAvant === '100,50,1', 'Documents : aperçu à jour des cartons actuels sans rien enregistrer (' + R.apercu + ' / ' + R.stockeAvant + ')');
   ok(R.existe, 'facture existante proposée (pas de doublon)');
-  ok(/^ART001:105:99,ART002:50:\d+,ART023:2:\d+,-:1:45$/.test(R.apres), 'brouillon remis à jour : quantités actuelles, prix modifié gardé, Flex ajouté, frais gardés (' + R.apres + ')');
+  ok(/^ART001:105:99,ART002:50:\d+,ART023:2:\d+,ART0002:1:45$/.test(R.apres), 'brouillon remis à jour : quantités actuelles, prix modifié gardé, Flex ajouté, frais gardés avec leur article ART0002 (' + R.apres + ')');
   ok(R.percko === '3|31|314', 'colis, poids et valeur matière recalculés (' + R.percko + ')');
   ok(R.emise === 105, 'facture émise jamais modifiée');
+  // création automatique + article choisi à la main gardé
+  await p.evaluate(() => { activeModule = 'factures'; renderShell(); nav('fact-liste'); });
+  const A = await p.evaluate(() => { const P = (lib, size, qte) => ({model:'', lib, size, client:'NEOLYS', qte});
+    const x = {exportId:'E10', n:10, d:'2026-11-25', nat:'NEOLYS', colis:1, poidsBrut:5, pieces:[P('PHARMA_HOMME COL V GRIS', 'S', 10), P('Inconnu bleu', 'M', 3)]};
+    const n0 = percSynchroFactureExport(x, false), n1 = percSynchroFactureExport(x, true);
+    const d = percFactureDeLExport('E10'); if(d.length !== 1) return 'pas créée ' + d.length;
+    factId = d[0].id; const i = d[0].f.lignes.findIndex(l => /Inconnu/.test(l.designation)); factMajRef(i, 'art013');
+    percSynchroFactureExport(Object.assign({}, x, {pieces:[P('PHARMA_HOMME COL V GRIS', 'S', 12), P('Inconnu bleu', 'M', 4)]}), true);
+    const f = factToutes('tek')[d[0].id]; return [n0, n1, percFactureDeLExport('E10').length, f.statut, f.lignes.map(l => l.ref + ':' + l.qte + ':' + l.pu).join(',')].join('|'); });
+  ok(/^0\|1\|1\|brouillon\|ART001:12:\d+,ART013:4:\d+$/.test(A) && !/ART013:4:0/.test(A), 'export en cours sans facture : brouillon créé tout seul ; article choisi à la main (ART013, prix rempli) gardé après synchro (' + A + ')');
+  // écran : champ « Article » sur chaque ligne
+  await p.evaluate(() => nav('fact-edit'));
+  ok(await p.evaluate(() => document.querySelectorAll('.mgt-ligne input[data-ref]').length === factToutes('tek')[factId].lignes.length && !!document.querySelector('#fact-articles option[value="ART0002"]')), 'chaque ligne montre son article (liste ART001… / ART0002)');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'aucune erreur'); process.exit(echecs ? 1 : 0);
 })();

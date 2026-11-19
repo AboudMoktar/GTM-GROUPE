@@ -765,7 +765,7 @@ function flush(){
     var ch = {}, n = 0;
     Object.keys(want).forEach(function(id){ var js = JSON.stringify(want[id]); if (lastSaved[id] !== js){ ch[id] = want[id]; lastSaved[id] = js; n++; } });
     Object.keys(lastSaved).forEach(function(id){ if (!(id in want)){ ch[id] = null; delete lastSaved[id]; n++; } });
-    if (n) HOST.ecrireDocs(ch);
+    if (n){ HOST.ecrireDocs(ch); if (typeof synchroFacturesExports === "function") synchroFacturesExports(); }
     return Promise.resolve();
   }
   if (dbh){
@@ -848,6 +848,8 @@ function loadHost(){
   try { if (retirerSousVetementsSV()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { if (giletRenewCult()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { conditionnementsFils(); } catch (e) {}
+  /* facture d'export toujours à jour, y compris après une modification faite sur un autre appareil (19/11/2026) */
+  if (typeof synchroFacturesExports === "function") synchroFacturesExports();
 }
 /* appelé par l'application groupe à chaque mise à jour (autre appareil) ; on ne redessine pas sous une saisie en cours */
 /* défilement (molette, doigt) : une mise à jour reçue pendant ce temps attend la fin du défilement */
