@@ -36,6 +36,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const L = (id, g, m, c, ref, des, pc, rem, pa, pv, an) => [id, g, m, c, c === 'PIECES' ? 'PIÈCES DE RECHANGE' : 'MACHINE', 'Général', ref, ref, des, des, pc, rem, pa, pv, '2026-02-20', 'jour', '2026-02-20 00:00:00', 'Achat = Catalogue x (1 - Remise) | Vente = Achat x 2', '=G2*0.6', '=I2*2', 2, an || [], null];
   const seed = {meta: {format: 'mgt-listing-seed', version: 1, fichier: 'Listing_essai.xlsx', feuille: 'Catalogue', sha256: 'x', nb: 4}, cols, rows: [
     L('ART-0001', 'MACPI', 'MACPI', 'MACHINES', 'M-100', 'MACHINE ESSAI A', 1000, 0.4, 600, 1200),
+    // V4.6.9V2 règles de prix Morgan : pièces vente = catalogue + 25 %, achat = catalogue − 25 % ; machines achat = − 35 %, vente = catalogue
     L('ART-0002', 'MORGAN', 'MORGAN', 'PIECES', 'B-75-631', 'ENCODER ESSAI', 200, null, 150, 250),
     L('ART-0003', 'MORGAN', 'MORGAN', 'MACHINES', 'T-9', 'TABLE DE COUPE ESSAI', 5000, null, 3250, 6250, [['REFERENCE_EN_DOUBLE', 'Référence présente deux fois']]),
     L('ART-0004', 'AUTRES', 'LOTUS', 'MACHINES', 'LTS 500', 'PRESSE ESSAI', null, null, 5035, null)]};
@@ -52,7 +53,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['forme compacte (prix, ligne Excel, sans formules)', a1.prixAchat === 600 && a1.xl === 2 && !a1.excel && JSON.stringify(a1).length < 2500]);
   // V4.6.9H : prix de vente standard = prix catalogue (ancien prix gardé dans l'historique, date du tarif gardée)
   const a4 = lire(L1['ART-0004']);
-  r.push(['prix de vente standard = prix catalogue (historique daté, date du tarif gardée)', a1.prixVente === 1000 && a1.dateMaj === '2026-02-20' && (a1.historiquePrix || []).some(h => h.source === 'STANDARDISATION' && h.precedent && h.precedent.prixVente === 1200) && lire(L1['ART-0003']).prixVente === 5000 && (await fr.evaluate(() => MGT_LISTING_STD.state().changed)) === 3]);
+  r.push(['prix de vente standard = prix catalogue (historique daté, date du tarif gardée)', a1.prixVente === 1000 && a1.dateMaj === '2026-02-20' && (a1.historiquePrix || []).some(h => h.source === 'STANDARDISATION' && h.precedent && h.precedent.prixVente === 1200) && lire(L1['ART-0003']).prixVente === 5000 && lire(L1['ART-0002']).prixVente === 250 && (await fr.evaluate(() => MGT_LISTING_STD.state().changed)) === 2]);
   r.push(['sans prix catalogue : plus de prix de vente (« Prix catalogue à saisir »)', a4.prixVente == null && (await fr.evaluate(async () => (await dm.listingGetArticle('ART-0004')).anomalies.concat(dm.listingLiveFlags(await dm.listingGetArticle('ART-0004'))).some(x => x.code === 'SANS_PRIX_CATALOGUE')))]);
   r.push(['import noté (date, nombre, fichier)', /Listing_essai/.test(String(g.mgt_crm_listing_meta || ''))]);
   r.push(['accueil : fenêtres Morgan / Macpi / Autres avec leurs nombres', /2\s*articles/.test(await fr.locator('.lsCardBtn.b-MORGAN').textContent()) && /1\s*articles?/.test(await fr.locator('.lsCardBtn.b-MACPI').textContent())]);
@@ -66,7 +67,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['fiche : prix de vente non modifiable (suit le catalogue)', await fr.locator('#lsF_prixVente[readonly]').count() === 1]);
   await fr.fill('#lsF_prixCatalogue', '275'); await fr.fill('#lsF_note', 'Nouveau tarif'); await fr.click('#lsDlgBox button[type=submit]'); await p.waitForTimeout(1800);
   const a2 = lire((await base()).mgt_crm_listing['ART-0002']);
-  r.push(['prix modifié : historique (prix importé + nouveau prix), journal', a2.prixVente === 275 && a2.prixCatalogue === 275 && a2.historiquePrix.length === 3 && a2.historiquePrix[0].prixVente === 250 && a2.historiquePrix[1].source === 'STANDARDISATION' && a2.historiquePrix[1].prixVente === 200 && a2.historiquePrix[2].prixVente === 275 && a2.journal.some(j => j.action === 'MODIFICATION')]);
+  r.push(['prix modifié (pièce Morgan : vente = catalogue + 25 %, achat = − 25 %) : historique (prix importé + nouveau prix), journal', a2.prixVente === 343.75 && a2.prixAchat === 206.25 && a2.prixCatalogue === 275 && a2.historiquePrix.length === 2 && a2.historiquePrix[0].prixVente === 250 && a2.historiquePrix[1].prixVente === 343.75 && a2.journal.some(j => j.action === 'MODIFICATION')]);
   r.push(['seul l\'article modifié a changé', lire((await base()).mgt_crm_listing['ART-0001']).prixVente === 1000]);
   // corbeille et restauration
   await fr.click('#lsDlgBox [data-ls="close"]').catch(() => {}); await fr.evaluate(() => window.MGT_LISTING_UI.closeDialog());
@@ -78,7 +79,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['recherche (référence, désignation)', (await fr.evaluate(async () => (await dm.listingSearch('encoder')).map(a => a.id).join()))  === 'ART-0002']);
   // instantané pour une ligne de facture / d'offre
   const snap = await fr.evaluate(async () => dm.listingSnapshot('ART-0002'));
-  r.push(['instantané figé (prix de vente en vigueur, prix d\'achat)', snap.prixVente === 275 && snap.prixAchat === 150 && !!snap.prixHistoriqueId]);
+  r.push(['instantané figé (prix de vente en vigueur, prix d\'achat)', snap.prixVente === 343.75 && snap.prixAchat === 206.25 && !!snap.prixHistoriqueId]);
   // nouvel article
   const nv = await fr.evaluate(async () => (await dm.listingCreateArticle({groupe:'MORGAN', categorie:'SERVICES', marque:'Morgan', reference:'SRV-1', designation:'Installation', prixVente:'300'})).id);
   await p.waitForTimeout(1500);
@@ -86,7 +87,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   // réimport du même fichier : rien n'est écrasé
   await fr.evaluate(() => { window.MGT_LISTING_UI.open(); }); await p.waitForTimeout(300);
   await fr.setInputFiles('#lsImportFile', {name: 'CRM_MGT_V4_6_8M.html', mimeType: 'text/html', buffer: html}); await p.waitForTimeout(2500);
-  r.push(['réimport : aucun article écrasé (prix modifié gardé)', lire((await base()).mgt_crm_listing['ART-0002']).prixVente === 275 && Object.keys((await base()).mgt_crm_listing).length === 5]);
+  r.push(['réimport : aucun article écrasé (prix modifié gardé)', lire((await base()).mgt_crm_listing['ART-0002']).prixVente === 343.75 && Object.keys((await base()).mgt_crm_listing).length === 5]);
   if(process.env.CAPTURES){ await fr.evaluate(() => { window.MGT_LISTING_UI.open(); }); await p.waitForTimeout(400); await p.screenshot({path: process.env.CAPTURES + '/listing.png'}); await fr.evaluate(() => window.MGT_LISTING_UI.openView('ART-0002')); await p.waitForTimeout(400); await p.screenshot({path: process.env.CAPTURES + '/listing-fiche.png'}); }
   // ---------- Secrétaire MGT : consultation ----------
   const S = await session('secmgt');

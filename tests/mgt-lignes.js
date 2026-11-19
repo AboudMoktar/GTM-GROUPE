@@ -18,10 +18,10 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const art = (o) => J(Object.assign({sousFamille: 'Général', famille: 'MACHINE', dateMaj: '2026-02-20', _created_at: '2026-11-01T00:00:00Z', _updated_at: '2026-11-01T00:00:00Z'}, o));
   await admin.database().ref('/groupe1').set({mgt: {
     mgt_crm_clients: {'1': J({ID: '1', Societe: 'Client Essai', _version: 1, Factures: [{id: 'F-OLD', number: 'FA026-001', date: '2026-03-01', amount: 500, paid: 0, type: 'PIECE', status: 'Impayée', note: ''}],
-      Offres: [{offerId: 'OF-1', type: 'machine', marque: 'MACPI', sentDate: '2026-11-01', amount: '', devise: 'EUR', status: 'En attente', commercial: 'Ali'}]}),
+      Offres: [{offerId: 'OF-1', type: 'devis', marque: 'MACPI', sentDate: '2026-11-01', amount: '', devise: 'EUR', status: 'En attente', commercial: 'Ali'}]}),
       '2': J({ID: '2', Societe: 'Autre client', _version: 1})},
     mgt_crm_listing: {'ART-0001': art({id: 'ART-0001', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-100', designation: 'MACHINE ESSAI A', prixCatalogue: 1000, remise: 0.4, prixAchat: 600, prixVente: 1200}),
-      'ART-0002': art({id: 'ART-0002', groupe: 'MORGAN', marque: 'MORGAN', categorie: 'PIECES', reference: 'B-75-631', designation: 'ENCODER ESSAI', prixCatalogue: 200, prixAchat: 150, prixVente: 250})}},
+      'ART-0002': art({id: 'ART-0002', groupe: 'MACPI', marque: 'MACPI', categorie: 'PIECES', reference: 'B-75-631', designation: 'ENCODER ESSAI', prixCatalogue: 200, prixAchat: 150, prixVente: 250})}}, // hors règles Morgan (V4.6.9V2, testées dans mgt-v469)
     users_v2: {[u.uid]: {nom: d.label, username: 'sysadmin', role: d.role, profil: 'sysadmin', groupe: true, societes: d.societes},
       [u2.uid]: {nom: d2.label, username: 'secmgt', role: d2.role, profil: 'secretaire_mgt', groupe: !!d2.groupe, societes: d2.societes}}});
   await fetch('http://127.0.0.1:9000/.settings/rules.json?ns=demo-gtm-groupe', {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8')});
