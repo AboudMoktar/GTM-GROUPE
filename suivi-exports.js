@@ -536,7 +536,7 @@ function confirmerValidation(e){
   lots.forEach(function(lot){ rec.appendChild(el("div", null, el("span", {text:"Commande " + lot}), el("b", {text:fmt(par[lot]) + " pièce(s)"}))); });
   rec.appendChild(el("div", {class:"tot"}, el("span", {text:e.cartons.length + " carton(s) · " + dmyL(e.d)}), el("b", {text:fmt(qteExport(e)) + " pièces"})));
   box.appendChild(rec);
-  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, valider (pièces expédiées)", onclick:function(){ sxClose(); commit(function(){ validerExport(e); ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {id:e.id}; ui.xp = {}; }, "Export N°" + e.n + " validé : pièces expédiées — il est maintenant dans l'Archive"); }}));
+  box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, valider (pièces expédiées)", onclick:function(){ sxClose(); commit(function(){ validerExport(e); try { if (typeof HOST !== "undefined" && HOST && typeof HOST.synchroFactureExport === "function" && VUE !== "gadh") HOST.synchroFactureExport(demandeFacture(e)); } catch(x){} ui.tab = "arch"; ui.amodeX = "exp"; ui.xpa = {id:e.id}; ui.xp = {}; }, "Export N°" + e.n + " validé : pièces expédiées — il est maintenant dans l'Archive"); }}));
   box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
 }
 
