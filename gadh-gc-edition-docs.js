@@ -57,7 +57,7 @@ window.gcedCalcBL = () => {
     tr.querySelector('.ged-mt').textContent = gcE(GC.r2(mt)); tr.querySelector('.ged-mg').innerHTML = `<b style="color:${mg < 0 ? 'var(--bad)' : 'inherit'};">${gcE(GC.r2(mg))}</b>`;
   });
   const avant = GC.coutLivraison(b), fr = avant.fraisLivraison;
-  document.getElementById('ged-tot').innerHTML = `<b>Après modification</b> · chiffre d'affaires ${gcE(GC.r2(ca))}${document.querySelector('.ged-pf') ? ' · facturé HT ' + gcE(GC.r2(fa)) : ''} · coût ${gcE(GC.r2(cout + fr))}${fr ? ' (dont frais ' + gcE(fr) + ')' : ''} · <b>marge ${gcE(GC.r2(ca - cout - fr))}</b> (avant : ${gcE(avant.marge)}) · taux de marque ${gcPct(ca > 0 ? (ca - cout - fr) / ca * 100 : null)}`;
+  document.getElementById('ged-tot').innerHTML = `<b>Après modification</b> · chiffre d'affaires ${gcE(GC.r2(ca))}${document.querySelector('.ged-pf') ? ' · facturé HT ' + gcE(GC.r2(fa)) : ''} · coût ${gcE(GC.r2(cout + fr))}${fr ? ' (dont frais ' + gcE(fr) + ')' : ''} · <b>marge ${gcE(GC.r2(ca - cout - fr))}</b> (avant : ${gcE(avant.marge)}) · taux de marge ${gcPct((cout + fr) > 0 ? (ca - cout - fr) / (cout + fr) * 100 : null)}`;
 };
 window.gcedValiderBL = (blId) => gcOperation(() => {
   const motif = gcVal('ged-motif'); if(!motif){ showToast('Indiquez le motif de la modification'); return; }

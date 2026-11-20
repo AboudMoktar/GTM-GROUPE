@@ -310,7 +310,7 @@ function gclpFiltreValeurs(lib, tous, valeurs, test, id){
   return {id, label:lib, options:[['', lib + ' : tous']].concat(valeurs.map(v => [String(v), lib + ' : ' + v])), test};
 }
 function gclpUniteCommune(articles){ const u = Array.from(new Set(articles.map(a => a.unite).filter(Boolean))); return u.length === 1 ? u[0] : ''; }
-function gclpMarge(a){ const pa = GC.num(a.prixAchat), pv = GC.num(a.prixVente); return pa > 0 && pv > 0 ? (pv - pa) / pv * 100 : null; }
+function gclpMarge(a){ const pa = GC.num(a.prixAchat), pv = GC.num(a.prixVente); return pa > 0 && pv > 0 ? (pv - pa) / pa * 100 : null; }   // taux de marge = marge ÷ coût d'achat (GTM 20/11/2026)
 renderGcCatalogue = function(main){
   const D = gcD(), ed = gcPeut(), actifs = D.articles.filter(a => !a.archive);
   const b = gcSection(main, 'Catalogue articles', (ed ? `<button class="btn btn-primary" data-gc="importer-liste-prix" onclick="nav('gc-import-catalogue')">Importer une liste de prix</button><button class="btn btn-ghost" data-gc="nouvel-article" onclick="gcFormArticle()">+ Article</button>` : '') + gcBoutonsExport('catalogue'));
@@ -342,7 +342,7 @@ renderGcCatalogue = function(main){
       {titre:'MOQ', num:true, tri:a => GC.num(a.moq), html:a => a.moq ? gcQ(a.moq) + (a.unite ? ' ' + esc(a.unite) : '') : '—'},
       {titre:'Prix d\'achat' + su, num:true, tri:a => GC.num(a.prixAchat), html:a => a.prixAchat ? gcE(a.prixAchat) : '—'},
       {titre:'Prix de vente' + su, num:true, tri:a => GC.num(a.prixVente), html:a => a.prixVente ? `<b>${gcE(a.prixVente)}</b>${GC.liste(a.paliers).length ? `<div class="gc-sous">dégressif jusqu'à ${gcE(GC.liste(a.paliers)[GC.liste(a.paliers).length - 1].prix)}</div>` : ''}` : '—'},
-      {titre:'Taux de marque', num:true, tri:a => gclpMarge(a) === null ? -999 : gclpMarge(a), html:a => { const m = gclpMarge(a); return m === null ? '—' : `<span style="color:${m < 0 ? 'var(--bad)' : 'inherit'};">${gcPct(m)}</span>`; }}
+      {titre:'Taux de marge', num:true, tri:a => gclpMarge(a) === null ? -999 : gclpMarge(a), html:a => { const m = gclpMarge(a); return m === null ? '—' : `<span style="color:${m < 0 ? 'var(--bad)' : 'inherit'};">${gcPct(m)}</span>`; }}
     ]),
     clic:a => `gcOuvrir('gc-article', '${a.id}')`, vide:'Aucun article', videSous:ed ? 'Importez votre liste de prix (Excel ou CSV), telle quelle.' : ''});
 };
@@ -371,13 +371,13 @@ renderGcArticle = function(main){
   if(!a || !body) return;
   const g = gclpGrille(a), pa = GC.num(a.prixAchat), u = a.unite ? esc(a.unite) : '';
   const attrs = Object.keys(a.attributs || {});
-  const lignesG = g.map((p, i) => { const marge = pa > 0 && p.prix > 0 ? (p.prix - pa) / p.prix * 100 : null;
+  const lignesG = g.map((p, i) => { const marge = pa > 0 && p.prix > 0 ? (p.prix - pa) / pa * 100 : null;
     const borne = p.min && p.max ? 'de ' + gcQ(p.min) + ' à ' + gcQ(p.max) : p.min ? (i === g.length - 1 || !g[i + 1] ? 'à partir de ' + gcQ(p.min) : 'à partir de ' + gcQ(p.min)) : 'prix de base';
-    return `<tr><td data-l="Palier">${p.palier || i + 1}</td><td data-l="Quantité">${borne} ${p.min ? u : ''}</td><td class="n" data-l="Prix de vente"><b>${gcE(p.prix)}</b></td><td class="n" data-l="Taux de marque">${marge === null ? '—' : gcPct(marge)}</td></tr>`; }).join('');
+    return `<tr><td data-l="Palier">${p.palier || i + 1}</td><td data-l="Quantité">${borne} ${p.min ? u : ''}</td><td class="n" data-l="Prix de vente"><b>${gcE(p.prix)}</b></td><td class="n" data-l="Taux de marge">${marge === null ? '—' : gcPct(marge)}</td></tr>`; }).join('');
   const html = `<div class="card" data-gc="grille-prix"><h3 class="gc-h3">Prix${a.listePrix ? ' · ' + esc(a.listePrix.nom) + (a.listePrix.version && a.listePrix.nom.indexOf(a.listePrix.version) < 0 ? ' ' + esc(a.listePrix.version) : '') : ''}</h3>
       ${a.listePrix && a.listePrix.debut ? `<div class="gc-sous" style="margin-bottom:6px;">Valable du ${gcDt(a.listePrix.debut)} au ${gcDt(a.listePrix.fin)}${a.devise ? ' · ' + esc(a.devise) : ''}${a.incoterm ? ' · ' + esc(a.incoterm) : ''}</div>` : ''}
       <div class="gc-chiffres"><div class="gc-chiffre"><span>Prix d'achat net${u ? ' / ' + u : ''}</span><b>${pa ? gcE(pa) : '—'}</b></div><div class="gc-chiffre"><span>Quantité minimale (MOQ)</span><b>${a.moq ? gcQ(a.moq) + ' ' + u : '—'}</b></div><div class="gc-chiffre"><span>Fournisseur</span><b style="font-size:14px;">${esc(a.fournisseurId ? gcNomFour(a.fournisseurId) : '—')}</b></div></div>
-      ${g.length ? `<div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Palier</th><th>Quantité</th><th class="n">Prix de vente${u ? ' / ' + u : ''}</th><th class="n" title="Marge ÷ prix de vente">Taux de marque</th></tr></thead><tbody>${lignesG}</tbody></table></div>` : ''}
+      ${g.length ? `<div style="overflow-x:auto;"><table class="gc-lignes"><thead><tr><th>Palier</th><th>Quantité</th><th class="n">Prix de vente${u ? ' / ' + u : ''}</th><th class="n" title="Marge ÷ prix de vente">Taux de marge</th></tr></thead><tbody>${lignesG}</tbody></table></div>` : ''}
       <div class="gclp-calc no-print"><label>Calculer pour une quantité<input type="number" id="gclp-qte" min="0" step="any" value="${gcAttr(a.moq || 1)}" oninput="gclpCalculer('${a.id}')"></label><div id="gclp-res"></div></div></div>
     ${attrs.length || a.marque || a.gamme || a.description ? `<div class="card"><h3 class="gc-h3">Caractéristiques</h3><div class="gc-kv">
       ${a.marque ? `<div><span>Marque</span><b>${esc(a.marque)}</b></div>` : ''}${a.gamme ? `<div><span>Gamme</span><b>${esc(a.gamme)}</b></div>` : ''}
