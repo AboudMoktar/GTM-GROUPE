@@ -1,0 +1,6 @@
+Bibliothèques tierces fournies telles quelles (fichiers minifiés d'origine), utilisées par l'import de commandes PDF
+du module Gestion des commandes GADH (chargées seulement à la demande) :
+pdfjs-dist           3.11.174   licence Apache-2.0
+tesseract.js         5.1.1      licence Apache-2.0
+tesseract.js-core    5.1.1      licence Apache-2.0
+fra.traineddata      4.0.0      licence Apache-2.0 (tessdata_best)

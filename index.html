@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <!-- Politique de sécurité : liste des sites autorisés (Firebase, Google, cdnjs). Texte identique à tests/csp-politique.txt ; à modifier aux deux endroits. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://*.supabase.co; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebasedatabase.app https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' blob: https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://*.supabase.co; frame-src 'self' https://gtm-groupe.firebaseapp.com https://tek-trend-35778.firebaseapp.com https://*.firebasedatabase.app; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3130,6 +3130,16 @@ window.onload = init;
 <script src="./gadh-gc-ventes.js"></script>
 <script src="./gadh-gc-achats.js"></script>
 <script src="./gadh-gc-exports.js"></script>
+<!-- CRM GADH V 0.0.2 (livré par l'ami, 20/11/2026) : ajouts chargés après les 5 fichiers du module, qu'ils étendent -->
+<script src="./gadh-gc-gtm.js"></script>
+<script src="./gadh-gc-listes-prix.js"></script>
+<script src="./gadh-gc-suivi-clients.js"></script>
+<script src="./gadh-gc-fournisseurs.js"></script>
+<script src="./gadh-gc-verif-marges.js"></script>
+<script src="./gadh-gc-edition-docs.js"></script>
+<script src="./gadh-gc-v002.js"></script>
+<script src="./gadh-gc-import-pdf.js"></script>
+<script src="./gadh-gc-donnees.js"></script>
 <script src="./notif-module.js"></script>
 <script src="./audit-module.js"></script>
 <script src="./mgt-crm-module.js"></script>

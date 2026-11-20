@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v314';
+const CACHE_NAME = 'groupe-v315';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -48,6 +48,15 @@ const APP_SHELL = [
   './gadh-gc-ventes.js',
   './gadh-gc-achats.js',
   './gadh-gc-exports.js',
+  './gadh-gc-gtm.js',
+  './gadh-gc-listes-prix.js',
+  './gadh-gc-suivi-clients.js',
+  './gadh-gc-fournisseurs.js',
+  './gadh-gc-verif-marges.js',
+  './gadh-gc-edition-docs.js',
+  './gadh-gc-v002.js',
+  './gadh-gc-import-pdf.js',
+  './gadh-gc-donnees.js',
   './rapports-production-module.js',
   './notif-module.js',
   './audit-module.js',

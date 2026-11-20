@@ -18,7 +18,8 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   await p.evaluate(() => {
     currentUser = {username:'admin', nom:'Administrateur', role:'admin', profil:'sysadmin', groupe:true, societes:{tek:true,gadh:true,mgt:true}};
     hlEcritureAutorisee = () => true;   // essai sans base : l'enregistrement local est accepté
-    activeSociete = 'gadh'; activeModule = 'gadh-commandes'; renderShell(); nav('gc-import-catalogue');
+    activeSociete = 'gadh'; activeModule = 'gadh-commandes'; renderShell(); if(typeof gclpModeAncien !== 'undefined') gclpModeAncien = true; // V 0.0.2 : import par modèle = lien « ouvrir l'import par modèle »
+    nav('gc-import-catalogue');
   });
   // 1. le modèle
   ok(await p.locator('[data-gc="modele-import"]').count() === 1, 'bouton « Télécharger le modèle Excel »');
@@ -55,7 +56,7 @@ function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if(!c) echecs++; 
   ok(ap.c === 2 && ap.cli && ap.cli.mf === '0000002B' && ap.cli.conditions === 'Comptant', 'clients créés avec leurs informations');
   ok(ap.a === 2 && ap.art && ap.art.prixAchat === 4.5 && ap.art.fournisseurId === ap.four.id, 'articles créés et rattachés au fournisseur du fichier');
   // 3. réimport : mise à jour, pas de doublon
-  await p.evaluate(() => nav('gc-import-catalogue'));
+  await p.evaluate(() => { gclpModeAncien = true; nav('gc-import-catalogue'); });
   const wb2 = XLSX.readFile(rempli);
   XLSX.utils.sheet_add_aoa(wb2.Sheets['Fournisseurs'], [['tissus exemple', '', '70 999 999']], {origin:1});
   XLSX.utils.sheet_add_aoa(wb2.Sheets['Fournisseurs'], [['', '', '', '', '', '', '', '', '', '', '']], {origin:2});
