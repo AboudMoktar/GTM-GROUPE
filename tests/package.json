@@ -61,6 +61,7 @@
     "etat-controles": "node etat-controles.js",
     "deuxieme-choix": "node deuxieme-choix.js",
     "gadh-crm-v002": "node gadh-crm-v002.js",
+    "gadh-import-pdf": "node gadh-import-pdf.js",
     "mise-a-jour": "node mise-a-jour-sans-rechargement.js",
     "direction-ca": "node direction-ca.js"
   },
