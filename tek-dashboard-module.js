@@ -72,12 +72,13 @@ function tdCommandes(){
   const enCours = resume.filter(l => l.enCours);
   const qteTot = enCours.reduce((s, l) => s + (l.qte || 0), 0);
   const expTot = enCours.reduce((s, l) => s + ((l.etapes && l.etapes.exp) || 0), 0);
-  const lots = enCours.map(l => ({lot: l.lot, qte: l.qte, pct: l.qte > 0 ? Math.round(((l.etapes && l.etapes.exp) || 0) / l.qte * 100) : 0}))
+  const avTot = enCours.reduce((s, l) => s + (l.avance || 0), 0);   // avancement = contrôlées conformes
+  const lots = enCours.map(l => ({lot: l.lot, qte: l.qte, pct: l.pct || 0}))
     .sort((a, b) => b.pct - a.pct);
   return {
     nb: enCours.length,
     qteTot, expTot,
-    avancement: qteTot > 0 ? expTot / qteTot * 100 : null,
+    avancement: qteTot > 0 ? avTot / qteTot * 100 : null,
     lots,
     gadh: (typeof suiviLotsChezGadh === 'function') ? suiviLotsChezGadh() : 0
   };

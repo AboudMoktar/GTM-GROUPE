@@ -170,7 +170,7 @@ function suiviNotifier(){
 function suiviResume(){
   const docs = suiviLireDocs();
   const lots = (docs.cfg && docs.cfg.lots) || {};
-  const qte = {}, lotDeLigne = {}, etapes = {};
+  const qte = {}, lotDeLigne = {}, etapes = {}, ch2 = {};
   Object.keys(docs).forEach(id => {
     const d = docs[id];
     if(id.indexOf('lines-') === 0) (d.lines || []).forEach(a => { lotDeLigne[a[0]] = d.lot; qte[d.lot] = (qte[d.lot] || 0) + (a[6] || 0); });
@@ -182,11 +182,14 @@ function suiviResume(){
       const lot = lotDeLigne[m[2]]; if(!lot) return;
       const e = etapes[lot] || (etapes[lot] = {});
       e[m[3]] = (e[m[3]] || 0) + (m[4] || 0);
+      if(m[9]) ch2[lot] = (ch2[lot] || 0) + (m[6] || 0);   // 2e choix : retiré de la commande
     });
   });
   return Object.keys(qte).map(lot => {
-    const e = etapes[lot] || {}, info = lots[lot] || {};
-    return {lot, qte:qte[lot], etapes:e, enCours: !info.closed && Math.max(0, qte[lot] - (e.exp || 0)) > 0};
+    const e = etapes[lot] || {}, info = lots[lot] || {}, q = Math.max(0, qte[lot] - (ch2[lot] || 0));
+    // 20/11/2026 : avancement = pièces contrôlées conformes (les pièces emballées ou expédiées l'ont été), au plus la commande
+    const avance = Math.min(q, Math.max(e.ctl || 0, e.emb || 0, e.exp || 0));
+    return {lot, qte:q, etapes:e, avance, pct:q > 0 ? Math.min(100, Math.round(avance / q * 100)) : 0, enCours: !info.closed && Math.max(0, q - (e.exp || 0)) > 0};
   });
 }
 function suiviCommandesEnCours(){ return suiviResume().filter(l => l.enCours).length; }
