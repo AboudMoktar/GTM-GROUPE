@@ -59,6 +59,7 @@
     "historique-tek": "node historique-tek.js",
     "fiches-cartons-pages": "node fiches-cartons-pages.js",
     "etat-controles": "node etat-controles.js",
+    "deuxieme-choix": "node deuxieme-choix.js",
     "mise-a-jour": "node mise-a-jour-sans-rechargement.js",
     "direction-ca": "node direction-ca.js"
   },
