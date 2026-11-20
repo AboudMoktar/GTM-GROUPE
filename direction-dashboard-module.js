@@ -72,8 +72,22 @@ function ddChiffreAffairesMgt(an){
   }); });
   return r;
 }
+// GADH (CRM V 0.0.2) : factures avec un statut de paiement (non_payee, en_cours, payee), sans montant encaissé détaillé :
+// une facture « payée » est encaissée en entier, les autres restent à encaisser ; en retard après l'échéance.
+function ddChiffreAffairesGadhCrm(f, an, r){
+  if(!f || f.annulee || !String(f.date || '').startsWith(an) || (f.statut === 'brouillon' && !f.numero)) return;
+  const m = factTotaux(f).ttc; if(!m) return; const paye = f.paiement === 'payee' ? m : 0, reste = m - paye;
+  r.ca += m; r.n++; r.enc += paye; r.reste += reste;
+  if(reste > 0.004 && f.echeance && f.echeance < getTodayISO()){ r.retard += reste; r.nRet++; }
+}
 function ddChiffreAffaires(soc, an){
   if(soc === 'mgt') return ddChiffreAffairesMgt(an);
+  if(soc === 'gadh'){ const r0 = {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0}, L = factListe('gadh');
+    Object.values(L).forEach(f => { if(f && f.paiement) ddChiffreAffairesGadhCrm(f, an, r0); });
+    const r1 = ddChiffreAffairesStd('gadh', an, L); ['ca', 'enc', 'reste', 'retard', 'nRet', 'n'].forEach(k => r0[k] += r1[k]); return r0; }
+  return ddChiffreAffairesStd(soc, an);
+}
+function ddChiffreAffairesStd(soc, an, liste){
   const l = factListe(soc), r = {ca:0, enc:0, reste:0, retard:0, nRet:0, n:0};
   Object.values(l).forEach(f => {
     if(f.statut !== 'emise' || !String(f.date || '').startsWith(an)) return;

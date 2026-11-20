@@ -35,12 +35,14 @@ const FACT_GENERATEUR = {
 
 function factCle(soc, nom){ return (soc === 'tek' ? '' : soc + '_') + nom; }
 function factSoc(){ return activeSociete || 'tek'; }
-function factToutes(soc){ return getJSON(factCle(soc, 'factures'), {}) || {}; }
+// soc absent (appel des fichiers du CRM GADH V 0.0.2) : société active
+function factToutes(soc){ return getJSON(factCle(soc || factSoc(), 'factures'), {}) || {}; }
 function factEnregistrer(soc, l){ setJSON(factCle(soc, 'factures'), l); }
 function canAccessFactures(){ return !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'viewer'); }
 function canEditFact(soc){ return soc === 'mgt' ? canEditMgt() : !!currentUser && currentUser.role === 'admin'; }
 
 function factParams(soc){
+  soc = soc || factSoc();
   const def = {raison:SOCIETES[soc].nom, adresse:'', mf:'', tel:'', email:'', rib:'', tva:0, timbre:1, delai:30, mention:'', tauxHoraire:0, deplacement:0, prix:{}};
   const P = Object.assign(def, getJSON(factCle(soc, 'fact_params'), {}) || {});
   if(soc === 'mgt'){ const M = mgtParams(); ['raison', 'adresse', 'mf', 'tel', 'email', 'rib', 'tva'].forEach(k => { P[k] = M[k]; }); }
@@ -48,6 +50,7 @@ function factParams(soc){
 }
 // Clients facturés : ceux du CRM pour MGT ; une petite liste propre pour TEK-TREND et GADH.
 function factClients(soc){
+  soc = soc || factSoc();
   if(soc === 'mgt'){
     const o = {};
     Object.entries(crmClients()).forEach(([id, c]) => { o[id] = {nom:c.nom, adresse:[c.adresse, c.ville].filter(Boolean).join(', '), mf:c.mf || '', email:c.email || ''}; });
