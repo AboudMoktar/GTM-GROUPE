@@ -125,10 +125,10 @@ function lireKg(v){ v = String(v === null || v === undefined ? "" : v).trim().re
 function dispoLigne(l, cl, saufCt){
   var ret = dispoRetour(l.lot, l.id, saufCt), R = regleColis(cl);
   if (estSpecial(l.client)) return ret;   /* FLÉCHÉS / VESTIAIRES : pour l'export choisi (NEOLYS ou ALLOGA) */
-  if (l.client === cl) return Math.min(ret, (R && R.cde) ? Math.max(0, l.qty - commandePrise(l.lot, cl, l.id, saufCt)) : Infinity);
+  if (l.client === cl) return Math.min(ret, (R && R.cde) ? Math.max(0, qteCmd(l) - commandePrise(l.lot, cl, l.id, saufCt)) : Infinity);
   /* surplus d'un client limité à sa commande (ex. surplus ALLOGA sur un export NEOLYS) : ce qui dépasse sa commande */
   var Ro = regleColis(l.client); if (!(Ro && Ro.cde) || (R && R.cde)) return 0;
-  return Math.max(0, ret - Math.max(0, l.qty - commandePrise(l.lot, l.client, l.id, null)));
+  return Math.max(0, ret - Math.max(0, qteCmd(l) - commandePrise(l.lot, l.client, l.id, null)));
 }
 /* ---------- mouvements (emballée, prête à expédier, par carton ; expédié à la validation) ----------
    Les pièces du carton sont prises dans les pièces déjà contrôlées. Le contrôle n'est ajouté (auto) que pour
@@ -858,7 +858,7 @@ function totalDonneesExport(e, colis){
   var avant = {}; S.moves.forEach(function(m){ if (m.stage === "exp" && m.ct !== e.id) avant[m.lineId] = (avant[m.lineId] || 0) + m.qty; });
   var etat = lots.map(function(lot){
     var rows = S.lines.filter(function(l){ return l.lot === lot && l.client === e.cl; }).sort(function(a, b){ return a.lib === b.lib ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lib < b.lib ? -1 : 1); })
-      .map(function(l){ var av = Math.max(0, avant[l.id] || 0), ce = cetExport[l.id] || 0; return {nom:nomDoc(l.lib).toUpperCase() + " " + l.size, cde:l.qty, av:av, ce:ce, reste:Math.max(0, l.qty - av - ce)}; });
+      .map(function(l){ var av = Math.max(0, avant[l.id] || 0), ce = cetExport[l.id] || 0; return {nom:nomDoc(l.lib).toUpperCase() + " " + l.size, cde:qteCmd(l), av:av, ce:ce, reste:Math.max(0, qteCmd(l) - av - ce)}; });
     /* pièces sur une commande pas encore enregistrée */
     Object.keys(libres).filter(function(k){ return k.split("|")[0] === lot; }).sort(function(a, b){ var A = a.split("|"), B = b.split("|"); return A[1] === B[1] ? sizeIdx(A[2]) - sizeIdx(B[2]) : (A[1] < B[1] ? -1 : 1); })
       .forEach(function(k){ var p = k.split("|"); rows.push({nom:nomDoc(p[1]).toUpperCase() + " " + p[2] + " (non enregistrée)", cde:null, av:null, ce:libres[k], reste:null}); });
@@ -1022,7 +1022,8 @@ function etatCommandeGrid(e, lot, opt){
   var cls = clientsColonnes(lot, opt.client || "");
   var R = {}, cle = function(lib, z){ return lib + "|" + z; };
   function ref(lib, z){ var k = cle(lib, z); return R[k] || (R[k] = {lib:lib, size:z, q:{}, tot:0}); }
-  lignes.forEach(function(l){ if (!(l.qty > 0)) return; var x = ref(l.lib, l.size); x.q[l.client] = (x.q[l.client] || 0) + l.qty; x.tot += l.qty; });
+  var c2 = ch2Totals(); /* 2e choix retiré de la commande */
+  lignes.forEach(function(l){ var q = qteCmd(l, c2); if (!(q > 0)) return; var x = ref(l.lib, l.size); x.q[l.client] = (x.q[l.client] || 0) + q; x.tot += q; });
   var SV = CM ? null : suiviCommande(e, lot), cols = SV ? SV.cols : [];
   if (SV) Object.keys(SV.R).forEach(function(k){ var p = k.split("|"), r = SV.R[k]; if (Object.keys(r.ex).some(function(id){ return r.ex[id]; }) || r.av) ref(p[0], p[1]); });
   var statuts = ((S.lots[lot] || {}).statuts) || {};

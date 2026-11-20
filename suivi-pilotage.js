@@ -365,7 +365,7 @@ function lireImport(lot, sheets){
       if (v === "" || v === null || v === undefined) return;
       var n = typeof v === "number" ? v : Number(String(v).replace(/[\s\u00a0\u202f]/g, "").replace(",", "."));
       if (!isFinite(n) || n < 0 || Math.round(n) !== n){ err.push(l.lib + " " + l.size + " : « " + v + " »"); return; }
-      var cur = k === "fr" ? l.qty : ((tot[l.id] || {})[k] || 0);
+      var cur = k === "fr" ? qteCmd(l) : ((tot[l.id] || {})[k] || 0);
       if (n !== cur) ch.push({id:l.id, k:k, v:n, avant:cur, lib:l.lib, size:l.size, client:l.client});
     });
   }
@@ -420,7 +420,7 @@ window.vPilotage = function(v){
   }
   function noter(id, k, v){
     var l = lineById(id); if (!l) return;
-    var cur = k === "fr" ? l.qty : ((stageTotals()[id] || {})[k] || 0), cle = id + "|" + k;
+    var cur = k === "fr" ? qteCmd(l) : ((stageTotals()[id] || {})[k] || 0), cle = id + "|" + k;
     if (v === cur) delete P.br[cle]; else P.br[cle] = {id:id, k:k, v:v, avant:cur};
   }
   function confirmerAttente(){
@@ -546,7 +546,7 @@ window.vPilotage = function(v){
       var m0 = S.moves.slice(), lines0 = S.lines.slice(), q0 = S.lines.map(function(l){ return [l, l.qty, l.cc]; }), lots0 = JSON.stringify(S.lots);
       try {
         var d = P.date || today(), u = utilisateur(), motif = "Pilotage" + (u ? " · " + u : "");
-        changes.filter(function(c){ return c.k === "fr"; }).forEach(function(c){ var l = lineById(c.id); if (l && l.qty !== c.v) setLine(l.lot, l.year, l.client, l.lib, l.size, c.v); });
+        changes.filter(function(c){ return c.k === "fr"; }).forEach(function(c){ var l = lineById(c.id), v2 = l ? c.v + (l.qty - qteCmd(l)) : 0; /* 2e choix gardé */ if (l && l.qty !== v2) setLine(l.lot, l.year, l.client, l.lib, l.size, v2); });
         var ks = ETAPES.map(function(e){ return e[0]; });
         function passe(ordre, monte){
           ordre.forEach(function(k){

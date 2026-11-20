@@ -567,6 +567,12 @@ function stateVals(cut, s, n){
   for (var i = 0; i < STG_KEYS.length; i++){ var a = s[STG_KEYS[i]] || 0, b = i + 1 < STG_KEYS.length ? (s[STG_KEYS[i+1]] || 0) + (n[STG_KEYS[i+1]] || 0) : 0; v.push(Math.max(0, a - b)); }
   return v;
 }
+/* 2e choix (20/11/2026) : les pièces restantes d'une étape peuvent passer en 2e choix, taille par taille. Elles sont
+   enregistrées comme un mouvement NC marqué ch2 (elles quittent le flux comme des NC) et RETIRÉES DE LA COMMANDE :
+   la quantité commandée utile = commandée − 2e choix (reste à produire, avancement, cartons d'export). L'ordre de coupe
+   (déjà fait) ne change pas. Annulable : le mouvement est supprimé. */
+function ch2Totals(){ var t = {}; S.moves.forEach(function(m){ if (!m.ch2 || !m.nc) return; t[m.lineId] = (t[m.lineId] || 0) + m.nc; }); return t; }
+function qteCmd(l, c2){ var c = c2 ? (c2[l.id] || 0) : (ch2Totals()[l.id] || 0); return Math.max(0, (l.qty || 0) - c); }
 function ncTotals(){ var t = {}; S.moves.forEach(function(m){ if (!m.nc) return; (t[m.lineId] = t[m.lineId] || {})[m.stage] = ((t[m.lineId] || {})[m.stage] || 0) + m.nc; }); return t; }
 function lotReady(lot){ var i = S.lots[lot]; if (i && i.ready) return true; if (i) return false; return S.lines.some(function(l){ return l.lot === lot; }) && S.moves.length > 0; }
 function ensureLot(lot){ if (!S.lots[lot]) S.lots[lot] = {received:today(), ready:""}; }
@@ -746,7 +752,7 @@ function desiredDocs(){
     d["lines-"+safeId(lot)] = {lot:lot, lines: ls.map(function(l){ return [l.id,l.year,l.client,l.model,l.lib,l.size,l.qty,l.cc ? 1 : 0]; })};
     var ms = S.moves.filter(function(m){ return ids[m.lineId]; });
     for (var k = 0; k * 1200 < ms.length; k++)
-      d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ var a = [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; if (m.motif || m.ct) a.push(m.motif || ""); if (m.ct) a.push(m.ct); return a; })};
+      d["moves-"+safeId(lot)+"-"+k] = {lot:lot, k:k, moves: ms.slice(k*1200,(k+1)*1200).map(function(m){ var a = [m.id,m.date,m.lineId,m.stage,m.qty,m.note||"",m.nc||0]; if (m.motif || m.ct || m.ch2) a.push(m.motif || ""); if (m.ct || m.ch2) a.push(m.ct || ""); if (m.ch2) a.push(1); return a; })};
     if (S.cartons[lot] && S.cartons[lot].length) d["cartons-"+safeId(lot)] = {lot:lot, cartons:S.cartons[lot]};
   });
   if (S.exports && S.exports.length) d["exports"] = {liste:S.exports};
@@ -795,7 +801,7 @@ function applyDocs(docs){
     } else if (id.indexOf("lines-") === 0){
       (d.lines || []).forEach(function(a){ lines.push({id:a[0],lot:d.lot,year:a[1],client:a[2],model:a[3],lib:a[4],size:a[5],qty:a[6],cc:a[7] ? 1 : 0}); });
     } else if (id.indexOf("moves-") === 0){
-      (d.moves || []).forEach(function(a){ var mv = {id:a[0],date:a[1],lineId:a[2],stage:a[3],qty:a[4],note:a[5],nc:a[6] || 0}; if (a[7]) mv.motif = a[7]; if (a[8]) mv.ct = a[8]; moves.push(mv); });
+      (d.moves || []).forEach(function(a){ var mv = {id:a[0],date:a[1],lineId:a[2],stage:a[3],qty:a[4],note:a[5],nc:a[6] || 0}; if (a[7]) mv.motif = a[7]; if (a[8]) mv.ct = a[8]; if (a[9]) mv.ch2 = 1; moves.push(mv); });
     } else if (id === "stock-mv"){
       S.stk = (d.mv || []).map(function(a){ return {id:a[0], d:a[1], t:a[2], a:a[3], q:+a[4] || 0, dest:a[5] || "", lot:a[6] || "", n:a[7] || ""}; });
     } else if (id === "exports"){
@@ -992,10 +998,11 @@ function conso(lot, client){
   return {rows:rows, fabs:fabs, colle:r2(colle)};
 }
 function suivi(lot, client){
-  var tot = stageTotals(), ncT = ncTotals();
+  var tot = stageTotals(), ncT = ncTotals(), c2 = ch2Totals();
   return filtered(lot, client).map(function(l){
     var s = {}; STAGES.forEach(function(st){ s[st[0]] = (tot[l.id] || {})[st[0]] || 0; }); var n = ncT[l.id] || {};
-    return {id:l.id, lot:l.lot, client:l.client, model:l.model, lib:l.lib, size:l.size, fr:l.qty, cut:cutQty(l.qty, l.model), cutE:l.cc ? (s.cp + (n.cp || 0)) : cutQty(l.qty, l.model), s:s, n:n, rest:Math.max(0, l.qty - s.exp)};
+    var fr = qteCmd(l, c2);
+    return {id:l.id, lot:l.lot, client:l.client, model:l.model, lib:l.lib, size:l.size, fr:fr, ch2:c2[l.id] || 0, cut:cutQty(l.qty, l.model), cutE:l.cc ? (s.cp + (n.cp || 0)) : cutQty(l.qty, l.model), s:s, n:n, rest:Math.max(0, fr - s.exp)};
   });
 }
 /* Règle : seule la coupe peut dépasser la commande ; chaque étape suivante ne dépasse pas l'étape précédente,
@@ -3566,6 +3573,73 @@ function corrigerPassages(v, lot, rows, stage, prevS, names){
   v.appendChild(act());
 }
 
+/* --- 2e choix (Flux) : pièces restantes à cette étape (disponibles, pas encore passées) → 2e choix, par taille et par
+   modèle ; retirées de la commande. Liste des 2e choix du lot avec annulation. --- */
+function deuxiemeChoix(v, lot, rows, stage, prevS, names){
+  var tot = stageTotals(), ncT = ncTotals(), items = [], pl = "", tb = el("tbody"), f = ui.f2v || (ui.f2v = {});
+  rows.forEach(function(l){ var t = tot[l.id] || {}, n = ncT[l.id] || {}, base = prevS ? (t[prevS] || 0) : 0, done = (t[stage] || 0) + (n[stage] || 0);
+    items.push({l:l, disp:Math.max(0, base - done)}); });
+  var avec = items.filter(function(it){ return it.disp > 0; });
+  function groupe(lk){ return avec.filter(function(it){ return it.l.lib + "|" + it.l.client === lk; }); }
+  avec.forEach(function(it){
+    var l = it.l, lk = l.lib + "|" + l.client;
+    if (lk !== pl){ pl = lk; var g = groupe(lk);
+      tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"3"}, l.lib + " · " + l.client + " ",
+        el("button", {class:"btn small sec", style:"margin-left:8px", text:"Tout ce modèle (" + fmt(g.reduce(function(s, x){ return s + x.disp; }, 0)) + ")", onclick:function(){ g.forEach(function(x){ f[x.l.id] = x.disp; }); render(true); }}),
+        el("button", {class:"btn small sec", style:"margin-left:4px", text:"Vider", onclick:function(){ g.forEach(function(x){ f[x.l.id] = 0; }); render(true); }})))); }
+    var inp = el("input", {type:"number", inputmode:"numeric", class:"ed nc", min:"0", max:String(it.disp), "data-ch2l":l.id, value:f[l.id] ? f[l.id] : "", placeholder:"0"});
+    inp.addEventListener("change", function(){ var q = Math.min(it.disp, num(inp.value)); inp.value = q || ""; f[l.id] = q; });
+    it.inp = inp;
+    tb.appendChild(el("tr", null, el("td", {class:"l", text:l.size}), el("td", {class:"b", text:fmt(it.disp)}), el("td", {class:"fr"}, inp)));
+  });
+  var t = el("table", {class:"flux"});
+  t.appendChild(el("thead", null, el("tr", null, [["Taille","l"],["Reste (disponible)",""],["En 2e choix",""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(tb);
+  function annuler(){ ui.fch2 = null; ui.f2v = {}; render(true); }
+  function enregistrer(){
+    var sel2 = avec.map(function(it){ return {it:it, q:Math.min(it.disp, num(it.inp.value))}; }).filter(function(x){ return x.q > 0; });
+    if (!sel2.length){ toast("Indiquez les quantités à passer en 2e choix."); return; }
+    var nb = sel2.reduce(function(s, x){ return s + x.q; }, 0);
+    var box = sxModal(); box.classList.add("corr-box");
+    box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"♻ " + fmt(nb) + " pièce(s) en 2e choix"}));
+    var rec = el("div", {class:"sx-cdet"});
+    sel2.forEach(function(x){ rec.appendChild(el("div", null, el("span", {text:x.it.l.lib + " " + x.it.l.size}), el("b", {text:fmt(x.q)}))); });
+    box.appendChild(rec);
+    box.appendChild(el("p", {class:"mut", style:"margin:8px 0", text:"Elles quittent l'étape « " + names[stage] + " » et sont retirées de la commande (quantité commandée et reste à produire baissent d'autant)."}));
+    box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Oui, passer en 2e choix", onclick:function(){
+      sxClose();
+      var d = (document.getElementById("fDate") || {}).value || today();
+      var ok = commit(function(){
+        var nm = sel2.map(function(x){ return {id:nid("M"), date:d, lineId:x.it.l.id, stage:stage, qty:0, nc:x.q, ch2:1, motif:"2e choix", note:"2e choix · retiré de la commande"}; });
+        checkMoves(nm); nm.forEach(function(m){ S.moves.push(m); });
+        ui.f2v = {};   /* le panneau reste ouvert : la liste des 2e choix (avec « Annuler ») est juste en dessous */
+      }, fmt(nb) + " pièce(s) passée(s) en 2e choix et retirée(s) de la commande");
+      if (!ok) render(true);
+    }}));
+    box.appendChild(el("button", {class:"sx-annul", text:"Non, revenir", onclick:sxClose}));
+  }
+  var ids = {}; rows.forEach(function(l){ ids[l.id] = l; });
+  var hist = S.moves.filter(function(m){ return m.ch2 && m.nc && ids[m.lineId]; });
+  v.appendChild(el("div", {class:"card corr-card"},
+    el("h2", {text:"♻ Pièces restantes en 2e choix — " + names[stage]}),
+    el("p", {class:"mut", style:"margin:0", text:"Choisissez, taille par taille ou modèle par modèle, les pièces restantes à passer en 2e choix. Elles sont retirées de la commande : la quantité commandée, le reste à produire et l'avancement en tiennent compte."})));
+  var act = function(){ return el("div", {class:"actions"},
+    el("button", {class:"btn", text:"✔ Passer en 2e choix", onclick:enregistrer}),
+    el("button", {class:"btn sec", text:"Tout le reste", onclick:function(){ avec.forEach(function(it){ f[it.l.id] = it.disp; }); render(true); }}),
+    el("button", {class:"btn sec", text:"Annuler", onclick:annuler})); };
+  if (avec.length){ v.appendChild(act()); v.appendChild(el("div", {class:"tw", style:"max-height:60vh"}, t)); v.appendChild(act()); }
+  else v.appendChild(el("div", {class:"card"}, el("p", {class:"mut", style:"margin:0", text:"Aucune pièce restante à cette étape."}), el("div", {class:"actions"}, el("button", {class:"btn sec", text:"Fermer", onclick:annuler}))));
+  if (hist.length){
+    var hb = el("tbody");
+    hist.slice().sort(function(a, b){ return (b.date || "").localeCompare(a.date || ""); }).forEach(function(m){ var l = ids[m.lineId];
+      hb.appendChild(el("tr", null, el("td", {class:"l", text:dmy(m.date || "")}), el("td", {class:"l", text:l.lib + " " + l.size}), el("td", {class:"l", text:stageName(m.stage)}), el("td", {class:"b", text:fmt(m.nc)}),
+        el("td", null, el("button", {class:"btn small sec", "data-ch2x":m.id, text:"Annuler", onclick:function(){ if (!confirm("Annuler ce 2e choix (" + fmt(m.nc) + " pièce(s) " + l.lib + " " + l.size + ") ? Elles reviennent dans la commande.")) return;
+          commit(function(){ S.moves = S.moves.filter(function(x){ return x.id !== m.id; }); }, "2e choix annulé : pièces remises dans la commande"); }})))); });
+    var ht = el("table", {class:"flux"}); ht.appendChild(el("thead", null, el("tr", null, ["Date", "Article", "Étape", "Pièces", ""].map(function(h){ return el("th", {class:"l", text:h}); })))); ht.appendChild(hb);
+    v.appendChild(el("div", {class:"card"}, el("h2", {text:"2e choix de la commande " + lot + " · " + fmt(hist.reduce(function(s, m){ return s + m.nc; }, 0)) + " pièce(s)"}), el("div", {class:"tw"}, ht)));
+  }
+}
+
 /* --- renvoyer des pièces à une étape précédente (Flux) ---
    Les pièces choisies quittent l'étape et doivent repasser par l'étape choisie (ex. emballées → à recontrôler).
    Rien n'est effacé : un mouvement « Renvoi » (quantité négative) par étape retirée, noté dans le journal.
@@ -3692,10 +3766,10 @@ function datesPassagesCard(lot, rows, stage, names){
 /* --- 4. Flux : parcours de la commande, passage d'une étape à la suivante --- */
 function stagePrev(stage){ var i = STG_KEYS.indexOf(stage); return i > 0 ? STG_KEYS[i-1] : null; }
 function sumStates(lines, tot){
-  var ncT = ncTotals(), A = {q:0, cut:0, ord:0, rest:0, t:{}, sv:[], nc:{}, ncTot:0}, i; STG_KEYS.forEach(function(k){ A.t[k] = 0; A.nc[k] = 0; }); for (i = 0; i <= STG_KEYS.length; i++) A.sv.push(0);
+  var ncT = ncTotals(), c2 = ch2Totals(), A = {q:0, cut:0, ord:0, rest:0, ch2:0, t:{}, sv:[], nc:{}, ncTot:0}, i; STG_KEYS.forEach(function(k){ A.t[k] = 0; A.nc[k] = 0; }); for (i = 0; i <= STG_KEYS.length; i++) A.sv.push(0);
   lines.forEach(function(l){
     var t = tot[l.id] || {}, n = ncT[l.id] || {}, ord = cutQty(l.qty, l.model), eff = l.cc ? (t.cp || 0) + (n.cp || 0) : ord;
-    A.q += l.qty; A.ord += ord; A.cut += eff; A.rest += Math.max(0, l.qty - (t.exp || 0));
+    var qc = qteCmd(l, c2); A.q += qc; A.ch2 += c2[l.id] || 0; A.ord += ord; A.cut += eff; A.rest += Math.max(0, qc - (t.exp || 0));
     STG_KEYS.forEach(function(k){ A.t[k] += t[k] || 0; A.nc[k] += n[k] || 0; A.ncTot += n[k] || 0; }); stateVals(eff, t, n).forEach(function(x, j){ A.sv[j] += x; });
   });
   return A;
@@ -3734,7 +3808,7 @@ function vFlux(v){
   var ready = lotReady(lot), info = S.lots[lot] || {};
   var rows = lines.filter(function(l){ return ui.fcli === "*" || l.client === ui.fcli; });
   var A = sumStates(rows, tot);
-  function goStage(k){ ui.stage = k; ui.fv = {}; ui.fcorr = null; ui.fren = null; ui.pend = null; render(); }
+  function goStage(k){ ui.stage = k; ui.fv = {}; ui.fcorr = null; ui.fch2 = null; ui.fren = null; ui.pend = null; render(); }
   var sc = el("div", {class:"seg"});
   [["*","Toutes les commandes"]].concat(clients.map(function(c){ return [c, c]; })).forEach(function(x){ sc.appendChild(el("button", {class:x[0] === ui.fcli ? "on" : "", text:x[1], onclick:function(){ ui.fcli = x[0]; ui.fv = {}; ui.pend = null; render(); }})); });
   v.appendChild(sc);
@@ -3786,6 +3860,7 @@ function vFlux(v){
   if (!ready) v.appendChild(el("div", {class:"msg err", style:"margin-bottom:10px"}, "Commande non validée : " + (VUE === "gadh" ? "TEK-TREND doit la valider avant les étapes. " : "validez-la dans l'onglet Commandes avant de lancer les étapes. "), VUE === "gadh" ? null : el("button", {class:"btn small", text:"Vérifier et valider", onclick:function(){ ui.tab = "cmd"; render(); }})));
   if (ui.fren === stage && VUE !== "gadh") renvoyerPassages(v, lot, rows, stage, names);
   else if (ui.fcorr === stage) corrigerPassages(v, lot, rows, stage, prevS, names);
+  else if (ui.fch2 === stage) deuxiemeChoix(v, lot, rows, stage, prevS, names);
   else {
   var ncT = ncTotals(), inputs = [], pl = "", tb = el("tbody"), items = [], capped = stage !== "cp";
   rows.forEach(function(l){
@@ -3842,7 +3917,8 @@ function vFlux(v){
     VUE === "gadh" ? null : el("button", {class:"btn sec", text:"Valider et suivant ▶", onclick:function(){ ask(true); }}),
     el("button", {class:"btn sec", text:"Tout le disponible", onclick:function(){ ui.fv = {}; ui.pend = null; render(true); }}),
     el("button", {class:"btn sec", text:"Vider", onclick:function(){ items.forEach(function(it){ ui.fv[it.l.id + stage] = 0; ui.fv[it.keyN] = 0; }); ui.pend = null; render(true); }}),
-    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
+    VUE === "gadh" && stage !== "ret" ? null : el("button", {class:"btn sec", "data-corr":"1", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
+    (VUE === "gadh" || !capped) ? null : el("button", {class:"btn sec", "data-ch2":"1", text:"♻ Reste en 2e choix", title:"Passer les pièces restantes en 2e choix : elles sont retirées de la commande", onclick:function(){ ui.fch2 = stage; ui.f2v = {}; ui.pend = null; render(true); }})));
   if (stage === "cp" && VUE !== "gadh"){
     var anyClosed = rows.some(function(l){ return l.cc; });
     v.appendChild(el("div", {class:"actions"},
@@ -3854,7 +3930,8 @@ function vFlux(v){
     v.appendChild(el("div", {class:"msg", style:"margin-bottom:10px;background:#fff3cd;border:1px solid #e7cf6a;color:#4a3b00"},
       el("b", {text:"Rien à saisir à cette étape : "}), "tout ce qui était disponible est déjà passé (colonne « Déjà passé »). Les cases sont bloquées. ",
       nxt ? el("button", {class:"btn small", style:"margin-top:8px", text:"Aller à l'étape suivante ▶", onclick:function(){ ui.stage = nxt; ui.pend = null; render(true); }}) : null,
-      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }})));
+      " ", el("button", {class:"btn small sec", style:"margin-top:8px", text:"✏️ Corriger les quantités passées", onclick:function(){ ui.fcorr = stage; ui.fcv = {}; ui.pend = null; render(true); }}),
+      VUE === "gadh" ? null : " ", VUE === "gadh" ? null : el("button", {class:"btn small sec", "data-ch2":"1", style:"margin-top:8px", text:"♻ 2e choix", onclick:function(){ ui.fch2 = stage; ui.f2v = {}; ui.pend = null; render(true); }})));
     items.forEach(function(it){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; });
   } else {
     items.forEach(function(it){ if (capped && it.disp === 0){ it.inp.disabled = true; it.inpN.disabled = true; it.inp.placeholder = "—"; it.inpN.placeholder = "—"; } });
