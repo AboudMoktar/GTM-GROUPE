@@ -374,7 +374,7 @@ function renderGcAccueil(main){
       ${ddBoite(gcE(I.valeur), 'Valeur du stock (coût réel)', 'ok', lien('gc-lots'))}
       ${ddBoite(gcE(T.ca), 'Chiffre d\'affaires livré (période)', 'ok', lien('gc-rentabilite'))}
       ${ddBoite(gcE(T.cout), 'Coûts réels (période)', 'nul', lien('gc-rentabilite'))}
-      ${ddBoite(gcE(T.marge), 'Marge brute · taux de marque ' + gcPct(T.tauxMarque), T.marge < 0 ? 'bad' : 'ok', lien('gc-rentabilite'))}
+      ${ddBoite(gcE(T.marge), 'Marge brute · taux de marge ' + gcPct(T.tauxMarge), T.marge < 0 ? 'bad' : 'ok', lien('gc-rentabilite'))}
       ${ddBoite(gcPct(T.tauxMarge), 'Taux de marge (marge / coût)' + (T.provisoire ? ' · provisoire' : ''), 'nul', lien('gc-rentabilite'))}
     </div>
     <div class="dd-g dd-g2">
@@ -845,7 +845,7 @@ function renderGcClients(main){
     colonnes:[{titre:'Client', val:c => c.nom || ''}, {titre:'Matricule fiscal', val:c => c.mf || ''}, {titre:'Contact', val:c => [c.contact, c.tel, c.email].filter(Boolean).join(' · ')},
       {titre:'Commandes en cours', num:true, tri:c => D.cmdC.filter(x => x.clientId === c.id && GC.CMDC_OUVERTE[GC.statutCmdC(x, liv).cle]).length, html:c => String(D.cmdC.filter(x => x.clientId === c.id && GC.CMDC_OUVERTE[GC.statutCmdC(x, liv).cle]).length)},
       {titre:'CA livré', num:true, tri:c => (parC[c.id] || {}).ca || 0, html:c => gcE((parC[c.id] || {}).ca)}, {titre:'Marge', num:true, tri:c => (parC[c.id] || {}).marge || 0, html:c => gcE((parC[c.id] || {}).marge)},
-      {titre:'Taux de marque', num:true, tri:c => (parC[c.id] || {}).tauxMarque || 0, html:c => gcPct((parC[c.id] || {}).tauxMarque)}],
+      {titre:'Taux de marge', num:true, tri:c => (parC[c.id] || {}).tauxMarge || 0, html:c => gcPct((parC[c.id] || {}).tauxMarge)}],
     clic:c => `gcOuvrir('gc-client', '${c.id}')`, vide:'Aucun client'});
 }
 window.gcFormClient = (id) => {
@@ -875,7 +875,7 @@ function renderGcClient(main){
   const bls = D.livraisons.filter(x => x.clientId === id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const b = gcSection(main, gcRetour('gc-clients', esc(c.nom)), (gcPeutClients() ? `<button class="btn btn-primary" onclick="gcFormClient('${id}')">Modifier</button>` : '') + (gcPeut() ? `<button class="btn btn-ghost" onclick="gcNouveauDoc('offre', {clientId:'${id}'})">+ Offre</button><button class="btn btn-ghost" onclick="gcNouveauDoc('commande', {clientId:'${id}'})">+ Commande</button>` : ''));
   b.innerHTML = `<div class="card"><div class="gc-kv"><div><span>Matricule fiscal</span><b>${esc(c.mf || '—')}</b></div><div><span>Contact</span><b>${esc(c.contact || '—')}</b></div><div><span>Téléphone</span><b>${esc(c.tel || '—')}</b></div><div><span>E-mail</span><b>${esc(c.email || '—')}</b></div><div><span>Conditions</span><b>${esc(c.conditions || '—')}</b></div></div>${c.adresse ? `<div class="gc-sous" style="margin-top:8px;white-space:pre-line;">${esc(c.adresse)}</div>` : ''}</div>
-    <div class="gc-chiffres"><div class="gc-chiffre"><span>CA livré</span><b>${gcE(RT.ca)}</b></div><div class="gc-chiffre"><span>Coût réel</span><b>${gcE(RT.cout)}</b></div><div class="gc-chiffre ${RT.marge < 0 ? 'bad' : 'good'}"><span>Marge brute</span><b>${gcE(RT.marge)}</b></div><div class="gc-chiffre"><span>Taux de marque</span><b>${gcPct(RT.tauxMarque)}</b></div></div>
+    <div class="gc-chiffres"><div class="gc-chiffre"><span>CA livré</span><b>${gcE(RT.ca)}</b></div><div class="gc-chiffre"><span>Coût réel</span><b>${gcE(RT.cout)}</b></div><div class="gc-chiffre ${RT.marge < 0 ? 'bad' : 'good'}"><span>Marge brute</span><b>${gcE(RT.marge)}</b></div><div class="gc-chiffre"><span>Taux de marge</span><b>${gcPct(RT.tauxMarge)}</b></div></div>
     <div class="card"><h3 class="gc-h3">Commandes</h3>${cmds.length ? cmds.map(x => `<div class="session-row" style="cursor:pointer;" onclick="gcOuvrir('gc-commande', '${x.id}')"><span><b>${esc(x.numero || 'Brouillon')}</b> · ${gcDt(x.date)}${x.type === 'annuelle' ? ' <span class="gc-tag">annuelle</span>' : ''}${GC.retardCmdC(x, liv, auj) ? ' <span class="gc-tag" style="color:var(--bad);">en retard</span>' : ''}</span><span style="text-align:right;">${gcBadge(GC.statutCmdC(x, liv))}<br><b>${gcE(GC.totaux(x).ht)} HT</b></span></div>`).join('') : '<div class="gc-sous">Aucune commande.</div>'}</div>
     <div class="card"><h3 class="gc-h3">Offres</h3>${offres.length ? offres.map(x => `<div class="session-row" style="cursor:pointer;" onclick="gcOuvrir('gc-offre', '${x.id}')"><span><b>${esc(x.numero)}${x.version > 1 ? ' v' + x.version : ''}</b> · ${gcDt(x.date)}</span><span style="text-align:right;">${gcBadge(GC.statutOffre(x, auj))}<br><b>${gcE(GC.totaux(x).ht)} HT</b></span></div>`).join('') : '<div class="gc-sous">Aucune offre.</div>'}</div>
     <div class="card"><h3 class="gc-h3">Livraisons</h3>${bls.length ? bls.map(x => { const r = GC.coutLivraison(x); return `<div class="session-row" style="cursor:pointer;" onclick="gcOuvrir('gc-livraison', '${x.id}')"><span><b>${esc(x.numero)}</b> · ${gcDt(x.date)}${x.annulee ? ' <span class="gc-tag">annulée</span>' : ''}</span><span style="text-align:right;">${gcE(r.ca)}<br><span class="gc-sous">marge ${gcE(r.marge)}</span></span></div>`; }).join('') : '<div class="gc-sous">Aucune livraison.</div>'}</div>`;
