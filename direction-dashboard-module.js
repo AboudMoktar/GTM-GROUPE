@@ -39,10 +39,11 @@ function ddDonnees(){
     const d = new Date(); d.setDate(d.getDate() - i); const iso = toISODateLocal(d);
     D.serie.push({iso, j:d.getDate(), tek:ddSecuriser(() => computeTotals(getDay(iso)).totalGeneral, 0), gadh:ddSecuriser(() => gadhDayTotals(iso).totalReel, 0)});
   }
-  D.lots = ddSecuriser(() => suiviResume().map(l => ({lot:l.lot, qte:l.qte, exp:l.etapes.exp || 0, enCours:l.enCours, pct:l.qte > 0 ? Math.min(100, Math.round((l.etapes.exp || 0) / l.qte * 100)) : 0})), []);
+  // avancement d'une commande = pièces contrôlées conformes (voir suiviResume)
+  D.lots = ddSecuriser(() => suiviResume().map(l => ({lot:l.lot, qte:l.qte, exp:l.etapes.exp || 0, avance:l.avance || 0, enCours:l.enCours, pct:l.pct || 0})), []);
   D.lotsEnCours = D.lots.filter(l => l.enCours).sort((a, b) => b.pct - a.pct);
   D.lotsFinis = D.lots.filter(l => !l.enCours);
-  D.avancement = (() => { const q = D.lotsEnCours.reduce((t, l) => t + l.qte, 0), e = D.lotsEnCours.reduce((t, l) => t + l.exp, 0); return q > 0 ? e / q * 100 : null; })();
+  D.avancement = (() => { const q = D.lotsEnCours.reduce((t, l) => t + l.qte, 0), e = D.lotsEnCours.reduce((t, l) => t + l.avance, 0); return q > 0 ? e / q * 100 : null; })();
   D.presence = D.presents.total > 0 && D.presents.n > 0 ? D.presents.n / D.presents.total * 100 : null; // personne pointé : pas de pourcentage
   D.alertes = ddSecuriser(() => notifCalculer(), []);
   D.activite = ddSecuriser(() => {
