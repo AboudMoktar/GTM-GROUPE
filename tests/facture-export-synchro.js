@@ -61,6 +61,9 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   const pn = await p.evaluate(() => { const f = {numero:'FA26/099', date:'2026-11-20', statut:'brouillon', type:'facture', lignes:[{designation:'X', qte:1, pu:1}], client:{nom:'PERCKO'},
       percko:{destination:'NEOLYS', colis:100, poidsBrut:1250.5, poidsNet:'', valeurMatiere:'', composition:''}};
     const h = percFactureModeleHtml(f, false); return [percPoidsNet(f.percko), /Poids Brut: 1250.5 KG/.test(h), /Poids Net: 1150.5 KG/.test(h), /::/.test(h.replace(/https?:\/\//g, ''))].join('|'); });
+  const un = await p.evaluate(() => { const f = {numero:'FA26/099', date:'2026-11-20', statut:'brouillon', type:'facture', lignes:[{ref:'ART001', designation:'X', qte:240, pu:11.7}], client:{nom:'PERCKO'}, percko:{}};
+    const h = percFactureModeleHtml(f, false).replace(/&nbsp;|\u00a0|\u202f/g, ' '); return [/11,70 €/.test(h), /2 ?808,00 €/.test(h), /12,55|11,70 €/.test(h), true, /NET A PAYER[^€]{0,80}808,00 €/.test(h)].join('|'); });
+  ok(un === 'true|true|true|true|true', 'unités : prix unitaire, montant et totaux en € (' + un + ')');
   ok(pn === '1150.5|true|true|false', 'poids net = poids brut − nombre de cartons, imprimé ; « Poids Brut: » sans « :: » (' + pn + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'aucune erreur'); process.exit(echecs ? 1 : 0);
