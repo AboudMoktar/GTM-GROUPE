@@ -253,6 +253,8 @@ window.percSynchroFactureExport = function(x, creer, final){
   let n = 0; deja.forEach(d => { if(percNumeroterSiBesoin(d.id)) n++; if(percPeutSuivre(d.f, final) && percSynchroBrouillon(d.id, x, true)) n++; });
   return n;
 };
+// Poids net = poids brut − nombre de cartons (1 kg par carton), calculé (20/11/2026).
+function percPoidsNet(p){ const b = Number(p && p.poidsBrut); if(!(b > 0)) return ''; return Math.round((b - (Number(p.colis) || 0)) * 100) / 100; }
 // Appelée par le suivi (bouton « Facture » d'un export). x : {exportId, n, d, nat, colis, poidsBrut, pieces:[…]}
 window.percFacturerExport = function(x, forcer, auto){
   if(!canEditFact('tek')) return {ok:false, message:'Votre profil ne permet pas de créer une facture TEK-TREND.'};
@@ -310,7 +312,7 @@ window.percApercuFacture = function(x){
     return {ref:l.ref || '', designation:String(l.designation || ''), qte:q, pu, remise:rem, montant:Math.round(q * pu * (1 - rem / 100) * 100) / 100}; });
   const ht = Math.round(lignes.reduce((t, l) => t + l.montant, 0) * 100) / 100;
   const note = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition || '',
-    [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut: ' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net: ' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n'),
+    [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut: ' + p.poidsBrut + ' KG' : '', percPoidsNet(p) !== '' ? 'Poids Net: ' + percPoidsNet(p) + ' KG' : ''].filter(Boolean).join('\n'),
     p.transport ? 'MODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n').split('\n').map(t => t.trim()).filter(Boolean);
   return {existe:deja.length > 0, statut:f.statut, numero:f.numero || '', date:f.date || '', echeance:f.echeance || f.date || '', codeClient:p.codeClient || '', livraison:String(p.livraison || '').split('\n'),
     societe:{raison:P.raison && P.raison !== SOCIETES.tek.nom ? P.raison : PERC_SOCIETE.raison, adresse:String(P.adresse || PERC_SOCIETE.adresse || '').split('\n'), mf:P.mf || PERC_SOCIETE.mf, tel:P.tel || PERC_SOCIETE.tel, email:P.email || PERC_SOCIETE.email},
@@ -362,12 +364,12 @@ window.renderFactEdit = function(main){
   if(soc === 'tek') main.querySelectorAll('div').forEach(d => { if(!d.children.length && /(dinar|euro)/i.test(d.textContent) && d.style.fontSize === '11.5px') d.remove(); });
   if(!f || !f.percko) return;
   window.__devEUR = true;
-  const ed = canEditFact(soc) && f.statut === 'brouillon', dis = ed ? '' : 'disabled', p = f.percko, R = percReglages();
+  const ed = canEditFact(soc) && (f.statut === 'brouillon' || (typeof factEstExport === 'function' && factEstExport(f))), dis = ed ? '' : 'disabled', p = f.percko, R = percReglages();
   const champ = (label, k, type, extra) => `<div style="flex:1;min-width:120px;">${mgtChamp(label, 'pk-' + k, p[k], type || 'text', `${dis} ${extra || ''} onchange="percMaj('${k}', this.value)"`)}</div>`;
   const carte = `<div class="card">
     <h3 style="margin:0 0 8px;font-size:14px;">Expédition ${esc(p.destination || '')}</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">${champ('N° client', 'codeClient')}${champ('Transport', 'transport', 'text', 'placeholder="ex. DDP"')}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">${champ('Nombre de colis', 'colis', 'number', 'min="0"')}${champ('Poids brut (kg)', 'poidsBrut', 'number', 'min="0"')}${champ('Poids net (kg)', 'poidsNet', 'number', 'min="0"')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">${champ('Nombre de colis', 'colis', 'number', 'min="0"')}${champ('Poids brut (kg)', 'poidsBrut', 'number', 'min="0"')}<div style="flex:1;min-width:120px;">${mgtChamp('Poids net (kg) = brut − colis', 'pk-poidsNet', percPoidsNet(p), 'number', 'disabled title="Calculé : poids brut − nombre de cartons (1 kg par carton)"')}</div></div>
     ${champ('Valeur matière première (€)', 'valeurMatiere', 'number', 'min="0" step="0.01"')}
     ${(() => { const vm = percValeurMatiere(f), V = percValeurs(); if(!vm) return ''; const calc = `${percN(vm.pieces, 0)} pièce(s) × ${percN(V.piece, 2)} €${vm.exos ? ` + ${percN(vm.exos, 0)} exosquelette(s) × ${percN(V.exo, 2)} €` : ''} = ${percN(vm.valeur, 2)} €`;
       return `<div data-pk="valeur-calcul" style="font-size:12px;color:var(--ink-soft);margin:-4px 0 8px;">${p.valeurAuto ? 'Calculée : ' + calc : 'Saisie à la main. Calcul : ' + calc + (ed ? ` <button class="btn btn-ghost" style="padding:2px 10px;font-size:12px;" onclick="percValeurAuto()">Reprendre le calcul</button>` : '')}</div>`; })()}
@@ -385,7 +387,7 @@ window.renderFactEdit = function(main){
   if(a) a.onchange = () => { if(a.value !== '') percAjouterArticle(+a.value); };
   if(x) x.onchange = () => { if(x.value !== '') percAjouterFrais(+x.value); };
 };
-window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; if(k === 'valeurMatiere') f.percko.valeurAuto = !(Number(v) > 0) ? true : false; }, k === 'valeurMatiere');
+window.percMaj = (k, v) => factModifier(f => { f.percko = f.percko || {}; f.percko[k] = v; if(k === 'valeurMatiere') f.percko.valeurAuto = !(Number(v) > 0) ? true : false; }, k === 'valeurMatiere' || k === 'poidsBrut' || k === 'colis');
 window.percValeurAuto = () => factModifier(f => { f.percko = f.percko || {}; f.percko.valeurAuto = true; });
 window.percAjouterArticle = (i) => { const a = percReglages().catalogue[i], f = factToutes('tek')[factId]; if(!a || !f) return;
   const dest = (f.percko && f.percko.destination) || 'NEOLYS';
@@ -519,7 +521,7 @@ function percFactureModeleHtml(f, auto, marque){
   const livraison = p.livraison || [cli.nom, cli.adresse].filter(Boolean).join('\n');
   const rows = (f.lignes || []).map(l => `<tr><td>${esc(l.ref || '')}</td><td>${nl(l.designation)}</td><td class="n">${percN(l.qte, 3)}</td><td class="n">${percN(l.pu, d)}</td><td class="n">${l.remise ? percN(l.remise, 2) : ''}</td><td class="n">${l.remise ? percN(Number(l.qte) * Number(l.pu) * Number(l.remise) / 100, d) : ''}</td><td class="n">${percN(factMontantLigne(l), d)}</td><td class="c">0</td></tr>`);
   const note = [p.valeurMatiere !== '' && p.valeurMatiere != null ? 'VALEUR MATIERE PREMIERE: ' + Number(p.valeurMatiere).toFixed(2) + ' €' : '', p.composition ? '\n' + p.composition : '',
-    (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) || (p.poidsNet !== '' && p.poidsNet != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut:: ' + p.poidsBrut + ' KG' : '', p.poidsNet ? 'Poids Net:: ' + p.poidsNet + ' KG' : ''].filter(Boolean).join('\n') : '',
+    (p.colis !== '' && p.colis != null) || (p.poidsBrut !== '' && p.poidsBrut != null) ? '\n' + [p.colis ? 'Nombre de colis: ' + p.colis : '', p.poidsBrut ? 'Poids Brut: ' + p.poidsBrut + ' KG' : '', percPoidsNet(p) !== '' ? 'Poids Net: ' + percPoidsNet(p) + ' KG' : ''].filter(Boolean).join('\n') : '',
     // comme sur la facture papier : le mode de transport est dans le même bloc, après deux lignes vides
     p.transport ? '\n\n\nMODE DE TRANSPORT :' + p.transport : ''].filter(Boolean).join('\n');
   if(note) rows.push(`<tr><td>${esc(percRefValeur())}</td><td class="note">${nl(note.replace(/^\n+/, ''))}</td><td></td><td></td><td></td><td></td><td></td><td class="c">0</td></tr>`);

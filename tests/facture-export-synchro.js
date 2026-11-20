@@ -58,6 +58,10 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   // écran : champ « Article » sur chaque ligne
   await p.evaluate(() => nav('fact-edit'));
   ok(await p.evaluate(() => document.querySelectorAll('.mgt-ligne input[data-ref]').length === factToutes('tek')[factId].lignes.length && !!document.querySelector('#fact-articles option[value="ART0002"]')), 'chaque ligne montre son article (liste ART001… / ART0002)');
+  const pn = await p.evaluate(() => { const f = {numero:'FA26/099', date:'2026-11-20', statut:'brouillon', type:'facture', lignes:[{designation:'X', qte:1, pu:1}], client:{nom:'PERCKO'},
+      percko:{destination:'NEOLYS', colis:100, poidsBrut:1250.5, poidsNet:'', valeurMatiere:'', composition:''}};
+    const h = percFactureModeleHtml(f, false); return [percPoidsNet(f.percko), /Poids Brut: 1250.5 KG/.test(h), /Poids Net: 1150.5 KG/.test(h), /::/.test(h.replace(/https?:\/\//g, ''))].join('|'); });
+  ok(pn === '1150.5|true|true|false', 'poids net = poids brut − nombre de cartons, imprimé ; « Poids Brut: » sans « :: » (' + pn + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' — ' + err.join(' | ') : ''));
   await b.close(); s.close(); console.log(echecs ? echecs + ' échec(s)' : 'aucune erreur'); process.exit(echecs ? 1 : 0);
 })();
