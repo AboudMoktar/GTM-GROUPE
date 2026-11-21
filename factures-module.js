@@ -79,12 +79,21 @@ function factTotaux(f, toutes){
   if(f.type !== 'avoir' && toutes) Object.values(toutes).forEach(a => { if(a.type === 'avoir' && a.statut === 'emise' && a.factureLiee === f._id) avoirs += factTotaux(a).ttc; });
   return {ht, tva, timbre, ttc, paye, avoirs, reste: f.type === 'avoir' ? 0 : Math.max(0, ttc - paye - avoirs)};
 }
+// Une facture passe « En retard » 30 jours après sa date de création (ou à son échéance si celle-ci est plus tardive).
+const FACT_RETARD_JOURS = 30;
+function factLimiteRetard(f){
+  const d = String((f && f.date) || '').slice(0, 10); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return (f && f.echeance) || '';
+  const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + FACT_RETARD_JOURS);
+  const lim = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  return f.echeance && f.echeance > lim ? f.echeance : lim;
+}
+function factEnRetard(f){ const lim = factLimiteRetard(f); return !!lim && lim < getTodayISO(); }
 function factStatut(f, toutes){
   if(f.statut !== 'emise') return 'brouillon';
   if(f.type === 'avoir') return 'avoir';
   const t = factTotaux(f, toutes);
   if(t.reste < 0.0005) return 'payee';
-  if(f.echeance && f.echeance < getTodayISO()) return 'retard';
+  if(factEnRetard(f)) return 'retard';
   return t.paye > 0 ? 'partielle' : 'impayee';
 }
 // Ajoute _id à chaque facture (utile pour rattacher les avoirs).

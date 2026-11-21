@@ -207,7 +207,7 @@ window.gcsfValiderLivrer = (cmdId) => gcOperation(() => {
 });
 
 // ---------- Factures et paiements ----------
-function gcsfEchue(f){ return factStatut(f) !== 'payee' && f.echeance && f.echeance < getTodayISO(); }
+function gcsfEchue(f){ return factStatut(f) !== 'payee' && (typeof factEnRetard === 'function' ? factEnRetard(f) : (f.echeance && f.echeance < getTodayISO())); }
 window.renderGcFactures = function(main){
   const D = gcD(), ed = gcPeut(), F = gcsfFactures(), an = getTodayISO().slice(0, 4), C = GC.parId(D.cmdC);
   const b = gcSection(main, 'Factures et paiements', gcBoutonsExport('factures'));
