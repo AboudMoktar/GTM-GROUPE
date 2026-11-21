@@ -23,6 +23,10 @@ table.flux.xl td.fr input::-webkit-outer-spin-button,table.flux.xl td.fr input::
 table.flux.xl td.fr input:focus{outline:2px solid #1677E8;outline-offset:-2px;background:#fff!important}
 table.flux.xl td.fr input:disabled{background:#F1F3F6!important;color:#B5BDC9!important;-webkit-text-fill-color:#B5BDC9!important;cursor:not-allowed}
 table.flux.xl td.fr input:disabled::placeholder{color:#C3CAD4}
+table.flux.xl tr td.xm{background:#DDEBF7!important;border-left:2px solid #8EA9C1;border-bottom:2px solid #B7C6D9;text-align:left;vertical-align:middle;padding:6px 12px!important;white-space:normal;line-height:1.25}
+table.flux.xl td.xm b{display:block;font-size:14px;font-weight:800;color:#0B1F3A}
+table.flux.xl td.xm small{display:block;margin-top:3px;font-size:12px;font-weight:600;color:#3C4E68;letter-spacing:.03em}
+table.flux.xl tr.x1 td{border-top:2px solid #8EA9C1}
 @media (max-width:640px){ table.flux.xl{font-size:13.5px} table.flux.xl th{font-size:11px!important;padding:6px 4px!important} table.flux.xl td{padding:0 6px!important} }
 </style><script src="./affichage-module.js"></script></head><body>
 <title>Suivi des commandes</title>
@@ -3899,12 +3903,13 @@ function vFlux(v){
   function totLigne(g){
     var cq = el("td", {class:"xq"}), cn = el("td", {class:"xn"});
     g.maj = function(){ var q = 0, n = 0; g.items.forEach(function(it){ q += num(it.inp.value); n += num(it.inpN.value); }); cq.textContent = q ? fmt(q) : ""; cn.textContent = n ? fmt(n) : ""; };
+    g.cell.setAttribute("rowspan", String(g.items.length + 1));
     tb.appendChild(el("tr", {class:"xtot"}, el("td", {class:"l", text:"Total"}), el("td", {text:fmt(g.b)}), el("td", {text:fmt(g.d)}), el("td", {class:"b", text:fmt(g.p)}), cq, cn));
   }
   function majTotaux(){ groupes.forEach(function(g){ if (g.maj) g.maj(); }); }
   items.forEach(function(it){
     var l = it.l, lk = l.lib + "|" + l.client, key = l.id + stage, keyN = key + "n";
-    if (lk !== pl){ if (grp) totLigne(grp); pl = lk; grp = {items:[], b:0, d:0, p:0}; groupes.push(grp); tb.appendChild(el("tr", {class:"gh"}, el("td", {colspan:"6", text:l.lib + " · " + l.client}))); }
+    if (lk !== pl){ if (grp) totLigne(grp); pl = lk; grp = {items:[], b:0, d:0, p:0, cell:el("td", {class:"xm"}, el("b", {text:l.lib}), el("small", {text:l.client}))}; groupes.push(grp); }
     grp.items.push(it); grp.b += it.base; grp.d += it.done; grp.p += it.disp;
     var ncv = keyN in ui.fv ? ui.fv[keyN] : 0;
     var val = key in ui.fv ? ui.fv[key] : (capped ? Math.max(0, it.disp - ncv) : it.disp);
@@ -3930,12 +3935,12 @@ function vFlux(v){
     });
     it.inp = inp; it.inpN = inpN; it.keyN = keyN;
     var z = function(v){ return el("td", {class:v ? "" : "z", text:fmt(v)}); };
-    tb.appendChild(el("tr", {class:it.disp ? "" : "vide"}, el("td", {class:"l", text:l.size + (!prevS && l.cc ? " ✔" : "")}), z(it.base), z(it.done), el("td", {class:"b" + (it.disp ? "" : " z"), text:fmt(it.disp)}), el("td", {class:"fr"}, inp), el("td", {class:"fr"}, inpN)));
+    tb.appendChild(el("tr", {class:(it.disp ? "" : "vide") + (grp.items.length === 1 ? " x1" : "")}, el("td", {class:"l", text:l.size + (!prevS && l.cc ? " ✔" : "")}), z(it.base), z(it.done), el("td", {class:"b" + (it.disp ? "" : " z"), text:fmt(it.disp)}), el("td", {class:"fr"}, inp), el("td", {class:"fr"}, inpN), grp.items.length === 1 ? grp.cell : null));
   });
   if (grp) totLigne(grp);
   var t = el("table", {class:"flux xl"});
-  t.appendChild(el("colgroup", null, [96, 150, 120, 120, 130, 110].map(function(w){ return el("col", {style:"width:" + w + "px"}); })));
-  t.appendChild(el("thead", null, el("tr", null, [["Taille","l"],[prevS ? names[prevS] : "Ordre coupe",""],["Déjà passé",""],["Disponible",""],["Conformes",""],["NC",""]].map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
+  t.appendChild(el("colgroup", null, [90, 140, 110, 110, 120, 100, 210].map(function(w){ return el("col", {style:"width:" + w + "px"}); })));
+  t.appendChild(el("thead", null, el("tr", null, [["Taille","l"],[prevS ? names[prevS] : "Ordre coupe",""],["Déjà passé",""],["Disponible",""],["Conformes",""],["NC",""]].concat(t.className.indexOf("xl") >= 0 ? [["Modèle","l"]] : []).map(function(h){ return el("th", {class:h[1], text:h[0]}); }))));
   t.appendChild(tb);
   function gather(){ var nm = [], tq = 0, tn = 0; items.forEach(function(it){ var q = num(it.inp.value), n = num(it.inpN.value); if (!q && !n) return; var mv = {id:nid("M"), date:iDate.value || today(), lineId:it.l.id, stage:stage, qty:q, nc:n, note:note.value || ""}; if (n && iMotif.value) mv.motif = iMotif.value; nm.push(mv); tq += q; tn += n; }); return {nm:nm, tq:tq, tn:tn}; }
   function gadhAsm(nm){
