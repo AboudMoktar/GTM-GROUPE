@@ -61,6 +61,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   ({ex: E} = await etat()); const c2 = E[0].cartons[1];
   r.push(['carton N°2 enregistré', E[0].cartons.length === 2 && q(c2, 'A_M') === 5 && q(c2, null, 'PK202612', 'Gilet homme noir', 'L') === 7 && !q(c2, 'A_S')]);
   // modifier un carton : le tableau montre ce qui est déjà dedans
+  // 21/11/2026 : cartons repliés par défaut derrière un lien ; on les affiche pour la suite du test
+  { const rep = await p.evaluate(() => { const a = document.querySelector('[data-xp-cartons]'), l = document.querySelector('.xp-cartons'); return !!a && /Afficher les/.test(a.textContent) && l && l.style.display === 'none'; });
+    console.log((rep ? 'ok   ' : 'ÉCHEC ') + 'cartons repliés par défaut, lien « Afficher les … cartons »'); if (!rep) process.exitCode = 1;
+    await p.click('[data-xp-cartons]'); await p.waitForTimeout(200);
+    const vu = await p.evaluate(() => document.querySelector('.xp-cartons').style.display !== 'none' && /Masquer/.test(document.querySelector('[data-xp-cartons]').textContent));
+    console.log((vu ? 'ok   ' : 'ÉCHEC ') + 'le lien affiche la liste des cartons'); if (!vu) process.exitCode = 1; }
+  await p.evaluate(() => { ui.xpCartons = new Proxy({}, {get: () => true, set: () => true}); render(); }); await p.waitForTimeout(150);
   await p.locator('.xp-carton', {hasText: 'Carton N°1'}).locator('text=Modifier').click(); await p.waitForTimeout(200);
   r.push(['modifier : quantités déjà mises affichées', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && await p.locator('.xp-cmd .sx-chip.on').count() === 1]);
   r.push(['modifier : tableau prérempli', await cell('Lyne Pro Homme Gris', 'S').inputValue() === '12' && await cell('Lyne Pro Homme Gris', 'M').inputValue() === '5']);

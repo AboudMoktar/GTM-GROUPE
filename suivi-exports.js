@@ -410,7 +410,14 @@ function ficheExport(v, e, arch){
   /* cartons : contenu, poids et commentaire (modifiables à tout moment) */
   var cc = el("div", {class:"card"}, el("h2", {text:"Cartons"}));
   if (!e.cartons.length) cc.appendChild(el("div", {class:"xp-vide", text:"Pas encore de carton. Touchez « + Ajouter un carton »."}));
+  /* 21/11/2026 : liste des cartons repliée par défaut (un lien pour l'afficher), pour ne pas avoir à tout parcourir */
+  var ouv = ui.xpCartons || (ui.xpCartons = {}), nbC = e.cartons.length, ouvert = !!ouv[e.id];
+  if (nbC){ var totP = e.cartons.reduce(function(t, c){ return t + qteCarton(c); }, 0);
+    cc.appendChild(el("a", {href:"#", class:"xp-lien-cartons", "data-xp-cartons":"1", style:"display:inline-block;margin:2px 0 8px;font-weight:700;font-size:15px;color:var(--accent, #2563eb);text-decoration:none",
+      text:(ouvert ? "▾ Masquer les " : "▸ Afficher les ") + nbC + " carton(s) · " + fmt(totP) + " pcs · " + fmtKg(poidsTotal(colisExport(e))) + " kg",
+      onclick:function(ev){ ev.preventDefault(); ouv[e.id] = !ouvert; render(); }})); }
   var lst = el("div", {class:"xp-cartons"});
+  if (nbC && !ouvert) lst.style.display = "none";
   e.cartons.slice().sort(function(a, b){ return a.n - b.n; }).forEach(function(c){
     var qc = qteCarton(c);
     var b = el("div", {class:"xp-carton"},
@@ -907,6 +914,7 @@ function totalHtmlAncien(e, colis, sansLot){
 function colisageGridX(e, colis, sansLot){
   var tailles = SZ.filter(function(t){ return colis.some(function(c){ return c.items.some(function(x){ return x.size === t; }); }); });
   var nc = 4 + tailles.length, last = nc - 1, ex = PK_EXPEDITEUR, d = destDe(e.cl);
+  /* 21/11/2026 : lignes aérées (hauteur, police, cartons sur fond alterné) ; sur une page seulement si elle reste lisible */
   var g = {cols:[10, 13, 34].concat(tailles.map(function(){ return 8; })).concat([9]), rows:[], merges:[], landscape:ori("col") === "landscape", plein:true, onePage:true}, r = 0, mid = Math.max(2, Math.floor(nc / 2));
   var gauche = ["Expéditeur : " + ex.nom].concat(ex.lignes).concat([ex.pays, "Date d'export : le " + dmyL(e.d)]);
   var droite = ["Destinataire :", d.nom].concat(d.lignes).concat(d.tel ? ["TÉLÉPHONE : " + d.tel] : []);
@@ -915,26 +923,29 @@ function colisageGridX(e, colis, sansLot){
     gset(g, r, mid, droite[i] || "", {sz:10, al:"l", b:i > 0 && String(droite[i] || "").indexOf("TÉLÉPHONE") < 0 ? 1 : 0}); gmerge(g, r, mid, r, last); r++;
   }
   gset(g, r, 0, "Export N°" + e.n + " · " + (e.nat || e.cl) + (sansLot ? "" : " · commandes " + lotsExport(e).join(", ")), {sz:9, al:"l"}); gmerge(g, r, 0, r, last); r += 2;
-  var H = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"}, Cc = {sz:10, al:"c", bd:"t"};
-  ["N° colis", "Commande", "Référence"].concat(tailles).concat(["Total"]).forEach(function(h, k){ gset(g, r, k, h, H); }); g.sticky = r + 1; r++;
-  var totT = {}, total = 0; tailles.forEach(function(t){ totT[t] = 0; });
+  var H = {b:1, sz:11, al:"c", bd:"t", bg:"DDE4EE"};
+  ["N° colis", "Commande", "Référence"].concat(tailles).concat(["Total"]).forEach(function(h, k){ gset(g, r, k, h, H); }); g.rows[r].h = 24; g.sticky = r + 1; r++;
+  var totT = {}, total = 0, nCol = 0; tailles.forEach(function(t){ totT[t] = 0; });
   colis.forEach(function(c){
     var cles = [], par = {};
     c.items.forEach(function(x){ var k = sansLot ? x.lib : x.lib + "|" + x.lot; if (!par[k]){ par[k] = {lib:x.lib, lot:x.lot, q:{}}; cles.push(k); } par[k].q[x.size] = (par[k].q[x.size] || 0) + x.q; totT[x.size] += x.q; total += x.q; });
-    var top = r, totC = 0; cles.forEach(function(k){ tailles.forEach(function(t){ totC += par[k].q[t] || 0; }); });
+    var top = r, totC = 0, fond = (nCol++ % 2) ? "F3F6FA" : null; cles.forEach(function(k){ tailles.forEach(function(t){ totC += par[k].q[t] || 0; }); });
+    var Cc = {sz:10.5, al:"c", bd:"t", bg:fond}, Ll = {sz:10.5, al:"l", bd:"t", bg:fond};
     cles.forEach(function(k, j){ var p = par[k];
-      gset(g, r, 0, j ? "" : String(c.n), Cc); gset(g, r, 1, sansLot ? "PERCKO" : p.lot, Cc); gset(g, r, 2, nomDoc(p.lib), {sz:10, al:"l", bd:"t"});
+      gset(g, r, 0, j ? "" : String(c.n), {b:1, sz:11, al:"c", bd:"t", bg:fond}); gset(g, r, 1, sansLot ? "PERCKO" : p.lot, Cc); gset(g, r, 2, nomDoc(p.lib), Ll);
       tailles.forEach(function(t, kk){ var q = p.q[t] || 0; gset(g, r, 3 + kk, q || "", Cc); });
       /* total du carton (une seule case pour tout le carton) */
-      gset(g, r, last, j ? "" : totC, {b:1, sz:10, al:"c", bd:"t"}); r++; });
+      gset(g, r, last, j ? "" : totC, {b:1, sz:11, al:"c", bd:"t", bg:fond}); g.rows[r].h = 21; r++; });
     if (cles.length > 1){ gmerge(g, top, 0, r - 1, 0); gmerge(g, top, last, r - 1, last); }
   });
-  var T = {b:1, sz:10, al:"c", bd:"t", bg:"EEEEEE"};
-  gset(g, r, 0, "Total t-shirt pour export", {b:1, sz:10, al:"l", bd:"t", bg:"EEEEEE"}); gset(g, r, 1, "", T); gset(g, r, 2, "", T); gmerge(g, r, 0, r, 2);
+  var T = {b:1, sz:11, al:"c", bd:"t", bg:"DDE4EE"};
+  gset(g, r, 0, "Total t-shirt pour export", {b:1, sz:11, al:"l", bd:"t", bg:"DDE4EE"}); g.rows[r].h = 24; gset(g, r, 1, "", T); gset(g, r, 2, "", T); gmerge(g, r, 0, r, 2);
   tailles.forEach(function(t, k){ gset(g, r, 3 + k, totT[t], T); }); gset(g, r, last, total, T); r += 2;
   gset(g, r, 0, "Nombre de colis", {sz:10, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); gmerge(g, r, 0, r, 1); gset(g, r, 2, colis.length, {b:1, sz:10, al:"l", bd:"t"}); r++;
   var pb = poidsTotal(colis);
   gset(g, r, 0, "Poids brut", {sz:10, al:"l", bd:"t"}); gset(g, r, 1, "", {bd:"t"}); gmerge(g, r, 0, r, 1); gset(g, r, 2, pb ? pb + " kg" : "", {b:1, sz:10, al:"l", bd:"t"});
+  /* une seule page tant que les lignes restent lisibles ; sinon plusieurs pages, lignes pleines */
+  var hT = 0; g.rows.forEach(function(x){ hT += x.h; }); if (hT > (g.landscape ? 520 : 770) * 1.15) g.onePage = false;
   return g;
 }
 function totalGridX(e, colis, sansLot){
@@ -1118,7 +1129,7 @@ function etatGridX(e, colis){
   });
   return g;
 }
-var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:0.8mm 1.5mm;line-height:1.2}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}#pk-doc-zone .grl-recap{margin-top:8mm;break-inside:avoid;page-break-inside:avoid}</style>';
+var GRL_CSS = '<style>#pk-doc-zone table.grl{width:100%;border-collapse:collapse;font-size:9pt}#pk-doc-zone table.grl td{padding:1.2mm 1.8mm;line-height:1.3}#pk-doc-zone table.grl tr{break-inside:avoid;page-break-inside:avoid}#pk-doc-zone .grl-saut{break-before:page;page-break-before:always}#pk-doc-zone .grl-recap{margin-top:8mm;break-inside:avoid;page-break-inside:avoid}</style>';
 function suffixe(){ return ui.xpSansLot ? "_sans_lot" : ""; }
 function imprimerX(e, quoi, o){
   var colis = colisExport(e), pp = etqChoix(), lot = libelleLots(e), sl = !!ui.xpSansLot, suf = suffixe();
@@ -1187,5 +1198,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {piecesFacture:piecesFacture, demandeFacture:demandeFacture, factureGrid:factureGrid, facturerExport:facturerExport, titreFichier:titreFichier, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {colisageGridX:colisageGridX, grilleHtml:grilleHtml, grlCss:function(){ return GRL_CSS; }, piecesFacture:piecesFacture, demandeFacture:demandeFacture, factureGrid:factureGrid, facturerExport:facturerExport, titreFichier:titreFichier, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();
