@@ -14,7 +14,31 @@ let fichierCible = null;
 const fichiersMemoire = {};
 
 function fichierEnLigne(){ return typeof firebaseReady !== 'undefined' && firebaseReady && typeof fbRootRef !== 'undefined' && fbRootRef; }
+// Les photos lourdes (plus de 300 Ko), d'où qu'elles viennent (CRM MGT, notes, pièces jointes), sont
+// réduites avant l'enregistrement : 1 600 px au plus grand côté, JPEG qualité 80 %, fond blanc.
+// Les PDF et les petites images sont gardés tels quels ; en cas d'échec, l'original est enregistré.
+const FICHIER_PHOTO_SEUIL = 300 * 1024, FICHIER_PHOTO_MAX_PX = 1600, FICHIER_PHOTO_QUALITE = 0.8;
+function fichierCompresserPhoto(dataUrl){
+  return new Promise(resolve => {
+    if(typeof dataUrl !== 'string' || !/^data:image\/(png|jpe?g|webp|bmp)/i.test(dataUrl) || dataUrl.length < FICHIER_PHOTO_SEUIL * 4 / 3) return resolve(dataUrl);
+    const img = new Image();
+    img.onerror = () => resolve(dataUrl);
+    img.onload = () => {
+      try {
+        const k = Math.min(1, FICHIER_PHOTO_MAX_PX / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        const r = c.toDataURL('image/jpeg', FICHIER_PHOTO_QUALITE);
+        resolve(r.length < dataUrl.length ? r : dataUrl);
+      } catch(e){ resolve(dataUrl); }
+    };
+    img.src = dataUrl;
+  });
+}
 function fichierSauver(fid, dataUrl){
+  return fichierCompresserPhoto(dataUrl).then(d => fichierSauverBrut(fid, d));
+}
+function fichierSauverBrut(fid, dataUrl){
   if(fichierEnLigne()) return fbRootRef.child('fichiers/' + fid).set(dataUrl);
   fichiersMemoire[fid] = dataUrl;
   try { window.localStorage.setItem(CACHE_PREFIX + 'fichier_' + fid, dataUrl); } catch(e) {}
