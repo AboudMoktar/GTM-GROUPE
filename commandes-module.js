@@ -1533,7 +1533,7 @@ function cmdRapportXlsxBlob(cmdIds){
   }, styles);
   const feuilles = [{nom:'Synthèse', f:synthese}, {nom:'Détail', f:detail}];
   const noms = feuilles.map(x => x.nom);
-  const defNoms = feuilles.map((x,i) => x.f.filtre ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${x.nom}'!${x.f.filtre}</definedName>` : '').join('');
+  const defNoms = feuilles.map((x,i) => x.f.filtre ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${esc(String(x.nom).replace(/'/g, "''"))}'!${x.f.filtre}</definedName>` : '').join('');
   const fichiers = [
     {nom:'[Content_Types].xml', texte:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${feuilles.map((f,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {nom:'_rels/.rels', texte:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
