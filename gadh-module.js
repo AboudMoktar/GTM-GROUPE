@@ -42,6 +42,18 @@ const GADH_ABSENCE_TYPES = { conge: {label:'Congé', cls:'excellent'}, maladie: 
 function getGadhCadences(){ return getJSON('gadh_cadences', {}); }
 function saveGadhCadences(map){ setJSON('gadh_cadences', map); }
 function gadhCadencePourRef(rk){ return parseFloat(getGadhCadences()[rk]) || 0; }
+// Cadence de la GADH (pièces retournées par heure), réglable dans Paramètres — 80 par défaut.
+// Rangée dans gadh_cadences sous la clé « * » (mêmes droits que les cadences).
+const GADH_CADENCE_DEFAUT = 80;
+function gadhCadenceGlobale(){ return parseFloat(getGadhCadences()['*']) || GADH_CADENCE_DEFAUT; }
+// Heures travaillées comptées pour l'objectif : la journée entière pour un jour passé,
+// les heures déjà écoulées (selon le planning) pour aujourd'hui.
+function gadhHeuresObjectif(dateISO){
+  const slots = getGadhSlotsForDate(dateISO);
+  if(dateISO !== getTodayISO()) return slots.reduce((s,sl)=>s+sl.minutes, 0) / 60;
+  const d = new Date(), now = d.getHours()*60 + d.getMinutes();
+  return slots.reduce((s,sl)=>s+Math.max(0, Math.min(sl.end, now) - sl.start), 0) / 60;
+}
 // Références : celles du suivi des commandes PERCKO (clés « pk_… », voir
 // suivi-module.js), plus celles de l'ancien module Commandes s'il en reste.
 function cmdRefsCatalogue(){
@@ -143,12 +155,13 @@ function gadhDayTotals(dateISO){
   const slots = getGadhSlotsForDate(dateISO);
   const heures = gadhHeuresJour(dateISO);
   const parRef = cmdRetourGadhParRefDuJour(dateISO);
-  let totalReel = 0, totalObj = 0, hasEntry = false;
-  Object.entries(parRef).forEach(([rk,q]) => {
-    totalReel += q; hasEntry = true;
-    totalObj += gadhObjectifRef(rk, heures);
-  });
-  const rendement = totalObj>0 ? (totalReel/totalObj*100) : null;
+  let totalReel = 0, hasEntry = false;
+  Object.values(parRef).forEach(q => { totalReel += q; hasEntry = true; });
+  // Rendement GADH = pièces retournées (conformes + NC) ÷ (cadence GADH × heures travaillées).
+  // totalObj = objectif de la journée entière ; aujourd'hui, le rendement se compare aux heures déjà écoulées.
+  const totalObj = Math.round(gadhCadenceGlobale() * heures);
+  const objAce = gadhCadenceGlobale() * gadhHeuresObjectif(dateISO);
+  const rendement = objAce>0 ? (totalReel/objAce*100) : null;
   return { totalReel, totalObj, rendement, hasEntry, slots, parRef, heures };
 }
 // Commandes en cours (vue GADH, pour le tableau de bord) : pièces déjà
@@ -217,6 +230,14 @@ function renderGadhParametres(container){
   const plannings = Object.entries(getGadhPlannings()).sort((a,b)=>b[1].dateDebut.localeCompare(a[1].dateDebut));
 
   container.innerHTML = `
+    <div class="card">
+      <h3 style="margin:0 0 4px;">Cadence GADH (rendement)</h3>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Rendement GADH = pièces retournées à TEK-TREND (conformes + NC) ÷ (cadence × heures travaillées du planning). Aujourd'hui : heures déjà écoulées.</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div class="field" style="flex:1;margin:0;"><label for="gadh-cadence">Pièces par heure</label><input type="number" id="gadh-cadence" min="1" step="1" value="${gadhCadenceGlobale()}"></div>
+        <button class="btn btn-primary" onclick="setGadhCadence('*', document.getElementById('gadh-cadence').value)">Enregistrer</button>
+      </div>
+    </div>
     <div class="card">
       <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;">Horaires de travail (plannings)</h3>
         <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="showAddGadhPlanningForm()">+ Nouveau planning</button>
@@ -755,7 +776,6 @@ function renderGadhDashboard(container){
   const nonRenseignes = resolved.filter(x=>x.r.source===null);
   const alertes = [];
   if(!isGadhWorkingDay(date)) alertes.push("Ce jour n'est pas travaillé selon le planning actuel.");
-  if(Object.keys(getGadhCadences()).length===0) alertes.push("Aucune cadence n'est configurée — allez dans Paramètres.");
   if(nonRenseignes.length>0) alertes.push(nonRenseignes.length+" salarié(s) non renseigné(s).");
 
   // Production par modèle (ce jour) — EXACTE, directement depuis Commandes → Retour
