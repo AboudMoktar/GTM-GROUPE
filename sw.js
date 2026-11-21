@@ -42,6 +42,7 @@ const APP_SHELL = [
   './factures-module.js',
   './facturation-percko-module.js',
   './facturation-saisie-module.js',
+  './factures-unicite-module.js',
   './historique-tek-module.js',
   './machines-module.js',
   './gadh-gc-calcul.js',
