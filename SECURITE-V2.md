@@ -57,7 +57,7 @@ La matrice complète, ressource par ressource, est dans `MATRICE-PERMISSIONS.md`
 | `audit-module.js` | Accès au journal selon le rôle |
 | `tests/` (nouveau) | Simulateur, scénarios, tests sur l'émulateur officiel, tests des fonctions, test de bout en bout |
 
-`portail-module.js` (plus chargé) et `commande-module.js` (vide) ont été supprimés le 02/11/2026. `database.rules.json` est conservé comme archive des anciennes règles.
+`portail-module.js` (plus chargé) et `commande-module.js` (vide) ont été supprimés le 02/11/2026. L'ancien fichier `database.rules.json` a été supprimé le 21/11/2026 (il ne contrôlait pas les comptes désactivés) : seul `database.rules.v2.json` fait foi.
 
 ## 4. Résultats des tests (31/10/2026)
 
@@ -94,7 +94,7 @@ Pour activer les fonctions plus tard : offre Blaze, `firebase deploy --only func
 
 | Problème | Action | Durée |
 | --- | --- | --- |
-| Un rôle ne peut plus travailler après publication des règles | Recoller les anciennes règles (copie de l'étape 1 ou `database.rules.json`), Publier | 2 min |
+| Un rôle ne peut plus travailler après publication des règles | Recoller les anciennes règles (copie de l'étape 1, ou version précédente de `database.rules.v2.json` dans l'historique Git), Publier | 2 min |
 | L'application V2 pose problème | Revenir au commit précédent de `main` (« Revert ») | 5 min |
 | Données abîmées | Importer l'export JSON de l'étape 1 sur le dossier concerné uniquement | 10 min |
 

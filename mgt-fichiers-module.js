@@ -6,7 +6,7 @@
 // courantes, seulement à l'ouverture d'un fichier. La fiche client ne garde que
 // l'identifiant et le nom : offre {pdfId, pdfName}, documents [{id, nom, fid, date}].
 // Limites : 6 Mo par fichier (les photos sont réduites avant l'envoi). Les règles
-// Firebase (voir database.rules.json) réservent l'accès au personnel MGT.
+// Firebase (voir database.rules.v2.json) réservent l'accès au personnel MGT.
 // Sans connexion Firebase (mode local), les fichiers restent sur l'appareil.
 
 const FICHIERS_MAX = 6 * 1024 * 1024;

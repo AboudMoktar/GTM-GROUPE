@@ -12,7 +12,7 @@
 //    aucun écrasement entre appareils). Ces écritures sont silencieuses : si
 //    les règles Firebase refusent le chemin « audit », l'application continue
 //    sans message d'erreur. Seule la direction du groupe lit le journal (à
-//    imposer aussi dans database.rules.json).
+//    imposer aussi dans database.rules.v2.json).
 //
 // Entrée : { t (horodatage), u (nom), un (identifiant), soc, cle, lib,
 //            n:{a,m,s}, ids:{id:'a'|'m'|'s'}, noms:{id:nom}, txt?, k? }
