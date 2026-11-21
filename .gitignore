@@ -5,3 +5,8 @@ functions/node_modules/
 tests/fonctions-lien
 tests/regles-emulateur.json
 tests/mesures.json
+
+# Sauvegardes (chiffrées ou déchiffrées) : jamais dans le dépôt
+sauvegarde/
+gtm-*.json
+gtm-*.json.gz.chiffre
