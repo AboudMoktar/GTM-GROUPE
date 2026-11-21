@@ -49,6 +49,8 @@ const ECRITURES = {
   if(!rep.ok) throw new Error('Règles non chargées : ' + rep.status + ' ' + await rep.text());
 
 
+  // Serveur de test (tests/serveur.js) : adapte la politique CSP aux adresses des émulateurs locaux.
+  if(!process.env.GTM_SITE) require('./serveur.js').demarrer(8790);
   const b = await chromium.launch();
   const ouvrir = async (r) => {
     const ctx = await b.newContext({viewport:{width:412, height:900}}); const p = await ctx.newPage();

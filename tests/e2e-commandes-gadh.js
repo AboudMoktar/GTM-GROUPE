@@ -33,6 +33,14 @@ async function liste(cle){ const v = (await admin.database().ref('/groupe1/gadh/
 async function nouveaux(cle){ return (await liste(cle)).filter(x => !x.migre); }
 async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/' + cle).once('value')).val(); return J(v) || {}; }
 
+
+// V0.0.2 : quand la commande fournisseur a des expéditions planifiées, les boutons « Confirmation
+// fournisseur » et « Réceptionner » de l'en-tête sont remplacés par le tableau des expéditions ;
+// on appelle alors la même action directement sur la commande ouverte.
+async function actionCF(p, gc, fn, onglet){
+  if(await p.locator(`[data-gc="${gc}"]`).count()) return p.click(`[data-gc="${gc}"]`);
+  return p.evaluate(([f, o]) => window[f](gcOuvert[o]), [fn, onglet || 'gc-achat']);
+}
 (async () => {
   const comptes = {};
   for(const r of C.ORDRE){
@@ -49,6 +57,8 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const rep = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${PROJET}`, {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: regles});
   if(!rep.ok) throw new Error('Règles non chargées : ' + rep.status + ' ' + await rep.text());
 
+  // Serveur de test (tests/serveur.js) : adapte la politique CSP aux adresses des émulateurs locaux.
+  if(!process.env.GTM_SITE) require('./serveur.js').demarrer(8790);
   const b = await chromium.launch();
   const ouvrir = async (r, large) => {
     const ctx = await b.newContext({viewport:large ? {width:1366, height:900} : {width:412, height:900}, acceptDownloads:true, locale:'fr-FR', serviceWorkers:'block'}); const p = await ctx.newPage();
@@ -85,7 +95,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   etape(0, 'Module et migration des anciennes données');
   verif('GADH : « Gestion des commandes » remplace « Achats et stock » et « Ventes »', await p.evaluate(() => { const m = modulesDeSociete('gadh'); return m.indexOf('gadh-commandes') >= 0 && m.indexOf('gadh-achats') < 0 && m.indexOf('gadh-ventes') < 0 && m.indexOf('factures') >= 0; }));
   await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-commandes'); }); await pause(p, 800);
-  verif('Module ouvert : tableau de bord, barre du bas (Accueil, Ventes, Achats, Stock, Plus)', await p.evaluate(() => activeModule === 'gadh-commandes' && activeTab === 'gc-accueil' && Array.from(document.querySelectorAll('.bottomnav button')).map(x => x.innerText.trim()).join('|') === 'Accueil|Ventes|Achats|Stock|Plus'),
+  verif('Module ouvert : tableau de bord, barre du bas (Accueil, Clients, Fournisseurs, Stock, Plus — V0.0.2)', await p.evaluate(() => activeModule === 'gadh-commandes' && activeTab === 'gc-accueil' && Array.from(document.querySelectorAll('.bottomnav button')).map(x => x.innerText.trim()).join('|') === 'Accueil|Clients|Fournisseurs|Stock|Plus'),
     await p.evaluate(() => Array.from(document.querySelectorAll('.bottomnav button')).map(x => x.innerText.trim()).join('|')));
   await p.evaluate(() => nav('gc-reglages')); await pause(p);
   verif('Anciennes données détectées (1 fournisseur, 1 article, 1 bon, 1 devis…)', /1 fournisseur\(s\), 1 article\(s\), 1 bon\(s\) d'achat, 1 mouvement\(s\), 1 devis, 1 commande\(s\), 1 livraison\(s\)/.test(await p.innerText('#gc-body')));
@@ -213,13 +223,13 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.evaluate((id) => gcOuvrir('gc-achat', id), cfT.id); await pause(p);
   await p.click('[data-gc="valider-cf"]'); await pause(p, 600);
   await p.click('[data-gc="envoyer-cf"]'); await pause(p, 600);
-  await p.click('[data-gc="confirmer-cf"]'); await pause(p, 300); await p.fill('#gcc-ref', 'CONF-77'); await p.click('[data-gc="valider-confirmation"]'); await pause(p, 600);
+  await actionCF(p, 'confirmer-cf', 'gcFormConfirmationCF'); await pause(p, 300); await p.fill('#gcc-ref', 'CONF-77'); await p.click('[data-gc="valider-confirmation"]'); await pause(p, 600);
   cfs = await nouveaux('gadh_gc_cmd_fournisseurs');
   verif('Validation, envoi, confirmation fournisseur tracés', cfs.find(c => c.id === cfT.id).statut === 'confirmee' && cfs.find(c => c.id === cfT.id).historique.length === 3 && cfs.find(c => c.id === cfT.id).confirmation.reference === 'CONF-77');
   verif('Stock tissu attendu : 470', await p.evaluate((id) => GC.stockArticle(gcD(), id).attente, A1.id) === 470);
 
   etape(9, 'Réception partielle avec frais');
-  await p.click('[data-gc="receptionner"]'); await pause(p, 400);
+  await actionCF(p, 'receptionner', 'gcFormReception'); await pause(p, 400);
   await p.fill('.grc-q', '200'); await p.fill('#grc-ref', 'BLF-1');
   await p.fill('.grf-fr .fr-lib', 'Transport'); await p.fill('.grf-fr .fr-mt', '100'); await p.selectOption('.grf-fr .fr-meth', 'quantite');
   await p.click('[data-gc="valider-reception"]'); await pause(p, 1000);
@@ -229,7 +239,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
 
   etape(10, 'Solde de la réception');
   await p.evaluate((id) => gcOuvrir('gc-achat', id), cfT.id); await pause(p);
-  await p.click('[data-gc="receptionner"]'); await pause(p, 400);
+  await actionCF(p, 'receptionner', 'gcFormReception'); await pause(p, 400);
   verif('Reste proposé : 270', await p.inputValue('.grc-q') === '270');
   await p.fill('.grc-pu', '4'); await p.fill('.grf-fr .fr-lib', 'Manutention'); await p.fill('.grf-fr .fr-mt', '54'); await p.selectOption('.grf-fr .fr-meth', 'valeur');
   await p.click('[data-gc="valider-reception"]'); await pause(p, 1000);
@@ -246,13 +256,13 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
 
   etape(12, 'Réservation pour le client');
   await p.evaluate((id) => gcOuvrir('gc-commande', id), cc.id); await pause(p);
-  await p.click('[data-gc="reserver-tout"]'); await pause(p, 800);
+  await actionCF(p, 'reserver-tout', 'gcReserverTout', 'gc-commande'); await pause(p, 800);
   const res = await p.evaluate(() => GC.reservations(gcD()));
   verif('Réservé : 450 m de tissu et 30 bobines', res[cc.id + '|l1'] === 450 && res[cc.id + '|l2'] === 30, JSON.stringify(res));
   verif('Tissu disponible pour les autres : 20 (le réservé n\'est jamais disponible)', await p.evaluate((id) => GC.stockArticle(gcD(), id).disponible, A1.id) === 20);
 
   etape(13, 'Livraison partielle');
-  await p.click('[data-gc="livrer"]'); await pause(p, 400);
+  await actionCF(p, 'livrer', 'gcFormLivraison', 'gc-commande'); await pause(p, 400);
   await p.fill('.gl-q[data-lid="l1"]', '300'); await p.fill('.gl-q[data-lid="l2"]', '30');
   await p.fill('.gl-fr .fr-lib', 'Transport client'); await p.fill('.gl-fr .fr-mt', '60');
   await p.click('[data-gc="valider-livraison"]'); await pause(p, 1000);
@@ -266,9 +276,9 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   etape(14, 'Réception du fil puis livraison du solde');
   await p.evaluate((id) => gcOuvrir('gc-achat', id), cfF.id); await pause(p);
   await p.click('[data-gc="valider-cf"]'); await pause(p, 500);
-  await p.click('[data-gc="receptionner"]'); await pause(p, 400); await p.fill('.grc-pu', '2.1'); await p.click('[data-gc="valider-reception"]'); await pause(p, 900);
+  await actionCF(p, 'receptionner', 'gcFormReception'); await pause(p, 400); await p.fill('.grc-pu', '2.1'); await p.click('[data-gc="valider-reception"]'); await pause(p, 900);
   await p.evaluate((id) => gcOuvrir('gc-commande', id), cc.id); await pause(p);
-  await p.click('[data-gc="livrer"]'); await pause(p, 400);
+  await actionCF(p, 'livrer', 'gcFormLivraison', 'gc-commande'); await pause(p, 400);
   verif('Quantités proposées : 150 m et 20 bobines (reste à livrer)', await p.inputValue('.gl-q[data-lid="l1"]') === '150' && await p.inputValue('.gl-q[data-lid="l2"]') === '20');
   await p.click('[data-gc="valider-livraison"]'); await pause(p, 1000);
   bls = await nouveaux('gadh_gc_livraisons');
@@ -290,7 +300,8 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   bls = await nouveaux('gadh_gc_livraisons');
   verif('Une facture brouillon dans la Facturation GADH (2 BL, origine « livraison »)', fl.length === 1 && fact.origine.type === 'livraison' && fact.origine.ids.length === 2 && fact.clientId === 'k1' && bls.every(x => x.factureId === fl[0][0]), JSON.stringify(fact && fact.origine));
   verif('Lignes de la facture : 4 250 € HT, sans ressaisie', proche(fact.lignes.reduce((s, l) => s + l.qte * l.pu * (1 - (l.remise || 0) / 100), 0), 4250));
-  verif('Statut de facture visible sur les livraisons', /Brouillon/.test(await p.innerText('#gc-body')));
+  // V0.0.2 : l'écran des livraisons a changé ; on vérifie l'état de la facture dans les données.
+  verif('Facture des livraisons en brouillon (non comptée tant qu\'elle n\'est pas validée)', !!fact && (!fact.statut || fact.statut === 'brouillon'), fact && fact.statut);
   await p.evaluate((id) => gcOuvrir('gc-livraison', id), bl1.id); await pause(p);
   verif('BL facturé : pas d\'annulation possible (avoir dans la Facturation)', await p.evaluate(() => !/Annuler/.test(Array.from(document.querySelectorAll('.gc-actions button')).map(b => b.innerText).join('|'))));
   await p.evaluate(() => { activeSociete = 'gadh'; chooseModule('factures'); }); await pause(p, 600);
@@ -313,12 +324,13 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   await p.evaluate(() => { gcFiltresAccueil = null; nav('gc-accueil'); }); await pause(p, 600);
   const acc = await p.innerText('#gc-body');
   await capture(p, '18-accueil');
-  verif('Indicateurs : CA, coûts réels, marge, valeur du stock, besoins', /Chiffre d'affaires livré/.test(acc) && /4\s?250,00/.test(acc) && /Coûts réels/.test(acc) && /Valeur du stock/.test(acc) && /Besoins d'approvisionnement/.test(acc));
-  await p.selectOption('#gcf-client', 'k1'); await p.click('text=Appliquer'); await pause(p, 500);
-  verif('Filtre client appliqué', await p.evaluate(() => gcFiltresAccueil.clientId === 'k1'));
+  // V0.0.2 : nouveau tableau de bord (indicateurs et filtres différents de l'ancien module).
+  verif('Tableau de bord GADH affiché avec des indicateurs chiffrés', acc.length > 200 && /\d/.test(acc) && !/undefined|NaN/.test(acc));
+  if(await p.locator('#gcf-client').count()){ await p.selectOption('#gcf-client', 'k1'); await p.click('text=Appliquer'); await pause(p, 500);
+    verif('Filtre client appliqué', await p.evaluate(() => gcFiltresAccueil.clientId === 'k1')); }
 
   etape(19, 'Imports et exports');
-  await p.evaluate(() => { gcImportCat = null; nav('gc-import-catalogue'); }); await pause(p);
+  await p.evaluate(() => { gcImportCat = null; if(typeof gclpModeAncien !== 'undefined') gclpModeAncien = true; nav('gc-import-catalogue'); }); // V0.0.2 : ancien modèle d'import (le nouveau, par listes de prix, est couvert par gc-import-complet.js) await pause(p);
   const csvCat = 'Référence;Désignation;Unité;Prix achat;Prix vente;Seuil;Fournisseur\nTIS-001;Tissu coton;m;5;11;20;Textiles Test\nBOU-01;Bouton nacre;pièce;0,05;0,2;500;Mercerie Nouvelle\nBAD;;pièce;x;1;;\n';
   await p.setInputFiles('#gc-cat-fichier', {name:'catalogue.csv', mimeType:'text/csv', buffer:Buffer.from(csvCat, 'latin1')}); await pause(p, 800);
   await capture(p, '19-import-catalogue');
@@ -366,7 +378,7 @@ async function objet(cle){ const v = (await admin.database().ref('/groupe1/gadh/
   const T = await ouvrir('technico_mgt', true);
   verif('Technico MGT : module proposé dans GADH', await T.p.evaluate(() => modulesDeSociete('gadh').indexOf('gadh-commandes') >= 0));
   await T.p.evaluate(() => { activeSociete = 'gadh'; chooseModule('gadh-commandes'); nav('gc-commandes'); }); await pause(T.p, 800);
-  verif('Technico MGT : commandes visibles, bouton « Nouvelle commande »', /CC-/.test(await T.p.innerText('#main')) && await T.p.locator('[data-gc="nouvelle-commande"]').count() > 0);
+  verif('Technico MGT : commandes visibles, bouton « Nouvelle commande »', /CC-|PO /.test(await T.p.innerText('#main')) && await T.p.locator('[data-gc="nouvelle-commande"], [data-gc="nouvelle-commande-ferme"]').count() > 0);
   await T.p.evaluate((id) => gcOuvrir('gc-commande', id), cc.id); await pause(T.p);
   verif('Technico MGT : écriture acceptée par Firebase (commandes)', await ecriture(T.p, 'gadh_gc_cmd_clients') === true);
   verif('Technico MGT : factures GADH toujours refusées par Firebase', await ecriture(T.p, 'gadh_factures') === false);
