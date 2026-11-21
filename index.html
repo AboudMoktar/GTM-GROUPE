@@ -1351,21 +1351,25 @@ function renderLogin(err){
           <p class="gtmh-qui">Accédez à votre espace de travail.</p>
           <div class="login-error" style="display:${err ? 'block' : 'none'}">${err}</div>
           <form id="login-form">
-            <div class="field"><label for="login-user">Utilisateur</label><input type="text" id="login-user" required autocomplete="username"></div>
+            <div class="field"><label for="login-user">Utilisateur</label><div class="gtmh-champ"><span class="gtmh-champ-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input type="text" id="login-user" required autocomplete="username" placeholder="Votre identifiant"></div></div>
             <div class="field">
               <label for="login-pass">Mot de passe</label>
-              <div class="pw-field">
-                <input type="password" id="login-pass" required autocomplete="current-password">
+              <div class="pw-field gtmh-champ">
+                <span class="gtmh-champ-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+                <input type="password" id="login-pass" required autocomplete="current-password" placeholder="Votre mot de passe">
                 <button type="button" class="pw-toggle" onclick="togglePwVisibility()" aria-label="Afficher le mot de passe">${ICONS.eye}</button>
               </div>
             </div>
             <button type="submit" class="btn btn-primary btn-block gtmh-login-btn">Se connecter</button>
           </form>
         </div>
-        <div class="gtmh-login-logos">
-          ${['tek', 'gadh', 'mgt'].map(k => `<span class="gtmh-login-logo" title="${SOCIETES[k] ? SOCIETES[k].nom : ''}">${societeLogo(k, 52, societeMot(k), 140)}</span>`).join('')}
+        <div class="gtmh-login-groupe">
+          <div class="gtmh-login-titre"><span>Les sociétés du groupe</span></div>
+          <div class="gtmh-login-logos">
+            ${[['tek', 'TEK-TREND'], ['gadh', 'GADH TUNISIA'], ['mgt', 'MGT']].map(([k, nom]) => `<div class="gtmh-login-logo" title="${SOCIETES[k] ? SOCIETES[k].nom : nom}"><div class="gtmh-login-logo-img">${societeLogo(k, 84, societeMot(k), 190)}</div><i style="background:${typeof societeBande === 'function' && SOCIETES[k] ? societeBande(k, 90) : '#1468D8'}"></i><b>${nom}</b></div>`).join('')}
+          </div>
         </div>
-        <div class="gtmh-entete-soc gtmh-login-soc">TEK-TREND <i>|</i> GADH TUNISIA <i>|</i> MGT</div>
+        <div class="gtmh-login-pied">© ${new Date().getFullYear()} GTM Groupe · Plateforme de gestion</div>
       </main>
     </div>
   </div>`;
