@@ -20,6 +20,8 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   });
   const ns = () => p.evaluate(() => S.exports[0].cartons.map(c => c.n).sort((a, b) => a - b).join(','));
   // 1. suppression : fenêtre à deux choix
+  // 21/11/2026 : cartons repliés par défaut derrière un lien ; on les affiche pour la suite du test
+  await p.evaluate(() => { ui.xpCartons = new Proxy({}, {get: () => true, set: () => true}); render(); }); await p.waitForTimeout(150);
   await p.locator('.xp-carton', {hasText:'Carton N°3'}).getByText('Supprimer').click();
   ok(await p.locator('.xp-choix [data-choix="renumeroter"]').count() === 1 && await p.locator('.xp-choix [data-choix="garder"]').count() === 1, 'suppression : deux choix proposés (renuméroter / garder les numéros)');
   await p.click('.xp-choix [data-choix="garder"]');
