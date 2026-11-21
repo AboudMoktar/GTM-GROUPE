@@ -79,7 +79,7 @@ function ddChiffreAffairesGadhCrm(f, an, r){
   if(!f || f.annulee || !String(f.date || '').startsWith(an) || (f.statut === 'brouillon' && !f.numero)) return;
   const m = factTotaux(f).ttc; if(!m) return; const paye = f.paiement === 'payee' ? m : 0, reste = m - paye;
   r.ca += m; r.n++; r.enc += paye; r.reste += reste;
-  if(reste > 0.004 && f.echeance && f.echeance < getTodayISO()){ r.retard += reste; r.nRet++; }
+  if(reste > 0.004 && factEnRetard(f)){ r.retard += reste; r.nRet++; }
 }
 function ddChiffreAffaires(soc, an){
   if(soc === 'mgt') return ddChiffreAffairesMgt(an);
