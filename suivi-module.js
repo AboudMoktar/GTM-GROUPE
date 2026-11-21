@@ -226,7 +226,7 @@ function suiviRetoursParRefDuJour(dateISO){
       if(m[1] !== dateISO || m[3] !== 'ret') return;
       const l = lignes[m[2]]; if(!l) return;
       const k = suiviCleRef(l.lib);
-      parRef[k] = (parRef[k] || 0) + (m[4] || 0);
+      parRef[k] = (parRef[k] || 0) + (m[4] || 0) + (m[6] || 0); // retournées = conformes + NC
     });
   });
   Object.keys(parRef).forEach(k => { if(parRef[k] <= 0) delete parRef[k]; });
