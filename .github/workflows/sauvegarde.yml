@@ -1,0 +1,36 @@
+# Sauvegarde quotidienne de la base Firebase (lecture seule), chiffrée, conservée 30 jours.
+# Secrets à créer dans GitHub (Settings > Secrets and variables > Actions) — voir SAUVEGARDE.md :
+#   FIREBASE_SA     : clé JSON d'un compte de service Google en LECTURE SEULE sur la base
+#   SAUVEGARDE_CLE  : phrase secrète de chiffrement (à garder aussi hors de GitHub)
+# Tant que ces secrets n'existent pas, la sauvegarde s'arrête avec un message clair, sans rien toucher.
+name: Sauvegarde
+
+on:
+  schedule:
+    - cron: '17 1 * * *'   # chaque nuit vers 02 h 17 (heure de Tunis)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sauvegarde:
+    name: Sauvegarde chiffrée de la base
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lire la base et chiffrer
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          SAUVEGARDE_CLE: ${{ secrets.SAUVEGARDE_CLE }}
+        run: node outils/sauvegarde-firebase.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-${{ github.run_id }}
+          path: sauvegarde/
+          retention-days: 30
+          if-no-files-found: error
