@@ -8,7 +8,7 @@ Durée : environ 20 minutes. Coût : le forfait gratuit « Spark » suffit pour 
 ## Contenu du dossier
 - `public/` : l'application (à publier tel quel)
 - `public/firebase-config.js` : **le seul fichier à modifier** (vos identifiants Firebase)
-- `database.rules.json` : règles de sécurité (qui lit / écrit quoi)
+- `database.rules.v2.json` : règles de sécurité (qui lit / écrit quoi), générées par `node outils/generer-regles.js` depuis `roles-config.js` — ne jamais les modifier à la main
 - `firebase.json`, `.firebaserc` : configuration de l'hébergement
 
 ## Étape 1 — Créer le projet
@@ -18,7 +18,7 @@ Durée : environ 20 minutes. Coût : le forfait gratuit « Spark » suffit pour 
    Notez l'URL affichée en haut (ex. `https://gtm-groupe-default-rtdb.europe-west1.firebasedatabase.app`).
 
 ## Étape 2 — Copier les règles de sécurité
-Realtime Database > onglet **Règles** > remplacez tout par le contenu de `database.rules.json` > **Publier**.
+Realtime Database > onglet **Règles** > remplacez tout par le contenu de `database.rules.v2.json` > **Publier**.
 (Si vous utilisez la ligne de commande à l'étape 5, elles sont publiées automatiquement.)
 
 ## Étape 3 — Récupérer la configuration

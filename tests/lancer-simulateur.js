@@ -3,7 +3,7 @@
 'use strict';
 const {Simulateur} = require('./simulateur-regles.js');
 const {SCENARIOS, donneesInitiales, MAINTENANT} = require('./scenarios.js');
-// Option : node tests/lancer-simulateur.js database.rules.json  → mesure l'exposition des règles actuelles.
+// Option : node tests/lancer-simulateur.js database.rules.v2.json  → mesure l'exposition des règles actuelles.
 const fichier = process.argv[2];
 const regles = fichier ? JSON.parse(require('fs').readFileSync(fichier, 'utf8')) : require('../outils/generer-regles.js').generer();
 

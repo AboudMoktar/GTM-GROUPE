@@ -18,7 +18,7 @@
 // références produit) sont dans liaison/. Les clés de données ne changent pas :
 // getJSON/setJSON restent identiques dans tous les modules, seul l'emplacement
 // dans la base dépend de la société. Les règles d'accès correspondantes sont
-// dans database.rules.json.
+// dans database.rules.v2.json.
 
 const SOCIETES = {
   tek:  {nom:'TEK-TREND',    sous:'Confection textile · PERCKO', couleur:'#0B2C4D', logo:'./logo-tek.png', marque:['#006070', '#006070'], teinte:'#EEF6F7', modules:['rendement','rh','commandes','factures']},
