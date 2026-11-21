@@ -237,8 +237,48 @@ function hlRequeteParFiche(chemin, cle, valeur, ref){
   Object.keys(base).forEach(k => { if(nouv[k] === undefined && serveur[k] !== undefined){ maj[k] = null; n++; } });
   return n ? fbRootRef.child(chemin).update(maj) : Promise.resolve();
 }
+// --- Collections rangées en objet {id: fiche} (factures, employés) : écriture PAR FICHE ---
+// Le format stocké ne change pas (toujours {id: fiche} dans Firebase) ; seule la façon d'écrire change :
+// au lieu de remplacer toute la collection (le dernier poste qui enregistre effaçait les fiches modifiées
+// au même moment par un autre poste), on n'envoie que les fiches ajoutées, modifiées ou supprimées par
+// rapport à la dernière version connue du serveur (update). Deux personnes qui modifient deux factures
+// différentes au même moment gardent donc toutes les deux leur modification.
+const HL_PAR_CLE = {factures:1, gadh_factures:1, mgt_factures:1, employees:1, gadh_employees:1};
+function hlParCle(cle){ return Object.prototype.hasOwnProperty.call(HL_PAR_CLE, cle); }
+function hlTexteCanon(v){ const c = hlCanon(v); return c === undefined ? '' : JSON.stringify(c); }
+function hlEstCarte(v){ return !!v && typeof v === 'object' && !Array.isArray(v); }
+// Différences {cleFirebase: fiche | null} entre deux formes « prêtes pour Firebase » ; null = écrire tout.
+function hlDiffParCle(envoi, baseEnvoi){
+  if(!hlEstCarte(envoi) || !hlEstCarte(baseEnvoi)) return null;
+  const maj = {};
+  Object.keys(envoi).forEach(k => { if(hlTexteCanon(envoi[k]) !== hlTexteCanon(baseEnvoi[k])) maj[k] = envoi[k]; });
+  Object.keys(baseEnvoi).forEach(k => { if(!(k in envoi)) maj[k] = null; });
+  return maj;
+}
+function hlRequeteParCle(chemin, cle, valeur, ref, envoi){
+  const base = hlValeurServeur(cle);
+  if(!hlEstCarte(valeur) || !hlEstCarte(base) || typeof envoi === 'string') return fbRootRef.child(chemin).set(envoi);
+  const maj = hlDiffParCle(envoi, hlPourFirebase(base, ref));
+  if(maj === null) return fbRootRef.child(chemin).set(envoi);
+  if(!Object.keys(maj).length) return Promise.resolve();
+  // Après confirmation, relire la collection : le serveur peut contenir des fiches modifiées par un autre
+  // poste pendant l'envoi (reçues mais pas affichées tant que l'envoi était en attente).
+  return fbRootRef.child(chemin).update(maj).then(r => { setTimeout(() => hlResynchroniserCle(chemin, cle), 0); return r; });
+}
+function hlResynchroniserCle(chemin, cle){
+  if(!fbRootRef) return;
+  fbRootRef.child(chemin).once('value').then(snap => {
+    const v = hlDepuisFirebase(snap.val());
+    hlServeur[cle] = v;
+    if(hlClesEnAttente().has(cle)) return;           // un autre envoi est en cours : il relira à son tour
+    if(hlTexteCanon(v) === hlTexteCanon(getJSON(cle, null))) return;
+    hlAppliquerLocal(cle, null, v);
+    if(typeof onFirebaseData === 'function') onFirebaseData();
+  }).catch(() => {});
+}
 function hlRequete(chemin, valeur, ref, envoi){
   if(ref && !ref.sous && hlParFiche(ref.cle)) return hlRequeteParFiche(chemin, ref.cle, valeur, ref);
+  if(ref && !ref.sous && hlParCle(ref.cle)) return hlRequeteParCle(chemin, ref.cle, valeur, ref, envoi);
   return fbRootRef.child(chemin).set(envoi);
 }
 // Pour un dossier entier reçu de Firebase ({cle: valeur, …}). depuisServeur : vrai pour les données
