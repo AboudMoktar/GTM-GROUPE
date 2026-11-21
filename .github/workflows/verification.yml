@@ -48,6 +48,7 @@ jobs:
           java-version: '21'
       - name: Dépendances des tests
         run: |
+          sudo apt-get install -y -qq poppler-utils > /dev/null   # pdftotext, pour les tests des PDF
           (cd functions && npm ci)
           (cd tests && npm ci && npx playwright install --with-deps chromium)
       - name: Tous les tests (remise à zéro de l'émulateur entre chaque test)
