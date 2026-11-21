@@ -48,6 +48,8 @@ const ECRITURES = {
   const rep = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${PROJET}`, {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: regles});
   if(!rep.ok) throw new Error('Règles non chargées : ' + rep.status + ' ' + await rep.text());
 
+  // Serveur de test (tests/serveur.js) : adapte la politique CSP aux adresses des émulateurs locaux.
+  if(!process.env.GTM_SITE) require('./serveur.js').demarrer(8790);
   const b = await chromium.launch();
   let ok = 0, total = 0; const echecs = [];
   for(const r of C.ORDRE){
