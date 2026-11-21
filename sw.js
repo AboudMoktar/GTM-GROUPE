@@ -1,7 +1,7 @@
 // GTM Groupe — Service Worker
 // Change ce numéro de version à chaque mise à jour du site pour forcer
 // les téléphones déjà installés à récupérer la nouvelle version.
-const CACHE_NAME = 'groupe-v327';
+const CACHE_NAME = 'groupe-v328';
 
 // Fichiers de l'application (même dossier que sw.js) : tous mis en cache dès
 // l'installation, pour que l'application s'ouvre aussi SANS réseau.
@@ -38,6 +38,7 @@ const APP_SHELL = [
   './pointeuse-module.js',
   './mgt-module.js',
   './mgt-sav-module.js',
+  './stockage-module.js',
   './factures-module.js',
   './facturation-percko-module.js',
   './facturation-saisie-module.js',
