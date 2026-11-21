@@ -266,29 +266,41 @@ html[data-affichage="renforce"] .gtmh-mcarte{border-width:2px !important; border
 /* ============================================================
    ÉCRAN DE CONNEXION (même charte que le choix de la société)
    ============================================================ */
-.gtmh-login .gtmh-centre{align-items:center;justify-content:center;gap:18px;}
-.gtmh-login-carte{width:100%;max-width:440px;padding:30px 34px 32px;background:#fff;border:1px solid #DDE6F2;border-radius:20px;box-shadow:0 18px 44px rgba(11,31,58,.14);}
-.gtmh-login-carte .gtmh-entete{margin-bottom:18px;}
-.gtmh-login-carte .gtmh-entete .gtmh-wm b{font-size:26px;}
-.gtmh-login-carte .gtmh-entete .gtmh-wm-arc{height:20px;}
-.gtmh-login-carte .gtmh-entete-soc{font-size:13px;letter-spacing:1px;margin-top:6px;}
-.gtmh-login-carte h1{font-size:26px;margin:0;}
-.gtmh-login-carte .gtmh-qui{margin:4px 0 18px;font-size:15px;color:var(--encre2);}
-.gtmh-login .field{margin-bottom:14px;text-align:left;}
-.gtmh-login .field label{display:block;margin-bottom:6px;font-size:14px;font-weight:700;color:var(--nuit);}
-.gtmh-login .field input{width:100%;height:50px;padding:0 14px;border:1.5px solid #CBD7E8;border-radius:12px;background:#F8FAFD;font:inherit;font-size:16px;color:var(--nuit);transition:border-color .15s,box-shadow .15s,background .15s;}
-.gtmh-login .field input:focus{outline:none;border-color:#1677E8;background:#fff;box-shadow:0 0 0 3px rgba(22,119,232,.18);}
+.gtmh-login .gtmh-scene{background:radial-gradient(70% 55% at 100% 100%,#C9DBF4 0%,rgba(201,219,244,0) 70%),radial-gradient(60% 40% at 100% 0%,#D2E1F6 0%,rgba(210,225,246,0) 70%),linear-gradient(180deg,#EEF3FA,#E1EAF6);}
+.gtmh-login .gtmh-centre{align-items:center;justify-content:center;gap:26px;padding:20px 0;}
+.gtmh-login-carte{position:relative;width:100%;max-width:470px;padding:34px 40px 36px;background:#fff;border:1px solid #C9D7EA;border-radius:22px;box-shadow:0 24px 56px rgba(11,31,58,.20),0 2px 6px rgba(11,31,58,.08);overflow:hidden;}
+.gtmh-login-carte::before{content:'';position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,#0B3A78,#1677E8 55%,#F2A33A);}
+.gtmh-login-carte .gtmh-entete{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid #E3EAF4;}
+.gtmh-login-carte .gtmh-entete .gtmh-wm b{font-size:30px;}
+.gtmh-login-carte .gtmh-entete .gtmh-wm-arc{height:22px;}
+.gtmh-login-carte .gtmh-entete-soc{font-size:13.5px;letter-spacing:1px;margin-top:6px;color:#3C4E68;}
+.gtmh-login-carte h1{font-size:28px;margin:0;color:#0B1F3A;}
+.gtmh-login-carte .gtmh-qui{margin:6px 0 22px;font-size:15.5px;color:#4A5B73;}
+.gtmh-login .field{margin-bottom:16px;text-align:left;}
+.gtmh-login .field label{display:block;margin-bottom:7px;font-size:15px;font-weight:700;color:#0B1F3A;}
+.gtmh-login .gtmh-champ{position:relative;}
+.gtmh-login .gtmh-champ-ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);display:inline-flex;color:#5A6F8E;pointer-events:none;}
+.gtmh-login .field input{width:100%;height:54px;padding:0 14px 0 46px;border:2px solid #AFC2DC;border-radius:12px;background:#F7FAFE;font:inherit;font-size:17px;color:#0B1F3A;transition:border-color .15s,box-shadow .15s,background .15s;}
+.gtmh-login .field input::placeholder{color:#8A9AB2;}
+.gtmh-login .field input:focus{outline:none;border-color:#1677E8;background:#fff;box-shadow:0 0 0 4px rgba(22,119,232,.18);}
 .gtmh-login .pw-field{position:relative;}
-.gtmh-login .pw-field input{padding-right:50px;}
-.gtmh-login .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;color:#44546A;background:transparent;}
+.gtmh-login .pw-field input{padding-right:52px;}
+.gtmh-login .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;color:#3C4E68;background:transparent;}
 .gtmh-login .pw-toggle:hover{background:#EEF4FC;}
-.gtmh-login .gtmh-login-btn{width:100%;height:52px;margin-top:6px;border:0!important;border-radius:12px!important;background:linear-gradient(180deg,#2389F5,#1468D8)!important;color:#fff!important;font-size:17px!important;font-weight:700!important;box-shadow:0 8px 18px rgba(22,119,232,.30)!important;}
-.gtmh-login .gtmh-login-btn:hover{background:linear-gradient(180deg,#1A7DEB,#0F5BC2)!important;}
-.gtmh-login .login-error{margin-bottom:14px;}
-.gtmh-login-logos{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
-.gtmh-login-logo{display:inline-flex;align-items:center;justify-content:center;width:130px;height:68px;padding:8px 12px;background:#fff;border:1px solid #DDE6F2;border-radius:14px;box-shadow:0 4px 12px rgba(11,31,58,.08);}
-.gtmh-login-logo img{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:50px!important;object-fit:contain;}
-.gtmh-login-soc{margin:0;font-size:13px;letter-spacing:1.6px;}
-@media (min-width:900px) and (max-height:800px){ .gtmh-login-carte{padding:22px 30px 24px;} .gtmh-login-carte .gtmh-entete{margin-bottom:10px;} .gtmh-login .field input{height:46px;} .gtmh-login-logo{height:58px;} }
-@media (max-width:899px){ .gtmh-login .gtmh-scene{min-height:auto;} .gtmh-login-carte{padding:22px 18px 24px;border-radius:16px;} .gtmh-login-carte .gtmh-entete{display:none;} }
-@media (max-width:640px){ .gtmh-login-logo{width:100px;height:56px;} }
+.gtmh-login .gtmh-login-btn{width:100%;height:56px;margin-top:8px;border:0!important;border-radius:12px!important;background:linear-gradient(180deg,#1F82F0,#0F5BC2)!important;color:#fff!important;font-size:18px!important;font-weight:700!important;letter-spacing:.3px;box-shadow:0 10px 22px rgba(15,91,194,.35)!important;}
+.gtmh-login .gtmh-login-btn:hover{background:linear-gradient(180deg,#1677E8,#0B4FAD)!important;}
+.gtmh-login .login-error{margin-bottom:16px;}
+.gtmh-login-groupe{width:100%;max-width:700px;}
+.gtmh-login-titre{display:flex;align-items:center;gap:14px;margin-bottom:14px;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3C4E68;}
+.gtmh-login-titre::before,.gtmh-login-titre::after{content:'';flex:1 1 0;height:1px;background:#B9C9DF;}
+.gtmh-login-logos{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;}
+.gtmh-login-logo{flex:1 1 0;min-width:0;max-width:220px;display:flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #C9D7EA;border-radius:16px;box-shadow:0 8px 20px rgba(11,31,58,.12);overflow:hidden;transition:transform .15s,box-shadow .15s;}
+.gtmh-login-logo:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(11,31,58,.18);}
+.gtmh-login-logo-img{display:flex;align-items:center;justify-content:center;width:100%;height:118px;padding:14px 16px;}
+.gtmh-login-logo img{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:88px!important;object-fit:contain;}
+.gtmh-login-logo i{display:block;width:100%;height:5px;}
+.gtmh-login-logo b{display:block;width:100%;padding:8px 6px 10px;font-size:13px;font-weight:700;letter-spacing:1.6px;text-align:center;color:#0B1F3A;background:#F4F7FC;}
+.gtmh-login-pied{font-size:12.5px;color:#5A6F8E;letter-spacing:.4px;}
+@media (min-width:900px) and (max-height:800px){ .gtmh-login .gtmh-centre{gap:16px;padding:8px 0;} .gtmh-login-carte{padding:24px 34px 26px;} .gtmh-login-carte .gtmh-entete{margin-bottom:12px;padding-bottom:12px;} .gtmh-login-carte .gtmh-qui{margin-bottom:14px;} .gtmh-login .field{margin-bottom:12px;} .gtmh-login .field input{height:48px;} .gtmh-login .gtmh-login-btn{height:50px;} .gtmh-login-logo-img{height:92px;padding:10px 14px;} .gtmh-login-logo img{max-height:68px!important;} }
+@media (max-width:899px){ .gtmh-login .gtmh-scene{min-height:auto;} .gtmh-login-carte{padding:26px 20px 26px;border-radius:18px;} .gtmh-login-carte .gtmh-entete{display:none;} }
+@media (max-width:640px){ .gtmh-login-logos{gap:10px;} .gtmh-login-logo-img{height:80px;padding:10px;} .gtmh-login-logo img{max-height:58px!important;} .gtmh-login-logo b{font-size:10.5px;letter-spacing:.8px;padding:6px 4px 8px;} }
