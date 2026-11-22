@@ -43,8 +43,11 @@ function canon(v){
   const t = await jeton(sa), h = {Authorization: 'Bearer ' + t};
   const rd = await fetch(BASE + '/.json?format=export', {headers: h}); if(!rd.ok) erreur('Lecture de la base impossible : ' + rd.status);
   const texte = await rd.text(), base = JSON.parse(texte);
-  const rr = await fetch(BASE + '/.settings/rules.json', {headers: h}); if(!rr.ok) erreur('Lecture des règles impossible : ' + rr.status);
-  const regles = await rr.text();
+  // Règles : un compte en lecture seule (rôle « Lecteur Firebase Realtime Database ») peut ne pas avoir le
+  // droit de les lire ; la sauvegarde des DONNÉES se fait quand même, seul le contrôle des règles est sauté.
+  const rr = await fetch(BASE + '/.settings/rules.json', {headers: h});
+  const regles = rr.ok ? await rr.text() : null;
+  if(!rr.ok) console.log('::notice::Règles non lues (' + rr.status + ') : normal avec un compte en lecture seule ; données sauvegardées.');
   const jour = new Date().toISOString().slice(0, 10), dossier = path.join(process.cwd(), 'sauvegarde'); fs.mkdirSync(dossier, {recursive: true});
   const paquet = Buffer.from(JSON.stringify({version: 1, date: new Date().toISOString(), base, regles}));
   const fichier = path.join(dossier, `gtm-${jour}.json.gz.chiffre`);
@@ -56,7 +59,8 @@ function canon(v){
   // Règles en production = database.rules.v2.json ?
   const sansCommentaires = s => JSON.parse(s.replace(/^\s*\/\/.*$/mg, ''));
   const attendu = sansCommentaires(fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8'));
-  if(canon(sansCommentaires(regles)) !== canon(attendu)){
+  if(regles === null) console.log('Contrôle des règles sauté (droit de lecture des règles absent).');
+  else if(canon(sansCommentaires(regles)) !== canon(attendu)){
     console.error('::warning::Les règles en production ne correspondent pas à database.rules.v2.json : à vérifier (la sauvegarde est faite quand même).');
     fs.writeFileSync(path.join(dossier, 'ALERTE-REGLES.txt'), 'Les règles en production diffèrent de database.rules.v2.json.\n');
   } else console.log('Règles en production = database.rules.v2.json');
