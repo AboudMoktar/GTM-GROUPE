@@ -54,6 +54,11 @@ function canon(v){
   fs.writeFileSync(fichier, chiffrer(zlib.gzipSync(paquet, {level: 9}), phrase));
   // Résumé SANS donnée en clair : tailles et nombre de clés par dossier.
   const g = (base && base.groupe1) || {}, resume = Object.keys(g).sort().map(k => `${k}: ${Object.keys(g[k] || {}).length} clés, ${Math.round(JSON.stringify(g[k]).length / 1024)} Ko`);
+  // Suivi du volume (audit D1) : les plus grosses clés (noms et tailles seulement, aucune donnée).
+  const grosses = [];
+  Object.keys(g).forEach(d => { if(d === 'fichiers') return; Object.keys(g[d] || {}).forEach(c => { const t = JSON.stringify(g[d][c]).length; if(t > 100 * 1024) grosses.push([d + '/' + c, t]); }); });
+  grosses.sort((a, b) => b[1] - a[1]);
+  if(grosses.length) resume.push('', 'Plus grosses clés (hors fichiers) :', ...grosses.slice(0, 10).map(([c, t]) => `  ${c} : ${Math.round(t / 1024)} Ko`));
   fs.writeFileSync(path.join(dossier, 'resume.txt'), `Sauvegarde du ${jour}\nTaille brute : ${Math.round(texte.length / 1024)} Ko, chiffrée : ${Math.round(fs.statSync(fichier).size / 1024)} Ko\n` + resume.join('\n') + '\n');
   console.log(fs.readFileSync(path.join(dossier, 'resume.txt'), 'utf8'));
   // Règles en production = database.rules.v2.json ?
