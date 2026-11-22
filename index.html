@@ -442,7 +442,7 @@
 </script>
 <script>
 // Bibliothèques Excel (≈ 1,8 Mo) : chargées seulement au premier export / import, pas au démarrage.
-var BIBS = {exceljs:'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+var BIBS = {exceljs:'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', xlsx:'./vendor/xlsx.full.min.js'};
 var bibsPromesses = {};
 function chargerBib(nom){
   var test = nom === 'exceljs' ? function(){ return typeof ExcelJS !== 'undefined'; } : function(){ return typeof XLSX !== 'undefined'; };
