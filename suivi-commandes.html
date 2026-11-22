@@ -749,10 +749,13 @@ function centreCoupe(model){
   return "PROGES";
 }
 /* Exosquelette (22/11/2026) : tout se fait chez TEK-TREND (coupe, assemblage, confection, contrôle, emballage,
-   expédition) ; il ne passe jamais par la GADH. Ses étapes gardent les mêmes clés que les autres modèles :
+   expédition) ; il ne passe jamais par la GADH. Brassières (22/11/2026) : idem, sauf la coupe, chez MMGT. Ses étapes gardent les mêmes clés que les autres modèles :
    « gadh » = passée à l'assemblage (TEK-TREND), « asm » = en assemblage, « ret » = en confection. La GADH ne voit
    pas ces lignes (suivi, bons, fiche, rendement, facturation). */
-function horsGadh(x){ var t = x && typeof x === "object" ? (x.model || "") + " " + (x.lib || "") : String(x || ""); return /EXOSQUELETTE/i.test(t); }
+function horsGadh(x){ var t = x && typeof x === "object" ? (x.model || "") + " " + (x.lib || "") : String(x || ""); return /EXOSQUELETTE|BRASSI/i.test(t); }
+function estExo(x){ return /EXOSQUELETTE/i.test(x && typeof x === "object" ? (x.model || "") + " " + (x.lib || "") : String(x || "")); }
+function estBra(x){ return /BRASSI/i.test(x && typeof x === "object" ? (x.model || "") + " " + (x.lib || "") : String(x || "")); }
+function lotContient(lot, f){ return S.lines.some(function(l){ return l.lot === lot && f(l); }); }
 function lotAvecExo(lot){ var e = 0, n = 0; S.lines.forEach(function(l){ if (l.lot !== lot) return; n++; if (horsGadh(l)) e++; }); return !e ? "" : e === n ? "exo" : "mixte"; }
 var LIB_ORIG = null;
 function libellesExo(lot){
@@ -776,10 +779,10 @@ function libellesExo(lot){
     dp("gadh", "En assemblage", "Assemblage");
     SX_AIDE.gadh = "Comptez les pièces passées à l'assemblage (chez TEK-TREND)."; SX_AIDE.ret = "Comptez les pièces assemblées passées en confection.";
   } else if (mode === "mixte"){
-    st("gadh", "Envoyée à la GADH (exosquelette : assemblage TEK-TREND)"); st("asm", "En assemblage"); st("ret", "Revenue de l'assemblage, en confection");
-    sx("gadh", "Envoi GADH / assemblage exo");
-    dp("gadh", "Chez la GADH (exosquelette : en assemblage)", "GADH / assemb.");
-    SX_AIDE.ret = "Exosquelette seulement : comptez les pièces assemblées passées en confection (les autres modèles reviennent de la GADH).";
+    st("gadh", "Envoyée à la GADH (exosquelette, brassière : assemblage TEK-TREND)"); st("asm", "En assemblage"); st("ret", "Revenue de l'assemblage, en confection");
+    sx("gadh", "Envoi GADH / assemblage TEK");
+    dp("gadh", "Chez la GADH (exosquelette, brassière : en assemblage)", "GADH / assemb.");
+    SX_AIDE.ret = "Exosquelette et brassière seulement : comptez les pièces assemblées passées en confection (les autres modèles reviennent de la GADH).";
   }
   SX_NOM = {}; SX.forEach(function(x){ SX_NOM[x[0]] = x[1]; });
 }
@@ -917,6 +920,7 @@ function loadHost(){
   try { if (reprendreAnciensMouvements()) setTimeout(persist, 0); } catch (e) {}
   try { if (appliquerMajNomenclature()){ assurerTissus(); setTimeout(persist, 0); } } catch (e) { console.error(e); }
   try { if (retirerSousVetementsSV()) setTimeout(persist, 0); } catch (e) { console.error(e); }
+  try { if (majBrassiere()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { if (giletRenewCult()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { conditionnementsFils(); } catch (e) {}
   /* facture d'export toujours à jour, y compris après une modification faite sur un autre appareil (19/11/2026) */
@@ -1042,15 +1046,22 @@ function importNomen(sheets){
 }
 
 /* ---------- calculs ---------- */
+/* consommation de coupe d'une pièce : nomenclature de coupe, sinon nomenclature des matières (coupe MMGT ou PROGES) */
+function ccCoupe(lib, size, n){
+  if (n && n.cc) return n.cc;
+  var b = (typeof bomLignes === "function" ? bomLignes(lib, size) : []).filter(function(x){ return x.et === "MMGT" || x.et === "PROGES"; })[0];
+  return b ? b.q : 0;
+}
 function conso(lot, client){
   var nom = nomIndex(lot), rows = [], fab = {}, colle = 0;
   filtered(lot, client).forEach(function(l){
     var cut = cutQty(l.qty, l.model), n = nom[refP(l.lib, l.size)];
+    if (n && horsGadh(l)) n = Object.assign({}, n, {ca:0, ca2:0, cc:ccCoupe(l.lib, l.size, n), ccBom:!n.cc});   /* pas d'assemblage GADH */
     var r = {client:l.client, model:l.model, lib:l.lib, size:l.size, qty:l.qty, cut:cut, known:!!n, t1:"", t2:"", cc:0, ca:0, ca2:0, needC:0, needA:0, needA2:0, needColle:0};
     if (n){
       r.t1 = n.t1; r.t2 = n.t2; r.cc = n.cc; r.ca = n.ca; r.ca2 = n.ca2;
       r.needC = r2(cut*n.cc); r.needA = r2(cut*n.ca); r.needA2 = r2(cut*n.ca2); r.needColle = r2(cut*(n.colle || 0)); colle += cut*(n.colle || 0);
-      if (n.t1){ var v = fab[n.t1] || (fab[n.t1] = [0,0]); v[0] += cut*n.cc; v[1] += cut*n.ca; }
+      if (n.t1){ var v = fab[n.t1] || (fab[n.t1] = [0,0]); v[0] += n.ccBom ? 0 : cut*n.cc; v[1] += cut*n.ca; }   /* coupe lue dans la nomenclature des matières : déjà comptée par elle */
       if (n.t2){ var w = fab[n.t2] || (fab[n.t2] = [0,0]); w[1] += cut*n.ca2; }
     }
     rows.push(r);
@@ -1412,14 +1423,14 @@ function ficheGrid(lot, client, kind, compact, centre){
     var n1 = nom[refP(li.lib, li.sizes[0])] || {t1:"", t2:"", cc:0, ca:0, ca2:0};
     var t1 = n1.t1, t2 = kind === "a" ? n1.t2 : "";
     var conv = 0;
-    if (kind === "c") conv = n1.cc; else if (d.tot) conv = d.ml1 / d.tot;
+    if (kind === "c") conv = ccCoupe(li.lib, li.sizes[0], n1); else if (d.tot) conv = d.ml1 / d.tot;
     tz.forEach(function(s, i){
       var rr = r + i;
       gset(g, rr, 2, m[3], {sz:10, fg:m[6], bg:m[5], al:"l", bd:"t"});
       gset(g, rr, 3, m[4], {sz:11, fg:m[8], bg:m[7], al:"c", bd:"t"});
       gset(g, rr, 4, s, {b:1, sz:10, al:"c", bd:"t"});
       gset(g, rr, 5, d.sizes[s] ? d.sizes[s] : "", {sz:11, al:"c", bd:"t"});
-      gset(g, rr, 6, i === 0 && conv ? roundv(conv) : "", {sz:11, al:"c", bd:"t"});
+      gset(g, rr, 6, i === 0 && conv ? Math.round(conv * 1000) / 1000 : "", {sz:11, al:"c", bd:"t"});
       g.rows[rr].h = 14.1;
     });
     var tr = r + n, RT = {b:1, sz:10, fg:RED, al:"c", bd:"t"};
@@ -2181,9 +2192,10 @@ function vFiches(v){
   if (!ui.fiche) ui.fiche = "c";
   if (VUE === "gadh") ui.fiche = "a";
   var seg = el("div", {class:"seg"});
-  var FN = {c:"Coupe (PROGES)", a:"Assemblage (GADH)", x:"Exosquelette", m:"Toute la commande", t:"Total & stock"};
+  var FN = {c:"Coupe (PROGES)", a:"Assemblage (GADH)", x:"Exosquelette", b:"Brassière", m:"Toute la commande", t:"Total & stock"};
   var autresCentres = ordreParCentre(ui.lot).filter(function(x){ return x[0] !== "PROGES"; });
-  var mx = VUE === "gadh" ? "" : lotAvecExo(ui.lot), FK = mx === "exo" ? ["c","x","m","t"] : mx ? ["c","a","x","m","t"] : ["c","a","m","t"];
+  var vx = VUE !== "gadh" && lotContient(ui.lot, estExo), vb = VUE !== "gadh" && lotContient(ui.lot, estBra), va = VUE === "gadh" || lotContient(ui.lot, function(l){ return !horsGadh(l); });
+  var FK = ["c"].concat(va ? ["a"] : []).concat(vx ? ["x"] : []).concat(vb ? ["b"] : []).concat(["m","t"]);
   if (FK.indexOf(ui.fiche) < 0) ui.fiche = "c";
   FK.forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x ? "on" : "", text:FN[x], onclick:function(){ ui.fiche = x; render(); }})); });
   if (VUE !== "gadh"){ v.appendChild(seg);
@@ -2199,6 +2211,14 @@ function vFiches(v){
       el("button", {class:"btn sec small", text:"📗 Fiche " + x[0] + " (Excel)", onclick:function(){ exportFichesCentre(x[0], false); }}), el("button", {class:"btn sec small", text:"📕 Fiche " + x[0] + " (PDF)", onclick:function(){ exportFichesCentre(x[0], true); }})); })));
   if (ui.fiche === "t") return vTotal(v);
   if (ui.fiche === "m") return vFicheCommande(v);
+  if (ui.fiche === "b"){
+    var nomB = nomFichier("Consommation_BRASSIERE_" + ui.lot + "_" + today().replace(/-/g, ""));
+    v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"📗 Brassière (Excel)", onclick:function(){ saveFile(nomB + ".xlsx", xlsxBuild([{name:"BRASSIERE", grid:ficheBraGrid(ui.lot), first:1}])); }}),
+      el("button", {class:"btn sec", text:"📕 Brassière (PDF)", onclick:function(){ saveFile(nomB + ".pdf", pdfBuild([ficheBraGrid(ui.lot)])); }})));
+    v.appendChild(el("div", {class:"xlwrap tall"}, gridHTML(ficheBraGrid(ui.lot))));
+    v.appendChild(el("p", {class:"mut", text:"Consommations : Réglages › Nomenclature. Tissu : 0,6 m au total par pièce ; la fiche de coupe MMGT (onglet Coupe) garde la consommation par modèle."}));
+    return;
+  }
   if (ui.fiche === "x"){
     var nomX = nomFichier("Consommation_EXOSQUELETTE_" + ui.lot + "_" + today().replace(/-/g, "")), gx = ficheExoGrid(ui.lot);
     v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"📗 Exosquelette (Excel)", onclick:function(){ saveFile(nomX + ".xlsx", xlsxBuild([{name:"EXOSQUELETTE", grid:ficheExoGrid(ui.lot), first:1}])); }}),
@@ -2335,7 +2355,16 @@ function besoinsMatieres(lot){
   function add(ref, et, q){ if (!q) return; var x = o[ref] || (o[ref] = {tot:0}); x[et] = (x[et] || 0) + q; x.tot += q; }
   c.fabs.forEach(function(f){ var ref = refTissu(f.fabric); add(ref, "PROGES", f.coupe); add(ref, "GADH", f.ass); });
   if (c.colle) add(REF_COLLE_LEG, "GADH", c.colle);
-  c.rows.forEach(function(r){ bomLignes(r.lib, r.size).forEach(function(b){ add(b.ref, b.et, r.cut * (b.lien === "ca" ? r.ca : b.lien === "cc" ? r.cc : b.q)); }); });
+  c.rows.forEach(function(r){
+    var hg = horsGadh(r), tis = 0, refT = "";
+    bomLignes(r.lib, r.size).forEach(function(b){
+      var q = r.cut * (b.lien === "ca" ? r.ca : b.lien === "cc" ? r.cc : b.q);
+      if (estBra(r) && b.ref === BRA_TISSU){ tis += q; refT = b.ref; }
+      add(b.ref, hg && b.et === "GADH" ? "CONF" : b.et, q);   /* assemblage chez TEK-TREND */
+    });
+    /* brassière : 0,6 m de tissu au total par pièce, dont la coupe MMGT (22/11/2026) */
+    if (estBra(r) && refT && r.cut * BRA_TISSU_PC > tis) add(refT, "AUTRE", r.cut * BRA_TISSU_PC - tis);
+  });
   Object.keys(o).forEach(function(k){ var x = o[k]; Object.keys(x).forEach(function(e){ x[e] = r2(x[e]); }); });
   return o;
 }
@@ -3524,6 +3553,77 @@ function ficheExoGrid(lot){
   return g;
 }
 
+/* ---------- brassières (22/11/2026) : coupe chez MMGT, puis tout chez TEK-TREND ----------
+   Tissu : 0,6 m au total par pièce (la fiche de coupe MMGT garde sa consommation par modèle).
+   Mise à jour unique de la nomenclature des matières d'après la fiche « Consommation unitaire » du 22/11/2026 :
+   laminette 10 kg pour 3600 à 3700 pièces (0,00274 kg/pc) ; coques Santoul T54 et T56 à la place des -130 et -140. */
+var BRA_TISSU = "TIS-RENEW-CULT-NOIR", BRA_TISSU_PC = 0.6;
+var BRA_COQUES = {"BRASSIÈRE A-B":{S:"80", M:"90", L:"100", XL:"110", XXL:"120"}, "BRASSIÈRE C-D":{S:"90", M:"100", L:"110", XL:"120", XXL:"T54"},
+  "BRASSIÈRE E-F":{S:"100", M:"110", L:"120", XL:"T54", XXL:"T56"}, "BRASSIÈRE G-H":{S:"110", M:"120", L:"T54", XL:"T56", XXL:"T56"}};
+function refCoque(c){ return /^T/.test(c) ? "ACC-COQUES-SANTOUL-" + c : "ACC-COQUES-P152SQ10-" + c; }
+function majBrassiere(){
+  S.ajouts = S.ajouts || {};
+  if (S.ajouts.brassiere20261122 || VUE === "gadh" || lectureSeule() || !S.bom) return false;
+  S.mat = S.mat || {};
+  ["T54", "T56"].forEach(function(t){ if (!S.mat[refCoque(t)]) S.mat[refCoque(t)] = ["Coques Santoul " + t + " (1 pc = 1 paire)", "Accessoire", "pièce"]; });
+  var n = 0;
+  Object.keys(BRA_COQUES).forEach(function(lib){
+    var B = S.bom[lib]; if (!B) return;
+    B.forEach(function(b){
+      if (b[0] === "ACC-LAMINETTE-GOMME-0-5-6MM-S004" && b[2] !== 0.00274){ b[2] = 0.00274; n++; }
+      if (/^ACC-COQUES-/.test(b[0]) && BRA_COQUES[lib][b[1]]){ var r = refCoque(BRA_COQUES[lib][b[1]]); if (b[0] !== r){ b[0] = r; n++; } }
+    });
+  });
+  S.ajouts.brassiere20261122 = today();
+  if (n) bomJournal("Brassières (fiche du 22/11/2026) : laminette 0,00274 kg par pièce, coques Santoul T54 / T56 (" + n + " ligne(s) modifiée(s))");
+  return true;
+}
+function ficheBraDonnees(lot){
+  var lignes = S.lines.filter(function(l){ return l.lot === lot && estBra(l); }), cmd = 0, prod = 0, parMod = {}, besoin = {}, ordre = [];
+  lignes.forEach(function(l){
+    var c = cutQty(l.qty, l.model), m = String(l.lib).replace(/^BRASSI[EÈ]RE\s*/i, "") || l.lib; cmd += l.qty; prod += c;
+    var pm = parMod[m] || (parMod[m] = {cmd:0, prod:0}); pm.cmd += l.qty; pm.prod += c;
+    var tis = 0;
+    bomLignes(l.lib, l.size).forEach(function(b){ var q = c * b.q; if (b.ref === BRA_TISSU) tis += q; if (!(b.ref in besoin)) ordre.push(b.ref); besoin[b.ref] = (besoin[b.ref] || 0) + q; });
+    var tot = c * BRA_TISSU_PC; if (tot > tis){ if (!(BRA_TISSU in besoin)) ordre.unshift(BRA_TISSU); besoin[BRA_TISSU] = (besoin[BRA_TISSU] || 0) + tot - tis; }
+  });
+  var reel = stockDispo() ? sortiesLot(lot) : null;
+  var rows = ordre.map(function(r){ return {ref:r, des:artNom(r), u:artUnite(r), besoin:r2(besoin[r]), reel:reel ? r2((reel[r] || {}).tot || 0) : null}; });
+  return {cmd:cmd, prod:prod, parMod:parMod, rows:rows, reel:!!reel};
+}
+function ficheBraGrid(lot){
+  var D = ficheBraDonnees(lot), MOD = ["A-B", "C-D", "E-F", "G-H"], TZ = ["S", "M", "L", "XL", "XXL"];
+  var g = {cols:[38, 9, 11, 11, 11, 11, 3, 30, 9, 12, 12, 10], rows:[], merges:[], landscape:true, plein:true, onePage:true};
+  var T = {b:1, sz:15, fg:"1F3864", al:"c"}, H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"}, C = {sz:10, al:"c", bd:"t"}, L = {sz:10, al:"l", bd:"t"}, LB = {b:1, sz:10, al:"l", bd:"t"}, V = {sz:10, fg:"2F75B5", al:"c", bd:"t"};
+  gset(g, 0, 0, "Consommation unitaire matière brassière", T); for (var k = 1; k < 12; k++) gset(g, 0, k, "", T); gmerge(g, 0, 0, 0, 11); g.rows[0].h = 26;
+  gset(g, 1, 0, "Commande " + lot + " · " + fmt(D.cmd) + " pièce(s) commandée(s) · " + fmt(D.prod) + " à produire (avec marge) · " + MOD.filter(function(m){ return D.parMod[m]; }).map(function(m){ return m + " : " + fmt(D.parMod[m].prod); }).join(" · ") + " · coupe chez MMGT, assemblage et confection chez TEK-TREND", {sz:10, al:"l"}); gmerge(g, 1, 0, 1, 11);
+  /* à gauche : consommation unitaire (comme la fiche) */
+  ["Article", "Unité"].concat(MOD).forEach(function(h, i){ gset(g, 3, i, h, H); });
+  ["Besoin de la commande", "Unité", "Besoin", "Sorti magasin", "Écart"].forEach(function(h, i){ gset(g, 3, 7 + i, h, H); }); g.rows[3].h = 22; g.sticky = 4;
+  var r = 4;
+  function bq(mod, size, ref){ var x = bomLignes("BRASSIÈRE " + mod, size).filter(function(b){ return b.ref === ref; })[0]; return x ? x.q : null; }
+  function ligne(lab, u, vals, st){ gset(g, r, 0, lab, st || LB); gset(g, r, 1, u, C); vals.forEach(function(v, i){ gset(g, r, 2 + i, v === null || v === undefined ? "" : v, V); }); g.rows[r].h = 16; r++; }
+  ligne("Renew Cult Noir (total par pièce)", "ML", MOD.map(function(){ return BRA_TISSU_PC; }));
+  ligne("Renew Cult Noir — coupe MMGT", "ML", MOD.map(function(m){ var q = bq(m, "M", BRA_TISSU); return q === null ? null : String(q).replace(".", ","); }), L);
+  TZ.forEach(function(z, i){ ligne(i ? "" : "Agrafe (cm)", z, MOD.map(function(m){ var q = bq(m, z, "ACC-AGRAFE"); return q === null ? null : Math.round(q * 1000) / 10; })); });
+  ligne("LAMINETTE GOMME 0,5*6MM S004", "kg", MOD.map(function(m){ var q = bq(m, "M", "ACC-LAMINETTE-GOMME-0-5-6MM-S004"); return q ? "10 kg / " + fmt(Math.round(10 / q / 10) * 10) + " pcs" : null; }));
+  ligne("Attaches régleurs DH 821 doré", "pc", MOD.map(function(m){ return bq(m, "M", "ACC-ATTACHE-REGLEUR-DH821"); }));
+  ligne("Bretelle (cm, les deux)", "cm", MOD.map(function(m){ var q = bq(m, "M", "ACC-BRETELLE-TC1276-22"); return q === null ? null : Math.round(q * 1000) / 10; }));
+  var coques = {}; MOD.forEach(function(m){ TZ.forEach(function(z){ bomLignes("BRASSIÈRE " + m, z).forEach(function(b){ if (/^ACC-COQUES-/.test(b.ref) && normSize(b.sz) === z){ var c = coques[b.ref] || (coques[b.ref] = {}); (c[m] = c[m] || []).push(z); } }); }); });
+  Object.keys(coques).sort(function(a, b){ function k(x){ var m = /-T?(\d+)$/.exec(x); return (/SANTOUL/.test(x) ? 1000 : 0) + (m ? +m[1] : 0); } return k(a) - k(b); })
+    .forEach(function(ref){ ligne(artNom(ref).replace(/\s*\(1 pc = 1 paire\)/, ""), "paire", MOD.map(function(m){ return (coques[ref][m] || []).join("/") || null; }), L); });
+  ligne("Pack brassière", "pc", MOD.map(function(m){ return bq(m, "M", "PAC-PACK-BRASSIERE"); }), L);
+  /* à droite : besoin de la commande */
+  D.rows.forEach(function(x, i){
+    var rr = 4 + i; if (!g.rows[rr]) gset(g, rr, 0, "", null);
+    gset(g, rr, 7, x.des, LB); gset(g, rr, 8, x.u, C); gset(g, rr, 9, roundv(x.besoin), {b:1, sz:11, al:"c", bd:"t"});
+    gset(g, rr, 10, x.reel === null ? "" : roundv(x.reel), {b:1, sz:11, al:"c", bd:"t"});
+    var ec = x.reel ? r2(x.reel - x.besoin) : null; gset(g, rr, 11, ec === null ? "" : roundv(ec), {b:1, sz:11, al:"c", bd:"t", fg:ec > 0 ? "C00000" : ec < 0 ? "00B050" : "000000"});
+    if (!g.rows[rr].h) g.rows[rr].h = 16;
+  });
+  return g;
+}
+
 /* ---------- fiche « Consommation de toute la commande » (théorique et réel) ---------- */
 function consoCommande(lot){
   var b = besoinsMatieres(lot), s = stockDispo() ? sortiesLot(lot) : {}, refs = sortedUnique(Object.keys(b).concat(Object.keys(s)));
@@ -3536,7 +3636,7 @@ function ficheCommandeGrid(lot){
   var T = {b:1, sz:12, fg:"00B050", al:"c", bd:"m"}, H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"}, C = {sz:10, al:"c", bd:"t"}, L = {sz:10, al:"l", bd:"t"};
   gset(g, 0, 0, "Commande", T); gset(g, 0, 1, lot || "", T); gset(g, 0, 2, "Consommation de toute la commande (théorique et réel)", T);
   for (var k = 3; k < 12; k++) gset(g, 0, k, "", T); gmerge(g, 0, 2, 0, 11); g.rows[0].h = 20;
-  gset(g, 1, 0, "Théorique = quantité à couper (commande + marge) × consommation de la nomenclature · Réel = sorties du magasin − retours", {sz:9, al:"l"}); gmerge(g, 1, 0, 1, 11);
+  gset(g, 1, 0, "Théorique = quantité à couper (commande + marge) × consommation de la nomenclature · Réel = sorties du magasin − retours" + (lotContient(lot, estBra) ? " · Brassière : tissu 0,6 m au total par pièce (coupe MMGT comprise)" : ""), {sz:9, al:"l"}); gmerge(g, 1, 0, 1, 11);
   var heads = ["Famille", "Référence", "Désignation", "Unité", "Coupe PROGES", "Coupe MMGT", "Assemblage GADH", "Confection", "Emballage", "Théorique", "Réel", "Écart"];
   heads.forEach(function(h, i){ gset(g, 3, i, h, H); }); g.rows[3].h = 28; g.sticky = 4;
   var r = 4, fam = "";

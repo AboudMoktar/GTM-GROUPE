@@ -73,7 +73,9 @@ function groupes(lot){
         grilles:function(){ return [{name:c, grid:ficheGrid(lot, "*", "c", true, c)}]; }}; })).concat([
     ]).concat(lignes.some(function(l){ return typeof horsGadh === "function" && horsGadh(l); }) ? [
       {t:"Fiche de consommation exosquelette", s:"Matières par pièce, besoin de la commande, sorties du magasin, cartons de 6 pièces", o:"landscape", nom:nomFichier("Consommation_EXOSQUELETTE_" + lot + "_" + jour()),
-        grilles:function(){ return [{name:"EXOSQUELETTE", grid:ficheExoGrid(lot)}]; }}] : []).concat(lignes.some(function(l){ return !(typeof horsGadh === "function" && horsGadh(l)); }) ? [
+        grilles:function(){ return [{name:"EXOSQUELETTE", grid:ficheExoGrid(lot)}]; }}] : []).concat(lignes.some(function(l){ return typeof estBra === "function" && estBra(l); }) ? [
+      {t:"Fiche de consommation brassière", s:"Consommation unitaire par modèle et taille (agrafes, coques…), tissu 0,6 m par pièce, besoin de la commande", o:"landscape", nom:nomFichier("Consommation_BRASSIERE_" + lot + "_" + jour()),
+        grilles:function(){ return [{name:"BRASSIERE", grid:ficheBraGrid(lot)}]; }}] : []).concat(lignes.some(function(l){ return !(typeof horsGadh === "function" && horsGadh(l)); }) ? [
       {t:"Fiche d'assemblage (GADH)", s:"Quantités et tissus pour l'assemblage", o:"landscape", nom:nomFichier("Consommation_GADH_" + lot + "_" + jour()),
         grilles:function(){ return [{name:"GADH", grid:ficheGrid(lot, "*", "a", true)}]; }}] : []).concat([
       {t:"Consommation de toute la commande", s:"Tissus, colles et accessoires : théorique et réel", o:"landscape", nom:nomFichier("Consommation_COMMANDE_" + lot + "_" + jour()),
