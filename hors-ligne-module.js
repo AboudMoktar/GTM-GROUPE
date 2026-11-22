@@ -494,6 +494,8 @@ function hlCheminDansDossier(chemin, dossier){
   if(!(chemin === base || chemin.indexOf(base + '/') === 0)) return false;
   if(!type) return true;
   const cle = hlCleDepuisFirebase(chemin.slice(base.length + 1).split('/')[0]);
+  if(type === 'avant') return cle < val;
+  if(type === 'apres') return cle > val;
   return type === 'cle' ? cle === val : cle.indexOf(val) === 0;
 }
 // La clé est-elle déjà chargée (dossier entier ou source qui la couvre) ?
@@ -570,6 +572,8 @@ function hlAvecDelai(promesse, ms){
 }
 function hlDossiersAttendus(){
   const d = (typeof firebaseDossiersLisibles === 'function') ? firebaseDossiersLisibles().slice() : [];
+  // Copies locales aussi pour les clés chargées à la demande (CRM MGT utilisable hors ligne).
+  if(typeof firebaseSourcesALaDemande === 'function') firebaseSourcesALaDemande().forEach(x => d.push(x));
   if(typeof isGroupe === 'function' && isGroupe()) d.push('users_v2');
   return d;
 }
@@ -578,8 +582,17 @@ async function hlChargerCopies(){
   hlBoiteDemarrage = JSON.parse(JSON.stringify(hlBoite()));
   if(!firebaseConfigured() || !currentUser || !currentUser.uid) return;
   const dossiers = hlDossiersAttendus();
-  await Promise.all(dossiers.map(d => hlAvecDelai(hlIdb('readonly', st => st.get(hlCleCopie(d))), 3000).then(rec => {
-    if(rec && rec.data && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, hlDossierDepuisFirebase(rec.data, false), false);
+  const lire = d => hlAvecDelai(hlIdb('readonly', st => st.get(hlCleCopie(d))), 3000).catch(() => null);
+  await Promise.all(dossiers.map(d => lire(d).then(async rec => {
+    let donnees = rec && rec.data;
+    // Pas encore de copie pour une source découpée (ex. « mgt|avant|… » après la mise à jour du
+    // chargement à la demande) : on reprend la part qui la concerne dans l'ancienne copie du dossier entier.
+    const base = String(d).split('|')[0];
+    if(!donnees && base !== d && typeof firebaseSourceCouvre === 'function'){
+      const ancien = await lire(base);
+      if(ancien && ancien.data){ donnees = {}; Object.keys(ancien.data).forEach(k => { if(firebaseSourceCouvre(d, hlCleDepuisFirebase(k))) donnees[k] = ancien.data[k]; }); }
+    }
+    if(donnees && !hlDossiersCharges.has(d)) hlRecevoirDossier(d, hlDossierDepuisFirebase(donnees, false), false);
   }).catch(() => {})));
 }
 function hlOublierCompte(uid){

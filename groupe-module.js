@@ -87,14 +87,19 @@ function isPortail(){ return false; }
 //  - 'tek|pref|prod_2'    : toutes les clés commençant par ce préfixe.
 // Les rôles viennent de roles-config.js (même source que les règles Firebase).
 // Un ancien compte sans profil garde le fonctionnement d'avant (dossiers entiers).
+// Grosses clés chargées SEULEMENT quand on en a besoin (audit D1 : quota de téléchargement Firebase) :
+// la liste du CRM MGT (catalogue d'articles, ~3,5 Mo) n'est téléchargée qu'à l'ouverture du CRM.
+// Un dossier lu en entier est alors écouté en deux morceaux (« avant » et « après » cette clé),
+// et la clé elle-même est une source « à la demande » (voir firebaseChargerALaDemande, index.html).
+const FB_CLE_A_LA_DEMANDE = {mgt: 'mgt_crm_listing'};
 function firebaseDossiersLisibles(){
   const R = window.GTM_ROLES, p = currentUser && currentUser.profil;
   if(R && p && R.ROLES[p]){
     const out = [];
     ['tek', 'gadh', 'liaison', 'mgt'].forEach(d => {
-      const s = R.sourcesLecture(p, d);
-      if(s === 'tout') out.push(d);
-      else if(s){ s.cles.forEach(c => out.push(d + '|cle|' + c)); s.prefixes.forEach(x => out.push(d + '|pref|' + x)); }
+      const s = R.sourcesLecture(p, d), lourde = FB_CLE_A_LA_DEMANDE[d];
+      if(s === 'tout'){ if(lourde){ out.push(d + '|avant|' + lourde); out.push(d + '|apres|' + lourde); } else out.push(d); }
+      else if(s){ s.cles.forEach(c => { if(c !== lourde) out.push(d + '|cle|' + c); }); s.prefixes.forEach(x => out.push(d + '|pref|' + x)); }
     });
     return out;
   }
@@ -107,7 +112,20 @@ function firebaseDossiersLisibles(){
 function firebaseSourceCouvre(source, cle){
   const [, type, val] = String(source).split('|');
   if(!type) return true;
+  if(type === 'avant') return String(cle) < val;
+  if(type === 'apres') return String(cle) > val;
   return type === 'cle' ? cle === val : String(cle).indexOf(val) === 0;
+}
+// Sources « à la demande » que ce compte a le droit de lire (ex. « mgt|cle|mgt_crm_listing »).
+function firebaseSourcesALaDemande(){
+  const R = window.GTM_ROLES, p = currentUser && currentUser.profil;
+  if(!(R && p && R.ROLES[p])) return [];
+  const out = [];
+  Object.keys(FB_CLE_A_LA_DEMANDE).forEach(d => {
+    const s = R.sourcesLecture(p, d), c = FB_CLE_A_LA_DEMANDE[d];
+    if(s === 'tout' || (s && (s.cles.indexOf(c) >= 0 || s.prefixes.some(x => c.indexOf(x) === 0)))) out.push(d + '|cle|' + c);
+  });
+  return out;
 }
 
 // --- Navigation : société → module ---
