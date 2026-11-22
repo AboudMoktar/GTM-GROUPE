@@ -115,9 +115,16 @@ function qteExport(e){ var q = 0; e.cartons.forEach(function(c){ q += qteCarton(
 function lotsExport(e){ var o = {}; e.cartons.forEach(function(c){ c.it.forEach(function(x){ var i = infoItem(x); if (i.lot) o[i.lot] = 1; }); }); return Object.keys(o).sort(); }
 function lotsDeCarton(c){ var o = {}; c.it.forEach(function(x){ var i = infoItem(x); if (i.lot) o[i.lot] = 1; }); return Object.keys(o).sort(); }
 /* poids brut d'un carton : saisi à la main, sinon automatique (carton plein de 90 pièces : 18 kg ; sinon 12 kg) */
-function poidsAuto(q){ return q > 0 ? (q >= 90 ? 18 : 12) : 0; }
+/* exosquelette (22/11/2026) : 6 pièces par carton, 8 kg brut le carton plein ; un carton incomplet au prorata */
+var EXO_PAR_CARTON = 6, EXO_KG_CARTON = 8;
+function exoDans(items){ var q = 0; (items || []).forEach(function(x){ if (/EXOSQUELETTE/i.test(infoItem(x).lib || "")) q += x[1] || 0; }); return q; }
+function poidsAuto(q, items){
+  var exo = Math.min(q, exoDans(items)), autres = q - exo;
+  var kg = (autres > 0 ? (autres >= 90 ? 18 : 12) : 0) + (exo > 0 ? Math.round(exo * EXO_KG_CARTON / EXO_PAR_CARTON * 10) / 10 : 0);
+  return q > 0 ? kg : 0;
+}
 function aPoidsSaisi(c){ return c.kg !== null && c.kg !== undefined && c.kg !== ""; }
-function poidsDe(e, c){ return aPoidsSaisi(c) ? (+c.kg || 0) : poidsAuto(qteCarton(c)); }
+function poidsDe(e, c){ return aPoidsSaisi(c) ? (+c.kg || 0) : poidsAuto(qteCarton(c), c.it); }
 function fmtKg(x){ x = Math.round((+x || 0) * 10) / 10; return fmt(x, x % 1 ? 1 : 0); }
 function lireKg(v){ v = String(v === null || v === undefined ? "" : v).trim().replace(",", "."); return v === "" ? null : (parseFloat(v) || 0); }
 
@@ -423,7 +430,7 @@ function ficheExport(v, e, arch){
     var b = el("div", {class:"xp-carton"},
       el("div", {class:"t"}, el("span", {class:"num", text:"📦 Carton N°" + c.n}), el("span", {class:"xp-cq", text:fmt(qc) + " pcs · " + fmtKg(poidsDe(e, c)) + " kg"})));
     resumeCarton(c).forEach(function(x){ b.appendChild(x); });
-    var kgIn = el("input", {type:"number", step:"0.1", min:"0", inputmode:"decimal", class:"xp-kg", value:aPoidsSaisi(c) ? String(c.kg) : "", placeholder:String(poidsAuto(qc)), title:"Vide = automatique (90 pièces : 18 kg ; sinon 12 kg)"});
+    var kgIn = el("input", {type:"number", step:"0.1", min:"0", inputmode:"decimal", class:"xp-kg", value:aPoidsSaisi(c) ? String(c.kg) : "", placeholder:String(poidsAuto(qc, c.it)), title:"Vide = automatique (90 pièces : 18 kg ; sinon 12 kg ; exosquelette : 8 kg pour 6 pièces)"});
     kgIn.addEventListener("change", function(){ commit(function(){ c.kg = lireKg(kgIn.value); }, "Poids du carton N°" + c.n + " : " + fmtKg(poidsDe(e, c)) + " kg"); });
     var comIn = el("input", {type:"text", class:"xp-cin", value:c.com || "", placeholder:"Commentaire (facultatif)"});
     comIn.addEventListener("change", function(){ commit(function(){ c.com = comIn.value.trim(); }, "Commentaire du carton N°" + c.n + " enregistré"); });
@@ -442,7 +449,7 @@ function ficheExport(v, e, arch){
     lst.appendChild(b);
   });
   cc.appendChild(lst);
-  if (e.cartons.length) cc.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-top:4px", text:"Poids vide = automatique : 18 kg pour un carton de 90 pièces, sinon 12 kg."}));
+  if (e.cartons.length) cc.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-top:4px", text:"Poids vide = automatique : 18 kg pour un carton de 90 pièces, sinon 12 kg ; exosquelette : 8 kg pour un carton de 6 pièces."}));
   v.appendChild(cc);
   /* documents */
   if (e.cartons.length) v.appendChild(docsCard(e));
@@ -665,8 +672,9 @@ function editeurCarton(v, e){
   /* poids : automatique (90 pièces : 18 kg ; sinon 12 kg) tant qu'on ne le change pas */
   var kgI = el("input", {type:"number", inputmode:"decimal", step:"0.1", min:"0", class:"xp-kg"}), kgInfo = el("div", {class:"mut", style:"font-size:12.5px;margin-top:4px"});
   var kgAuto = el("button", {class:"btn small sec", text:"Automatique", onclick:function(){ E.kg = ""; majKg(); }});
-  function majKg(){ var a = E.kg === ""; if (a) kgI.value = poidsAuto(total()) ? String(poidsAuto(total())) : ""; kgAuto.style.display = a ? "none" : "";
-    kgInfo.textContent = a ? "Automatique : 18 kg pour 90 pièces, sinon 12 kg. Changez le chiffre si besoin." : "Poids saisi à la main."; }
+  function majKg(){ var a = E.kg === ""; var pa = poidsAuto(total(), E.it), nx = exoDans(E.it); if (a) kgI.value = pa ? String(pa) : ""; kgAuto.style.display = a ? "none" : "";
+    kgInfo.textContent = (a ? (nx ? "Automatique : exosquelette 8 kg pour un carton de 6 pièces. Changez le chiffre si besoin." : "Automatique : 18 kg pour 90 pièces, sinon 12 kg. Changez le chiffre si besoin.") : "Poids saisi à la main.") +
+      (nx > EXO_PAR_CARTON ? " ⚠ " + nx + " exosquelettes : un carton en contient 6." : ""); }
   kgI.addEventListener("input", function(){ E.kg = kgI.value; majKg(); });
   if (E.kg !== "") kgI.value = E.kg;
   majs.push(majKg); majKg();
@@ -1198,5 +1206,5 @@ function docsCard(e){
   return c;
 }
 /* pour les tests */
-window.pkExports = {colisageGridX:colisageGridX, grilleHtml:grilleHtml, grlCss:function(){ return GRL_CSS; }, piecesFacture:piecesFacture, demandeFacture:demandeFacture, factureGrid:factureGrid, facturerExport:facturerExport, titreFichier:titreFichier, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
+window.pkExports = {poidsAuto:poidsAuto, colisageGridX:colisageGridX, grilleHtml:grilleHtml, grlCss:function(){ return GRL_CSS; }, piecesFacture:piecesFacture, demandeFacture:demandeFacture, factureGrid:factureGrid, facturerExport:facturerExport, titreFichier:titreFichier, numerosManquants:numerosManquants, numeroLibre:numeroLibre, renumeroterCartons:renumeroterCartons, supprimerCartonExport:supprimerCartonExport, mvtsOrphelins:mvtsOrphelins, suiviCommande:suiviCommande, clientsColonnes:clientsColonnes, rattacher:rattacher, aRattacher:aRattacher, ligneDe:ligneDe, dispoLigne:dispoLigne, enregistrerCartonExport:enregistrerCartonExport, supprimerCartonExport:supprimerCartonExport, validerExport:validerExport, rouvrirExport:rouvrirExport, supprimerExport:supprimerExport, colisExport:colisExport, totalDonneesExport:totalDonneesExport, colisageHtml:colisageHtml, totalHtml:totalHtml, colisageGridX:colisageGridX, totalGridX:totalGridX, totalCommandeGrid:totalCommandeGrid, recapTotalGrid:recapTotalGrid, etatCommandeGrid:etatCommandeGrid, imprimerX:imprimerX, GRL_CSS:GRL_CSS, nomDocX:nomDocX, grilleExports:grilleExports, grilleHtml:grilleHtml, pdfDoc:pdfDoc, excelDoc:excelDoc, feuillesDoc:feuillesDoc, poidsAuto:poidsAuto, poidsDe:poidsDe};
 })();

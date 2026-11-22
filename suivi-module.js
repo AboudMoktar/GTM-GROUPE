@@ -167,13 +167,20 @@ function suiviNotifier(){
 // --- Indicateurs pour l'écran direction (lecture seule) ---
 // Une commande (lot) est en cours tant que tout n'est pas expédié et qu'elle
 // n'a pas été clôturée avec écart.
+// Exosquelette (22/11/2026) : tout se fait chez TEK-TREND, jamais à la GADH. Ses étapes « gadh » / « ret »
+// (assemblage et confection chez TEK-TREND) ne comptent ni pour la GADH (rendement, lots chez la GADH) ni dans
+// la facture d'assemblage GADH → TEK-TREND.
+function suiviHorsGadh(model, lib){ return /EXOSQUELETTE/i.test(String(model || '') + ' ' + String(lib || '')); }
 function suiviResume(){
   const docs = suiviLireDocs();
   const lots = (docs.cfg && docs.cfg.lots) || {};
-  const qte = {}, lotDeLigne = {}, etapes = {}, ch2 = {};
+  const qte = {}, qteG = {}, lotDeLigne = {}, exo = {}, etapes = {}, etapesG = {}, ch2 = {};
   Object.keys(docs).forEach(id => {
     const d = docs[id];
-    if(id.indexOf('lines-') === 0) (d.lines || []).forEach(a => { lotDeLigne[a[0]] = d.lot; qte[d.lot] = (qte[d.lot] || 0) + (a[6] || 0); });
+    if(id.indexOf('lines-') === 0) (d.lines || []).forEach(a => {
+      lotDeLigne[a[0]] = d.lot; qte[d.lot] = (qte[d.lot] || 0) + (a[6] || 0);
+      if(suiviHorsGadh(a[3], a[4])) exo[a[0]] = 1; else qteG[d.lot] = (qteG[d.lot] || 0) + (a[6] || 0);
+    });
   });
   Object.keys(docs).forEach(id => {
     const d = docs[id];
@@ -182,6 +189,7 @@ function suiviResume(){
       const lot = lotDeLigne[m[2]]; if(!lot) return;
       const e = etapes[lot] || (etapes[lot] = {});
       e[m[3]] = (e[m[3]] || 0) + (m[4] || 0);
+      if(!exo[m[2]]){ const eg = etapesG[lot] || (etapesG[lot] = {}); eg[m[3]] = (eg[m[3]] || 0) + (m[4] || 0); }
       if(m[9]) ch2[lot] = (ch2[lot] || 0) + (m[6] || 0);   // 2e choix : retiré de la commande
     });
   });
@@ -189,13 +197,13 @@ function suiviResume(){
     const e = etapes[lot] || {}, info = lots[lot] || {}, q = Math.max(0, qte[lot] - (ch2[lot] || 0));
     // 20/11/2026 : avancement = pièces contrôlées conformes (les pièces emballées ou expédiées l'ont été), au plus la commande
     const avance = Math.min(q, Math.max(e.ctl || 0, e.emb || 0, e.exp || 0));
-    return {lot, qte:q, etapes:e, avance, pct:q > 0 ? Math.min(100, Math.round(avance / q * 100)) : 0, enCours: !info.closed && Math.max(0, q - (e.exp || 0)) > 0};
+    return {lot, qte:q, qteGadh:qteG[lot] || 0, etapes:e, etapesGadh:etapesG[lot] || {}, avance, pct:q > 0 ? Math.min(100, Math.round(avance / q * 100)) : 0, enCours: !info.closed && Math.max(0, q - (e.exp || 0)) > 0};
   });
 }
 function suiviCommandesEnCours(){ return suiviResume().filter(l => l.enCours).length; }
 // Côté GADH : lots dont des pièces envoyées à la GADH ne sont pas encore revenues.
 function suiviLotsChezGadh(){
-  return suiviResume().filter(l => l.enCours && (l.etapes.gadh || 0) > (l.etapes.ret || 0)).length;
+  return suiviResume().filter(l => l.enCours && (l.etapesGadh.gadh || 0) > (l.etapesGadh.ret || 0)).length;
 }
 
 // --- Rendement GADH ---
@@ -224,7 +232,7 @@ function suiviRetoursParRefDuJour(dateISO){
     if(id.indexOf('moves-') !== 0) return;
     (docs[id].moves || []).forEach(m => {
       if(m[1] !== dateISO || m[3] !== 'ret') return;
-      const l = lignes[m[2]]; if(!l) return;
+      const l = lignes[m[2]]; if(!l || suiviHorsGadh(l.model, l.lib)) return;
       const k = suiviCleRef(l.lib);
       parRef[k] = (parRef[k] || 0) + (m[4] || 0) + (m[6] || 0); // retournées = conformes + NC
     });
@@ -234,9 +242,9 @@ function suiviRetoursParRefDuJour(dateISO){
 }
 // Lots en cours vus par la GADH : pièces commandées et pièces déjà retournées.
 function suiviLotsPourGadh(){
-  return suiviResume().filter(l => l.enCours).map(l => ({
-    id:'pk:' + l.lot, numero:l.lot, total:l.qte, retourFait:l.etapes.ret || 0,
-    pct: l.qte > 0 ? Math.min(100, Math.round((l.etapes.ret || 0) / l.qte * 100)) : 0
+  return suiviResume().filter(l => l.enCours && l.qteGadh > 0).map(l => ({
+    id:'pk:' + l.lot, numero:l.lot, total:l.qteGadh, retourFait:l.etapesGadh.ret || 0,
+    pct: l.qteGadh > 0 ? Math.min(100, Math.round((l.etapesGadh.ret || 0) / l.qteGadh * 100)) : 0
   }));
 }
 
@@ -251,6 +259,7 @@ function suiviMouvementsParRef(etape, du, au){
       if(m[3] !== etape || m[1] < du || m[1] > au) return;
       if(/^Historique/.test(m[5] || '')) return;   // commande importée déjà expédiée : facturée à part (factures déjà émises)
       const l = lignes[m[2]]; if(!l) return;
+      if(etape === 'ret' && suiviHorsGadh(l.model, l.lib)) return;   // exosquelette : confection chez TEK-TREND, pas d'assemblage GADH à facturer
       const k = suiviCleRef(l.lib);
       const r = parRef[k] || (parRef[k] = {lib:l.lib, model:l.model, qte:0});
       r.qte += (m[4] || 0);

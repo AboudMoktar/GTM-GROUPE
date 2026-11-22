@@ -53,7 +53,7 @@ function notifLotsStagnants(){
   suiviResume().filter(l => l.enCours).forEach(l => {
     const d = dernier[l.lot]; if(!d) return;
     const jours = Math.floor((auj - new Date(d).getTime()) / 86400000);
-    if(jours >= seuil) res.push({lot:l.lot, jours, chezGadh:(l.etapes.gadh || 0) > (l.etapes.ret || 0)});
+    if(jours >= seuil) res.push({lot:l.lot, jours, chezGadh:((l.etapesGadh || l.etapes).gadh || 0) > ((l.etapesGadh || l.etapes).ret || 0)});
   });
   return res;
 }
