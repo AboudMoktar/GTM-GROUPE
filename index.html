@@ -1487,12 +1487,35 @@ function renderShell(){
       </div>
       <main id="main"></main>
       <div class="bottomnav no-print${items.length <= 1 ? ' bn-seul' : ''}">
-        ${items.filter(i=>i.bas!==false).map(i=>navBtn(i,'',true)).join('')}
+        ${navBasHTML(items, navBtn)}
       </div>
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
   nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : activeModule === 'gadh-commandes' ? 'gc-accueil' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+}
+
+// Barre du bas du téléphone (refonte 23/11/2026) : au plus 5 boutons ; au-delà, les 4 premiers
+// et « Plus », qui ouvre les autres onglets. Les onglets du « Plus » restent dans la page (cachés)
+// pour que l'onglet actif soit repéré comme les autres.
+const NAV_BAS_MAX = 5;
+function navBasHTML(items, navBtn){
+  const bas = items.filter(i => i.bas !== false);
+  if(bas.length <= NAV_BAS_MAX || bas.some(i => i.court === 'Plus')) return bas.map(i => navBtn(i, '', true)).join('');
+  const vus = bas.slice(0, NAV_BAS_MAX - 1), reste = bas.slice(NAV_BAS_MAX - 1);
+  window.navBasReste = reste;
+  return vus.map(i => navBtn(i, '', true)).join('') +
+    `<button class="bn-plus" onclick="navBasPlus()" aria-label="Autres onglets"><span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span><span>Plus</span></button>` +
+    `<div class="bn-reste" hidden>${reste.map(i => `<i data-tab="${esc(i.tab)}"></i>`).join('')}</div>`;
+}
+function navBasPlus(){
+  const reste = window.navBasReste || [];
+  if(typeof mgtModal !== 'function'){ if(reste[0]) nav(reste[0].tab); return; }
+  mgtModal('Autres onglets', `<div class="bn-feuille">${reste.map(i => `<button class="bn-f${i.tab === activeTab ? ' on' : ''}" onclick="mgtFermer(); ${i.onclick ? i.onclick : `nav('${i.tab}')`}"><span class="bn-f-ic">${i.icon}</span><span class="bn-f-l">${esc(i.label)}</span><span class="bn-f-c">›</span></button>`).join('')}</div>`);
+}
+function navBasMarquer(tab){
+  const pl = document.querySelector('.bottomnav .bn-plus');
+  if(pl) pl.classList.toggle('active', !!document.querySelector(`.bottomnav .bn-reste [data-tab="${tab}"]`));
 }
 
 function nav(tab){
@@ -1510,6 +1533,7 @@ function nav(tab){
   activeTab = tab;
   document.querySelectorAll('.bottomnav button, .sidebar nav button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b => b.classList.add('active'));
+  navBasMarquer(tab);
   const main = document.getElementById('main');
   
   if(tab === 'dashboard') renderDashboard(main);
@@ -3121,6 +3145,7 @@ window.onload = init;
 <link rel="stylesheet" href="./multiplateforme.css">
 <link rel="stylesheet" href="./accueil.css">
 <link rel="stylesheet" href="./modules-charte.css">
+<link rel="stylesheet" href="./refonte.css">
 <script>
 // Bandeau « nouvelle version prête » : l'utilisateur choisit le moment (rien n'est rechargé sans lui).
 function gtmProposerMiseAJour(){

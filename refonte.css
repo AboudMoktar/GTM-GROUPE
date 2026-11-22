@@ -1,0 +1,156 @@
+/* =====================================================================
+   GTM GROUPE — REFONTE DE L'INTERFACE (23/11/2026)
+   ---------------------------------------------------------------------
+   Chargé en dernier (après charte.css, multiplateforme.css, accueil.css et
+   modules-charte.css). Présentation seule : aucune règle métier, aucun droit,
+   aucune donnée ne dépend de ce fichier.
+   - Même identité pour TEK-TREND, GADH TUNISIA et MGT : colonne bleu nuit
+     « GTM GROUPE », bleu électrique pour l'action, logos officiels inchangés.
+   - Lisibilité d'atelier : textes plus grands, contrastes nets, zones tactiles
+     de 44 px sur téléphone, chiffres alignés.
+   - Compatible Chrome 109 (Windows 7) et Firefox ESR 115 : ni color-mix(),
+     ni :has(), ni :is() / :where(), ni CSS imbriqué, ni @container.
+   - Thème sombre : seules les formes changent, pas les couleurs.
+   ===================================================================== */
+
+/* ---------- 1. Jetons ---------- */
+:root{
+  --rf-radius:14px; --rf-radius-sm:10px;
+  --rf-ombre:0 1px 2px rgba(11,31,58,.04),0 6px 18px rgba(11,31,58,.05);
+  --rf-ombre-haute:0 10px 30px rgba(11,31,58,.12);
+  --rf-anneau:0 0 0 3px rgba(22,119,232,.22);
+  --rf-ease:cubic-bezier(.2,.7,.2,1);
+}
+html[data-soc]:not([data-theme="dark"]){
+  --rf-ligne:#E3E9F2; --rf-ligne-forte:#C9D5E5; --rf-fond-th:#F4F7FB; --rf-zebre:#FAFBFD; --rf-survol:#F1F6FE;
+}
+html[data-theme="dark"]{ --rf-ligne:var(--border); --rf-ligne-forte:var(--border-strong); --rf-fond-th:var(--surface-2); --rf-zebre:transparent; --rf-survol:var(--surface-2); --rf-anneau:0 0 0 3px rgba(96,165,250,.30); }
+
+/* ---------- 2. Titres de page et sections ---------- */
+main .flex-header h2, main > h2{font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.2;}
+main .flex-header{gap:12px; flex-wrap:wrap;}
+@media (max-width:1023px){ main .flex-header h2, main > h2{font-size:20px;} }
+main .card > h2, main .card > h3:first-child{letter-spacing:-.01em;}
+main .card > h2{font-size:16.5px; font-weight:700;}
+
+/* ---------- 3. Cartes ---------- */
+html[data-soc] main .card{border-radius:var(--rf-radius); box-shadow:var(--rf-ombre);}
+html[data-soc]:not([data-theme="dark"]) main .card{border-color:var(--rf-ligne);}
+@media (min-width:1024px){ html[data-soc] main .card{padding:18px 22px;} }
+
+/* ---------- 4. Boutons ---------- */
+html[data-soc] main .btn{min-height:42px; border-radius:var(--rf-radius-sm) !important; font-weight:650; letter-spacing:.005em;
+  transition:background-color .15s var(--rf-ease),border-color .15s var(--rf-ease),box-shadow .15s var(--rf-ease),transform .08s var(--rf-ease);}
+html[data-soc] main .btn:active{transform:translateY(1px);}
+html[data-soc] main .btn:focus-visible{outline:none; box-shadow:var(--rf-anneau) !important;}
+html[data-soc]:not([data-theme="dark"]) main .btn-ghost:hover{background:var(--rf-survol) !important; border-color:#9DB6D8 !important;}
+@media (max-width:1023px){ html[data-soc] main .btn{min-height:44px;} }
+
+/* ---------- 5. Champs de saisie ---------- */
+html[data-soc] main .field input, html[data-soc] main .field select, html[data-soc] main .field textarea{min-height:42px; border-radius:var(--rf-radius-sm); font-size:15px;}
+html[data-soc]:not([data-theme="dark"]) main .field input, html[data-soc]:not([data-theme="dark"]) main .field select, html[data-soc]:not([data-theme="dark"]) main .field textarea{border-color:var(--rf-ligne-forte);}
+html[data-soc] main .field input:focus, html[data-soc] main .field select:focus, html[data-soc] main .field textarea:focus{border-color:var(--accent); box-shadow:var(--rf-anneau);}
+html[data-soc] main .field label{font-size:13px !important; color:var(--ink-soft) !important;}
+html[data-soc] main input::placeholder, html[data-soc] main textarea::placeholder{color:#8A98AD;}
+
+/* ---------- 6. Tableaux ---------- */
+html[data-soc] main table th{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; background:var(--rf-fond-th); color:var(--ink-soft); border-bottom:1px solid var(--rf-ligne);}
+html[data-soc] main table td{border-bottom:1px solid var(--rf-ligne);}
+html[data-soc]:not([data-theme="dark"]) main table tbody tr:nth-child(even) td{background-color:var(--rf-zebre);}
+html[data-soc] main table tbody tr:hover td{background-color:var(--rf-survol);}
+html[data-soc] main table td.num, html[data-soc] main table th.num{text-align:right; font-variant-numeric:tabular-nums;}
+
+/* ---------- 7. Badges et pastilles ---------- */
+html[data-soc] main .badge{font-weight:700; padding:4px 10px;}
+
+/* ---------- 8. Menu latéral : repères plus nets ---------- */
+@media (min-width:1024px){
+  html[data-soc]:not([data-theme="dark"]) .sidebar nav button{transition:background-color .15s var(--rf-ease);}
+  html[data-soc]:not([data-theme="dark"]) .sidebar nav button:focus-visible{outline:2px solid #8EC2FF; outline-offset:2px;}
+}
+
+/* ---------- 9. Barre du haut (téléphone) : plus d'espace pour le titre ---------- */
+@media (max-width:480px){
+  .topbar .user-chip .uname{display:none !important;}
+  .topbar .user-chip .user-menu-btn{padding:2px !important;}
+}
+
+/* ---------- 10. Barre du bas (téléphone) ---------- */
+@media (max-width:1023px){
+  .bottomnav{box-shadow:0 -6px 20px rgba(11,31,58,.07);}
+  .bottomnav button{min-height:56px; gap:3px;}
+  .bottomnav span{font-size:11px !important; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  .bottomnav button .nav-icon-wrap{display:flex; align-items:center; justify-content:center; width:44px; height:28px; border-radius:14px; transition:background-color .15s var(--rf-ease);}
+  html:not([data-theme="dark"]) .bottomnav button.active .nav-icon-wrap{background:#E8F1FD;}
+  .bottomnav button.active::before{display:none;}
+  .bottomnav .bn-plus svg{width:22px; height:22px;}
+}
+/* feuille « Plus » */
+.bn-feuille{display:flex; flex-direction:column; gap:6px;}
+.bn-f{display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--ink); font:inherit; font-size:15.5px; font-weight:650; text-align:left; cursor:pointer;}
+.bn-f:hover{background:var(--surface-2);}
+.bn-f.on{border-color:var(--accent); background:var(--accent-bg);}
+.bn-f-ic{display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px; background:var(--accent-bg); color:var(--accent); flex:0 0 36px;}
+.bn-f-ic svg{width:20px; height:20px;}
+.bn-f-l{flex:1;}
+.bn-f-c{color:var(--ink-faint); font-size:20px;}
+
+/* ---------- 10 bis. Petits indicateurs (kpi-mini) : jamais de texte illisible ---------- */
+html[data-soc] main .kpi-mini{min-height:84px; padding:10px 6px; gap:4px;}
+html[data-soc] main .kpi-mini-lbl{font-size:11.5px; line-height:1.2;}
+html[data-soc] main .kpi-mini-sub{font-size:10.5px;}
+@media (max-width:1023px){ html[data-soc] main .kpi-mini-val{font-size:19px;} }
+
+/* ---------- 11. États vides ---------- */
+html[data-soc] main .empty-state{padding:28px 16px;}
+html[data-soc] main .empty-state .es-title{font-size:15.5px;}
+
+/* ---------- 12. Pointage RH ---------- */
+/* en-tête toujours visible pendant le défilement de la liste */
+@media (min-width:1024px){
+  html[data-soc] main .ptg-entete{position:sticky; top:calc(var(--top-h) + 8px); z-index:5;}
+  html[data-soc]:not([data-theme="dark"]) main .ptg-entete{box-shadow:0 8px 24px rgba(11,31,58,.08);}
+}
+.ptg-actions .btn{font-size:14px !important; min-height:44px;}
+.ptg-cpt{min-height:58px; transition:transform .08s var(--rf-ease),border-color .15s var(--rf-ease);}
+.ptg-cpt b{font-size:22px !important;}
+.ptg-cpt span{font-size:12px !important;}
+.ptg-e{min-height:38px; font-size:12.5px !important; transition:background-color .12s var(--rf-ease),border-color .12s var(--rf-ease),color .12s var(--rf-ease);}
+.ptg-e:hover{border-color:var(--ink-faint);}
+.ptg-nom{font-size:15px !important;}
+.ptg-badge{font-size:12px !important;}
+@media (max-width:1023px){ .ptg-e{min-height:44px;} }
+/* grand écran : une ligne par salarié (nom, état, heures, actions), lecture d'un coup d'œil */
+@media (min-width:1280px){
+  html[data-soc] main .ptg-liste{display:flex !important; flex-direction:column; gap:6px;}
+  html[data-soc] main .ptg-liste > .rh-poi-row, html[data-soc] main .ptg-liste .ptg-carte{width:100%; box-sizing:border-box;}
+  html[data-soc] main .ptg-carte{display:grid; grid-template-columns:minmax(230px,1.1fr) minmax(430px,2fr) minmax(250px,1.2fr) auto; grid-template-areas:"tete etats heures pied" "tete aut aut pied"; align-items:center; column-gap:16px; row-gap:4px; padding:8px 12px;}
+  html[data-soc] main .ptg-carte > .ptg-tete{grid-area:tete;}
+  html[data-soc] main .ptg-carte > .ptg-etats{grid-area:etats; margin-top:0;}
+  html[data-soc] main .ptg-carte > .ptg-heures{grid-area:heures; margin-top:0;}
+  html[data-soc] main .ptg-carte > .ptg-aut{grid-column:2 / 4; margin-top:2px;}
+  html[data-soc] main .ptg-carte > .ptg-pied{grid-area:pied; margin-top:0; justify-content:flex-end; flex-wrap:nowrap;}
+  html[data-soc] main .ptg-carte > .ptg-info{grid-column:2 / 5; margin-top:0;}
+  html[data-soc] main .ptg-carte > .ptg-lien{grid-column:4; justify-self:end;}
+  html[data-soc] main .ptg-carte .ptg-pied-a{margin-left:0;}
+}
+
+/* ---------- 13. Suivi des commandes (cadre) : téléphone ---------- */
+/* Le cadre s'arrête au-dessus de la barre du bas, ses onglets restent entièrement visibles. */
+@media (max-width:1023px){
+  html[data-soc] main .suivi-frame{border-radius:0; margin:-6px -5px 0; width:calc(100% + 10px);
+    height:calc(100vh - 56px - 63px); height:calc(100dvh - 56px - 63px - env(safe-area-inset-bottom,0px)); min-height:380px;}
+}
+
+/* ---------- 14. Mouvement réduit ---------- */
+@media (prefers-reduced-motion:reduce){
+  html[data-soc] main .btn, .ptg-e, .ptg-cpt, .bottomnav button .nav-icon-wrap{transition:none !important;}
+  html[data-soc] main .btn:active{transform:none;}
+}
+
+/* ---------- 15. Impression : rien de la refonte ---------- */
+@media print{
+  html[data-soc] main .card{box-shadow:none !important;}
+  html[data-soc] main table tbody tr:nth-child(even) td{background:none !important;}
+  html[data-soc] main .ptg-entete{position:static !important;}
+}
