@@ -167,10 +167,10 @@ function suiviNotifier(){
 // --- Indicateurs pour l'écran direction (lecture seule) ---
 // Une commande (lot) est en cours tant que tout n'est pas expédié et qu'elle
 // n'a pas été clôturée avec écart.
-// Exosquelette (22/11/2026) : tout se fait chez TEK-TREND, jamais à la GADH. Ses étapes « gadh » / « ret »
+// Exosquelette et brassières (22/11/2026) : assemblage et confection chez TEK-TREND, jamais à la GADH. Ses étapes « gadh » / « ret »
 // (assemblage et confection chez TEK-TREND) ne comptent ni pour la GADH (rendement, lots chez la GADH) ni dans
 // la facture d'assemblage GADH → TEK-TREND.
-function suiviHorsGadh(model, lib){ return /EXOSQUELETTE/i.test(String(model || '') + ' ' + String(lib || '')); }
+function suiviHorsGadh(model, lib){ return /EXOSQUELETTE|BRASSI/i.test(String(model || '') + ' ' + String(lib || '')); }
 function suiviResume(){
   const docs = suiviLireDocs();
   const lots = (docs.cfg && docs.cfg.lots) || {};
