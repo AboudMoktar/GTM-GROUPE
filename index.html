@@ -640,6 +640,37 @@ function initFirebase(){
 // groupe-module.js) : on ne s'abonne qu'aux dossiers que le compte peut lire,
 // sinon les règles Firebase refuseraient toute la lecture.
 let fbListenRefs = [];
+let fbSourcesEcoutees = new Set();
+function refSourceFirebase(d){
+  const [dos, type, val] = d.split('|');
+  if(!type) return fbRootRef.child(dos);
+  if(type === 'cle') return fbRootRef.child(dos + '/' + val);
+  if(type === 'avant') return fbRootRef.child(dos).orderByKey().endBefore(val);
+  if(type === 'apres') return fbRootRef.child(dos).orderByKey().startAfter(val);
+  return fbRootRef.child(dos).orderByKey().startAt(val).endAt(val + '\uf8ff');
+}
+function ecouterSourceFirebase(d, onError){
+  if(fbSourcesEcoutees.has(d)) return;
+  fbSourcesEcoutees.add(d);
+  const ref = refSourceFirebase(d);
+  fbListenRefs.push(ref);
+  ref.on('value', function(snap){
+    const [, typeSrc, valSrc] = d.split('|');
+    const brut = typeSrc === 'cle' ? (snap.exists() ? {[valSrc]: snap.val()} : {}) : (snap.val() || {});
+    // Remet les données dans leur forme d'origine (voir hlPourFirebase / hlDepuisFirebase
+    // dans hors-ligne-module.js : noms de clés convertis, données du CRM MGT en un bloc).
+    const data = (typeof hlDossierDepuisFirebase === 'function') ? hlDossierDepuisFirebase(brut, true) : brut;
+    if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier(d, data, true);
+    else Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
+    onFirebaseData();
+  }, onError || function(err){ console.error('Erreur Firebase (lecture) :', err); setSyncBadge('error'); });
+}
+// Grosses clés chargées à la demande (audit D1), par exemple la liste du CRM MGT à l'ouverture du CRM.
+function firebaseChargerALaDemande(){
+  if(!firebaseReady || !fbRootRef || !currentUser || typeof firebaseSourcesALaDemande !== 'function') return;
+  firebaseSourcesALaDemande().forEach(d => ecouterSourceFirebase(d));
+}
+window.firebaseChargerALaDemande = firebaseChargerALaDemande;
 function attachFirebaseDataListeners(){
   if(!firebaseReady || !fbRootRef) return;
   setSyncBadge('connecting');
@@ -648,26 +679,12 @@ function attachFirebaseDataListeners(){
     setSyncBadge('error');
   };
   const dossiers = firebaseDossiersLisibles();
-  // Dossier entier, ou seulement les clés autorisées au rôle (clé exacte ou préfixe) :
+  fbSourcesEcoutees = new Set();
+  // Dossier entier, ou seulement les clés autorisées au rôle (clé exacte ou préfixe), ou un dossier
+  // découpé autour d'une grosse clé chargée à la demande (« avant » / « après ») :
   // les règles Firebase refusent toute lecture plus large.
-  fbListenRefs = dossiers.map(d => {
-    const [dos, type, val] = d.split('|');
-    if(!type) return fbRootRef.child(dos);
-    if(type === 'cle') return fbRootRef.child(dos + '/' + val);
-    return fbRootRef.child(dos).orderByKey().startAt(val).endAt(val + '\uf8ff');
-  });
-  fbListenRefs.forEach(function(ref, i){
-    ref.on('value', function(snap){
-      const [, typeSrc, valSrc] = dossiers[i].split('|');
-      const brut = typeSrc === 'cle' ? (snap.exists() ? {[valSrc]: snap.val()} : {}) : (snap.val() || {});
-      // Remet les données dans leur forme d'origine (voir hlPourFirebase / hlDepuisFirebase
-      // dans hors-ligne-module.js : noms de clés convertis, données du CRM MGT en un bloc).
-      const data = (typeof hlDossierDepuisFirebase === 'function') ? hlDossierDepuisFirebase(brut, true) : brut;
-      if(typeof hlRecevoirDossier === 'function') hlRecevoirDossier(dossiers[i], data, true);
-      else Object.keys(data).forEach(function(k){ memoryCache[CACHE_PREFIX+k] = data[k]; });
-      onFirebaseData();
-    }, onError);
-  });
+  dossiers.forEach(d => ecouterSourceFirebase(d, onError));
+  if(activeModule === 'mgt') firebaseChargerALaDemande();
   if(canManageAccounts()){
     // Liste des comptes, pour l'écran "Comptes & Sessions" (administrateur seulement).
     const usersRef = fbRootRef.child('users_v2');
@@ -1420,6 +1437,7 @@ function appBrandingHTML(){
 }
 function renderShell(){
   if(activeModule === 'mgt'){
+    firebaseChargerALaDemande();   // liste du CRM (catalogue) téléchargée seulement maintenant
     // Fond du cadre pendant le chargement du CRM : celui du thème choisi dans le CRM (même
     // réglage, même appareil). Il était toujours sombre, d'où un écran sombre bref avant
     // l'affichage du CRM en thème clair.
