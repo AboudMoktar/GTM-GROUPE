@@ -4,3 +4,9 @@ pdfjs-dist           3.11.174   licence Apache-2.0
 tesseract.js         5.1.1      licence Apache-2.0
 tesseract.js-core    5.1.1      licence Apache-2.0
 fra.traineddata      4.0.0      licence Apache-2.0 (tessdata_best)
+
+Lecture et écriture des fichiers Excel (index.html à la demande, suivi-commandes.html) :
+SheetJS (xlsx)       0.20.3     licence Apache-2.0 — fichier dist/xlsx.full.min.js d'origine, tel que republié sur npm
+                                (@e965/xlsx@0.20.3, avec attestation de provenance SLSA ; le site officiel cdn.sheetjs.com
+                                ne publie plus sur npm). Remplace 0.18.5 (failles CVE-2023-30533 et CVE-2024-22363).
+                                SHA-256 : voir vendor/xlsx.full.min.js.sha256
