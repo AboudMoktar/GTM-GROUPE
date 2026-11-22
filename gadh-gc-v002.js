@@ -250,7 +250,7 @@ window.gcvEncaisser = () => {
 };
 function gcvAnneau(p){
   const v = p === null || p === undefined ? 0 : p, r = 42, c = 2 * Math.PI * r;
-  return `<svg viewBox="0 0 100 100" width="118" height="118"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="${c * Math.max(0, Math.min(100, v)) / 100} ${c}" transform="rotate(-90 50 50)"/><text x="50" y="49" text-anchor="middle" font-size="18" font-weight="800" fill="#fff">${p === null || p === undefined ? '—' : gcPct(p).replace(' %', '') + ' %'}</text><text x="50" y="62" text-anchor="middle" font-size="7.5" fill="#fff" opacity=".85">taux de</text><text x="50" y="71" text-anchor="middle" font-size="7.5" fill="#fff" opacity=".85">marque</text></svg>`;
+  return `<svg viewBox="0 0 100 100" width="118" height="118"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="${c * Math.max(0, Math.min(100, v)) / 100} ${c}" transform="rotate(-90 50 50)"/><text x="50" y="49" text-anchor="middle" font-size="18" font-weight="800" fill="#fff">${p === null || p === undefined ? '—' : gcPct(p).replace(' %', '') + ' %'}</text><text x="50" y="62" text-anchor="middle" font-size="7.5" fill="#fff" opacity=".85">taux de</text><text x="50" y="71" text-anchor="middle" font-size="7.5" fill="#fff" opacity=".85">marge</text></svg>`;
 }
 const GCV_MOIS = ['Janv', 'Févr', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct.', 'Nov.', 'Déc.'];
 function gcvBarres(parMois, an){
