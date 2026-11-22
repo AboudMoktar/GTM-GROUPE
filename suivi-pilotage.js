@@ -85,8 +85,17 @@ var ETAPES_GADH = [
   ["ret", "Retournée à TEK-TREND (assemblée)", "Retour TEK-TREND", "#1f9254"]
 ];
 var G = false, ETAPES = ETAPES_TEK, COLS = [];
+/* exosquelette (22/11/2026) : assemblage et confection chez TEK-TREND, mêmes colonnes (voir libellesExo) */
+var LIB_TEK = ETAPES_TEK.map(function(e){ return [e[1], e[2]]; });
+function libellesEtapes(){
+  var m = window.pkModeExo || "";
+  ETAPES_TEK.forEach(function(e, i){ e[1] = LIB_TEK[i][0]; e[2] = LIB_TEK[i][1]; });
+  function f(k, t, c){ ETAPES_TEK.forEach(function(e){ if (e[0] === k){ e[1] = t; e[2] = c; } }); }
+  if (m === "exo"){ f("gadh", "Passée à l'assemblage (TEK-TREND)", "Assemblage"); f("ret", "En confection", "Confection"); }
+  else if (m === "mixte"){ f("gadh", "Passée à l'assemblage (GADH ; exosquelette : TEK-TREND)", "Assemblage"); f("ret", "Revenue de l'assemblage, en confection", "Confection"); }
+}
 function configurer(){
-  G = VUE === "gadh"; ETAPES = G ? ETAPES_GADH : ETAPES_TEK;
+  G = VUE === "gadh"; if (!G) libellesEtapes(); ETAPES = G ? ETAPES_GADH : ETAPES_TEK;
   COLS = [
   {k:"sel", t:"", w:34},
   {k:"model", t:"Modèle", w:104, txt:1, cm:1},

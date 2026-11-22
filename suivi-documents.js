@@ -71,8 +71,11 @@ function groupes(lot){
     ].concat((typeof ordreParCentre === "function" ? ordreParCentre(lot) : [["PROGES", 1]]).map(function(x){ var c = x[0];
       return {t:"Fiche de coupe (" + c + ")", s:"Quantités à couper et consommation de tissu" + (c === "TEK-TREND" ? " — coupe interne" : ""), o:"landscape", nom:nomFichier("Consommation_" + c + "_" + lot + "_" + jour()),
         grilles:function(){ return [{name:c, grid:ficheGrid(lot, "*", "c", true, c)}]; }}; })).concat([
+    ]).concat(lignes.some(function(l){ return typeof horsGadh === "function" && horsGadh(l); }) ? [
+      {t:"Fiche de consommation exosquelette", s:"Matières par pièce, besoin de la commande, sorties du magasin, cartons de 6 pièces", o:"landscape", nom:nomFichier("Consommation_EXOSQUELETTE_" + lot + "_" + jour()),
+        grilles:function(){ return [{name:"EXOSQUELETTE", grid:ficheExoGrid(lot)}]; }}] : []).concat(lignes.some(function(l){ return !(typeof horsGadh === "function" && horsGadh(l)); }) ? [
       {t:"Fiche d'assemblage (GADH)", s:"Quantités et tissus pour l'assemblage", o:"landscape", nom:nomFichier("Consommation_GADH_" + lot + "_" + jour()),
-        grilles:function(){ return [{name:"GADH", grid:ficheGrid(lot, "*", "a", true)}]; }},
+        grilles:function(){ return [{name:"GADH", grid:ficheGrid(lot, "*", "a", true)}]; }}] : []).concat([
       {t:"Consommation de toute la commande", s:"Tissus, colles et accessoires : théorique et réel", o:"landscape", nom:nomFichier("Consommation_COMMANDE_" + lot + "_" + jour()),
         grilles:function(){ return [{name:"COMMANDE", grid:ficheCommandeGrid(lot)}]; }}
     ])});

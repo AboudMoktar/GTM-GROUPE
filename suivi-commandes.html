@@ -702,7 +702,7 @@ function cutQty(q, model){
 }
 function filtered(lot, client){
   var lo = libOrder();
-  return S.lines.filter(function(l){ return (!lot || l.lot === lot) && (!client || client === "*" || l.client === client); })
+  return S.lines.filter(function(l){ return (!lot || l.lot === lot) && (!client || client === "*" || l.client === client) && !(VUE === "gadh" && horsGadh(l)); })
    .sort(function(a,b){
      if (a.lot !== b.lot) return a.lot < b.lot ? -1 : 1;
      var ia = a.lib in lo ? lo[a.lib] : 1000, ib = b.lib in lo ? lo[b.lib] : 1000;
@@ -747,6 +747,41 @@ function centreCoupe(model){
   var c = (S.centres || {})[model]; if (CENTRES_COUPE.indexOf(c) >= 0) return c;
   if (/BRASSI/i.test(model)) return "MMGT"; if (/EXOSQUELETTE/i.test(model)) return "TEK-TREND";
   return "PROGES";
+}
+/* Exosquelette (22/11/2026) : tout se fait chez TEK-TREND (coupe, assemblage, confection, contrôle, emballage,
+   expédition) ; il ne passe jamais par la GADH. Ses étapes gardent les mêmes clés que les autres modèles :
+   « gadh » = passée à l'assemblage (TEK-TREND), « asm » = en assemblage, « ret » = en confection. La GADH ne voit
+   pas ces lignes (suivi, bons, fiche, rendement, facturation). */
+function horsGadh(x){ var t = x && typeof x === "object" ? (x.model || "") + " " + (x.lib || "") : String(x || ""); return /EXOSQUELETTE/i.test(t); }
+function lotAvecExo(lot){ var e = 0, n = 0; S.lines.forEach(function(l){ if (l.lot !== lot) return; n++; if (horsGadh(l)) e++; }); return !e ? "" : e === n ? "exo" : "mixte"; }
+var LIB_ORIG = null;
+function libellesExo(lot){
+  var mode = VUE === "gadh" || !lot ? "" : lotAvecExo(lot);
+  window.pkModeExo = mode;
+  if (libellesExo.m === mode) return; libellesExo.m = mode;
+  if (!LIB_ORIG) LIB_ORIG = {st:STAGES.map(function(x){ return x[1]; }), sh:JSON.stringify(STAGE_SHORT), sx:SX.map(function(x){ return x[1]; }), en:STATE_NAMES.slice(), ss:STAGE_STATUS.slice(), dp:DP_ST.map(function(x){ return [x.nom, x.court]; }), ai:JSON.stringify(SX_AIDE)};
+  STAGES.forEach(function(x, i){ x[1] = LIB_ORIG.st[i]; }); var sh = JSON.parse(LIB_ORIG.sh); Object.keys(sh).forEach(function(k){ STAGE_SHORT[k] = sh[k]; });
+  SX.forEach(function(x, i){ x[1] = LIB_ORIG.sx[i]; }); LIB_ORIG.en.forEach(function(x, i){ STATE_NAMES[i] = x; }); LIB_ORIG.ss.forEach(function(x, i){ STAGE_STATUS[i] = x; });
+  DP_ST.forEach(function(x, i){ x.nom = LIB_ORIG.dp[i][0]; x.court = LIB_ORIG.dp[i][1]; });
+  var ai = JSON.parse(LIB_ORIG.ai); Object.keys(ai).forEach(function(k){ SX_AIDE[k] = ai[k]; });
+  function st(k, v){ STAGES.forEach(function(x){ if (x[0] === k) x[1] = v; }); }
+  function sx(k, v){ SX.forEach(function(x){ if (x[0] === k) x[1] = v; }); }
+  function dp(k, nom, court){ DP_ST.forEach(function(x){ if (x.k === k){ x.nom = nom; x.court = court; } }); }
+  if (mode === "exo"){
+    st("gadh", "Passée à l'assemblage (TEK-TREND)"); st("asm", "En assemblage (TEK-TREND)"); st("ret", "En confection");
+    STAGE_SHORT.gadh = "Assemb."; STAGE_SHORT.asm = "Assemb."; STAGE_SHORT.ret = "Confection";
+    sx("gadh", "Assemblage"); sx("ret", "Confection");
+    STATE_NAMES[2] = "Passées à l'assemblage"; STATE_NAMES[3] = "En assemblage"; STATE_NAMES[4] = "En confection";
+    STAGE_STATUS[1] = "Assemblage"; STAGE_STATUS[2] = "Assemblage"; STAGE_STATUS[3] = "En confection";
+    dp("gadh", "En assemblage", "Assemblage");
+    SX_AIDE.gadh = "Comptez les pièces passées à l'assemblage (chez TEK-TREND)."; SX_AIDE.ret = "Comptez les pièces assemblées passées en confection.";
+  } else if (mode === "mixte"){
+    st("gadh", "Envoyée à la GADH (exosquelette : assemblage TEK-TREND)"); st("asm", "En assemblage"); st("ret", "Revenue de l'assemblage, en confection");
+    sx("gadh", "Envoi GADH / assemblage exo");
+    dp("gadh", "Chez la GADH (exosquelette : en assemblage)", "GADH / assemb.");
+    SX_AIDE.ret = "Exosquelette seulement : comptez les pièces assemblées passées en confection (les autres modèles reviennent de la GADH).";
+  }
+  SX_NOM = {}; SX.forEach(function(x){ SX_NOM[x[0]] = x[1]; });
 }
 /* pièces à couper (avec marges) de chaque centre pour un lot, dans l'ordre PROGES, MMGT, TEK-TREND */
 function ordreParCentre(lot){
@@ -1354,6 +1389,7 @@ function ficheGrid(lot, client, kind, compact, centre){
   var libs = libList(), blocks = [], used = {};
   /* fiche de coupe : seulement les modèles coupés par ce centre (PROGES, MMGT ou TEK-TREND) */
   if (kind === "c"){ centre = centre || "PROGES"; libs = libs.filter(function(li){ return centreCoupe(li.model) === centre; }); }
+  if (kind === "a") libs = libs.filter(function(li){ return !horsGadh(li); });   /* fiche d'assemblage GADH : sans l'exosquelette */
   FM.forEach(function(m){ var li = libs.filter(function(l){ return l.lib === m[0]; })[0]; if (li){ blocks.push({m:m, li:li}); used[m[0]] = 1; } });
   var gx = 100;
   libs.forEach(function(li){ if (!used[li.lib]) blocks.push({m:[li.lib, li.model, li.model, li.lib, "", "FFFFFF","000000","FFFFFF","000000", gx, gx++], li:li}); });
@@ -1749,7 +1785,7 @@ var SCROLLERS = ".tw,.xlwrap";
 function render(keepScroll){
   var v = document.getElementById("view");
   var sy = v.scrollTop, sx = Array.prototype.map.call(v.querySelectorAll(SCROLLERS), function(e){ return [e.scrollLeft, e.scrollTop]; });
-  refreshSelectors(); drawTabs(); v.innerHTML = "";
+  refreshSelectors(); drawTabs(); v.innerHTML = ""; libellesExo(ui.lot);
   ({dash:vDash, cmd:vCmd, fiche:vFiches, suivi:vSuivi, flux:vFlux, exp:function(x){ if (typeof vExports === "function") vExports(x); }, doc:function(x){ if (typeof vDocuments === "function") vDocuments(x); }, stock:vStock, arch:vArch, reg:vReg})[ui.tab](v);
   if (keepScroll){ v.scrollTop = sy; Array.prototype.forEach.call(v.querySelectorAll(SCROLLERS), function(e,i){ if (sx[i]){ e.scrollLeft = sx[i][0]; e.scrollTop = sx[i][1]; } }); }
   else v.scrollTop = 0;
@@ -2145,11 +2181,13 @@ function vFiches(v){
   if (!ui.fiche) ui.fiche = "c";
   if (VUE === "gadh") ui.fiche = "a";
   var seg = el("div", {class:"seg"});
-  var FN = {c:"Coupe (PROGES)", a:"Assemblage (GADH)", m:"Toute la commande", t:"Total & stock"};
+  var FN = {c:"Coupe (PROGES)", a:"Assemblage (GADH)", x:"Exosquelette", m:"Toute la commande", t:"Total & stock"};
   var autresCentres = ordreParCentre(ui.lot).filter(function(x){ return x[0] !== "PROGES"; });
-  ["c","a","m","t"].forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x ? "on" : "", text:FN[x], onclick:function(){ ui.fiche = x; render(); }})); });
+  var mx = VUE === "gadh" ? "" : lotAvecExo(ui.lot), FK = mx === "exo" ? ["c","x","m","t"] : mx ? ["c","a","x","m","t"] : ["c","a","m","t"];
+  if (FK.indexOf(ui.fiche) < 0) ui.fiche = "c";
+  FK.forEach(function(x){ seg.appendChild(el("button", {class:ui.fiche === x ? "on" : "", text:FN[x], onclick:function(){ ui.fiche = x; render(); }})); });
   if (VUE !== "gadh"){ v.appendChild(seg);
-  v.appendChild(pager(["c","a","m","t"], ui.fiche, function(k){ ui.fiche = k; render(); }, FN[ui.fiche])); }
+  v.appendChild(pager(FK, ui.fiche, function(k){ ui.fiche = k; render(); }, FN[ui.fiche])); }
   [["c", "PROGES"], ["a", "GADH"], ["m", "Commande"]].forEach(function(k){
     if (VUE === "gadh" && k[0] !== "a") return;
     if (ui.fiche !== "t" && ui.fiche !== k[0]) return;
@@ -2161,6 +2199,14 @@ function vFiches(v){
       el("button", {class:"btn sec small", text:"📗 Fiche " + x[0] + " (Excel)", onclick:function(){ exportFichesCentre(x[0], false); }}), el("button", {class:"btn sec small", text:"📕 Fiche " + x[0] + " (PDF)", onclick:function(){ exportFichesCentre(x[0], true); }})); })));
   if (ui.fiche === "t") return vTotal(v);
   if (ui.fiche === "m") return vFicheCommande(v);
+  if (ui.fiche === "x"){
+    var nomX = nomFichier("Consommation_EXOSQUELETTE_" + ui.lot + "_" + today().replace(/-/g, "")), gx = ficheExoGrid(ui.lot);
+    v.appendChild(el("div", {class:"actions"}, el("button", {class:"btn sec", text:"📗 Exosquelette (Excel)", onclick:function(){ saveFile(nomX + ".xlsx", xlsxBuild([{name:"EXOSQUELETTE", grid:ficheExoGrid(ui.lot), first:1}])); }}),
+      el("button", {class:"btn sec", text:"📕 Exosquelette (PDF)", onclick:function(){ saveFile(nomX + ".pdf", pdfBuild([ficheExoGrid(ui.lot)])); }})));
+    v.appendChild(el("div", {class:"xlwrap tall"}, gridHTML(gx)));
+    v.appendChild(el("p", {class:"mut", text:"Consommations par pièce : Réglages › Nomenclature (exosquelette). Emballage : 6 pièces par carton, 8 kg brut le carton."}));
+    return;
+  }
   var g = ficheGrid(ui.lot, ui.client, ui.fiche);
   var tbl = gridHTML(g);
   v.appendChild(el("div", {class:"xlwrap tall"}, tbl));
@@ -3418,6 +3464,66 @@ function exportFicheClientPerckoPdf(E){
   saveFile("Etat_stock_PERCKO_" + today().replace(/-/g, "") + ".pdf", pdfBuild([g]));
 }
 
+/* ---------- fiche de consommation de l'exosquelette (22/11/2026, modèle « Consommation unitaire matière exosquelette »)
+   Consommation par pièce = nomenclature (Réglages) ; besoin = pièces à produire (commande + marge) × consommation ;
+   réel = sorties du magasin pour la commande. Emballage : 6 pièces par carton, 8 kg brut le carton. ---------- */
+var EXO_FICHE = [
+  ["Boucle", [["ACC-BOUCLE-4813", "Boucle fixe retour tenseur baudrier", "4813 - Wide Mouth sliplok 25 black", "pc"],
+    ["ACC-BOUCLE-W670", "Boucle réglage armement tenseur épaule", "W670 - Auto Spring Cam 25 black", "pc"],
+    ["ACC-BOUCLE-7169AT", "Boucle sac à dos", "7169-AT - Single Bar Duckbill 25 black", "pc"],
+    ["ACC-BOUCLE-W550-M", "Boucle acétale baudrier mâle", "W550 Champion 25 (M) black", "pc"],
+    ["ACC-BOUCLE-W552-F", "Boucle acétale baudrier femelle", "W552 Dual Champion 25 (F) black", "pc"]]],
+  ["Élastique + sangle", [["ACC-SANGLE-5825", "Sangle principale", "5825 largeur 25 couleur 920 tirant rigide", "ML"],
+    ["ACC-ELASTIQUE-5572", "Élastique tenseurs", "5572 U99 largeur 25 sangle élastique", "ML"],
+    ["ACC-AGRIPPANT-6944", "Élastique attache boucle baudrier", "6944 largeur 50 couleur 920 bande agrippante", "ML"],
+    ["ACC-BORDURE-6478", "Bordage filet", "6478 largeur 25 couleur 920 bordure pliante", "ML"],
+    ["ACC-BORDAGE-FRECCIATINO", "Bordage", "NR FRECCIATINO PEC, with 25mm black", "ML"]]],
+  ["Matière principale", [["TIS-MOUSSE-CAREFOAM43", "Mousse", "CAREFOAM 43 NOIR - 2200×1100×5 MM SHORE 43 NOIR", "Pan"],
+    ["TIS-FILET-SPIDER", "Filet", "Spider", "ML"],
+    ["TIS-3D-RED-VISEU", "3D", "Red Viseu - Laize 150cm", "ML"],
+    ["TIS-MAILLE-PVC-REGILLA6", "Maille PVC", "Regilla 6 - Laize 150cm", "ML"]]],
+  ["Emballage", [["PAC-SAC-LAVAGE", "Sac de lavage", "", "pc"], ["PAC-PACK-EXOSQUELETTE", "Pack exosquelette", "", "pc"]]]
+];
+function ficheExoDonnees(lot){
+  var lignes = S.lines.filter(function(l){ return l.lot === lot && horsGadh(l); }), cmd = 0, prod = 0, cons = {}, besoin = {};
+  lignes.forEach(function(l){
+    var c = cutQty(l.qty, l.model); cmd += l.qty; prod += c;
+    bomLignes(l.lib, l.size).forEach(function(b){ if (!(b.ref in cons)) cons[b.ref] = b.q; besoin[b.ref] = (besoin[b.ref] || 0) + c * b.q; });
+  });
+  var reel = stockDispo() ? sortiesLot(lot) : null, vus = {}, groupes = EXO_FICHE.map(function(G){
+    return {nom:G[0], rows:G[1].map(function(x){ vus[x[0]] = 1; return {ref:x[0], des:x[1], four:x[2], u:x[3], cu:x[0] in cons ? cons[x[0]] : 0, besoin:r2(besoin[x[0]] || 0), reel:reel ? r2((reel[x[0]] || {}).tot || 0) : null}; })};
+  });
+  /* matières ajoutées plus tard à la nomenclature de l'exosquelette */
+  var autres = Object.keys(cons).filter(function(r){ return !vus[r]; }).map(function(r){ return {ref:r, des:artNom(r), four:"", u:artUnite(r), cu:cons[r], besoin:r2(besoin[r] || 0), reel:reel ? r2((reel[r] || {}).tot || 0) : null}; });
+  if (autres.length) groupes.push({nom:"Autres", rows:autres});
+  return {cmd:cmd, prod:prod, cartons:Math.ceil(prod / 6), groupes:groupes, reel:!!reel};
+}
+function ficheExoGrid(lot){
+  var D = ficheExoDonnees(lot), g = {cols:[16, 34, 40, 7, 10, 12, 12, 10], rows:[], merges:[], landscape:true, plein:true, onePage:true};
+  var T = {b:1, sz:15, fg:"1F3864", al:"c"}, H = {b:1, sz:10, fg:"C00000", al:"c", wrap:1, bd:"m"}, C = {sz:10, al:"c", bd:"t"}, L = {sz:10, al:"l", bd:"t"}, LB = {b:1, sz:10, al:"l", bd:"t"}, V = {b:1, sz:10, fg:"2F75B5", al:"c", bd:"t"};
+  gset(g, 0, 0, "Consommation unitaire matière exosquelette", T); for (var k = 1; k < 8; k++) gset(g, 0, k, "", T); gmerge(g, 0, 0, 0, 7); g.rows[0].h = 26;
+  gset(g, 1, 0, "Commande " + lot + " · " + fmt(D.cmd) + " pièce(s) commandée(s) · " + fmt(D.prod) + " à produire (avec marge) · " + fmt(D.cartons) + " carton(s) de 6 pièces, " + fmt(D.cartons * 8) + " kg brut environ", {sz:10, al:"l"}); gmerge(g, 1, 0, 1, 7);
+  gset(g, 2, 0, "Besoin = pièces à produire × consommation unitaire" + (D.reel ? " · Sorti = sorties du magasin pour la commande" : ""), {sz:9, al:"l", fg:"666666"}); gmerge(g, 2, 0, 2, 7);
+  ["", "Descriptif", "Réf. fournisseur", "Unité", "Cons. unit.", "Besoin commande", "Sorti magasin", "Écart"].forEach(function(h, i){ gset(g, 3, i, h, H); }); g.rows[3].h = 26; g.sticky = 4;
+  var r = 4;
+  D.groupes.forEach(function(G){
+    var r0 = r;
+    G.rows.forEach(function(x){
+      gset(g, r, 0, r === r0 ? G.nom : "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
+      gset(g, r, 1, x.des, LB); gset(g, r, 2, x.four, L); gset(g, r, 3, x.u, C); gset(g, r, 4, roundv(x.cu), V);
+      gset(g, r, 5, roundv(x.besoin), {b:1, sz:11, al:"c", bd:"t"});
+      gset(g, r, 6, x.reel === null ? "" : roundv(x.reel), {b:1, sz:11, al:"c", bd:"t"});
+      var ec = x.reel === null ? null : r2(x.reel - x.besoin);
+      gset(g, r, 7, ec === null || !x.reel ? "" : roundv(ec), {b:1, sz:11, al:"c", bd:"t", fg:ec > 0 ? "C00000" : ec < 0 ? "00B050" : "000000"});
+      g.rows[r].h = 16; r++;
+    });
+    if (r - r0 > 1) gmerge(g, r0, 0, r - 1, 0);
+  });
+  gset(g, r, 0, "Carton", {b:1, sz:10, al:"c", bd:"t"}); gset(g, r, 1, "Carton d'expédition (6 pièces, 8 kg brut)", LB); gset(g, r, 2, "", L); gset(g, r, 3, "pc", C); gset(g, r, 4, "1/6", V);
+  gset(g, r, 5, D.cartons, {b:1, sz:11, al:"c", bd:"t"}); gset(g, r, 6, "", C); gset(g, r, 7, "", C); g.rows[r].h = 16;
+  return g;
+}
+
 /* ---------- fiche « Consommation de toute la commande » (théorique et réel) ---------- */
 function consoCommande(lot){
   var b = besoinsMatieres(lot), s = stockDispo() ? sortiesLot(lot) : {}, refs = sortedUnique(Object.keys(b).concat(Object.keys(s)));
@@ -3870,7 +3976,8 @@ function vFlux(v){
   });
   v.appendChild(pc);
   if (stage === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
-  if (stage === "ret" && VUE !== "gadh"){
+  if (stage === "ret" && VUE !== "gadh" && rows.some(horsGadh)) rows = rows.filter(horsGadh);   /* exosquelette : confection saisie chez TEK-TREND */
+  else if (stage === "ret" && VUE !== "gadh"){
     v.appendChild(el("div", {class:"card"}, el("h2", {text:"Étape 7 — Retour TEK-TREND"}), pager(["env"].concat(STG_KEYS), stage, goStage, "Étape 7 / " + (STG_KEYS.length + 3)),
       el("p", {class:"mut", text:"Le retour des pièces assemblées se saisit uniquement depuis la GADH. La confection reprend automatiquement les mêmes quantités, taille par taille."})));
     v.appendChild(bonsCard(lot, "ret"));
@@ -3944,7 +4051,7 @@ function vFlux(v){
   t.appendChild(tb);
   function gather(){ var nm = [], tq = 0, tn = 0; items.forEach(function(it){ var q = num(it.inp.value), n = num(it.inpN.value); if (!q && !n) return; var mv = {id:nid("M"), date:iDate.value || today(), lineId:it.l.id, stage:stage, qty:q, nc:n, note:note.value || ""}; if (n && iMotif.value) mv.motif = iMotif.value; nm.push(mv); tq += q; tn += n; }); return {nm:nm, tq:tq, tn:tn}; }
   function gadhAsm(nm){
-    if (!(VUE === "gadh" && stage === "ret")) return [];
+    if (stage !== "ret") return [];   /* GADH, ou confection de l'exosquelette chez TEK-TREND */
     var t0 = stageTotals(), n0 = ncTotals(), add = {}, out = [];
     nm.forEach(function(m){ add[m.lineId] = (add[m.lineId] || 0) + (m.qty || 0) + (m.nc || 0); });
     Object.keys(add).forEach(function(id){ var used = ((t0[id] || {}).ret || 0) + ((n0[id] || {}).ret || 0) + add[id], asm = (t0[id] || {}).asm || 0; if (asm < used) out.push({id:nid("M"), date:iDate.value || today(), lineId:id, stage:"asm", qty:used - asm, nc:0, note:"Assemblage (auto)"}); });
@@ -4026,7 +4133,7 @@ function statusOf(C){
 }
 function dashData(){
   var tot = stageTotals(), lots = {};
-  S.lines.forEach(function(l){ var L = lots[l.lot] || (lots[l.lot] = {lot:l.lot, year:l.year, lines:[], byc:{}}); L.lines.push(l); (L.byc[l.client] = L.byc[l.client] || []).push(l); });
+  S.lines.forEach(function(l){ if (VUE === "gadh" && horsGadh(l)) return; var L = lots[l.lot] || (lots[l.lot] = {lot:l.lot, year:l.year, lines:[], byc:{}}); L.lines.push(l); (L.byc[l.client] = L.byc[l.client] || []).push(l); });
   return Object.keys(lots).sort().reverse().map(function(k){
     var L = lots[k], ready = lotReady(k), info = S.lots[k] || {};
     var cl = Object.keys(L.byc).sort().map(function(c){ var C = sumStates(L.byc[c], tot); C.client = c; C.ready = ready; C.closed = !!info.closed; C.envoi = !!(info.envois && info.envois.length); C.st = statusOf(C); return C; });
@@ -4080,8 +4187,8 @@ function vDash(v){
 
 /* alertes d'une commande en cours : livraison (retard / proche), pièces bloquées à la GADH, commande sans mouvement */
 function lotActivite(){
-  var lm = {}, o = {}; S.lines.forEach(function(l){ lm[l.id] = l.lot; });
-  S.moves.forEach(function(m){ var lot = lm[m.lineId]; if (!lot) return; var a = o[lot] || (o[lot] = {last:"", lastG:""}); if (m.date > a.last) a.last = m.date; if ((m.stage === "gadh" || m.stage === "asm" || m.stage === "ret") && m.date > a.lastG) a.lastG = m.date; });
+  var lm = {}, o = {}, exoId = {}; S.lines.forEach(function(l){ lm[l.id] = l.lot; if (horsGadh(l)) exoId[l.id] = 1; });
+  S.moves.forEach(function(m){ var lot = lm[m.lineId]; if (!lot) return; var a = o[lot] || (o[lot] = {last:"", lastG:""}); if (m.date > a.last) a.last = m.date; if ((m.stage === "gadh" || m.stage === "asm" || m.stage === "ret") && m.date > a.lastG && !exoId[m.lineId]) a.lastG = m.date; });
   return o;
 }
 function joursDepuis(d){ return Math.round((new Date(today() + "T00:00:00") - new Date(String(d).slice(0, 10) + "T00:00:00")) / 86400000); }
@@ -4206,7 +4313,7 @@ function nomFichier(s){ return String(s).replace(/[^\w.\-]+/g, "_"); }
 /* ---------- Bons d'envoi (TEK-TREND → GADH) et de retour (GADH → TEK-TREND), un par date ---------- */
 function bonsDates(lot, stage){
   var lm = {}, o = {};
-  S.lines.forEach(function(l){ if (l.lot === lot) lm[l.id] = 1; });
+  S.lines.forEach(function(l){ if (l.lot === lot && !horsGadh(l)) lm[l.id] = 1; });   /* l'exosquelette ne passe pas par la GADH */
   S.moves.forEach(function(m){ if (m.stage !== stage || !lm[m.lineId]) return; var e = o[m.date] || (o[m.date] = {q:0, nc:0}); e.q += m.qty; e.nc += m.nc || 0; });
   return Object.keys(o).sort().reverse().filter(function(d){ return o[d].q || o[d].nc; }).map(function(d){ return {date:d, q:o[d].q, nc:o[d].nc}; });
 }
@@ -4214,7 +4321,7 @@ function bonNumero(lot, stage, date){ return (stage === "gadh" ? "BE-" : "BR-") 
 function bonGrid(lot, stage, date){
   var envoi = stage === "gadh", agg = {}, anyNc = false;
   S.moves.forEach(function(m){ if (m.stage === stage && m.date === date){ var a = agg[m.lineId] || (agg[m.lineId] = {q:0, nc:0, motifs:{}}); a.q += m.qty; a.nc += m.nc || 0; if (m.nc && m.motif) a.motifs[m.motif] = 1; } });
-  var rows = filtered(lot, "*").filter(function(l){ var a = agg[l.id]; if (a && a.nc) anyNc = true; return a && (a.q || a.nc); });
+  var rows = filtered(lot, "*").filter(function(l){ if (horsGadh(l)) return false; var a = agg[l.id]; if (a && a.nc) anyNc = true; return a && (a.q || a.nc); });
   var heads = ["Model", "Libellé", "Taille", "Client", envoi ? "Quantité envoyée" : "Quantité retournée"].concat(anyNc ? ["NC", "Motif NC"] : []);
   var nc = heads.length, last = nc - 1;
   var g = {cols:anyNc ? [17, 30, 7, 10, 11, 6, 16] : [20, 36, 8, 12, 14], rows:[], merges:[], onePage:true};
@@ -5532,7 +5639,7 @@ var SX_AUTO = {ret:"asm"};
 /* Côté TEK-TREND, ces étapes ne se saisissent pas : le retour est saisi par la GADH, la confection reprend
    les quantités retournées, le contrôle est rempli à l'emballage (cartons). */
 var SX_INFO = {ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici et partent directement en confection.", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};
-function sxEstAuto(st){ return VUE !== "gadh" && !!SX_INFO[st]; }
+function sxEstAuto(st, rows){ if (st === "ret" && rows && rows.some(horsGadh)) return false; return VUE !== "gadh" && !!SX_INFO[st]; }
 var SX_COL = {env:"#6b7a90", cp:"#c48a00", gadh:"#e07b39", ret:"#5a9a3f", conf:"#2a6f97", ctl:"#4d7fe0", emb:"#7d5ba6", exp:"#0f6b45"};
 var SX_ICO = {
   env:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
@@ -5766,7 +5873,7 @@ function sxAccueil(v, lot, rows){
   v.appendChild(el("h2", {class:"sx-titre", text:"Choisissez l'étape"}));
   var g = el("div", {class:"sx-grid"}), suiv = null;
   SX.forEach(function(x, i){
-    var st = x[0], r = sxAFaire(st, lot, rows), etat = r.a > 0 ? "go" : r.f > 0 ? "ok" : "wait", avant = st === "cp" && ready && !envoisCoupe(lot).length, auto = sxEstAuto(st);
+    var st = x[0], r = sxAFaire(st, lot, rows), etat = r.a > 0 ? "go" : r.f > 0 ? "ok" : "wait", avant = st === "cp" && ready && !envoisCoupe(lot).length, auto = sxEstAuto(st, rows);
     if (avant) etat = "wait";
     if (auto){
       g.appendChild(el("button", {class:"sx-tile auto", style:"--c:" + SX_COL[st], onclick:function(){ sxOuvrir(st); }},
@@ -5789,12 +5896,13 @@ function sxAccueil(v, lot, rows){
 
 function sxPoste(v, lot, rows, st){
   var G = VUE === "gadh", ready = lotReady(lot);
+  if (!G && st === "ret" && rows.some(horsGadh)) rows = rows.filter(horsGadh);   /* confection de l'exosquelette : saisie chez TEK-TREND */
   var hd = el("div", {class:"sx-head"});
   if (!G) hd.appendChild(el("button", {class:"sx-back", "aria-label":"Retour aux étapes", text:"←", onclick:function(){ ui.sxOpen = false; ui.fv = {}; ui.pend = null; render(); }}));
   hd.appendChild(sxIcon(st)); hd.appendChild(el("div", null, el("div", {class:"sx-nm", text:G ? "Retour à TEK-TREND" : SX_NOM[st]}), el("div", {class:"mut", text:SX_AIDE[st]})));
   v.appendChild(hd);
   if (st === "env"){ v.appendChild(envoiCoupeCard(lot, ready)); return; }
-  if (sxEstAuto(st)){
+  if (sxEstAuto(st, rows)){
     var fa = sxAFaire(st, lot, rows).f;
     v.appendChild(el("div", {class:"sx-vide"}, el("div", {class:"sx-ok", text:"⟳"}), el("div", {class:"sx-nm", text:fmt(fa) + " pièce(s)"}), el("div", {class:"mut", text:SX_INFO[st]})));
     if (st === "ret") v.appendChild(bonsCard(lot, "ret"));
@@ -5813,7 +5921,7 @@ function sxPoste(v, lot, rows, st){
     if (!G && (st === "emb" || st === "exp")) cartonsCards(lot, rows).forEach(function(c){ v.appendChild(c); });
   }
   if (!items.some(function(it){ return it.disp > 0; })){
-    var nx = null; SX.forEach(function(x, i){ if (!nx && !sxEstAuto(x[0]) && i > SX.map(function(y){ return y[0]; }).indexOf(st) && sxAFaire(x[0], lot, rows).a > 0) nx = x[0]; });
+    var nx = null; SX.forEach(function(x, i){ if (!nx && !sxEstAuto(x[0], rows) && i > SX.map(function(y){ return y[0]; }).indexOf(st) && sxAFaire(x[0], lot, rows).a > 0) nx = x[0]; });
     v.appendChild(el("div", {class:"sx-vide"}, el("div", {class:"sx-ok", text:fait ? "✓" : "…"}),
       el("div", {class:"sx-nm", text:fait ? "Rien à faire ici pour l'instant" : "Pas encore de pièces à cette étape"}),
       el("div", {class:"mut", text:fait ? fmt(fait) + " pièce(s) déjà passée(s) à cette étape." : "Les pièces arrivent ici après « " + (SX_NOM[SX_PREV[st]] || "") + " »."}),
@@ -6002,7 +6110,7 @@ function sxConfirmer(lot, st, items, val, nc){
 }
 function sxBravo(lot, st, tq, tn){
   var rows = filtered(lot, "*").filter(function(l){ return ui.fcli === "*" || !ui.fcli || l.client === ui.fcli; }), keys = SX.map(function(x){ return x[0]; }), nx = null;
-  if (VUE !== "gadh") keys.slice(keys.indexOf(st) + 1).forEach(function(k){ if (!nx && !sxEstAuto(k) && sxAFaire(k, lot, rows).a > 0) nx = k; });
+  if (VUE !== "gadh") keys.slice(keys.indexOf(st) + 1).forEach(function(k){ if (!nx && !sxEstAuto(k, rows) && sxAFaire(k, lot, rows).a > 0) nx = k; });
   ui.pend = {bravo:true};
   var box = sxModal();
   box.appendChild(el("div", {class:"sx-bravo", text:"✓"}));
