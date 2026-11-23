@@ -59,10 +59,15 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const sg = await p.evaluate(() => { const ins = document.querySelectorAll('.saisie-grille tbody tr:nth-child(1) td.input-cell input, .saisie-grille tbody tr:nth-child(2) td.input-cell input');
     const t = document.querySelector('.saisie-grille tbody tr:first-child td:first-child'); return {n: ins.length, colle: t ? getComputedStyle(t).position : '', dis: ins.length ? ins[0].disabled : true}; });
   if (sg.n) {
-    const a1 = '.saisie-grille tbody tr:nth-child(1) td:nth-child(2) input';
-    await p.focus(a1); await p.keyboard.press('Enter');
-    const desc = await p.evaluate(() => { const a = document.activeElement; return a && a.closest('tr') === document.querySelector('.saisie-grille tbody tr:nth-child(2)') && a.closest('td') === document.querySelector('.saisie-grille tbody tr:nth-child(2) td:nth-child(2)'); });
-    r.push(['saisie du rendement : Entrée passe à la case du dessous, horaires fixes à gauche', sg.dis || (desc && sg.colle === 'sticky')]);
+    // Entrée : case d'à côté ; à la fin de la ligne, première case de l'heure suivante
+    const nPostes = await p.evaluate(() => document.querySelectorAll('.saisie-grille tbody tr:nth-child(1) td.input-cell input:not([disabled])').length);
+    await p.focus('.saisie-grille tbody tr:nth-child(1) td.input-cell input'); await p.keyboard.press('Enter');
+    const cote = await p.evaluate(() => { const a = document.activeElement, l = document.querySelectorAll('.saisie-grille tbody tr:nth-child(1) td.input-cell input'); return a === l[1]; });
+    for (let k = 1; k < nPostes; k++) await p.keyboard.press('Enter');
+    const dessous = await p.evaluate(() => document.activeElement === document.querySelector('.saisie-grille tbody tr:nth-child(2) td.input-cell input'));
+    await p.keyboard.press('Shift+Enter');
+    const retour = await p.evaluate(() => { const l = document.querySelectorAll('.saisie-grille tbody tr:nth-child(1) td.input-cell input'); return document.activeElement === l[l.length - 1]; });
+    r.push(['saisie du rendement : Entrée → case d\'à côté, puis heure suivante ; Maj+Entrée revient ; horaires fixes', sg.dis || (nPostes > 1 && cote && dessous && retour && sg.colle === 'sticky')]);
   } else r.push(['saisie du rendement : grille affichée', false]);
   // factures : nombre de factures sur chaque filtre
   await p.evaluate(() => { activeSociete = 'tek'; activeModule = 'factures'; renderShell(); const l = factToutes('tek'); l.t1 = {type:'facture', numero:'FA26/900', statut:'emise', date:'2026-01-02', echeance:'2026-01-10', clientId:'', client:{nom:'Client test'}, lignes:[{designation:'x', qte:1, pu:10}], paiements:[], tva:0, timbre:0}; localStorage.setItem(CACHE_PREFIX + factCle('tek', 'factures'), JSON.stringify(l)); factFiltre = 'tous'; nav('fact-liste'); }); await p.waitForTimeout(500);

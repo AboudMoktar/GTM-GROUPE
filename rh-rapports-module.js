@@ -80,11 +80,17 @@ function rrDonnees(type, debut, fin, empId){
   }
   if(type === 'paie'){
     const prevues = jours.reduce((x, d) => x + getPlannedHoursForDate(d), 0), mois = debut.slice(0, 7), moisComplet = debut === mois + '-01' && fin === mois + '-' + String(daysInMonth(mois)).padStart(2, '0'), base = moisComplet ? getMonthlyBase(mois) : null;
+    // 23/11/2026 : une ligne par employé avec chaque jour de la période (heures travaillées, ou le code de l'absence),
+    // puis les totaux pour la paie. L'Excel ajoute une feuille par employé, jour par jour.
+    const matrice = jours.length <= 93, codes = [];
     const lignes = emps.map(([id, e]) => {
       const st = computeStatsForRange(id, debut, fin), c = st.counts, ecart = base != null ? st.heuresTravaillees - base : null;
-      return [e.matricule || '', nom(e), e.poste || '', c.present || 0, c.conge || 0, c.maladie || 0, c.autorisee || 0, (c.absent || 0) + (c.injustifiee || 0), rrNum(st.retardH), rrNum(st.autorisationH), rrNum(prevues), rrNum(st.heuresTravaillees), base != null ? rrNum(base) : '', ecart != null ? rrNum(Math.max(0, ecart)) : ''];
+      const auj = getTodayISO(), js = matrice ? jours.map(d => d > auj ? {code:'—'} : rrJour(id, d)) : [];   // jours à venir : vides
+      codes.push(js.map(j => j.code));
+      const cases = js.map(j => j.code === '—' ? '' : ['P', 'R', 'S'].indexOf(j.code) >= 0 ? rrNum(j.travaillees) : j.code);
+      return [e.matricule || '', nom(e), e.poste || ''].concat(cases).concat([c.present || 0, c.conge || 0, c.maladie || 0, c.autorisee || 0, (c.absent || 0) + (c.injustifiee || 0), rrNum(st.retardH), rrNum(st.autorisationH), rrNum(prevues), rrNum(st.heuresTravaillees), base != null ? rrNum(base) : '', ecart != null ? rrNum(Math.max(0, ecart)) : '']);
     });
-    return {ids:emps.map(([id]) => id), titre:'Rapport pour la paie — ' + per, fichier:'RH_paie_' + suffixe, entetes:['Matricule', 'Nom', 'Poste', 'Jours présents', 'Congés', 'Maladies', 'Abs. autorisées', 'Abs. non justifiées', 'Retards (h)', 'Sorties (h)', 'Heures prévues', 'Heures travaillées', 'Base mensuelle', 'Heures supp.'], lignes,
+    return {ids:emps.map(([id]) => id), titre:'Rapport pour la paie — ' + per, fichier:'RH_paie_' + suffixe, entetes:['Matricule', 'Nom', 'Poste'].concat(matrice ? jours.map(d => d.slice(8) + (jours.length > 31 ? '/' + d.slice(5, 7) : '')) : []).concat(['Jours présents', 'Congés', 'Maladies', 'Abs. autorisées', 'Abs. non justifiées', 'Retards (h)', 'Sorties (h)', 'Heures prévues', 'Heures travaillées', 'Base mensuelle', 'Heures supp.']), lignes, jours, codes: matrice ? codes : null, matrice: matrice ? {debut:3, fin:3 + jours.length - 1} : null, paie:true,
       resume:[['Effectif', emps.length], ['Période', per], ['Base mensuelle', base != null ? base + ' h' : (moisComplet ? 'non définie' : 'sans objet (période libre)')]]};
   }
   return null;
@@ -107,7 +113,8 @@ window.rrExcel = async function(type, debut, fin, empId){
     l.forEach((v, i) => {
       const c = row.getCell(i + 1); c.value = v === '' ? null : v; c.border = {top:{style:'thin', color:{argb:'FFDDDDDD'}}, bottom:{style:'thin', color:{argb:'FFDDDDDD'}}, left:{style:'thin', color:{argb:'FFDDDDDD'}}, right:{style:'thin', color:{argb:'FFDDDDDD'}}};
       const dansMatrice = D.matrice && i >= D.matrice.debut && i <= D.matrice.fin;
-      if(dansMatrice || i === D.colCode){ c.alignment = {horizontal:'center'}; const col = RR_COULEURS[v]; if(col && v) c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:col}}; if(v) c.font = {bold:true, size:10}; }
+      const cd = D.codes && dansMatrice ? D.codes[k][i - D.matrice.debut] : v;
+      if(dansMatrice || i === D.colCode){ c.alignment = {horizontal:'center'}; const col = RR_COULEURS[cd]; if(col && v !== '' && v != null) c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:col}}; if(v) c.font = {bold:true, size:10}; }
       else if(typeof v === 'number') c.alignment = {horizontal:'center'};
     });
   });
@@ -116,9 +123,22 @@ window.rrExcel = async function(type, debut, fin, empId){
   }
   const finTab = 5 + D.lignes.length + 1;
   if(D.matrice || D.colCode != null){ ws.getCell(finTab, 1).value = 'Légende : ' + Object.entries(RR_CODES).filter(([k]) => k !== '?' || D.colCode != null).map(([k, v]) => k + ' = ' + v).join(' · '); ws.getCell(finTab, 1).font = {size:9, italic:true, color:{argb:'FF667085'}}; }
-  ws.columns = D.entetes.map((h, i) => ({width: D.matrice ? (i === 0 ? 24 : i === 1 ? 16 : i <= D.matrice.fin ? 4.6 : 11) : (i === 1 ? 24 : i === 2 ? 18 : i === 10 && type === 'jour' ? 28 : 13)}));
-  ws.views = [{state:'frozen', xSplit: D.matrice ? 2 : 2, ySplit:4}];
+  ws.columns = D.entetes.map((h, i) => ({width: D.paie ? (i === 0 ? 10 : i === 1 ? 24 : i === 2 ? 14 : i <= D.matrice.fin ? 5 : 11) : D.matrice ? (i === 0 ? 24 : i === 1 ? 16 : i <= D.matrice.fin ? 4.6 : 11) : (i === 1 ? 24 : i === 2 ? 18 : i === 10 && type === 'jour' ? 28 : 13)}));
+  ws.views = [{state:'frozen', xSplit: D.paie ? 3 : 2, ySplit:4}];
   ws.pageSetup = {orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0};
+  if(D.paie && D.paie === true) D.ids.forEach(id => {   // une feuille par employé, jour par jour
+    const E = rrDonnees('emp', debut, fin, id); if(!E || !E.lignes.length) return;
+    const nomE = String((getEmployees()[id] || {}).nom || id).replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 28);
+    let nomF = nomE, n = 2; while(wb.getWorksheet(nomF)) nomF = nomE.slice(0, 25) + ' ' + (n++);
+    const w2 = wb.addWorksheet(nomF);
+    w2.getCell(1, 1).value = 'TEK-TREND — ' + E.titre; w2.getCell(1, 1).font = {bold:true, size:13, color:{argb:'FF0F3D66'}};
+    const h2 = w2.getRow(3); E.entetes.forEach((h, i) => { const c = h2.getCell(i + 1); c.value = h; c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF0F3D66'}}; c.font = {bold:true, color:{argb:'FFFFFFFF'}, size:10}; c.alignment = {horizontal:'center', vertical:'middle', wrapText:true}; });
+    E.lignes.forEach((l, k) => { const row = w2.getRow(4 + k); l.forEach((v, i) => { const c = row.getCell(i + 1); c.value = v === '' ? null : v; if(i === E.colCode && v){ c.alignment = {horizontal:'center'}; const col = RR_COULEURS[v]; if(col) c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:col}}; } }); });
+    const t = 4 + E.lignes.length; w2.getCell(t, 1).value = 'Total'; w2.getCell(t, 1).font = {bold:true};
+    [7, 8, 9].forEach(i => { w2.getCell(t, i + 1).value = rrNum(E.lignes.reduce((x, l) => x + (+l[i] || 0), 0)); w2.getCell(t, i + 1).font = {bold:true}; });
+    w2.columns = E.entetes.map((h, i) => ({width: i === 1 ? 22 : i === 10 ? 26 : 12})); w2.views = [{state:'frozen', ySplit:3}];
+    w2.pageSetup = {orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0};
+  });
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})); a.download = 'TEK-TREND_' + D.fichier + '.xlsx'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -169,8 +189,9 @@ window.rrCorrigerAut = function(empId, date, i, champ, v){
 // ---------- PDF (impression : « Enregistrer au format PDF ») ----------
 window.rrPdf = function(type, debut, fin, empId){
   const D = rrDonnees(type, debut, fin, empId); if(!D) return;
-  const mat = D.matrice, tr = D.lignes.map(l => '<tr>' + l.map((v, i) => {
-    const code = (D.colCode === i || (mat && i >= mat.debut && i <= mat.fin)) && v ? String(v) : '';
+  const mat = D.matrice, tr = D.lignes.map((l, k) => '<tr>' + l.map((v, i) => {
+    const dm = mat && i >= mat.debut && i <= mat.fin, cd = D.codes && dm ? D.codes[k][i - mat.debut] : v;
+    const code = (D.colCode === i || dm) && v !== '' && v != null && cd && cd !== '—' ? String(cd) : '';
     return '<td' + (code ? ' class="c k-' + code.replace('?', 'q') + '"' : (typeof v === 'number' ? ' class="n"' : '')) + '>' + (v === null || v === undefined ? '' : esc(String(v))) + '</td>';
   }).join('') + '</tr>').join('');
   const dense = D.entetes.length > 18;
@@ -206,7 +227,7 @@ function renderRHRapports(container){
   const D = rrDonnees(rrType, rrDeb, rrFin);
   const cellule = (v, i, k) => {
     const dansM = D.matrice && i >= D.matrice.debut && i <= D.matrice.fin, ligneJ = !!D.dates;
-    const code = (D.colCode === i || dansM) && v ? v : null;
+    const code = D.codes && dansM ? (D.codes[k][i - D.matrice.debut] === '—' ? null : D.codes[k][i - D.matrice.debut]) : (D.colCode === i || dansM) && v ? v : null;
     const clic = dansM ? ` onclick="rrCorriger('${D.ids[k]}','${D.jours[i - D.matrice.debut]}')" style="cursor:pointer;"` : '';
     return `<td class="${code ? 'rr-c rr-k-' + String(code).replace('?', 'q') : ''}${dansM ? ' rr-cl' : ''}"${clic}>${v === null || v === undefined ? '' : esc(String(v))}</td>`;
   };
@@ -226,7 +247,7 @@ function renderRHRapports(container){
       <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">${D.resume.map(r => esc(r[0]) + ' : <b>' + esc(String(r[1])) + '</b>').join(' · ')}</div>${aide}
     </div>
     <div id="rh-modal-zone"></div>
-    <div class="card" style="padding:8px;"><div class="rr-scroll"><table class="rr-t"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <div class="card" style="padding:8px;"><div class="rr-scroll"><table class="rr-t${D.paie ? ' rr-paie' : ''}"><thead><tr>${D.entetes.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>${D.lignes.length ? D.lignes.map((l, k) => `<tr${D.dates ? ` class="rr-lg" onclick="rrCorriger('${D.ids[k]}','${D.dates[k]}')"` : ''}>${l.map((v, i) => cellule(v, i, k)).join('')}</tr>`).join('') : `<tr><td colspan="${D.entetes.length}" style="padding:20px;text-align:center;color:var(--ink-soft);">Aucune donnée</td></tr>`}</tbody></table></div>
       ${(D.matrice || D.colCode != null) ? `<div style="font-size:10.5px;color:var(--ink-soft);padding:8px 4px 2px;">${Object.entries(RR_CODES).map(([k, v]) => `<b>${k}</b> ${v}`).join(' · ')}</div>` : ''}</div>`;
 }
@@ -257,7 +278,8 @@ rrCss.textContent = `
 .rr-chip.on.rr-present{background:#10b981;border-color:#10b981;color:#fff;} .rr-chip.on.rr-retard{background:#f59e0b;border-color:#f59e0b;color:#fff;} .rr-chip.on.rr-sortie{background:#eab308;border-color:#eab308;color:#fff;}
 .rr-chip.on.rr-absent{background:#ef4444;border-color:#ef4444;color:#fff;}
 .rr-types{display:flex;gap:6px;flex-wrap:wrap;} .rr-types .btn{padding:8px 12px;font-size:12.5px;}
-.rr-scroll{overflow:auto;max-height:68vh;} .rr-t{border-collapse:collapse;font-size:12px;width:100%;} .rr-t th{position:sticky;top:0;background:#0F3D66;color:#fff;padding:6px 7px;font-size:11px;white-space:nowrap;z-index:1;}
+.rr-scroll{overflow:auto;max-height:68vh;}
+.rr-paie td:nth-child(2),.rr-paie th:nth-child(2){position:sticky;left:0;z-index:2;background:var(--surface);min-width:130px;box-shadow:inset -1px 0 0 var(--border);} .rr-paie th:nth-child(2){background:#0F3D66;z-index:3;} .rr-t{border-collapse:collapse;font-size:12px;width:100%;} .rr-t th{position:sticky;top:0;background:#0F3D66;color:#fff;padding:6px 7px;font-size:11px;white-space:nowrap;z-index:1;}
 .rr-t td{border:1px solid var(--border);padding:5px 7px;white-space:nowrap;} .rr-c{text-align:center;font-weight:800;} .rr-cl:hover{outline:2px solid #0F3D66;outline-offset:-2px;} .rr-lg{cursor:pointer;} .rr-lg:hover td{background:rgba(15,61,102,.07);}
 .rr-k-P{background:#d1f5e0;color:#0a5c36;} .rr-k-R{background:#ffe3b3;color:#8a5200;} .rr-k-S{background:#fff2b3;color:#7a6200;} .rr-k-A,.rr-k-ANJ{background:#fad0cf;color:#9b1c1c;}
 .rr-k-C{background:#d6e4ff;color:#1e429f;} .rr-k-M{background:#e9d5ff;color:#6b21a8;} .rr-k-AA{background:#ffe3b3;color:#8a5200;} .rr-k-X{background:#eee;color:#444;}
