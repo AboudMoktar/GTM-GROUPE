@@ -162,3 +162,28 @@ html:not([data-theme="dark"]) .dd-side .dd-side-bas{border-top:2px solid rgba(25
   html[data-soc] main table tbody tr:nth-child(even) td{background:none !important;}
   html[data-soc] main .ptg-entete{position:static !important;}
 }
+
+/* ---------- 16. Saisie du rendement : horaires fixes à gauche, Entrée = case du dessous ---------- */
+html[data-soc] main .saisie-grille table th:first-child, html[data-soc] main .saisie-grille table td:first-child{position:sticky; left:0; z-index:2; background:var(--surface);}
+html[data-soc]:not([data-theme="dark"]) main .saisie-grille table th:first-child{background:var(--rf-fond-th);}
+html[data-soc] main .saisie-grille table td:first-child{box-shadow:inset -1px 0 0 var(--rf-ligne);}
+html[data-soc] main .saisie-grille .input-cell input{font-size:16px; font-weight:700; text-align:center; font-variant-numeric:tabular-nums; min-height:40px;}
+html[data-soc] main .saisie-grille .input-cell input:focus{border-color:var(--accent); box-shadow:var(--rf-anneau); outline:none;}
+html[data-soc] main .saisie-grille .obs-cell input{font-size:13.5px; font-weight:500; text-align:left;}
+@media (max-width:700px){ html[data-soc] main .saisie-grille table td.saisie-h{font-size:12px !important; min-width:64px;} }
+
+/* ---------- 17. Factures : filtres avec leur nombre, lignes plus lisibles ---------- */
+.fact-nb{display:inline-block; min-width:20px; padding:1px 6px; margin-left:4px; border-radius:10px; background:rgba(11,31,58,.08); font-size:11px; font-weight:800; line-height:1.5;}
+.btn-primary .fact-nb{background:rgba(255,255,255,.25);}
+@media (max-width:700px){
+  html[data-soc] main .fact-filtres{flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none;}
+  html[data-soc] main .fact-filtres::-webkit-scrollbar{display:none;}
+  html[data-soc] main .fact-filtres .fact-chip{flex:0 0 auto; min-height:40px;}
+}
+html[data-soc] main .fact-ligne{padding:12px 10px 12px 14px !important; border-left:4px solid transparent; border-radius:8px; transition:background-color .12s var(--rf-ease);}
+html[data-soc] main .fact-ligne:hover{background:var(--rf-survol);}
+html[data-soc] main .fact-ligne b{font-size:15px !important;}
+html[data-soc] main .fact-ligne[data-st="retard"]{border-left-color:#DC2626;}
+html[data-soc] main .fact-ligne[data-st="impayee"], html[data-soc] main .fact-ligne[data-st="partielle"]{border-left-color:#1677E8;}
+html[data-soc] main .fact-ligne[data-st="payee"]{border-left-color:#16A34A;}
+html[data-soc] main .fact-ligne[data-st="brouillon"]{border-left-color:#94A3B8;}

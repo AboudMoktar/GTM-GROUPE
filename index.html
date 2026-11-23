@@ -1091,6 +1091,14 @@ function computeTotals(dayData){
   return totals;
 }
 
+// Saisie du rendement : Entrée = case du dessous, comme dans Excel ; Maj+Entrée = case du dessus (refonte 23/11/2026)
+window.saisieTouche = (e) => {
+  if(e.key !== 'Enter' || !e.target || e.target.tagName !== 'INPUT') return;
+  const td = e.target.closest('td'), tr = td && td.parentElement; if(!tr) return;
+  const col = Array.prototype.indexOf.call(tr.children, td);
+  let r = e.shiftKey ? tr.previousElementSibling : tr.nextElementSibling;
+  while(r){ const c = r.children[col], i = c && c.querySelector('input:not([disabled])'); if(i){ e.preventDefault(); i.focus(); i.select(); return; } r = e.shiftKey ? r.previousElementSibling : r.nextElementSibling; }
+};
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showToast(msg){ 
   clearTimeout(toastTimer); let t=document.getElementById('toast'); if(t) t.remove(); 
@@ -2020,7 +2028,7 @@ function renderSaisie(container, date){
     let hTarget = getHourTarget(h, data);
     let hPct = hTarget > 0 ? Math.round(rTot / hTarget * 100) : 0;
     rows += `<tr>
-      <td style="font-size:11px; font-weight:600; color:var(--ink-soft);">${h.replace(' - ','<br>')}</td>
+      <td class="saisie-h" style="font-size:12.5px; font-weight:700; color:var(--ink-soft);">${h.replace(' - ','<br>')}</td>
       ${OP_KEYS.map((k, idx) => {
         const val = data.hours[h][k];
         let ph = '-';
@@ -2028,7 +2036,7 @@ function renderSaisie(container, date){
           const slotInfo = dayHoursSlots.find(s=>s.label===h);
           if(slotInfo && rhSlotExcluded(ops[idx], date, slotInfo.start, slotInfo.end)) ph = 'RH';
         }
-        return `<td class="input-cell"><input type="text" value="${val}" oninput="handleInput('${h}', '${k}', this.value)" ${disabled} placeholder="${ph}"></td>`;
+        return `<td class="input-cell"><input type="text" value="${val}" oninput="handleInput('${h}', '${k}', this.value)" ${disabled} placeholder="${ph}" enterkeyhint="next" autocomplete="off"></td>`;
       }).join('')}
       <td class="total-col" id="tot_${hId}">${rTot}<div class="hour-rend ${rendClass(hPct)}">${hPct}%</div></td>
       <td class="cumul-col" id="cumul_${hId}">${cumulGeneral}</td>
@@ -2058,8 +2066,8 @@ function renderSaisie(container, date){
         ${rhSummary.map(s => `<span class="hour-rend ${s.cls}" style="font-size:11px;">${s.opName} · ${s.label}</span>`).join('')}
       </div>` : ''}
 
-      <div style="overflow-x:auto;">
-        <table>
+      <div class="saisie-grille" style="overflow-x:auto;">
+        <table onkeydown="saisieTouche(event)">
           <thead>
             <tr><th>Horaires</th>${ops.map(o=>`<th style="text-align:center;">${o}</th>`).join('')}<th>Total/h</th><th>Cumul</th><th>Observations</th></tr>
           </thead>
@@ -2096,7 +2104,7 @@ function renderHistorique(container){
     let hTarget = getHourTarget(h, data);
     let hPct = hTarget > 0 ? Math.round(rTot / hTarget * 100) : 0;
     rows += `<tr>
-      <td style="font-size:11px; font-weight:600; color:var(--ink-soft);">${h.replace(' - ','<br>')}</td>
+      <td class="saisie-h" style="font-size:12.5px; font-weight:700; color:var(--ink-soft);">${h.replace(' - ','<br>')}</td>
       ${OP_KEYS.map(k => `<td class="hist-cell">${data.hours[h][k] || '-'}</td>`).join('')}
       <td class="total-col">${rTot}<div class="hour-rend ${rendClass(hPct)}">${hPct}%</div></td>
       <td class="cumul-col">${cumulGeneral}</td>
@@ -2189,8 +2197,8 @@ function renderHistorique(container){
       </div>
       ${dayHours.length===0 ? buildEmptyState("Jour non travaillé", "Aucun créneau n'est programmé ce jour-là (voir Paramètres → Horaires).") : (totals.totalGeneral===0 ? buildEmptyState("Aucune production enregistrée ce jour-là", "Vérifiez la date sélectionnée, ou saisissez les données si elles manquent.") : '')}
       
-      <div style="overflow-x:auto;">
-        <table>
+      <div class="saisie-grille" style="overflow-x:auto;">
+        <table onkeydown="saisieTouche(event)">
           <thead>
             <tr><th>Horaires</th>${ops.map(o=>`<th style="text-align:center;">${o}</th>`).join('')}<th>Total/h</th><th>Cumul</th><th>Observations</th></tr>
           </thead>
