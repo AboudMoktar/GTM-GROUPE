@@ -28,13 +28,58 @@ function hLireNum(n){
   if(!m || +m[2] < 1 || +m[2] > 12) return null;
   return {num:'PK' + m[1] + m[2] + '-' + (+m[3]), annee:m[1], mois:+m[2], rang:+m[3]};
 }
-function hCommandes(annee){
+function hCommandesSaisies(annee){
   return Object.entries(hDonnees().commandes).map(([id, c]) => Object.assign({id}, c, hLireNum(c.num) || {}))
     .filter(c => c.annee === annee).sort((a, b) => a.mois - b.mois || a.rang - b.rang);
 }
+// Commandes reprises du suivi des commandes (23/11/2026) : à partir de novembre 2026, les quantités viennent
+// directement des lignes du suivi (modèle, libellé, taille), 2e choix retiré. Une commande saisie à la main
+// avec le même numéro reste prioritaire. Avant novembre 2026 : saisie à la main (ci-dessous).
+const H_SUIVI_DEPUIS = '202611';
+const H_TAILLES = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL', 'TU'];
+function hCategorie(model, lib){ const t = String(model || '') + ' ' + String(lib || ''); return /EXOSQUELETTE/i.test(t) ? 'exo' : /BRASSI/i.test(t) ? 'br' : 'sv'; }
+function hCommandesSuivi(annee){
+  if(typeof suiviLignes !== 'function') return [];
+  let L; try { L = suiviLignes(); } catch(e) { return []; }
+  const ch2 = {};
+  Object.keys(L.docs).forEach(id => { if(id.indexOf('moves-') === 0) (L.docs[id].moves || []).forEach(m => { if(m[9]) ch2[m[2]] = (ch2[m[2]] || 0) + (m[6] || 0); }); });
+  const parLot = {};
+  Object.entries(L.lignes).forEach(([id, l]) => {
+    const x = hLireNum(l.lot); if(!x || x.annee !== annee || x.annee + String(x.mois).padStart(2, '0') < H_SUIVI_DEPUIS) return;
+    const q = Math.max(0, (Number(l.qty) || 0) - (ch2[id] || 0)); if(!q) return;
+    const c = parLot[x.num] || (parLot[x.num] = Object.assign({id:'suivi-' + x.num, auto:true, sv:0, br:0, exo:0, ch2:0, lignes:[]}, x));
+    c[hCategorie(l.model, l.lib)] += q; c.ch2 += ch2[id] || 0;
+    c.lignes.push({model:l.model || l.lib, lib:l.lib, size:String(l.size || '').toUpperCase(), q});
+  });
+  return Object.values(parLot);
+}
+function hCommandes(annee){
+  const saisies = hCommandesSaisies(annee), nums = new Set(saisies.map(c => c.num));
+  return saisies.concat(hCommandesSuivi(annee).filter(c => !nums.has(c.num))).sort((a, b) => a.mois - b.mois || a.rang - b.rang);
+}
+// détail d'une commande du suivi, au format de la commande Excel : modèle et libellé fusionnés, une colonne par taille
+function hDetailCommande(c){
+  const tailles = [...new Set(c.lignes.map(l => l.size))].sort((a, b) => { const i = H_TAILLES.indexOf(a), j = H_TAILLES.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || (a < b ? -1 : 1); });
+  const parModele = {};
+  c.lignes.forEach(l => { const m = parModele[l.model] || (parModele[l.model] = {}); const r = m[l.lib] || (m[l.lib] = {}); r[l.size] = (r[l.size] || 0) + l.q; });
+  const totT = {}; let totG = 0;
+  const corps = Object.keys(parModele).sort().map(mod => {
+    const libs = Object.keys(parModele[mod]).sort(); let totM = 0;
+    const lignes = libs.map((lib, i) => {
+      const r = parModele[mod][lib], t = tailles.reduce((s, z) => s + (r[z] || 0), 0); totM += t; totG += t;
+      tailles.forEach(z => { totT[z] = (totT[z] || 0) + (r[z] || 0); });
+      return `<tr>${i === 0 ? `<td class="hk-mod" rowspan="${libs.length + (libs.length > 1 ? 1 : 0)}">${esc(mod)}</td>` : ''}<td class="hk-lib">${esc(lib)}</td>${tailles.map(z => `<td class="hk-n">${r[z] ? hN(r[z]) : ''}</td>`).join('')}<td class="hk-n hk-t">${hN(t)}</td></tr>`;
+    }).join('');
+    return lignes + (libs.length > 1 ? `<tr class="hk-stot"><td class="hk-lib">Total ${esc(mod)}</td>${tailles.map(z => { const v = libs.reduce((s, lib) => s + (parModele[mod][lib][z] || 0), 0); return `<td class="hk-n">${v ? hN(v) : ''}</td>`; }).join('')}<td class="hk-n hk-t">${hN(totM)}</td></tr>` : '');
+  }).join('');
+  const mois = MOIS[c.mois - 1].charAt(0).toUpperCase() + MOIS[c.mois - 1].slice(1);
+  return `<details class="card hk-det" open><summary><b>${esc(c.num)}</b> · ${mois} ${c.annee} · ${hN(totG)} pièces <span class="hk-auto">depuis le suivi</span>${c.ch2 ? ` <span class="hk-ch2">${hN(c.ch2)} en 2e choix retirées</span>` : ''}</summary>
+    <div class="hk-scroll"><table class="hk-tab hk-mat"><thead><tr><th>Modèle</th><th>Libellé</th>${tailles.map(z => `<th class="hk-n">${esc(z)}</th>`).join('')}<th class="hk-n">Total</th></tr></thead>
+    <tbody>${corps}<tr class="hk-total"><td colspan="2">Total ${esc(c.num)}</td>${tailles.map(z => `<td class="hk-n">${hN(totT[z] || 0)}</td>`).join('')}<td class="hk-n hk-t">${hN(totG)}</td></tr></tbody></table></div></details>`;
+}
 // numéro proposé : la commande suivante (mois suivant, -1) après la dernière saisie
 function hNumSuivant(annee){
-  const l = hCommandes(annee);
+  const l = hCommandesSaisies(annee);
   if(!l.length) return 'PK' + annee + '01-1';
   const d = l[l.length - 1], m = Math.min(12, d.mois + 1);
   return 'PK' + annee + String(m).padStart(2, '0') + '-1';
@@ -77,7 +122,10 @@ function renderHistorique(main){
   const kpi = (v, l) => `<div class="card hk-kpi"><b>${v}</b><span>${l}</span></div>`;
   // regroupement par mois
   const parMois = {}; cmds.forEach(c => { (parMois[c.mois] = parMois[c.mois] || []).push(c); });
-  const ligneCmd = (c) => `<tr data-id="${c.id}">
+  const ligneCmd = (c) => c.auto ? `<tr data-id="${c.id}" class="hk-ligne-auto" title="Quantités reprises du suivi des commandes (2e choix retiré)">
+      <td><b>${esc(c.num)}</b> <span class="hk-auto">suivi</span></td>
+      ${['sv', 'br', 'exo'].map(k => `<td class="hk-n">${hN(c[k])}</td>`).join('')}
+      <td class="hk-t">${hN((+c.sv || 0) + (+c.br || 0) + (+c.exo || 0))}</td><td></td></tr>` : `<tr data-id="${c.id}">
       <td><b>${esc(c.num)}</b></td>
       ${['sv', 'br', 'exo'].map(k => `<td>${ed ? `<input class="mgt-in hk-q" type="number" min="0" step="1" inputmode="numeric" value="${+c[k] || ''}" onchange="histMajCmd('${c.id}', '${k}', this.value)">` : hN(c[k])}</td>`).join('')}
       <td class="hk-t">${hN((+c.sv || 0) + (+c.br || 0) + (+c.exo || 0))}</td>
@@ -92,7 +140,7 @@ function renderHistorique(main){
     </div>
     <div class="card">
       <h3 style="margin:0 0 4px;font-size:15px;">Commandes ${hAnnee}</h3>
-      <p style="margin:0 0 8px;font-size:12.5px;color:var(--ink-soft);">Quantités totales par commande (déjà traitées), regroupées par mois.</p>
+      <p style="margin:0 0 8px;font-size:12.5px;color:var(--ink-soft);">Quantités totales par commande, regroupées par mois. À partir de novembre 2026, les commandes viennent du suivi des commandes (« suivi ») ; avant, elles se saisissent ici.</p>
       <div class="hk-scroll"><table class="hk-tab">
         <thead><tr><th>N° commande</th><th>Sous-vêtements</th><th>Brassières</th><th>Exosquelettes</th><th>Total</th><th></th></tr></thead>
         <tbody>${tableau || `<tr><td colspan="6" class="hk-vide">Aucune commande saisie pour ${hAnnee}</td></tr>`}
@@ -105,6 +153,7 @@ function renderHistorique(main){
           <td colspan="2"><button class="btn btn-primary" style="width:100%;" onclick="histAjouterCmd()">Ajouter</button></td></tr></tfoot>` : ''}
       </table></div>
     </div>
+    ${cmds.filter(c => c.auto).map(hDetailCommande).join('')}
     <div class="card">
       <h3 style="margin:0 0 4px;font-size:15px;">Factures ${hAnnee}</h3>
       ${facts.length ? `<div class="hk-tots"><div><span>Total facturé</span><b>${hE(totF)} €</b></div><div><span>Encaissé</span><b style="color:#15803d;">${hE(totEnc)} €</b></div><div><span>Reste à encaisser</span><b style="color:${totRest > 0.004 ? '#b42318' : 'inherit'};">${hE(totRest)} €</b></div></div>` : ''}
@@ -286,6 +335,12 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-enc td{color:#15803d;border-top:1px solid var(--border)!important;} .hk-rest td{color:#b42318;border-top:1px solid var(--border)!important;}
 .hk-manq{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12);font-size:12.5px;}
 .hk-le.hk-mod td{background:rgba(22,119,232,.07);} .hk-liste input{width:100%;min-width:80px;}
+.hk-auto{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);vertical-align:1px;}
+.hk-ch2{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(245,158,11,.15);color:#92400e;}
+.hk-ligne-auto td{background:rgba(22,119,232,.035);} .hk-n{text-align:right;font-variant-numeric:tabular-nums;}
+.hk-det summary{cursor:pointer;font-size:14px;margin-bottom:8px;} .hk-mat th,.hk-mat td{border:1px solid var(--border-soft);}
+.hk-mat thead th{background:#1F3864;color:#fff;text-align:center;} .hk-mat .hk-mod{font-weight:800;text-align:center;background:var(--surface-2,#f4f6f9);}
+.hk-mat .hk-lib{white-space:nowrap;} .hk-stot td{font-weight:700;background:var(--accent-bg);}
 .hk-clic{cursor:pointer;} .hk-clic:hover td{background:var(--accent-bg);} .hk-obj{font-size:12px;color:var(--ink-soft);}
 @media (max-width:900px){ .hk-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (max-width:600px){ .hk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .hk-tab{font-size:12.5px;} .hk-tab .hk-q{min-width:58px;} #hk-num{min-width:130px;}

@@ -570,6 +570,7 @@ table.sheet td.mdl{font-size:12px}
 <script src="./enregistrer-module.js"></script>
 <script src="./suivi-exports.js"></script>
 <script src="./suivi-pilotage.js"></script>
+<script src="./suivi-fusion.js"></script>
 <script src="./suivi-documents.js"></script>
 <script src="./suivi-import-commandes.js"></script>
 <script>
@@ -623,6 +624,8 @@ var S = {lines:[], moves:[], rules:[], nomen:[], stock:{}, lots:{}, alertes:{pro
 function hostStore(){ try { return (window.parent && window.parent !== window && window.parent.grpSuiviStore) || null; } catch (e) { return null; } }
 var HOST = hostStore();
 var VUE = (/[?&]vue=gadh\b/.test(location.search) || (HOST && HOST.vue() === "gadh")) ? "gadh" : "tek";
+/* fond du module TEK-TREND : photo de l'atelier (23/11/2026) */
+if (VUE === "tek") document.documentElement.classList.add("fond-tek");
 var GADH_STG = ["ret"];
 var PC = window.innerWidth >= 800;   /* grand écran : tableaux plus lisibles (comme la version PC .exe) */
 var dirty = false;

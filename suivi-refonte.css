@@ -29,3 +29,13 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
   #app > header label + label{display:none}
   #app > header select{min-height:40px}
 }
+/* Fond TEK-TREND (23/11/2026) : photo de l'atelier, voilée pour garder les tableaux lisibles */
+html.fond-tek body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(rgba(244,246,249,.78),rgba(244,246,249,.86)),url("./fond-tek.jpg") center / cover no-repeat;}
+html.fond-tek,html.fond-tek body{background:transparent;}
+@media print{html.fond-tek body::before{display:none;}}
+/* cases « fusionnées » (modèle, référence, couleur) : pas de trait entre elles, valeur écrite une fois (suivi-fusion.js) */
+td.fz:not(.fz-bas){border-bottom-style:hidden!important;}
+td.fz:not(.fz-haut){border-top-style:hidden!important;}
+td.fz-cache{color:transparent!important;}
+td.fz-cache *{visibility:hidden;}

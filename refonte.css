@@ -352,3 +352,9 @@ html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !im
   .rd-syn-t{font-size:14px;} .rd-syn-t b{font-size:18px;}
   .rd-pied{font-size:12px;gap:8px;} .rd-pied-sep{display:none;}
 }
+/* Fond du module TEK-TREND (23/11/2026) : photo de l'atelier, voilée pour garder les écrans lisibles */
+.app-body.fond-tek::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(rgba(244,246,249,.78),rgba(244,246,249,.86)),url('./fond-tek.jpg') center / cover no-repeat;}
+body.fond-tek{background:transparent!important;}
+html[data-theme="dark"] .app-body.fond-tek::before{background:linear-gradient(rgba(11,18,32,.86),rgba(11,18,32,.92)),url('./fond-tek.jpg') center / cover no-repeat;}
+@media print{.app-body.fond-tek::before{display:none;}}
