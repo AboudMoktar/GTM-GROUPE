@@ -204,3 +204,59 @@ html[data-soc] main .fact-kpis .kpi-mini{cursor:pointer; align-items:flex-start;
 .fact-kpis .fk-alerte{border-color:#FCA5A5 !important; background:#FEF2F2 !important;} .fact-kpis .fk-alerte .fk-v, .fact-kpis .fk-alerte .fk-l{color:#B91C1C;}
 .fact-kpis .fk-ok .fk-v{color:#15803D;}
 html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !important;}
+
+/* ===== Gestion Rendement — tableau de bord (refonte du 23/11/2026) ===== */
+.rd-heure{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--surface,#fff);border:1px solid var(--border-soft,#e3e8ef);font-weight:800;font-size:14px;color:var(--accent);font-variant-numeric:tabular-nums;}
+.rd-heure svg{width:16px;height:16px;}
+.page-date-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.rd-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0;}
+.rd-hier{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(95,224,166,.18);color:#5FE0A6;font-weight:800;font-size:12px;}
+.rd-hier span{font-weight:600;opacity:.85;}
+.rd-hier.moins{background:rgba(255,129,119,.18);color:#FF8177;}
+.rd-u{font-size:.55em;font-weight:700;opacity:.7;}
+.rd-kpis .kpi-mini-sub{font-size:10.5px !important;line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd-kpis .kpi-mini{cursor:pointer;}
+.rd-k-abs .kpi-mini-val{color:var(--warn);}
+.rd-grille{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;}
+@media (min-width:1024px){.rd-grille{grid-template-columns:minmax(0,1.65fr) minmax(280px,1fr);align-items:start;}}
+.rd-titre{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.rd-titre h2{display:flex;align-items:center;gap:8px;margin:0;font-size:16px;}
+.rd-titre h2 svg{width:18px;height:18px;color:var(--accent);}
+.rd-moy{white-space:nowrap;font-size:12px;font-weight:700;color:var(--ink-soft);background:var(--surface-2,#f4f6f9);padding:3px 9px;border-radius:999px;}
+.rd-op{padding:10px 6px !important;border-radius:10px;}
+.rd-op .rank-name{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:800;}
+.rd-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;line-height:1.4;}
+.rd-badge svg{width:13px;height:13px;}
+.rd-b-absente{background:var(--bad-bg);color:var(--bad);}
+.rd-b-retard{background:var(--warn-bg);color:var(--warn);}
+.rd-b-autorisation{background:var(--accent-bg);color:var(--accent);}
+.rd-absente{background:repeating-linear-gradient(135deg,transparent 0 10px,rgba(214,69,69,.035) 10px 20px);}
+.rd-absente .rank-name{color:var(--ink-soft);}
+.rd-m-abs{background:var(--bad-bg) !important;color:var(--bad) !important;}
+.rd-abs-txt{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+.rd-attente{font-size:11.5px;font-weight:700;color:var(--ink-soft);text-align:right;}
+.rd-legende{font-size:11.5px;color:var(--ink-soft);margin-top:10px;padding-top:8px;border-top:1px dashed var(--border-soft,#e3e8ef);}
+.rd-syn{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft,#eef1f5);}
+.rd-syn:last-child{border-bottom:none;}
+.rd-syn-ic{flex:0 0 34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.rd-syn-ic svg{width:17px;height:17px;}
+.rd-syn-b{flex:1;min-width:0;}
+.rd-syn-t{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink-soft);font-weight:600;}
+.rd-syn-t b{color:var(--ink);font-size:14px;text-align:right;}
+.rd-syn-bar{height:6px;border-radius:6px;background:var(--surface-2,#eef1f5);margin-top:6px;overflow:hidden;}
+.rd-syn-bar div{height:100%;border-radius:6px;background:var(--good);}
+.rd-syn-bar .rd-bad{background:var(--bad);} .rd-syn-bar .rd-warn{background:var(--warn);} .rd-syn-bar .rd-excellent{background:var(--excellent);}
+@media (max-width:700px){
+  .rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+  .rd-heure{font-size:13px;padding:5px 10px;}
+  .rd-titre h2{font-size:15px;}
+  .rd-moy{font-size:11px;padding:2px 7px;}
+}
+body.dark .rd-heure,[data-theme="dark"] .rd-heure{background:var(--surface);}
+.rd-table{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.rd-classement{min-width:640px;}
+.rd-classement .rank-bar{height:5px;}
+.rd-u{font-size:12px;}
+@media (min-width:1024px){
+  .rd-badge,.rd-kpis .kpi-mini-sub,.rd-legende,.rd-abs-txt,.rd-attente,.rd-hier,.rd-moy{font-size:12px !important;}
+}

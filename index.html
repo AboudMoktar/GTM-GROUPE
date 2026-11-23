@@ -1757,6 +1757,44 @@ function getElapsedObjective(dayData, dateISO){
   return elapsed;
 }
 
+// Présence des opératrices pour le tableau de bord (23/11/2026). Ne modifie aucun calcul : sert à l'affichage.
+// Ordre de priorité : poste vacant → mentions ABS de la saisie (toutes les cases saisies) → pointage RH
+// (congé, maladie, absence ; présent, retard, sortie autorisée) → sinon « présente » (pas de pointage).
+function rdStatutsOps(dateISO, data){
+  const heures = getHoursForDate(dateISO);
+  return OP_KEYS.map((k, idx) => {
+    if(!isOpActiveOnDate(idx, dateISO)) return {code:'vacant', label:'Poste vacant'};
+    const vals = heures.map(h => data.hours && data.hours[h] ? data.hours[h][k] : '').filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+    if(vals.length && vals.every(isAbsentMark)) return {code:'absente', label:'Absente', detail:'Marquée ' + String(vals[0]).trim().toUpperCase() + ' dans la saisie'};
+    const nom = getOpNameForDate(idx, dateISO);
+    try {
+      if(typeof getEmployees === 'function' && typeof resolveDayStatus === 'function' && nom){
+        const e = Object.entries(getEmployees()).find(([, x]) => (x.nom || '').trim().toLowerCase() === nom.trim().toLowerCase());
+        if(e){
+          const r = resolveDayStatus(e[0], dateISO);
+          if(r.source === 'periode'){ const t = (typeof ABSENCE_TYPES !== 'undefined' && ABSENCE_TYPES[r.type]) || {label:'Absente'}; return {code:'absente', label:t.label, detail:t.label + ' (RH)'}; }
+          if(r.source === 'pointage' && r.status === 'absent') return {code:'absente', label:'Absente', detail:'Absente au pointage RH'};
+          if(r.source === 'pointage' && r.status === 'present'){
+            const ret = typeof computeRetardHours === 'function' ? computeRetardHours(r) : 0;
+            if(ret > 0) return {code:'retard', label:'Retard' + (r.in ? ' · ' + r.in : '')};
+            if((r.autorisations || []).length) return {code:'autorisation', label:'Autorisation'};
+            return {code:'presente', label:'Présente'};
+          }
+        }
+      }
+    } catch(e) { console.error('Présence', e); }
+    return {code:'presente', label:'Présente'};
+  });
+}
+// Dernier jour précédent avec une production enregistrée (comparaison « vs hier »)
+function rdJourPrecedent(dateISO){
+  const d = listProdDates().filter(x => x < dateISO).reverse().find(x => computeTotals(getDay(x)).totalGeneral > 0);
+  if(!d) return null;
+  const veille = new Date(dateISO + 'T00:00:00'); veille.setDate(veille.getDate() - 1);
+  const lib = d === toISODateLocal(veille) ? 'hier' : 'le ' + d.split('-').reverse().slice(0, 2).join('/');
+  return {date:d, total:computeTotals(getDay(d)).totalGeneral, lib};
+}
+
 // --- ONGLET 1: TABLEAU DE BORD ---
 function renderDashboard(container){
   const data = getDay(getTodayISO()); const totals = computeTotals(data);
@@ -1795,9 +1833,30 @@ function renderDashboard(container){
     return;
   }
 
-  const rankingOps = ops.map((name,i) => ({name, key:OP_KEYS[i], total: perOpVals[i]})).sort((a,b) => b.total - a.total);
+  // Refonte du 23/11/2026 : même calculs qu'avant (rendement, objectif, rythme, opératrices actives inchangés) ;
+  // la présence de chaque opératrice vient du pointage RH et des mentions ABS de la saisie (rdStatutsOps).
+  const statuts = rdStatutsOps(getTodayISO(), data);
   const grandTotalOps = perOpVals.reduce((s,v)=>s+v,0);
+  const postes = OP_KEYS.map((k, i) => ({name:ops[i], key:k, total:perOpVals[i], st:statuts[i]})).filter(x => x.st.code !== 'vacant');
+  const absentes = postes.filter(x => x.st.code === 'absente'), presentes = postes.filter(x => x.st.code !== 'absente');
+  const ordre = presentes.slice().sort((a,b) => b.total - a.total).concat(absentes);
+  const hier = rdJourPrecedent(getTodayISO()), vsHier = hier ? totals.totalGeneral - hier.total : null;
+  const heuresFaites = getSlotsForDate(getTodayISO()).filter(sl => { const n = new Date(); return n.getHours()*60 + n.getMinutes() >= sl.end; }).reduce((m, sl) => m + sl.minutes, 0) / 60;
+  const cadence = heuresFaites > 0 ? Math.round(totals.totalGeneral / heuresFaites) : null;
+  const heure = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
   const medalClass = i => i===0?'m1':(i===1?'m2':(i===2?'m3':'m4'));
+  const ICO_ABS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a7 7 0 0 1 11-5.7"/><path d="m17 15 5 5M22 15l-5 5"/></svg>';
+  const ligneOp = (r, rang) => {
+    const abs = r.st.code === 'absente', pct = maxVal > 0 ? Math.round(r.total / maxVal * 100) : 0, part = grandTotalOps > 0 ? Math.round(r.total / grandTotalOps * 100) : 0;
+    const badge = r.st.code === 'presente' ? '' : `<span class="rd-badge rd-b-${r.st.code}">${abs ? ICO_ABS : ''}${esc(r.st.label)}</span>`;
+    return `<div class="rank-row rd-op rd-${r.st.code}${!abs && !r.total ? ' rd-zero' : ''}" onclick="openOperatriceDetail('${r.key}')">
+      <div class="rank-medal ${abs ? 'rd-m-abs' : medalClass(rang)}">${abs ? '✕' : rang + 1}</div>
+      <div class="rank-body"><div class="rank-name">${esc(r.name)} ${badge}</div>
+        ${abs ? `<div class="rd-abs-txt">${esc(r.st.detail || 'Absente aujourd\'hui')} — non comptée dans le rendement</div>` : `<div class="rank-bar"><div style="width:${pct}%;${rang === 0 && r.total ? 'background:linear-gradient(90deg,#34D18C,#0E8F52);' : ''}"></div></div>`}</div>
+      <div class="rank-nums">${abs ? '' : r.total ? `<div class="rn-val">${r.total} PC</div><div class="rn-pct">${part} %</div>` : `<div class="rd-attente">Pas encore de pièces</div>`}</div>
+      <div class="rank-chevron">${ICONS.chevronRight}</div></div>`;
+  };
+  const synth = (icone, coul, lib, val, pct, barCls) => `<div class="rd-syn"><span class="rd-syn-ic" style="background:var(--${coul}-bg);color:var(--${coul});">${icone}</span><div class="rd-syn-b"><div class="rd-syn-t"><span>${lib}</span><b>${val}</b></div>${pct === null ? '' : `<div class="rd-syn-bar"><div class="${barCls || ''}" style="width:${Math.max(0, Math.min(100, pct))}%"></div></div>`}</div></div>`;
 
   container.innerHTML = `
     <div class="page-date-row">
@@ -1805,92 +1864,82 @@ function renderDashboard(container){
         <div class="hero-date-icon">${ICONS.calendarCheck}</div>
         <div><h2>Aujourd'hui</h2><div class="hd-sub">${dayLabel}</div></div>
       </div>
-      ${!isEmpty ? `<div class="hero-obj-badge ${cls}">${ICONS.target}<div>${rendLabel(rendement)}<div class="hob-sub">${rendement>=100?'Bravo à l\'équipe !':'Statut du jour'}</div></div></div>` : ''}
+      <div class="rd-heure" title="Heure de l'affichage">${ICONS.clock}<span id="rd-heure">${heure}</span></div>
     </div>
     <div class="hero-card" style="cursor:pointer;" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
       <div class="hero-main">
-        ${buildGauge(rendement, isEmpty, true, 84)}
+        ${buildGauge(rendement, isEmpty, true, 112)}
         <div class="hero-divider"></div>
         <div class="hero-info">
           <div class="hero-info-row"><div class="hero-info-icon">${ICONS.box}</div><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="hero-stat-lbl">Pièces produites</div></div></div>
-          <div class="hero-obj-line"><span style="display:inline-flex;width:15px;height:15px;vertical-align:-3px;">${ICONS.target}</span> Objectif : <b>${obj}</b></div>
-          ${!isEmpty ? `<div class="hero-ahead-pill ${ecart<0?'behind':''}"><span class="hap-num">${ecart>=0?'+'+ecart:ecart}</span><span class="hap-txt">Pièce${Math.abs(ecart)>1?'s':''} ${ecart>=0?'d\'avance':'de retard'} ${ICONS.trend}</span></div>` : ''}
+          <div class="rd-pills">
+            ${!isEmpty ? `<div class="hero-ahead-pill ${ecart<0?'behind':''}"><span class="hap-num">${ecart>=0?'+'+ecart:ecart}</span><span class="hap-txt">${ecart>=0?'d\'avance':'de retard'} sur l'objectif</span></div>` : ''}
+            ${vsHier !== null && !isEmpty ? `<div class="rd-hier ${vsHier<0?'moins':''}" title="Comparé au ${hier.date.split('-').reverse().join('/')} (${hier.total} pièces)">${vsHier>=0?'▲ +':'▼ '}${vsHier} <span>vs ${esc(hier.lib)}</span></div>` : ''}
+          </div>
+          <div class="hero-obj-line"><span style="display:inline-flex;width:15px;height:15px;vertical-align:-3px;">${ICONS.target}</span> Objectif : <b>${obj} pièces</b>${!isEmpty ? ` · <b>${rendLabel(rendement)}</b>` : ''}</div>
         </div>
       </div>
-      <div class="hero-tagline">Ensemble pour la performance</div>
       ${!isEmpty ? `
       <div class="hero-track-wrap">
         <div class="hero-track"><div class="hero-track-fill ${cls}" id="pace-fill-el"></div></div>
-        <div class="hero-track-legend"><span>0</span><span>${obj} <b>|</b> <b>${totals.totalGeneral}</b></span></div>
+        <div class="hero-track-legend"><span>0</span><span><b>${totals.totalGeneral}</b> / ${obj}</span></div>
       </div>` : ''}
-      ${paceRend !== null ? `<div style="position:relative;z-index:1;text-align:right;margin-top:8px;font-size:12px;color:rgba(255,255,255,.75);font-weight:600;">Rythme à cette heure : <b style="color:${paceCls==='bad'?'#FF8177':(paceCls==='warn'?'#FFC067':(paceCls==='excellent'?'#FFC72C':'#5FE0A6'))};">${Math.round(paceRend)}% · ${paceLabel(paceRend)}</b></div>` : ''}
+      ${paceRend !== null ? `<div style="position:relative;z-index:1;text-align:right;margin-top:8px;font-size:12.5px;color:rgba(255,255,255,.8);font-weight:600;">Rythme à cette heure : <b style="color:${paceCls==='bad'?'#FF8177':(paceCls==='warn'?'#FFC067':(paceCls==='excellent'?'#FFC72C':'#5FE0A6'))};">${Math.round(paceRend)} %</b> · ${paceLabel(paceRend)}</div>` : ''}
     </div>
 
     ${alertHtml}
     ${isEmpty ? buildEmptyState("Aucune production enregistrée aujourd'hui", "La saisie du jour n'a pas encore commencé.") : ''}
 
-    <div class="kpi-mini-grid">
+    <div class="kpi-mini-grid rd-kpis">
       <div onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')" class="kpi-mini tint-blue">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#4A9EFF,#0F62D6);">${ICONS.box}</div>
-        <div class="kpi-mini-val">${totals.totalGeneral} <span style="font-size:9px;color:var(--ink-faint);">PC</span></div>
+        <div class="kpi-mini-val">${totals.totalGeneral} <span class="rd-u">PC</span></div>
         <div class="kpi-mini-lbl">Production totale</div>
-        ${!isEmpty ? `<div class="kpi-mini-sub" style="background:var(--${ecart>=0?'good':'bad'}-bg);color:var(--${ecart>=0?'good':'bad'});">${ecart>=0?'+'+ecart:ecart}</div>` : ''}
+        ${!isEmpty ? `<div class="kpi-mini-sub" style="background:var(--${ecart>=0?'good':'bad'}-bg);color:var(--${ecart>=0?'good':'bad'});">${ecart>=0?'+'+ecart:ecart} / objectif</div>` : ''}
       </div>
-      <div class="kpi-mini tint-green">
+      <div class="kpi-mini tint-green" onclick="nav('rh-pointage')" title="Présence d'après le pointage RH">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#34D18C,#0E8F52);">${ICONS.team}</div>
-        <div class="kpi-mini-val">${activeOpCount}/${OP_KEYS.length}</div>
-        <div class="kpi-mini-lbl">Opératrices actives</div>
+        <div class="kpi-mini-val">${presentes.length}/${postes.length}</div>
+        <div class="kpi-mini-lbl">Opératrices présentes</div>
+        <div class="kpi-mini-sub">${activeOpCount} active(s) dans la saisie</div>
       </div>
-      <div class="kpi-mini tint-red">
+      <div class="kpi-mini tint-red" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
         <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FF6B6B,#DC2E2E);">${ICONS.pause}</div>
         <div class="kpi-mini-val">${totals.arrets}</div>
         <div class="kpi-mini-lbl">Pertes / arrêts</div>
+        <div class="kpi-mini-sub">${totals.arrets ? 'à vérifier dans l\'historique' : 'aucun aujourd\'hui'}</div>
       </div>
-      <div class="kpi-mini tint-gold">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FFCB4D,#D9930C);">${ICONS.crown}</div>
-        <div class="kpi-mini-val" style="font-size:${bestNames.length>1?'10px':'13.5px'};">${bestNames.length ? bestNames.join(' & ') : '—'}</div>
-        <div class="kpi-mini-lbl">Meilleure perf.</div>
+      <div class="kpi-mini ${absentes.length ? 'tint-gold rd-k-abs' : 'tint-green'}" onclick="nav('rh-pointage')">
+        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FFCB4D,#D9930C);">${ICO_ABS}</div>
+        <div class="kpi-mini-val">${absentes.length}</div>
+        <div class="kpi-mini-lbl">Absente(s) aujourd'hui</div>
+        <div class="kpi-mini-sub">${absentes.length ? esc(absentes.map(a => a.name).join(', ')) : 'équipe au complet'}</div>
       </div>
     </div>
 
-    <div class="card">
-      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;justify-content:space-between;flex-wrap:nowrap;">
-        <h2 style="margin:0;display:flex;align-items:center;gap:6px;font-size:15px;white-space:nowrap;"><span style="display:inline-flex;width:16px;height:16px;color:var(--accent);flex-shrink:0;">${ICONS.team}</span> Production par opératrice</h2>
-        ${grandTotalOps>0 ? `<div style="font-size:9.5px;background:var(--accent-bg);color:var(--accent);padding:5px 8px;border-radius:9px;font-weight:700;white-space:nowrap;flex-shrink:0;">Moy. ${Math.round(grandTotalOps/Math.max(1,activeOpCount))} PC</div>` : ''}
+    <div class="rd-grille">
+      <div class="card rd-ops">
+        <div class="rd-titre"><h2>${ICONS.team} Production par opératrice</h2>
+          ${grandTotalOps>0 ? `<span class="rd-moy">Moy. ${Math.round(grandTotalOps/Math.max(1, presentes.length))} PC / présente</span>` : ''}</div>
+        ${ordre.length ? ordre.map((r, i) => ligneOp(r, i)).join('') : buildEmptyState('Aucune opératrice affectée aujourd\'hui')}
+        <div class="rd-legende">Présence d'après le pointage RH et les mentions ABS de la saisie. Une absente n'est pas comptée comme une production nulle.</div>
       </div>
-      ${grandTotalOps===0 ? buildEmptyState('Aucune donnée à afficher') : rankingOps.map((r,i) => `
-        <div class="rank-row" onclick="openOperatriceDetail('${r.key}')">
-          <div class="rank-medal ${medalClass(i)}">${i+1}</div>
-          <div class="rank-body">
-            <div class="rank-name">${esc(r.name)}</div>
-            <div class="rank-bar"><div style="width:${maxVal>0?Math.round(r.total/maxVal*100):0}%;background:${i===0?'linear-gradient(90deg,#34D18C,#0E8F52)':'linear-gradient(90deg,var(--accent-2),var(--accent))'};"></div></div>
-          </div>
-          <div class="rank-nums"><div class="rn-val">${r.total} PC</div><div class="rn-pct">${grandTotalOps>0?Math.round(r.total/grandTotalOps*100):0}%</div></div>
-          <div class="rank-chevron">${ICONS.chevronRight}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="card anchor-bottom">
-      <div class="summary-strip">
-        <div class="summary-item"><div class="si-icon" style="background:var(--accent-bg);color:var(--accent);">${ICONS.calendarCheck}</div><div style="min-width:0;overflow:hidden;"><div class="si-lbl">Objectif du jour</div><div class="si-val">${obj} PC</div></div></div>
-        <div class="summary-item"><div class="si-icon" style="background:var(--good-bg);color:var(--good);">${ICONS.check}</div><div style="min-width:0;overflow:hidden;"><div class="si-lbl">Réalisé</div><div class="si-val">${totals.totalGeneral} PC</div></div></div>
-        <div class="summary-item"><div class="si-icon" style="background:${ecart>=0?'var(--good-bg)':'var(--bad-bg)'};color:${ecart>=0?'var(--good)':'var(--bad)'};">${ICONS.trend}</div><div style="min-width:0;overflow:hidden;"><div class="si-lbl">Écart</div><div class="si-val" style="color:${ecart>=0?'var(--good)':'var(--bad)'};">${ecart>=0?'+':''}${ecart} PC</div></div></div>
-        <div class="summary-item" style="border-right:none;"><div class="si-icon" style="background:var(--excellent-bg);color:var(--excellent);">${ICONS.crown}</div><div style="min-width:0;overflow:hidden;"><div class="si-lbl" style="color:var(--excellent);">Meilleure perf.</div><div class="si-val" style="font-size:11px;color:var(--excellent);">${bestNames.length?bestNames[0]:'—'}</div>${bestNames.length && maxVal>0 ? `<div style="font-size:9px;color:var(--ink-faint);font-weight:700;">${maxVal} PC</div>` : ''}</div></div>
-      </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);">
-        <div style="display:flex;align-items:flex-start;gap:7px;font-size:10.5px;color:var(--ink-faint);line-height:1.4;">${ICONS.factory}<span>Une équipe engagée pour vos objectifs</span></div>
-        <div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);margin-top:5px;">${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="card rd-synthese">
+        <div class="rd-titre"><h2>${ICONS.stats} Synthèse</h2></div>
+        ${synth(ICONS.check, paceCls === 'bad' ? 'bad' : paceCls === 'warn' ? 'warn' : 'good', 'Rythme actuel', paceRend !== null ? Math.round(paceRend) + ' %' : '—', paceRend, paceCls ? 'rd-' + paceCls : '')}
+        ${synth(ICONS.clock, 'accent', 'Cadence horaire', cadence !== null ? cadence + ' PC/h' : '—', null)}
+        ${synth(ICONS.target, 'accent', 'Objectif prévu', obj + ' PC', null)}
+        ${synth(ICONS.box, 'good', 'Production réalisée', totals.totalGeneral + ' PC', obj > 0 ? totals.totalGeneral / obj * 100 : 0, 'rd-' + cls)}
+        ${synth(ICONS.trend, ecart >= 0 ? 'good' : 'bad', 'Écart à l\'objectif', (ecart >= 0 ? '+' : '') + ecart + ' PC', null)}
+        ${synth(ICONS.crown, 'excellent', 'Meilleure performance', bestNames.length ? esc(bestNames.join(' & ')) + ' · ' + maxVal + ' PC' : '—', null)}
       </div>
     </div>
 
     <div id="operatrice-modal-zone"></div>
   `;
+  clearInterval(window.__rdHorloge); window.__rdHorloge = setInterval(() => { const e = document.getElementById('rd-heure'); if(!e){ clearInterval(window.__rdHorloge); return; } e.textContent = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 20000);
 
   if(!isEmpty){
-    // Double requestAnimationFrame : force le navigateur à peindre l'état 0%
-    // avant d'appliquer la valeur réelle, pour que la transition CSS s'anime
-    // à chaque affichage du Tableau de bord (et pas seulement au 1er chargement).
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const fillEl = document.getElementById('pace-fill-el');
@@ -2116,6 +2165,8 @@ function renderHistorique(container){
 
   const obj = getObjForDay(data);
   const rendJour = obj > 0 ? Math.round(totals.totalGeneral / obj * 100) : 0;
+  const stHist = dayHours.length ? rdStatutsOps(histDate, data) : [];
+  const nbAbsHist = stHist.filter(x => x.code === 'absente').length;
 
   const viewToggle = `
     <div class="segmented" style="display:flex;gap:6px;margin-bottom:10px;">
@@ -2191,8 +2242,8 @@ function renderHistorique(container){
     <div class="card" style="padding-bottom: 24px; border-top: 4px solid var(--ink-soft);">
       <div class="flex-header">
         <div>
-          <h2 style="margin:0; color:var(--ink-soft);">MODE CONSULTATION (Lecture Seule)</h2>
-          <div style="font-size:13px; font-weight:bold; margin-top:4px;">Date : ${histDate.split('-').reverse().join('/')} ${data.status === 'validated' ? '<span class="badge green">Validé</span>' : '<span class="badge orange">Brouillon</span>'} · Rendement jour : <span class="hour-rend ${rendClass(rendJour)}" style="font-size:13px;">${rendJour}%</span></div>
+          <h2 style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-transform:capitalize;"><span style="display:inline-flex;width:18px;height:18px;color:var(--accent);">${ICONS.historique}</span>${new Date(histDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} <span class="rd-badge" style="background:var(--surface-2);color:var(--ink-soft);text-transform:none;">Lecture seule</span></h2>
+          <div style="font-size:13px; font-weight:bold; margin-top:4px;">${totals.totalGeneral} pièces / objectif ${obj}${nbAbsHist ? ` · <span class="rd-badge rd-b-absente">${nbAbsHist} absente(s)</span>` : ''} · ${data.status === 'validated' ? '<span class="badge green">Validé</span>' : '<span class="badge orange">Brouillon</span>'} · Rendement jour : <span class="hour-rend ${rendClass(rendJour)}" style="font-size:13px;">${rendJour}%</span></div>
           <div class="mini-gauge" style="max-width:220px;"><div class="${rendClass(rendJour)}" style="width:${Math.min(100,rendJour)}%;"></div></div>
           ${data.lastEditBy ? `<div style="font-size:11px; color:var(--ink-faint); margin-top:6px;">Dernière modification par <b>${data.lastEditBy}</b>, ${new Date(data.lastEditAt).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>` : ''}
         </div>
@@ -2202,7 +2253,7 @@ function renderHistorique(container){
       <div class="saisie-grille" style="overflow-x:auto;">
         <table onkeydown="saisieTouche(event)">
           <thead>
-            <tr><th>Horaires</th>${ops.map(o=>`<th style="text-align:center;">${o}</th>`).join('')}<th>Total/h</th><th>Cumul</th><th>Observations</th></tr>
+            <tr><th>Horaires</th>${ops.map((o,i)=>`<th style="text-align:center;">${esc(o)}${stHist[i] && stHist[i].code !== 'presente' && stHist[i].code !== 'vacant' ? `<br><span class="rd-badge rd-b-${stHist[i].code}" title="${esc(stHist[i].detail || '')}">${esc(stHist[i].label)}</span>` : ''}</th>`).join('')}<th>Total/h</th><th>Cumul</th><th>Observations</th></tr>
           </thead>
           <tbody>
             ${rows}
@@ -2294,6 +2345,19 @@ function renderStats(container){
   });
   const totalAll = Object.values(perNameTotals).reduce((s,v)=>s+v,0);
   const ranking = Object.entries(perNameTotals).map(([name,total])=>({name,total})).sort((a,b)=>b.total-a.total);
+  // Présence (23/11/2026) : jours travaillés et jours d'absence par opératrice, d'après le pointage RH et les
+  // mentions ABS — séparés pour qu'une absence ne compte pas comme un jour à 0 pièce. Le classement ne change pas.
+  const presence = {}, aujourdHui = getTodayISO();
+  workedDays.filter(d => d.iso <= aujourdHui).forEach(d => {
+    const st = rdStatutsOps(d.iso, getDay(d.iso)), opsJ = getOpsForDate(d.iso);
+    OP_KEYS.forEach((k, i) => {
+      if(st[i].code === 'vacant') return;
+      const p = presence[opsJ[i]] = presence[opsJ[i]] || {trav:0, abs:0};
+      if(st[i].code === 'absente') p.abs++; else if(d.total > 0) p.trav++;
+    });
+  });
+  const totalAbs = Object.values(presence).reduce((s,p)=>s+p.abs,0);
+  const maxRank = ranking.length ? ranking[0].total : 0;
 
   const avgRend = activeDays.length ? activeDays.reduce((s,d)=>s+d.rend,0)/activeDays.length : 0;
   const bestDay = activeDays.length ? activeDays.reduce((a,b)=>b.rend>a.rend?b:a) : null;
@@ -2320,6 +2384,8 @@ function renderStats(container){
     ${!rangeError && typeof rpBoutons === 'function' ? rpBoutons(`rpTekPeriodeExcel('${statRangeStart}', '${statRangeEnd}')`, `rpTekPeriodePdf('${statRangeStart}', '${statRangeEnd}')`) : ''}
 
     <div class="kpi-grid">
+      <div class="kpi kpi-ic"><div class="kpi-ic-badge blue">${ICONS.calendarCheck}</div><div><div class="kpi-ic-label">Jours travaillés</div><div class="kpi-ic-value">${activeDays.length} <span style="font-size:12px;color:var(--ink-faint);">/ ${workedDays.length} prog.</span></div></div></div>
+      <div class="kpi kpi-ic"><div class="kpi-ic-badge ${totalAbs ? 'red' : 'green'}">${ICONS.team}</div><div><div class="kpi-ic-label">Jours d'absence (opératrices)</div><div class="kpi-ic-value">${totalAbs}</div></div></div>
       <div class="kpi kpi-ic"><div class="kpi-ic-badge blue">${ICONS.box}</div><div><div class="kpi-ic-label">Production période</div><div class="kpi-ic-value">${totalAll} <span style="font-size:12px;color:var(--ink-faint);">PC</span></div></div></div>
       <div class="kpi kpi-ic"><div class="kpi-ic-badge ${!totalAll?'':(rendClass(avgRend)==='bad'?'red':(rendClass(avgRend)==='excellent'?'gold':'green'))}">${ICONS.target}</div><div><div class="kpi-ic-label">Rendement moyen</div><div class="kpi-ic-value ${totalAll?rendClass(avgRend):''}">${totalAll?avgRend.toFixed(1)+'%':'—'}</div></div></div>
       ${activeDays.length >= 2 ? `
@@ -2337,17 +2403,21 @@ function renderStats(container){
     <h2>Classement des Opératrices</h2>
     <div class="card">
       ${totalAll===0 ? buildEmptyState("Aucune donnée à classer sur cette période") : `
-        <table>
-          <thead><tr><th>#</th><th>Opératrice</th><th class="num" style="text-align:right;">Total pièces</th><th class="num" style="text-align:right;">Part</th></tr></thead>
+        <div class="rd-table"><table class="rd-classement">
+          <thead><tr><th>#</th><th>Opératrice</th><th class="num" style="text-align:right;">Total pièces</th><th class="num" style="text-align:right;">Part</th><th class="num" style="text-align:right;" title="Jours avec production où l'opératrice était présente">Jours travaillés</th><th class="num" style="text-align:right;" title="D'après le pointage RH et les mentions ABS">Absences</th><th class="num" style="text-align:right;">Moy. / jour travaillé</th></tr></thead>
           <tbody>
-            ${ranking.map((r,i)=>`<tr>
+            ${ranking.map((r,i)=>{ const p = presence[r.name] || {trav:0, abs:0}; return `<tr>
               <td>${i+1}${i===0?' 🏆':''}</td>
-              <td style="font-weight:700;">${esc(r.name)}</td>
+              <td style="font-weight:700;">${esc(r.name)}<div class="rank-bar" style="margin-top:4px;max-width:220px;"><div style="width:${maxRank>0?Math.round(r.total/maxRank*100):0}%"></div></div></td>
               <td style="text-align:right;font-family:var(--mono);font-weight:700;">${r.total}</td>
               <td style="text-align:right;font-family:var(--mono);">${totalAll>0?Math.round(r.total/totalAll*100):0}%</td>
-            </tr>`).join('')}
+              <td style="text-align:right;font-family:var(--mono);">${p.trav}</td>
+              <td style="text-align:right;">${p.abs ? `<span class="rd-badge rd-b-absente">${p.abs} j</span>` : '<span style="color:var(--ink-faint);">0</span>'}</td>
+              <td style="text-align:right;font-family:var(--mono);">${p.trav ? Math.round(r.total / p.trav) + ' PC' : '—'}</td>
+            </tr>`; }).join('')}
           </tbody>
-        </table>
+        </table></div>
+        <div class="rd-legende">Les jours d'absence (pointage RH ou ABS dans la saisie) sont comptés à part : ils ne font pas baisser la moyenne par jour travaillé.</div>
       `}
     </div>
 
