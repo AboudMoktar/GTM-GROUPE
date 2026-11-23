@@ -722,7 +722,7 @@ window.vPilotage = function(v){
         else if (c.k === "size") td = el("td", {text:r.size, style:"font-weight:800"});
         else if (c.k === "client") td = el("td", {text:r.client});
         else if (c.k === "av"){ td = el("td"); td.appendChild(avance(r.av)); }
-        else if (SA[c.k]) td = cellSaisie(r, c.k, ri);
+        else if (SA[c.k] && !(c.k === "gadh" && !G && typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(r.id)))) td = cellSaisie(r, c.k, ri);   /* assemblage automatique */
         else td = cellNum(r, c.k);
         tr.appendChild(sk(td, c.k));
       });
@@ -736,7 +736,7 @@ window.vPilotage = function(v){
         if (c.k === "av"){ td = el("td"); td.appendChild(avance(S2.av)); }
         else { td = el("td", null, el("span", {class:"v", text:fmt(S2[c.k])}));
           /* « Tout » : passer d'un coup toutes les pièces disponibles du modèle (ou de la commande) */
-          if (SA[c.k] && c.k !== "fr" && rowsT){ var D = dispoTout(c.k, rowsT); if (D.n) td.appendChild(el("button", {class:"ph-tout", text:"Tout +" + fmt(D.n), title:"Passer les " + fmt(D.n) + " pièce(s) disponibles de " + nomT + " à cette étape", onclick:function(){ toutPasser(c.k, rowsT, nomT); }})); } }
+          if (SA[c.k] && c.k !== "fr" && rowsT && !(c.k === "gadh" && !G && rowsT.every(function(x){ return typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(x.id)); }))){ var D = dispoTout(c.k, rowsT); if (D.n) td.appendChild(el("button", {class:"ph-tout", text:"Tout +" + fmt(D.n), title:"Passer les " + fmt(D.n) + " pièce(s) disponibles de " + nomT + " à cette étape", onclick:function(){ toutPasser(c.k, rowsT, nomT); }})); } }
         tr.appendChild(td); });
       return tr;
     }
