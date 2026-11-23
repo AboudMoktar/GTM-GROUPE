@@ -32,6 +32,10 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(r.dispo === '0,0,6', 'plus disponibles à l\'emballage (il reste 6 NOIR M non choisies)');
   const grille = await p.evaluate(() => { const g = pkExports.etatCommandeGrid(null, 'PK209901-1'); return g.rows.map(x => (x.cells || []).map(c => c && c.v !== undefined ? c.v : '').join('|')).join('\n'); });
   ok(!/\|110\|/.test(grille) && /108/.test(grille), 'état de commande : quantités commandées diminuées');
+  // écran Commandes : le reste tient compte du 2e choix (ROSE XS 110 − 2 en 2e choix − 108 emballées = 0)
+  const rc = await p.evaluate(() => { ui.tab = 'cmd'; render(); return [...document.querySelectorAll('td.rst')].map(td => td.textContent + (td.title ? '*' : '')).join(','); });
+  ok(/^0\*,0\*,0\*$/.test(rc), 'écran Commandes : reste sans les pièces en 2e choix (' + rc + ')');
+  await p.evaluate(() => { ui.tab = 'flux'; render(); });
   // enregistrement : le marquage 2e choix survit à l'aller-retour (documents)
   const rt = await p.evaluate(() => { const d = desiredDocs(); const k = Object.keys(d).find(x => x.indexOf('moves-') === 0); return d[k].moves.filter(a => a[9] === 1).length; });
   ok(rt === 3, 'enregistré avec le marquage 2e choix (3 mouvements)');
