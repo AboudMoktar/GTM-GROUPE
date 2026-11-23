@@ -157,7 +157,7 @@ window.renderFactListe = function(main){
   if(factSoc() !== 'tek' || !canEditFact('tek')) return;
   const b = document.getElementById('mgt-body'); if(!b) return;
   const n = Object.values(factToutes('tek')).filter(f => f.origine && f.origine.type === 'saisie').length;
-  b.insertAdjacentHTML('afterbegin', `<div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  b.insertAdjacentHTML('afterbegin', `<div class="card fact-raccourci" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
     <div style="flex:1;min-width:200px;"><b style="font-size:14px;">Factures déjà émises (papier)</b><div style="font-size:12px;color:var(--ink-soft);">Reprendre les factures PERCKO déjà faites : numéro, date, quantités, paiement.${n ? ' ' + n + ' déjà saisie(s).' : ''}</div></div>
     <button class="btn btn-primary" onclick="fsId=null; nav('fact-saisie')">🗂 Saisir une facture déjà émise</button></div>`);
 };

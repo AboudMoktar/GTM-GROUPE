@@ -187,3 +187,10 @@ html[data-soc] main .fact-ligne[data-st="retard"]{border-left-color:#DC2626;}
 html[data-soc] main .fact-ligne[data-st="impayee"], html[data-soc] main .fact-ligne[data-st="partielle"]{border-left-color:#1677E8;}
 html[data-soc] main .fact-ligne[data-st="payee"]{border-left-color:#16A34A;}
 html[data-soc] main .fact-ligne[data-st="brouillon"]{border-left-color:#94A3B8;}
+/* raccourcis de création (PERCKO, factures papier) : resserrés sur téléphone pour que la liste arrive plus tôt */
+@media (max-width:700px){
+  html[data-soc] main .fact-raccourci{padding:10px 12px !important; gap:6px !important;}
+  html[data-soc] main .fact-raccourci > div:first-child{flex-basis:100% !important; min-width:0 !important;}
+  html[data-soc] main .fact-raccourci > div:first-child > div{display:none;}
+  html[data-soc] main .fact-raccourci .btn{flex:1 1 auto; min-height:42px; padding:8px 10px;}
+}
