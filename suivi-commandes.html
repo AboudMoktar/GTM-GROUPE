@@ -780,7 +780,7 @@ function libellesExo(lot){
     dp("gadh", "En assemblage", "Assemblage");
     SX_AIDE.gadh = "Comptez les pièces passées à l'assemblage (chez TEK-TREND)."; SX_AIDE.ret = "Comptez les pièces assemblées passées en confection.";
   } else if (mode === "mixte"){
-    st("gadh", "Envoyée à la GADH (exosquelette, brassière : assemblage TEK-TREND)"); st("asm", "En assemblage"); st("ret", "Revenue de l'assemblage, en confection");
+    st("gadh", "Passée à l'assemblage (GADH ou TEK-TREND)"); st("asm", "En assemblage"); st("ret", "En confection");
     sx("gadh", "Envoi GADH / assemblage TEK");
     dp("gadh", "Chez la GADH (exosquelette, brassière : en assemblage)", "GADH / assemb.");
     SX_AIDE.ret = "Exosquelette et brassière seulement : comptez les pièces assemblées passées en confection (les autres modèles reviennent de la GADH).";
