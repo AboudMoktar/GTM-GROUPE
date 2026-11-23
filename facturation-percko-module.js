@@ -455,10 +455,10 @@ function percTableauDonnees(annee){
   const tot = rows.reduce((x, r) => { if(r.st !== 'brouillon'){ x.v += r.t.ttc; x.reste += r.t.reste; x.sv += r.p.sv; x.exo += r.p.exo; x.bra += r.p.bra; } return x; }, {v:0, reste:0, sv:0, exo:0, bra:0});
   return {rows, tot};
 }
-function percN(x){ return Math.round(Number(x) || 0).toLocaleString('fr-FR'); }
+function percEntier(x){ return Math.round(Number(x) || 0).toLocaleString('fr-FR'); }
 function percEtatTxt(r){ return r.st === 'payee' ? 'payé' : r.st === 'brouillon' ? 'brouillon' : r.st === 'retard' ? 'en retard' : r.st === 'partielle' ? 'partiel' : 'non payé'; }
 function percTableauHTML(annee){
-  const D = percTableauDonnees(annee), n = (x) => x ? percN(x) : '';
+  const D = percTableauDonnees(annee), n = (x) => x ? percEntier(x) : '';
   let moisPrec = -1;
   const lignes = D.rows.map(r => {
     const m = r.mois !== moisPrec ? PERC_MOIS[r.mois] || '' : ''; moisPrec = r.mois;
@@ -473,7 +473,7 @@ function percTableauHTML(annee){
       <button class="btn btn-ghost" onclick="percTableauExcel('${annee}')">📗 Excel</button></div>
     <div class="pt-scroll"><table class="pt-t"><thead><tr><th>Facture N°</th><th>Mois</th><th>Date</th><th>Valeur</th><th>État</th><th>Reste</th><th>Sous-vêtement</th><th>Exosquelette</th><th>Brassière</th></tr></thead>
     <tbody>${lignes || '<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--ink-soft);">Aucune facture en ' + annee + '</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="3">Total (factures émises)</td><td class="pt-n">${fmtDT(D.tot.v)}</td><td></td><td class="pt-n">${D.tot.reste > 0.005 ? fmtDT(D.tot.reste) : ''}</td><td class="pt-n">${percN(D.tot.sv)}</td><td class="pt-n">${percN(D.tot.exo)}</td><td class="pt-n">${percN(D.tot.bra)}</td></tr></tfoot></table></div></div>`;
+    <tfoot><tr><td colspan="3">Total (factures émises)</td><td class="pt-n">${fmtDT(D.tot.v)}</td><td></td><td class="pt-n">${D.tot.reste > 0.005 ? fmtDT(D.tot.reste) : ''}</td><td class="pt-n">${percEntier(D.tot.sv)}</td><td class="pt-n">${percEntier(D.tot.exo)}</td><td class="pt-n">${percEntier(D.tot.bra)}</td></tr></tfoot></table></div></div>`;
 }
 window.percTableauExcel = async function(annee){
   try { await chargerBib('xlsx'); } catch(e) {}
