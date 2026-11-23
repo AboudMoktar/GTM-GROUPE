@@ -54,6 +54,20 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
       colle: getComputedStyle(document.querySelector('.ptg-entete')).position}; });
   r.push(['pointage (1440 px) : une ligne par salarié, pleine largeur, en-tête collant', pt.n > 0 && pt.grille === 'grid' && pt.pleine && pt.haute < 90 && pt.colle === 'sticky']);
   r.push(['grand écran : aucun débordement horizontal', await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) === 0]);
+  // saisie du rendement : Entrée descend d'une case, horaires fixes à gauche
+  await p.evaluate(() => { activeSociete = 'tek'; activeModule = 'rendement'; saisieDate = '2026-11-23'; renderShell(); nav('saisie'); }); await p.waitForTimeout(600);
+  const sg = await p.evaluate(() => { const ins = document.querySelectorAll('.saisie-grille tbody tr:nth-child(1) td.input-cell input, .saisie-grille tbody tr:nth-child(2) td.input-cell input');
+    const t = document.querySelector('.saisie-grille tbody tr:first-child td:first-child'); return {n: ins.length, colle: t ? getComputedStyle(t).position : '', dis: ins.length ? ins[0].disabled : true}; });
+  if (sg.n) {
+    const a1 = '.saisie-grille tbody tr:nth-child(1) td:nth-child(2) input';
+    await p.focus(a1); await p.keyboard.press('Enter');
+    const desc = await p.evaluate(() => { const a = document.activeElement; return a && a.closest('tr') === document.querySelector('.saisie-grille tbody tr:nth-child(2)') && a.closest('td') === document.querySelector('.saisie-grille tbody tr:nth-child(2) td:nth-child(2)'); });
+    r.push(['saisie du rendement : Entrée passe à la case du dessous, horaires fixes à gauche', sg.dis || (desc && sg.colle === 'sticky')]);
+  } else r.push(['saisie du rendement : grille affichée', false]);
+  // factures : nombre de factures sur chaque filtre
+  await p.evaluate(() => { activeSociete = 'tek'; activeModule = 'factures'; renderShell(); const l = factToutes('tek'); l.t1 = {type:'facture', numero:'FA26/900', statut:'emise', date:'2026-01-02', echeance:'2026-01-10', clientId:'', client:{nom:'Client test'}, lignes:[{designation:'x', qte:1, pu:10}], paiements:[], tva:0, timbre:0}; localStorage.setItem(CACHE_PREFIX + factCle('tek', 'factures'), JSON.stringify(l)); factFiltre = 'tous'; nav('fact-liste'); }); await p.waitForTimeout(500);
+  const ff = await p.evaluate(() => ({chips: Array.from(document.querySelectorAll('.fact-filtres .fact-chip')).map(b => b.textContent.trim()), dx: document.documentElement.scrollWidth - document.documentElement.clientWidth, ligne: !!document.querySelector('.fact-ligne[data-st="retard"]')}));
+  r.push(['factures : nombre de factures sur les filtres, ligne en retard repérée, pas de débordement', ff.chips.some(c => /^Toutes\s*\d+$/.test(c)) && ff.chips.some(c => /^En retard\s*1$/.test(c)) && ff.ligne && ff.dx === 0]);
   await p.close();
 
   for (const f of ['refonte.css', 'suivi-refonte.css']) {

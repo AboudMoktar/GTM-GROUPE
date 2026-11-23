@@ -67,7 +67,10 @@ var CSS = [
   '.ph-dsai{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--mut)}.ph-dsai input{height:38px}',
   '.ph-t input[type=checkbox]{width:17px;height:17px;min-height:0;margin:0;padding:0;vertical-align:middle;cursor:pointer}',
   '@media (min-width:1200px){.ph-kpis{grid-template-columns:repeat(10,minmax(0,1fr))}.ph-kpi b{font-size:19px}}',
-  '@media (max-width:700px){.ph-titre{flex-basis:100%}.ph-info{flex:1 1 40%;min-width:0;padding:6px 10px}.ph-info b{font-size:15px}.ph-etat{flex:1 1 40%;text-align:center}.ph-titre b{font-size:17px}.ph-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ph-et{flex-basis:80px}}'
+  '.ph-plie{margin:0 0 10px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.ph-plie>summary{cursor:pointer;padding:11px 14px;font-weight:700;font-size:14px;color:var(--ink);list-style:none;min-height:44px;box-sizing:border-box;display:flex;align-items:center;gap:8px}.ph-plie>summary::-webkit-details-marker{display:none}.ph-plie>summary::before{content:"▸";color:var(--mut);transition:transform .15s}.ph-plie[open]>summary::before{transform:rotate(90deg)}.ph-plie>.ph-outils{padding:0 12px 4px}.ph-plie>*:last-child{margin-bottom:12px}.ph-plie>div:not(.ph-outils){padding:0 12px}',
+  '@media (max-width:700px){.ph-titre{flex-basis:100%}.ph-info{flex:1 1 40%;min-width:0;padding:6px 10px}.ph-info b{font-size:15px}.ph-etat{flex:1 1 40%;text-align:center}.ph-titre b{font-size:17px}.ph-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ph-et{flex-basis:80px}}',
+  /* téléphone (refonte 23/11/2026) : en-tête resserré, chiffres clés sur une bande qui défile, tableau plus tôt à l'écran */
+  '@media (max-width:700px){.ph-head{gap:6px}.ph-titre{padding:8px 12px}.ph-titre img{height:32px}.ph-info{flex:1 1 30%;padding:5px 8px;border-radius:10px}.ph-info small{font-size:11px}.ph-info b{font-size:13.5px}.ph-info input{height:28px;font-size:13px;width:100%;min-width:0;padding:0 2px}.ph-info:nth-child(2){flex-basis:100%}.ph-etat{padding:6px 12px;font-size:13.5px}.ph-kpis{display:flex;overflow-x:auto;gap:8px;scroll-snap-type:x proximity;padding-bottom:4px;scrollbar-width:none}.ph-kpis::-webkit-scrollbar{display:none}.ph-kpi{flex:0 0 140px;scroll-snap-align:start;padding:8px 10px}.ph-kpi small{min-height:31px;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ph-kpi b{font-size:18px}.ph-frise{margin-bottom:8px}}'
 ].join('\n');
 function poserCss(){ if (document.getElementById('ph-css')) return; var st = document.createElement('style'); st.id = 'ph-css'; st.textContent = CSS; document.head.appendChild(st); }
 
@@ -92,7 +95,7 @@ function libellesEtapes(){
   ETAPES_TEK.forEach(function(e, i){ e[1] = LIB_TEK[i][0]; e[2] = LIB_TEK[i][1]; });
   function f(k, t, c){ ETAPES_TEK.forEach(function(e){ if (e[0] === k){ e[1] = t; e[2] = c; } }); }
   if (m === "exo"){ f("gadh", "Passée à l'assemblage (TEK-TREND)", "Assemblage"); f("ret", "En confection", "Confection"); }
-  else if (m === "mixte"){ f("gadh", "Passée à l'assemblage (GADH ; exosquelette : TEK-TREND)", "Assemblage"); f("ret", "Revenue de l'assemblage, en confection", "Confection"); }
+  else if (m === "mixte"){ f("gadh", "Passée à l'assemblage", "Assemblage"); f("ret", "En confection", "Confection"); }
 }
 function configurer(){
   G = VUE === "gadh"; if (!G) libellesEtapes(); ETAPES = G ? ETAPES_GADH : ETAPES_TEK;
@@ -121,6 +124,13 @@ function couleurDe(lib){
   var L = [[/rose/, "ROSE", "FFC0CB", "000000"], [/sable|beige/, "BEIGE", "DEDC86", "000000"], [/gris/, "GRIS", "D9D9D9", "000000"], [/noir/, "NOIR", "595959", "FFFFFF"], [/blanc/, "BLANC", "FFFFFF", "000000"], [/bleu|marine/, "BLEU", "BDD7EE", "000000"], [/vert/, "VERT", "C6E0B4", "000000"], [/rouge/, "ROUGE", "F4B084", "000000"]];
   for (var i = 0; i < L.length; i++) if (L[i][0].test(s)) return {t:L[i][1], bg:L[i][2], fg:L[i][3]};
   return {t:"", bg:"FFFFFF", fg:"000000"};
+}
+/* référence sans le nom de son modèle : « PHARMA_HOMME COL V NOIR » (modèle PHARMA-HOMME) → « COL V NOIR » */
+function libCourt(lib, model){
+  var n = function(x){ return String(x || "").toUpperCase().replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim(); };
+  var a = n(lib), m = n(model);
+  if (m && a.indexOf(m + " ") === 0){ var reste = a.slice(m.length).trim(); if (reste) return reste; }
+  return lib;
 }
 function pct(a, b){ return b ? Math.round(a / b * 1000) / 10 : 0; }
 var NF_PCT = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1});
@@ -474,7 +484,8 @@ window.vPilotage = function(v){
     ETAPES.forEach(function(e, i){ var q = T[e[0]], c = T.fr && q >= T.fr ? "fait" : q > 0 ? "cours" : "";
       fr.appendChild(el("div", {class:"ph-et " + c}, el("div", {class:"o", text:c === "fait" ? "✓" : String(i + 2)}), e[2], el("span", {text:fmtPct(pct(q, T.fr))}))); });
     zone.appendChild(fr);
-    /* outils : recherche, filtres */
+    /* outils : recherche, filtres ; sur téléphone, filtres et exports repliés sous la recherche (refonte 23/11/2026) */
+    var etroitO = window.matchMedia && window.matchMedia("(max-width:700px)").matches;
     var o = el("div", {class:"ph-outils"});
     var rq = el("input", {type:"search", placeholder:"🔍 Rechercher une référence, un modèle, une taille…", value:P.q || ""});
     rq.addEventListener("input", function(){ P.q = rq.value; var pos = rq.selectionStart; dessiner(); var n = zone.querySelector(".ph-outils input[type=search]"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch (er) {} } });
@@ -499,7 +510,15 @@ window.vPilotage = function(v){
     if (filtre || P.tri) o.appendChild(el("button", {class:"btn small sec", text:"✕ Tout afficher", onclick:function(){ P.f = {}; P.q = ""; P.tri = ""; P.sens = ""; dessiner(); }}));
     var nSel = Object.keys(P.sel).filter(function(id){ return P.sel[id]; }).length;
     if (nSel) o.appendChild(el("span", {class:"ph-sel"}, nSel + " ligne(s) cochée(s) ", el("button", {class:"btn small sec", text:"Décocher", onclick:function(){ P.sel = {}; dessiner(); }})));
-    zone.appendChild(o);
+    var pli = null;
+    if (etroitO){
+      var nF = Object.keys(P.f).filter(function(k){ return P.f[k]; }).length;
+      pli = el("details", {class:"ph-plie"}); if (P.outilsOuverts) pli.open = true;
+      pli.addEventListener("toggle", function(){ P.outilsOuverts = pli.open; });
+      pli.appendChild(el("summary", {text:"Filtres, date de saisie et exports" + (nF ? " · " + nF + " filtre(s) actif(s)" : "")}));
+      var rech = el("div", {class:"ph-outils"}); rech.appendChild(rq); zone.appendChild(rech);
+      pli.appendChild(o); zone.appendChild(pli);
+    } else zone.appendChild(o);
     /* export Excel (toute la commande, lignes affichées ou cochées) et réimport */
     var coches = toutes.filter(function(r){ return P.sel[r.id]; });
     var portees = [["tout", "Toute la commande (" + toutes.length + " lignes)"]];
@@ -522,8 +541,8 @@ window.vPilotage = function(v){
       bx.appendChild(fi);
       bx.appendChild(el("button", {class:"btn small sec", text:"📥 Réimporter un Excel", title:"Reprendre les quantités modifiées dans un fichier exporté d'ici", onclick:function(){ fi.click(); }}));
     }
-    zone.appendChild(bx);
-    if (!G && window.etatCommandeBoutons) zone.appendChild(window.etatCommandeBoutons(lot));
+    (pli || zone).appendChild(bx);
+    if (!G && window.etatCommandeBoutons) (pli || zone).appendChild(window.etatCommandeBoutons(lot));
     zone.appendChild(barre);
     zone.appendChild(tableau(vis, T));
     majBarre();
@@ -603,7 +622,10 @@ window.vPilotage = function(v){
   function tableau(vis, T){
     var W = largeurs(), etroit = window.matchMedia && window.matchMedia("(max-width:700px)").matches;
     /* sur téléphone, la colonne Modèle devient une ligne de titre au-dessus de chaque groupe */
-    var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2); });   /* colonne Client seulement si la commande a plusieurs clients */
+    /* colonne Client seulement si la commande a plusieurs clients ; téléphone (refonte 23/11/2026) : pas de colonne
+       Couleur (la couleur borde la référence), référence sans le nom du modèle (déjà en titre du groupe), chiffres plus serrés */
+    var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && !(c.k === "coul" && etroit); });
+    if (etroit) cols = cols.map(function(c){ var d = {}; for (var k in c) d[k] = c[k]; if (!W[c.k]){ if (c.k === "lib") d.w = 138; else if (c.k === "av") d.w = 96; else if (!c.txt && c.k !== "sel") d.w = Math.min(c.w, 70); } return d; });
     var t = el("table", {class:"ph-t"}), cg = el("colgroup"), tot = 0;
     cols.forEach(function(c){ var w = W[c.k] || c.w; cg.appendChild(el("col", {style:"width:" + w + "px"})); tot += w; });
     t.appendChild(cg); t.style.width = tot + "px";
@@ -695,7 +717,7 @@ window.vPilotage = function(v){
         var td;
         if (c.k === "sel"){ td = el("td"); var cb = el("input", {type:"checkbox"}); cb.checked = !!P.sel[r.id]; cb.addEventListener("change", function(){ P.sel[r.id] = cb.checked; dessiner(); }); td.appendChild(cb); }
         else if (c.k === "model"){ if (!avecMod) return; td = el("td", {class:"mod", text:r.model}); if (rowspan > 1) td.rowSpan = rowspan; }
-        else if (c.k === "lib") td = el("td", {class:"g", text:r.lib, title:r.lib});
+        else if (c.k === "lib"){ td = el("td", {class:"g", text:etroit ? libCourt(r.lib, r.model) : r.lib, title:r.lib}); if (etroit && r.cbg && r.cbg !== "FFFFFF") td.style.boxShadow = "inset 5px 0 0 #" + r.cbg; }
         else if (c.k === "coul"){ td = el("td", {class:"cou", text:r.coul}); td.style.background = "#" + r.cbg; td.style.color = "#" + r.cfg; }
         else if (c.k === "size") td = el("td", {text:r.size, style:"font-weight:800"});
         else if (c.k === "client") td = el("td", {text:r.client});

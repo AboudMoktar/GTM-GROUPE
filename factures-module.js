@@ -208,7 +208,7 @@ function renderFact(tab, main){
 let factFiltre = 'tous', factId = null;
 function factLigne(id, f, toutes, avecClient){
   const t = factTotaux(f, toutes), st = factStatut(f, toutes);
-  return `<div class="session-row" style="cursor:pointer;" onclick="factOuvrir('${id}')">
+  return `<div class="session-row fact-ligne" data-st="${st}" style="cursor:pointer;" onclick="factOuvrir('${id}')">
     <div style="min-width:0;"><b style="font-size:13.5px;">${f.numero ? esc(f.numero) : (f.type === 'avoir' ? 'Avoir' : 'Facture') + ' (brouillon)'}</b> <span style="font-size:12px;color:var(--ink-soft);">${mgtDate(f.date)}</span>
       <div style="font-size:11.5px;color:var(--ink-soft);">${avecClient ? esc(factNomClient(factSoc(), f)) + ' · ' : ''}${esc(f.objet || '')}</div></div>
     <div style="text-align:right;"><div style="font-weight:700;font-size:13px;">${f.type === 'avoir' ? '− ' : ''}${fmtDT(t.ttc)}</div>
@@ -230,14 +230,16 @@ function renderFactListe(main){
   const ok = (st) => factFiltre === 'tous' || factFiltre === st || (factFiltre === 'apayer' && ['impayee', 'partielle', 'retard'].indexOf(st) >= 0);
   const rows = Object.entries(l).filter(([, f]) => ok(factStatut(f, l)))
     .sort(factTriListe);
+  // nombre de factures par filtre, affiché sur chaque bouton (refonte 23/11/2026)
+  const nb = {}; Object.values(l).forEach(f => { const st = factStatut(f, l); filtres.forEach(([fl]) => { if(fl === 'tous' || fl === st || (fl === 'apayer' && ['impayee', 'partielle', 'retard'].indexOf(st) >= 0)) nb[fl] = (nb[fl] || 0) + 1; }); });
   b.innerHTML = `
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
       <div onclick="factFiltre='apayer'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
       <div onclick="factFiltre='retard'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;" class="${k.retard ? 'hour-rend bad' : ''}">${k.retard}</div><div style="font-size:10.5px;color:var(--ink-soft);">en retard</div></div>
       <div onclick="factFiltre='tous'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ HT facturés ce mois</div></div>
     </div>
-    <div class="card" style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;">
-      ${filtres.map(([f, lb]) => `<button class="btn ${factFiltre === f ? 'btn-primary' : 'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="factFiltre='${f}'; nav('fact-liste')">${lb}</button>`).join('')}
+    <div class="card fact-filtres" style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;">
+      ${filtres.map(([f, lb]) => `<button class="btn fact-chip ${factFiltre === f ? 'btn-primary' : 'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="factFiltre='${f}'; nav('fact-liste')">${lb}${nb[f] ? ` <span class="fact-nb">${nb[f]}</span>` : ''}</button>`).join('')}
     </div>
     <div class="card" style="padding:4px 12px;">${rows.length ? rows.map(([id, f]) => factLigne(id, f, l, true)).join('') : buildEmptyState('Aucune facture')}</div>`;
 }

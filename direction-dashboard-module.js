@@ -204,7 +204,7 @@ window.renderDirection = function(){
   const activite = D.activite.map(e => `<div class="dd-li"><i style="background:${DD_COULEURS[e.soc] || 'var(--ink-faint)'};"></i><div><b>${esc(e.u || '')}</b><span>${esc(e.txt || e.lib || '')} · ${ddHeure(e.t)}</span></div></div>`).join('');
   let offresMgt = ''; try { offresMgt = typeof accueilGraphique === 'function' ? accueilGraphique() : ''; } catch(e) {}
   document.getElementById('app').innerHTML = `<div class="dd">
-    <aside class="dd-side"><div class="dd-logo"><b>GTM</b> GROUPE<span>TEK-TREND · GADH · MGT</span></div><nav>${menu}</nav><div class="dd-side-bas">
+    <aside class="dd-side">${typeof gtmhNomGroupe === 'function' ? gtmhNomGroupe(true, 'gtmhArcDd') : '<div class="dd-logo"><b>GTM</b> GROUPE</div>'}<div class="dd-soc3">TEK-TREND · GADH · MGT</div><nav>${menu}</nav><div class="dd-side-bas">
       <button onclick="switchSociete()">${ddIcone('switch')}<span>Sociétés</span></button><button onclick="themeBasculer()">${ddIcone('clock')}<span>Mode clair / sombre</span></button><button onclick="logout()">${ddIcone('logout')}<span>Déconnexion</span></button></div></aside>
     <main class="dd-main">
       <div class="dd-haut"><div><h2>Vue direction</h2><div class="dd-date">${jour}</div></div>
@@ -234,6 +234,8 @@ const ddCss = document.createElement('style');
 ddCss.textContent = `
 .dd{display:flex;width:100%;flex:1 1 100%;min-height:100vh;background:var(--bg);}
 .dd-side{display:none;width:236px;flex-shrink:0;background:#0F1F3D;color:#B8C4DA;padding:20px 12px;flex-direction:column;position:sticky;top:0;height:100vh;}
+.dd-side .gtmh-wm.clair{display:flex;align-self:center;margin:4px auto 6px;padding-top:16px;color:#fff;} .dd-side .gtmh-wm.clair b{font-size:38px;} .dd-side .gtmh-wm.clair .gtmh-wm-groupe{font-size:19px;letter-spacing:4px;margin-right:-4px;margin-top:4px;} .dd-side .gtmh-wm.clair .gtmh-wm-arc{left:-28%;top:-4px;width:150%;height:42px;}
+.dd-soc3{text-align:center;font-size:11px;font-weight:700;letter-spacing:1.6px;color:#9CC8FF;margin:0 0 18px;}
 .dd-logo{background:#fff;color:#0F1F3D;border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:17px;letter-spacing:.5px;line-height:1.2;} .dd-logo b{font-size:22px;font-weight:900;} .dd-logo span{display:block;font-size:8.5px;letter-spacing:1.6px;color:#6b7686;margin-top:3px;}
 .dd-side nav,.dd-side-bas{display:flex;flex-direction:column;gap:3px;} .dd-side-bas{margin-top:auto;border-top:1px solid rgba(255,255,255,.15);padding-top:10px;}
 .dd-side button{display:flex;align-items:center;gap:11px;background:none;border:none;color:inherit;padding:11px 12px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;} .dd-side button:hover{background:rgba(255,255,255,.08);color:#fff;} .dd-side button.on{background:rgba(255,255,255,.14);color:#fff;}

@@ -125,7 +125,8 @@ async function donnees(p){
   const c2 = await b.newContext({viewport: {width: 412, height: 900}, isMobile: true, hasTouch: true}); const m = await c2.newPage(); m.on('pageerror', e => err.push(e.message));
   await m.goto('http://localhost:8790/suivi-commandes.html'); await m.waitForFunction(() => typeof vPilotage === 'function'); await donnees(m); await m.waitForTimeout(200);
   r.push(['téléphone : modèle en titre de groupe, référence fixe à gauche', await m.locator('.ph-t tr.gh').count() === 3 && await m.locator('.ph-t td.mod').count() === 0 && await m.evaluate(() => getComputedStyle(document.querySelector('.ph-t tbody td.g')).position === 'sticky')]);
-  r.push(['téléphone : chiffres clés deux par ligne', await m.evaluate(() => getComputedStyle(document.querySelector('.ph-kpis')).gridTemplateColumns.split(' ').length === 2)]);
+  r.push(['téléphone : chiffres clés sur une bande qui défile (refonte 23/11/2026)', await m.evaluate(() => { const k = document.querySelector('.ph-kpis'); return getComputedStyle(k).display === 'flex' && getComputedStyle(k).overflowX === 'auto' && k.scrollWidth > k.clientWidth; })]);
+  r.push(['téléphone : filtres et exports repliés, recherche visible, pas de colonne Couleur', await m.evaluate(() => !!document.querySelector('details.ph-plie') && !document.querySelector('details.ph-plie').open && !!document.querySelector('.ph-outils input[type=search]').offsetWidth && ![...document.querySelectorAll('.ph-t thead th')].some(t => t.textContent === 'Couleur'))]);
   if (DOSSIER){ await m.screenshot({path: DOSSIER + '/tel.png', fullPage: false}); await m.locator('.ph-tw').screenshot({path: DOSSIER + '/tel-tab.png'}); }
   // vue GADH : pas de pilotage (droits inchangés)
   const g = await b.newPage(); g.on('pageerror', e => err.push(e.message)); g.on('dialog', d => d.accept());
