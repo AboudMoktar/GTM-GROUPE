@@ -833,7 +833,7 @@ function flushNow(){ if (!dirty || !HOST) return; clearTimeout(saveTimer); try {
 window.addEventListener("pagehide", flushNow);
 window.addEventListener("beforeunload", flushNow);
 document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden") flushNow(); });
-function persist(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
+function persist(){ try { normaliserAssemblage(); } catch (e) { console.error(e); } dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(function(){ saving = saving.then(flush).then(function(){ dirty = false; }).catch(function(e){ toast("Enregistrement impossible : " + (e && e.message || e)); }); }, 500); }
 function flush(){
   var want = desiredDocs(), ops = [];
   if (HOST){
@@ -919,6 +919,7 @@ function loadHost(){
   defaults(); if (Object.keys(docs).length) applyDocs(docs); if (!docs.cfg) defaults();
   chargerStock();
   try { if (reprendreAnciensMouvements()) setTimeout(persist, 0); } catch (e) {}
+  try { if (normaliserAssemblage()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { if (appliquerMajNomenclature()){ assurerTissus(); setTimeout(persist, 0); } } catch (e) { console.error(e); }
   try { if (retirerSousVetementsSV()) setTimeout(persist, 0); } catch (e) { console.error(e); }
   try { if (majBrassiere()) setTimeout(persist, 0); } catch (e) { console.error(e); }
@@ -1091,12 +1092,36 @@ function chainErrFor(t, l, n){
   return "";
 }
 function stageName(k){ for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === k) return STAGES[i][1]; return k; }
+/* Coupe → assemblage automatique (23/11/2026) : sauf l'exosquelette et la brassière, toute pièce coupée passe
+   d'elle-même à l'assemblage (« Envoyée à la GADH »), à la date de sa coupe. L'étape ne se saisit plus à la main ;
+   normaliserAssemblage() garde « assemblage = coupe » pour les commandes en cours, anciennes coupes comprises. */
+function coupeAutoAssemblage(l){ return !!l && !horsGadh(l); }
+function normaliserAssemblage(){
+  if (VUE === "gadh" || lectureSeule() || !S || !S.lines || !S.moves) return 0;
+  var tot = stageTotals(), fini = {}, n = 0, par = {};
+  try { dashData().forEach(function(d){ if (d.st && d.st.done) fini[d.lot] = 1; }); } catch (e) {}
+  S.moves.forEach(function(m){ if (m.stage === "cp") (par[m.lineId] = par[m.lineId] || []).push(m); });
+  S.lines.forEach(function(l){
+    if (!coupeAutoAssemblage(l) || fini[l.lot]) return;
+    var t = tot[l.id] || {}, cp = t.cp || 0, g = t.gadh || 0; if (cp === g) return;
+    var cps = (par[l.id] || []).slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var der = cps.length ? cps[cps.length - 1].date : today();
+    if (cp < g){ S.moves.push({id:nid("M"), date:der, lineId:l.id, stage:"gadh", qty:cp - g, nc:0, note:"Assemblage automatique (coupe corrigée)"}); n++; return; }
+    var parDate = {}, dates = [];
+    cps.forEach(function(m){ if (!(m.date in parDate)){ parDate[m.date] = 0; dates.push(m.date); } parDate[m.date] += m.qty || 0; });
+    var cum = 0, couvert = g;
+    dates.forEach(function(d){ cum += parDate[d]; if (cum > couvert){ S.moves.push({id:nid("M"), date:d, lineId:l.id, stage:"gadh", qty:cum - couvert, nc:0, note:"Assemblage automatique (coupe)"}); couvert = cum; n++; } });
+  });
+  return n;
+}
 function checkMoves(newMoves, removeId){
   var tot = {}, nc = {}, ids = {};
   function add(m){ (tot[m.lineId] = tot[m.lineId] || {})[m.stage] = ((tot[m.lineId] || {})[m.stage] || 0) + (m.qty || 0); (nc[m.lineId] = nc[m.lineId] || {})[m.stage] = ((nc[m.lineId] || {})[m.stage] || 0) + (m.nc || 0); }
   S.moves.forEach(function(m){ if (m.id === removeId || (removeId && typeof removeId === "object" && removeId[m.id])){ ids[m.lineId] = 1; return; } add(m); });
   newMoves.forEach(function(m){ add(m); ids[m.lineId] = 1; });
-  var errs = []; Object.keys(ids).forEach(function(id){ var l = lineById(id); if (!l) return; var e = chainErrFor(tot[id] || {}, l, nc[id] || {}); if (e) errs.push(e); });
+  var errs = []; Object.keys(ids).forEach(function(id){ var l = lineById(id); if (!l) return;
+    if (coupeAutoAssemblage(l) && VUE !== "gadh" && tot[id]) tot[id].gadh = tot[id].cp || 0;   /* l'assemblage suit la coupe */
+    var e = chainErrFor(tot[id] || {}, l, nc[id] || {}); if (e) errs.push(e); });
   if (errs.length) throw new Error(errs[0] + (errs.length > 1 ? " (+" + (errs.length - 1) + " autre(s))" : ""));
 }
 function setStageTotal(id, stage, total){
@@ -5739,8 +5764,8 @@ var SX_PREV = {cp:null, gadh:"cp", ret:"gadh", ctl:"ret", emb:"ctl", exp:"emb"};
 var SX_AUTO = {ret:"asm"};
 /* Côté TEK-TREND, ces étapes ne se saisissent pas : le retour est saisi par la GADH, la confection reprend
    les quantités retournées, le contrôle est rempli à l'emballage (cartons). */
-var SX_INFO = {ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici et partent directement en confection.", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};
-function sxEstAuto(st, rows){ if (st === "ret" && rows && rows.some(horsGadh)) return false; return VUE !== "gadh" && !!SX_INFO[st]; }
+var SX_INFO = {gadh:"Automatique : les pièces coupées passent d'elles-mêmes à l'assemblage, à la date de leur coupe.", ret:"Saisi par la GADH : les pièces retournées après assemblage arrivent ici et partent directement en confection.", ctl:"Rempli automatiquement à l'emballage, avec les pièces mises en carton."};
+function sxEstAuto(st, rows){ if ((st === "ret" || st === "gadh") && rows && rows.some(horsGadh)) return false; return VUE !== "gadh" && !!SX_INFO[st]; }
 var SX_COL = {env:"#6b7a90", cp:"#c48a00", gadh:"#e07b39", ret:"#5a9a3f", conf:"#2a6f97", ctl:"#4d7fe0", emb:"#7d5ba6", exp:"#0f6b45"};
 var SX_ICO = {
   env:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
@@ -5997,7 +6022,7 @@ function sxAccueil(v, lot, rows){
 
 function sxPoste(v, lot, rows, st){
   var G = VUE === "gadh", ready = lotReady(lot);
-  if (!G && st === "ret" && rows.some(horsGadh)) rows = rows.filter(horsGadh);   /* confection de l'exosquelette : saisie chez TEK-TREND */
+  if (!G && (st === "ret" || st === "gadh") && rows.some(horsGadh)) rows = rows.filter(horsGadh);   /* confection de l'exosquelette : saisie chez TEK-TREND */
   var hd = el("div", {class:"sx-head"});
   if (!G) hd.appendChild(el("button", {class:"sx-back", "aria-label":"Retour aux étapes", text:"←", onclick:function(){ ui.sxOpen = false; ui.fv = {}; ui.pend = null; render(); }}));
   hd.appendChild(sxIcon(st)); hd.appendChild(el("div", null, el("div", {class:"sx-nm", text:G ? "Retour à TEK-TREND" : SX_NOM[st]}), el("div", {class:"mut", text:SX_AIDE[st]})));

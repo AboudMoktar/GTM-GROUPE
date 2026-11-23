@@ -75,7 +75,7 @@ async function donnees(p){
   await p.evaluate(() => { S.lots['PK202612-1'].livraison = '2099-01-31'; render(); }); await p.waitForTimeout(150);
   const cell = (id, k) => p.locator('.ph-in[data-id="' + id + '"][data-k="' + k + '"]');
   const tot = (id, k) => p.evaluate(([id, k]) => (stageTotals()[id] || {})[k] || 0, [id, k]);
-  r.push(['cases de saisie : commande et toutes les étapes', await p.locator('.ph-in').count() === 6 * 7]);
+  r.push(['cases de saisie : commande et toutes les étapes sauf l\'assemblage (automatique)', await p.locator('.ph-in').count() === 6 * 6 && await p.locator('.ph-in[data-k="gadh"]').count() === 0]);
   const valider = async (pg) => { pg = pg || p; await pg.click('.ph-attente button:has-text("Valider")'); await pg.waitForTimeout(150); await pg.click('.sx-modal .sx-go'); await pg.waitForTimeout(300); };
   await cell('T_M', 'cp').fill('280'); await cell('T_M', 'cp').press('Enter'); await p.waitForTimeout(300);
   r.push(['saisie : en attente (case orange, barre « Valider »), rien d\'enregistré', await tot('T_M', 'cp') === 0 && await p.locator('.ph-t td.e.chg').count() === 1 && /1 modification\(s\) en attente/.test(await txt('.ph-attente'))]);
@@ -83,8 +83,9 @@ async function donnees(p){
   r.push(['Valider : message avec chaque modification (avant → après)', /Enregistrer 1 modification/.test(await txt('.sx-modal')) && /Tee-shirt Sport homme noir M/.test(await txt('.sx-modal')) && /0 → 280/.test(await txt('.sx-modal'))]);
   await p.click('.sx-modal .sx-go'); await p.waitForTimeout(300);
   r.push(['saisie d\'une case + Entrée : enregistrée, mouvement daté avec « Pilotage »', await tot('T_M', 'cp') === 280 && await p.evaluate(() => S.moves.some(m => m.lineId === 'T_M' && m.stage === 'cp' && /Pilotage/.test(m.note)))]);
-  await cell('T_M', 'gadh').fill('300'); await cell('T_M', 'gadh').press('Tab'); await p.waitForTimeout(300); await valider();
-  r.push(['quantité incohérente refusée (plus que la coupe)', await tot('T_M', 'gadh') === 0 && /dépasse|Coup|ne peut/i.test(await p.locator('#toast').textContent())]);
+  r.push(['coupe → assemblage automatique (23/11/2026), à la date de la coupe', await tot('T_M', 'gadh') === 280 && await p.evaluate(() => { const c = S.moves.filter(m => m.lineId === 'T_M' && m.stage === 'cp'), g = S.moves.filter(m => m.lineId === 'T_M' && m.stage === 'gadh'); return g.length === 1 && g[0].date === c[0].date; })]);
+  await cell('T_M', 'ret').fill('300'); await cell('T_M', 'ret').press('Tab'); await p.waitForTimeout(300); await valider();
+  r.push(['quantité incohérente refusée (plus que l\'assemblage)', await tot('T_M', 'ret') === 0 && /dépasse|assembl|ne peut/i.test(await p.locator('#toast').textContent())]);
   r.push(['refusée : la saisie reste en attente pour être corrigée', await p.locator('.ph-t td.e.chg').count() === 1]);
   await p.click('.ph-attente button:has-text("Annuler")'); await p.waitForTimeout(200);
   r.push(['Annuler : saisies en attente abandonnées', await p.locator('.ph-attente:visible').count() === 0 && await p.locator('.ph-t td.e.chg').count() === 0]);
@@ -102,10 +103,11 @@ async function donnees(p){
   await cell('G_S', 'fr').fill('60'); await cell('G_S', 'fr').press('Enter'); await p.waitForTimeout(300); await valider();
   r.push(['quantité commandée modifiée', await p.evaluate(() => lineById('G_S').qty === 60)]);
   // « Tout » par modèle
-  const btTout = p.locator('.ph-t tr.st', {hasText: 'Sous-total Sport-H-Re-Mi'}).locator('td').nth(4).locator('.ph-tout');
+  r.push(['pas de « Tout » sur l\'assemblage (automatique)', await p.locator('.ph-t tr.st', {hasText: 'Sous-total Sport-H-Re-Mi'}).locator('td').nth(4).locator('.ph-tout').count() === 0]);
+  const btTout = p.locator('.ph-t tr.st', {hasText: 'Sous-total Sport-H-Re-Mi'}).locator('td').nth(5).locator('.ph-tout');
   r.push(['bouton « Tout » sur le sous-total du modèle', /Tout \+280/.test(await btTout.textContent())]);
   await btTout.click(); await p.waitForTimeout(300); await valider();
-  r.push(['« Tout » : tout le modèle passé à l\'étape', await tot('T_M', 'gadh') === 280]);
+  r.push(['« Tout » : tout le modèle passé à l\'étape', await tot('T_M', 'ret') === 280]);
   // coller un bloc copié depuis Excel
   const coller = (id, k, txt) => p.evaluate(([id, k, txt]) => { const i = document.querySelector('.ph-in[data-id="' + id + '"][data-k="' + k + '"]'); const dt = new DataTransfer(); dt.setData('text/plain', txt); i.focus(); i.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }, [id, k, txt]);
   await coller('R_XS', 'ctl', '90\t90\r\n'); await p.waitForTimeout(300); await valider();
