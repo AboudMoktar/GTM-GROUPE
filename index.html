@@ -1091,13 +1091,15 @@ function computeTotals(dayData){
   return totals;
 }
 
-// Saisie du rendement : Entrée = case du dessous, comme dans Excel ; Maj+Entrée = case du dessus (refonte 23/11/2026)
+// Saisie du rendement : Entrée = case d'à côté (poste suivant), puis première case de l'heure suivante ;
+// Maj+Entrée = case précédente (23/11/2026, demande de l'atelier). Les observations ne sont pas dans le parcours.
 window.saisieTouche = (e) => {
   if(e.key !== 'Enter' || !e.target || e.target.tagName !== 'INPUT') return;
-  const td = e.target.closest('td'), tr = td && td.parentElement; if(!tr) return;
-  const col = Array.prototype.indexOf.call(tr.children, td);
-  let r = e.shiftKey ? tr.previousElementSibling : tr.nextElementSibling;
-  while(r){ const c = r.children[col], i = c && c.querySelector('input:not([disabled])'); if(i){ e.preventDefault(); i.focus(); i.select(); return; } r = e.shiftKey ? r.previousElementSibling : r.nextElementSibling; }
+  const t = e.target.closest('table'); if(!t) return;
+  const cases = Array.prototype.slice.call(t.querySelectorAll('tbody td.input-cell input:not([disabled])'));
+  const k = cases.indexOf(e.target); if(k < 0) return;
+  const n = cases[k + (e.shiftKey ? -1 : 1)];
+  if(n){ e.preventDefault(); n.focus(); n.select(); }
 };
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showToast(msg){ 
