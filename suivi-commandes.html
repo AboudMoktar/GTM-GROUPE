@@ -2077,7 +2077,9 @@ function vCmdSaisie(v, clients, cli, libs){
     CL.forEach(function(c){ parC[c] = 0; });
     cellsTot.forEach(function(x){ var tt = 0; CL.forEach(function(c){ var q = qVue(c, x.lib, x.z); tt += q; parC[c] += q; }); x.td.textContent = tt ? fmt(tt) : ""; gf += tt; if (tt) gc += cutQty(tt, modelOf(x.lib)); });
     cellsLib.forEach(function(x){ var tt = 0; x.sizes.forEach(function(z){ tt += totRef(x.lib, z); }); x.td.textContent = tt ? fmt(tt) : ""; });
-    cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, totRef(x.lib, x.z)); x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tCtl += ch.controle; tR += ch.reste; });
+    /* 2e choix retiré de la commande : le reste se calcule sur la quantité commandée utile (23/11/2026) */
+    var c2R = ch2Totals(), ch2Ref = function(lib, z){ var n = 0; S.lines.forEach(function(l){ if (l.lot === lotT && l.lib === lib && l.size === z) n += c2R[l.id] || 0; }); return n; };
+    cellsReste.forEach(function(x){ var ch = SV.chiffres(x.lib, x.z, Math.max(0, totRef(x.lib, x.z) - ch2Ref(x.lib, x.z))); if (ch2Ref(x.lib, x.z)) x.reste.title = ch2Ref(x.lib, x.z) + " pièce(s) en 2e choix, retirée(s) de la commande"; x.emb.textContent = ch.emballe ? fmt(ch.emballe) : ""; x.reste.textContent = fmt(ch.reste); tEmb += ch.emballe; tCtl += ch.controle; tR += ch.reste; });
     if (SV){ Object.keys(SV.R).forEach(function(k){ var r0 = SV.R[k]; COLS.forEach(function(c, i){ tEx[i] += r0.ex[c.id] || 0; }); }); }
     CL.forEach(function(c){ footCells[c].textContent = parC[c] ? fmt(parC[c]) : ""; });
     footCells.__t.textContent = fmt(gf); footCells.__tl.textContent = fmt(gf);
