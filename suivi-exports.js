@@ -1032,7 +1032,7 @@ function clientsColonnes(lot, client){
 /* ---------- état d'une commande, au format de la commande initiale ----------
    Model | LIBELLE | Taille | NEOLYS | ALLOGA | FLÉCHÉS | VESTIAIRES | Total | Total du libellé
    | SUIVI : Statut (note par libellé), expédié avant les exports, une colonne par export, Emballés (en attente
-   d'export), Reste à produire = total − (expédié + emballé), jamais négatif ; TOTAL du reste calculé sur les totaux. Seulement les tailles commandées (ou exportées). Totaux en formules. */
+   d'export), Reste à produire = total − (expédié + emballé), jamais négatif ; TOTAL du reste = somme des lignes. Seulement les tailles commandées (ou exportées). Totaux en formules. */
 function etatCommandeGrid(e, lot, opt){
   /* opt.commande : la fiche de commande seule (sans SUIVI) ; opt.client : un seul client ; opt.annee */
   opt = opt || {};
@@ -1097,9 +1097,8 @@ function etatCommandeGrid(e, lot, opt){
     var sv = 0; for (var i2 = 3; i2 < fin; i2++){ var cv = g.rows[i2].cells[k]; if (cv && typeof cv.v === "number") sv += cv.v; }
     gset(g, r, k, sv, k === cR || (CM && k === cTL) ? {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE", fg:"C00000"} : TT); g.rows[r].cells[k].f = "SUM(" + L(k) + deb + ":" + L(k) + fin + ")";
   }
-  /* TOTAL du reste : Total − (Expédié + Emballé + Contrôlé) sur les totaux (les lignes, elles, s'arrêtent à 0) */
-  if (!CM){ var s0 = cE, tE = tCtl; for (k = s0; k <= cEmb; k++) tE += g.rows[r].cells[k].v || 0;
-    g.rows[r].cells[cR].v = Math.max(0, (g.rows[r].cells[cT].v || 0) - tE); g.rows[r].cells[cR].f = "MAX(0," + L(cT) + (r + 1) + "-SUM(" + L(s0) + (r + 1) + ":" + L(cEmb) + (r + 1) + ")" + (tCtl ? "-" + tCtl : "") + ")"; }
+  /* TOTAL du reste = somme des restes des lignes (23/11/2026) : les pièces en trop sur une taille
+     (ex. 59 expédiées pour 55 commandées) ne diminuent plus le reste des autres tailles. */
   g.rows[r].h = 18; g.sticky = 3;
   /* renvoi sous le tableau : pièces contrôlées pas encore emballées (déjà retirées du reste, sans colonne à elles) */
   if (!CM && ctlNote.length){

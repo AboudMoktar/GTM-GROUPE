@@ -120,7 +120,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     ['cp','gadh','asm','ret','conf','ctl','emb'].forEach((st, k) => S.moves.push({id:'MZ' + k, date:'2026-11-02', lineId:'Z1', stage:st, qty:55, nc:0, note:''}));
     const g = pkExports.etatCommandeGrid(null, 'PKZ'), h = g.rows[2].cells.map(x => x ? x.v : ''), iR = h.lastIndexOf('Reste'), rs = g.rows.slice(3, -1).map(x => x.cells[iR].v), t = g.rows[g.rows.length - 1].cells[iR];
     S.lines = S.lines.filter(l => l.lot !== 'PKZ'); S.moves = S.moves.filter(m => !/^MZ/.test(m.id)); return {rs: rs.join('|'), t: t.v, f: t.f}; });
-  r.push(['reste jamais négatif ; TOTAL = total − (expédié + emballé)', sur.rs === '0|100' && sur.t === 95 && /^MAX\(0,/.test(sur.f)]);
+  r.push(['reste jamais négatif ; TOTAL = somme des restes des lignes', sur.rs === '0|100' && sur.t === 100 && /^SUM\(/.test(sur.f)]);
   r.push(['état : une page par commande',ec.noms === 'Etat PK202610|Etat PK202612']);
   r.push(['état des commandes (commandé, cet export, reste)', etA && etA.T.cde === 30 && etA.T.ce === 22 && etA.T.reste === 8]);
   const doc = (d, b) => p.locator('.xp-doc[data-doc="' + d + '"]').locator('button', {hasText: b});
