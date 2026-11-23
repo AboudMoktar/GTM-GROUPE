@@ -185,6 +185,41 @@ function auditConnexion(){
   auditEnregistrerJour(getTodayISO(), auditNouvelId(), {t:maintenant, u:currentUser.nom, un:currentUser.username, soc:'groupe', cle:'connexion', lib:'Connexion', txt:'Connexion à l\'application'});
 }
 
+// Présence (23/11/2026) : une entrée « Session » par connexion et par appareil, mise à jour toutes les
+// 2 minutes (heure de dernière activité) puis marquée « Déconnexion » à la sortie. Elle permet à
+// l'administrateur de voir depuis combien de temps un compte est déconnecté, même après la fermeture
+// de l'application (la fiche « sessions » est effacée 30 min après la dernière activité).
+// Les règles Firebase n'autorisent la mise à jour d'une entrée que pendant 10 minutes : au-delà
+// (téléphone en veille), une nouvelle entrée est créée.
+let auditPres = null; // {jour, id, entree, ecrit}
+function auditPresence(fin){
+  if(!currentUser || !currentUser.username || (typeof isPortail === 'function' && isPortail())) return;
+  const maintenant = Date.now(), jour = getTodayISO(), appareil = typeof shortDevice === 'function' ? shortDevice() : 'Appareil';
+  const h = (t) => new Date(t).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  if(!fin && auditPres && auditPres.jour === jour && maintenant - auditPres.ecrit < 120000) return;
+  if(!auditPres || auditPres.jour !== jour || maintenant - auditPres.ecrit > 9 * 60000 || auditPres.entree.un !== currentUser.username){
+    const debut = auditPres && auditPres.entree.un === currentUser.username ? auditPres.entree.debut : maintenant;
+    auditPres = {jour, id:auditNouvelId(), entree:{u:currentUser.nom, un:currentUser.username, soc:'groupe', cle:'session', lib:'Session', debut, appareil, sid:(typeof mySessionId !== 'undefined' && mySessionId) || ''}};
+  }
+  const e = auditPres.entree;
+  e.t = maintenant;
+  if(fin){ e.fin = maintenant; e.txt = 'Déconnexion · ' + appareil + ' · connecté de ' + h(e.debut) + ' à ' + h(maintenant); }
+  else e.txt = 'En ligne · ' + appareil + ' · depuis ' + h(e.debut);
+  auditEnregistrerJour(jour, auditPres.id, Object.assign({}, e));
+  auditPres.ecrit = maintenant;
+  if(fin) auditPres = null;
+}
+const auditWriteMySessionOrigine = window.writeMySession, auditEndMySessionOrigine = window.endMySession;
+if(typeof auditWriteMySessionOrigine === 'function') window.writeMySession = function(){
+  const r = auditWriteMySessionOrigine.apply(this, arguments);
+  try { auditPresence(false); } catch(e) {}
+  return r;
+};
+if(typeof auditEndMySessionOrigine === 'function') window.endMySession = function(){
+  try { if(typeof mySessionId !== 'undefined' && mySessionId) auditPresence(true); } catch(e) {}
+  return auditEndMySessionOrigine.apply(this, arguments);
+};
+
 // --- Branchement ---
 window.setJSON = function(key, value){
   let avant;

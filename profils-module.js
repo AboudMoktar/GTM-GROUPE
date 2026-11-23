@@ -214,6 +214,59 @@ window.profilsVoirDroits = (uid) => {
   const p = PROFILS[u.profil];
   mgtModal('Droits de ' + (u.nom || u.username || ''), `<p style="font-size:13px;margin-top:0;">${esc(p ? p.label : 'Ancien compte')}${p ? ' — ' + esc(p.aide) : ''}</p>${profilsDroitsTexte(u.profil)}`);
 };
+// Présence des comptes (23/11/2026) : en ligne maintenant (fiche « sessions », battement toutes les 30 s)
+// ou depuis combien de temps le compte est déconnecté (entrées « Session » du journal d'audit, 30 jours).
+function profilsDuree(ms){
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if(m < 1) return 'moins d\'une minute';
+  if(m < 60) return m + ' min';
+  const h = Math.floor(m / 60);
+  if(h < 24) return h + ' h' + (m % 60 ? ' ' + String(m % 60).padStart(2, '0') + ' min' : '');
+  const j = Math.floor(h / 24);
+  return j + ' j' + (h % 24 ? ' ' + (h % 24) + ' h' : '');
+}
+function profilsQuand(t){
+  if(!t) return '—';
+  const d = new Date(t), auj = new Date(), hier = new Date(); hier.setDate(hier.getDate() - 1);
+  const h = d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  if(d.toDateString() === auj.toDateString()) return 'aujourd\'hui à ' + h;
+  if(d.toDateString() === hier.toDateString()) return 'hier à ' + h;
+  return 'le ' + d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) + ' à ' + h;
+}
+let profilsPresenceAudit = {charge:0, etat:'vide', entrees:[]};
+function profilsChargerPresence(){
+  if(typeof auditChargerEntrees !== 'function' || !canManageAccounts()) return;
+  if(profilsPresenceAudit.etat === 'chargement' || Date.now() - profilsPresenceAudit.charge < 120000) return;
+  profilsPresenceAudit.etat = 'chargement';
+  auditChargerEntrees(30).then(r => {
+    profilsPresenceAudit = {charge:Date.now(), etat:r.erreur ? 'partiel' : 'ok', entrees:r.entrees || []};
+    const modal = document.querySelector('#mgt-modal-zone .modal-backdrop');
+    if(currentUser && activeTab === 'sessions' && activeModule === 'admin' && !modal) nav('sessions');
+  }).catch(() => { profilsPresenceAudit = {charge:Date.now(), etat:'erreur', entrees:[]}; });
+}
+function profilsPresence(username){
+  const maint = Date.now();
+  const sess = Object.entries(sessionsCache).filter(([, x]) => x && x.username === username).sort((a, b) => (b[1].lastSeen || 0) - (a[1].lastSeen || 0));
+  const actives = sess.filter(([, x]) => maint - (x.lastSeen || 0) < 5 * 60000);
+  const ent = profilsPresenceAudit.entrees.filter(e => e.un === username);
+  const derSession = ent.filter(e => e.cle === 'session').sort((a, b) => (b.t || 0) - (a.t || 0))[0];
+  let der = 0, appareil = '';
+  ent.forEach(e => { if((e.t || 0) > der){ der = e.t; appareil = e.appareil || appareil; } });
+  sess.forEach(([, x]) => { if((x.lastSeen || 0) > der){ der = x.lastSeen; appareil = x.device || appareil; } });
+  if(derSession && derSession.appareil && Math.abs((derSession.t || 0) - der) < 180000) appareil = derSession.appareil;
+  if(actives.length){
+    const debut = Math.min(...actives.map(([, x]) => x.loginAt || x.lastSeen));
+    return {code:'en-ligne', txt:`En ligne sur ${actives.map(([, x]) => x.device || 'Appareil').filter((v, i, a) => a.indexOf(v) === i).join(' + ')} · connecté ${profilsQuand(debut)} (depuis ${profilsDuree(maint - debut)})`};
+  }
+  if(!der) return {code:'jamais', txt: profilsPresenceAudit.etat === 'chargement' || profilsPresenceAudit.etat === 'vide' ? 'Recherche de la dernière connexion…' : 'Aucune connexion ces 30 derniers jours'};
+  const deco = derSession && derSession.fin && derSession.fin >= der - 60000;
+  return {code:'hors-ligne', depuis:maint - der, txt:`${deco ? 'Déconnecté' : 'Hors ligne'} depuis ${profilsDuree(maint - der)} · ${deco ? 'déconnexion' : 'dernière activité'} ${profilsQuand(der)}${appareil ? ' · ' + appareil : ''}${derSession && derSession.debut ? ' · dernière connexion ' + profilsQuand(derSession.debut) : ''}`};
+}
+function profilsPresenceHTML(u){
+  if(u.desactive === true) return '<div class="pr-pres pr-off"><i></i>Compte désactivé</div>';
+  const p = profilsPresence(u.username);
+  return `<div class="pr-pres pr-${p.code}"><i></i>${esc(p.txt)}</div>`;
+}
 const profilsSessionsOrigine = window.renderSessions;
 window.renderSessions = function(container){
   if(!firebaseConfigured()) return profilsSessionsOrigine(container);
@@ -221,7 +274,21 @@ window.renderSessions = function(container){
   const sessions = Object.entries(sessionsCache).sort((a, b) => (b[1].lastSeen || 0) - (a[1].lastSeen || 0));
   const gere = canManageAccounts();
   const ancienAdmin = gere && !currentUser.profil;
+  if(gere) profilsChargerPresence();
+  const presences = Object.values(profils).filter(u => u.desactive !== true).map(u => profilsPresence(u.username));
+  const nbEnLigne = presences.filter(p => p.code === 'en-ligne').length;
+  const deco = presences.filter(p => p.code !== 'en-ligne').length;
   container.innerHTML = `
+    <style>
+      .pr-pres{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;margin-top:5px;line-height:1.4;color:var(--ink-soft);}
+      .pr-pres i{flex:0 0 9px;height:9px;border-radius:50%;margin-top:4px;background:#9AA6B8;}
+      .pr-en-ligne{color:#0E7A3A;font-weight:600;} .pr-en-ligne i{background:#18C24F;box-shadow:0 0 0 3px rgba(24,194,79,.2);}
+      .pr-hors-ligne i{background:#E5322F;} .pr-off i{background:#C9CFD8;}
+      .pr-resume{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;}
+      .pr-resume span{font-size:12.5px;font-weight:700;padding:4px 11px;border-radius:999px;}
+      .pr-sess{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 14px;font-size:12.5px;color:var(--ink-soft);margin-top:4px;}
+      .pr-sess b{color:var(--ink);font-weight:600;}
+    </style>
     <div class="flex-header"><h2>Comptes et sessions</h2></div>
     ${ancienAdmin ? `<div class="card" style="border:1.5px solid var(--warn);">
       <h3 style="margin-top:0;">Activer votre profil Administrateur / Développeur</h3>
@@ -229,11 +296,13 @@ window.renderSessions = function(container){
       <button class="btn btn-primary" onclick="profilsActiverAdmin()">Activer mon profil Administrateur</button></div>` : ''}
     ${gere ? `<div class="card">
       <div class="flex-header" style="margin-bottom:10px;"><h3 style="margin:0;">Comptes utilisateurs</h3><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="profilsFormCompte()">+ Ajouter</button></div>
+      <div class="pr-resume"><span style="background:#E3F7EA;color:#0E7A3A;">● ${nbEnLigne} en ligne</span><span style="background:#FDECEC;color:#B42323;">● ${deco} hors ligne</span></div>
       ${Object.entries(profils).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || '')).map(([uid, u]) => {
         const moi = uid === currentUser.uid, off = u.desactive === true;
         return `<div class="session-row" style="flex-wrap:wrap;gap:8px;">
         <div style="min-width:0;flex:1 1 260px;"><div style="font-weight:700;">${esc(u.nom)} <span class="badge ${u.profil ? 'green' : 'orange'}" style="font-size:11px;">${esc(u.profil && PROFILS[u.profil] ? PROFILS[u.profil].label : 'Ancien compte : à classer')}</span>${off ? ' <span class="badge red" style="font-size:11px;">Désactivé</span>' : ''}${moi ? ' <span style="font-size:11px;color:var(--ink-soft);">(vous)</span>' : ''}</div>
-        <div style="font-size:12px;color:var(--ink-soft);">Identifiant : ${esc(u.username)} · ${esc(accesLabel(u))}</div></div>
+        <div style="font-size:12px;color:var(--ink-soft);">Identifiant : ${esc(u.username)} · ${esc(accesLabel(u))}</div>
+        ${profilsPresenceHTML(u)}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsVoirDroits('${uid}')">Droits</button>
           <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="profilsFormCompte('${uid}')">Modifier</button>
@@ -246,8 +315,11 @@ window.renderSessions = function(container){
     <div class="card"><h3 style="margin-top:0;">Sessions actives</h3>
       ${sessions.length ? sessions.map(([sid, s]) => {
         const active = (Date.now() - (s.lastSeen || 0)) < 5 * 60000;
-        return `<div class="session-row"><div><div style="font-weight:700;">${esc(s.nom || s.username)} ${sid === mySessionId ? '<span style="font-size:11px;color:var(--ink-soft);">(cet appareil)</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--ink-soft);">${esc(s.device || 'Appareil')} · ${active ? 'active' : 'inactive'} · vue ${timeAgo(s.lastSeen)}</div></div>
+        const pu = Object.values(profils).find(x => x.username === s.username) || {};
+        const debut = s.loginAt || s.lastSeen;
+        return `<div class="session-row" style="flex-wrap:wrap;gap:8px;"><div style="min-width:0;flex:1 1 260px;"><div style="font-weight:700;">${esc(s.nom || s.username)} ${pu.profil && PROFILS[pu.profil] ? `<span class="badge green" style="font-size:11px;">${esc(PROFILS[pu.profil].label)}</span>` : ''} ${sid === mySessionId ? '<span style="font-size:11px;color:var(--ink-soft);">(cet appareil)</span>' : ''}</div>
+          <div class="pr-pres pr-${active ? 'en-ligne' : 'hors-ligne'}"><i></i>${active ? 'Active' : 'Inactive depuis ' + profilsDuree(Date.now() - (s.lastSeen || 0))} · ${esc(s.device || 'Appareil')}</div>
+          <div class="pr-sess"><span>Identifiant : <b>${esc(s.username || '')}</b></span><span>Connexion : <b>${profilsQuand(debut)}</b></span><span>Durée : <b>${profilsDuree((s.lastSeen || Date.now()) - debut)}</b></span><span>Dernière activité : <b>${timeAgo(s.lastSeen)}</b></span></div></div>
           ${gere && sid !== mySessionId ? `<button class="btn btn-warning" style="padding:6px 10px;font-size:12px;" onclick="forceEndSession('${sid}')">Déconnecter</button>` : ''}</div>`;
       }).join('') : '<p style="font-size:13px;color:var(--ink-soft);">Aucune session enregistrée.</p>'}
     </div>`;
