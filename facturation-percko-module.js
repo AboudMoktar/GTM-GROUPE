@@ -427,6 +427,108 @@ window.renderFactListe = function(main){
     <button class="btn btn-primary" onclick="percChoisirCommande()">Depuis l'emballage</button>
     <button class="btn btn-ghost" onclick="nav('fact-catalogue')">Catalogue & prix</button></div>`);
 };
+// --- Liste : vue « Tableau » (23/11/2026), comme le classeur « Facture Percko » ---
+// Une ligne par facture de l'année : numéro, mois, date, valeur, état, reste, pièces par famille
+// (sous-vêtement, exosquelette, brassière), totaux en bas, export Excel. Lecture seule : un clic ouvre la facture.
+let percVue = (() => { try { return localStorage.getItem('gtm_fact_vue') || 'liste'; } catch(e) { return 'liste'; } })();
+let percAnnee = null;
+const PERC_MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+window.percVueSet = (v) => { percVue = v; try { localStorage.setItem('gtm_fact_vue', v); } catch(e) {} nav('fact-liste'); };
+window.percAnneeSet = (a) => { percAnnee = a; nav('fact-liste'); };
+function percPiecesFacture(f){
+  const fam = {}; percTarif().forEach(a => { fam[a.code] = a.fam; });
+  const r = {sv:0, exo:0, bra:0};
+  (f.lignes || []).forEach(l => {
+    const q = Number(l.qte) || 0, d = String(l.designation || ''), fm = fam[l.ref];
+    if(!q) return;
+    if(fm === 'exo' || /EXOSQUELETTE/i.test(d)) r.exo += q;
+    else if(fm === 'sg' || /SOUTIEN|BRASSI/i.test(d)) r.bra += q;
+    else if(fm || l.exp || l.emb) r.sv += q;
+  });
+  return r;
+}
+function percTableauDonnees(annee){
+  const toutes = factToutes('tek');
+  const rows = Object.entries(toutes).filter(([, f]) => f && f.type !== 'avoir' && String(f.date || '').slice(0, 4) === annee)
+    .sort((a, c) => { const ka = factCleNumero(a[1].numero), kc = factCleNumero(c[1].numero); return (a[1].statut === 'brouillon') - (c[1].statut === 'brouillon') || ka[0] - kc[0] || ka[1] - kc[1] || String(a[1].date).localeCompare(String(c[1].date)); })
+    .map(([id, f]) => { const t = factTotaux(f, toutes), st = factStatut(f, toutes), p = percPiecesFacture(f); return {id, f, t, st, p, mois:Number(String(f.date).slice(5, 7)) - 1}; });
+  const tot = rows.reduce((x, r) => { if(r.st !== 'brouillon'){ x.v += r.t.ttc; x.reste += r.t.reste; x.sv += r.p.sv; x.exo += r.p.exo; x.bra += r.p.bra; } return x; }, {v:0, reste:0, sv:0, exo:0, bra:0});
+  return {rows, tot};
+}
+function percEntier(x){ return Math.round(Number(x) || 0).toLocaleString('fr-FR'); }
+function percEtatTxt(r){ return r.st === 'payee' ? 'payé' : r.st === 'brouillon' ? 'brouillon' : r.st === 'retard' ? 'en retard' : r.st === 'partielle' ? 'partiel' : 'non payé'; }
+function percTableauHTML(annee){
+  const D = percTableauDonnees(annee), n = (x) => x ? percEntier(x) : '';
+  let moisPrec = -1;
+  const lignes = D.rows.map(r => {
+    const m = r.mois !== moisPrec ? PERC_MOIS[r.mois] || '' : ''; moisPrec = r.mois;
+    const sansValeur = r.t.ttc < 0.005;
+    return `<tr class="pt-${r.st}" onclick="factOuvrir('${r.id}')">
+      <td class="pt-num">${r.f.numero ? esc(r.f.numero) : '<i>brouillon</i>'}</td><td class="pt-mois">${m}</td><td>${mgtDate(r.f.date)}</td>
+      <td class="pt-n">${sansValeur ? 'Sans valeur' : fmtDT(r.t.ttc)}</td><td class="pt-etat">${percEtatTxt(r)}</td>
+      <td class="pt-n">${r.t.reste > 0.005 && r.st !== 'brouillon' ? fmtDT(r.t.reste) : ''}</td>
+      <td class="pt-n">${n(r.p.sv)}</td><td class="pt-n">${n(r.p.exo)}</td><td class="pt-n">${n(r.p.bra)}</td></tr>`;
+  }).join('');
+  return `<div class="card pt-carte"><div class="pt-titre"><b>Factures PERCKO ${annee}</b><span>${D.rows.length} facture(s) · cliquez une ligne pour l'ouvrir</span>
+      <button class="btn btn-ghost" onclick="percTableauExcel('${annee}')">📗 Excel</button></div>
+    <div class="pt-scroll"><table class="pt-t"><thead><tr><th>Facture N°</th><th>Mois</th><th>Date</th><th>Valeur</th><th>État</th><th>Reste</th><th>Sous-vêtement</th><th>Exosquelette</th><th>Brassière</th></tr></thead>
+    <tbody>${lignes || '<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--ink-soft);">Aucune facture en ' + annee + '</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="3">Total (factures émises)</td><td class="pt-n">${fmtDT(D.tot.v)}</td><td></td><td class="pt-n">${D.tot.reste > 0.005 ? fmtDT(D.tot.reste) : ''}</td><td class="pt-n">${percEntier(D.tot.sv)}</td><td class="pt-n">${percEntier(D.tot.exo)}</td><td class="pt-n">${percEntier(D.tot.bra)}</td></tr></tfoot></table></div></div>`;
+}
+window.percTableauExcel = async function(annee){
+  try { await chargerBib('xlsx'); } catch(e) {}
+  if(typeof XLSX === 'undefined'){ showToast('Bibliothèque Excel indisponible'); return; }
+  const D = percTableauDonnees(annee); let mp = -1;
+  const aoa = [['Facture Percko ' + annee], [], ['Facture N°', 'Mois', 'Date', 'Valeur (€)', 'État', 'Reste (€)', 'Sous-vêtement', 'Exosquelette', 'Brassière']]
+    .concat(D.rows.map(r => { const m = r.mois !== mp ? PERC_MOIS[r.mois] || '' : ''; mp = r.mois; return [r.f.numero || 'brouillon', m, mgtDate(r.f.date), r.t.ttc < 0.005 ? 'Sans valeur' : Math.round(r.t.ttc * 100) / 100, percEtatTxt(r), r.t.reste > 0.005 && r.st !== 'brouillon' ? Math.round(r.t.reste * 100) / 100 : '', r.p.sv || '', r.p.exo || '', r.p.bra || '']; }))
+    .concat([['Total', '', '', Math.round(D.tot.v * 100) / 100, '', Math.round(D.tot.reste * 100) / 100, D.tot.sv, D.tot.exo, D.tot.bra]]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [14, 11, 12, 14, 11, 13, 14, 13, 11].map(w => ({wch:w})); ws['!merges'] = [{s:{r:0, c:0}, e:{r:0, c:8}}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Factures ' + annee);
+  XLSX.writeFile(wb, 'TEK-TREND_Factures_PERCKO_' + annee + '.xlsx');
+};
+const percListeVue = window.renderFactListe;
+window.renderFactListe = function(main){
+  percListeVue(main);
+  if(factSoc() !== 'tek') return;
+  const b = document.getElementById('mgt-body'); if(!b) return;
+  const annees = Array.from(new Set(Object.values(factToutes('tek')).map(f => String((f && f.date) || '').slice(0, 4)).filter(a => /^\d{4}$/.test(a)))).sort().reverse();
+  if(!percAnnee || annees.indexOf(percAnnee) < 0) percAnnee = annees[0] || getTodayISO().slice(0, 4);
+  const filt = b.querySelector('.fact-filtres');
+  const barre = document.createElement('div'); barre.className = 'pt-vues';
+  barre.innerHTML = `<div class="pt-seg"><button class="${percVue !== 'tableau' ? 'on' : ''}" onclick="percVueSet('liste')">☰ Liste</button><button class="${percVue === 'tableau' ? 'on' : ''}" onclick="percVueSet('tableau')">▦ Tableau</button></div>`
+    + (percVue === 'tableau' && annees.length > 1 ? `<select onchange="percAnneeSet(this.value)">${annees.map(a => `<option${a === percAnnee ? ' selected' : ''}>${a}</option>`).join('')}</select>` : '');
+  if(filt) b.insertBefore(barre, filt); else b.appendChild(barre);
+  if(percVue !== 'tableau') return;
+  if(filt) filt.style.display = 'none';
+  const ligne = b.querySelector('.fact-ligne'), carteListe = ligne ? ligne.closest('.card') : null;
+  if(carteListe) carteListe.style.display = 'none';
+  b.querySelectorAll('.empty-state').forEach(e => { const c = e.closest('.card'); (c || e).style.display = 'none'; });
+  barre.insertAdjacentHTML('afterend', percTableauHTML(percAnnee));
+};
+const percCssT = document.createElement('style');
+percCssT.textContent = `
+.pt-vues{display:flex;gap:8px;align-items:center;margin:0 0 10px;flex-wrap:wrap;}
+.pt-seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
+.pt-seg button{border:none;background:none;padding:9px 16px;min-height:40px;font:inherit;font-weight:700;font-size:13.5px;color:var(--ink-soft);cursor:pointer;}
+.pt-seg button.on{background:var(--accent);color:#fff;}
+.pt-vues select{min-height:40px;border:1px solid var(--border);border-radius:10px;padding:0 10px;font:inherit;font-weight:700;background:var(--surface);color:var(--ink);}
+.pt-carte{padding:12px !important;}
+.pt-titre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;} .pt-titre b{font-size:16px;} .pt-titre span{flex:1;font-size:12.5px;color:var(--ink-soft);}
+.pt-scroll{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:10px;}
+.pt-t{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;}
+.pt-t th{position:sticky;top:0;z-index:2;background:#0F3D66 !important;color:#fff !important;padding:8px 10px;font-size:12px;white-space:nowrap;text-align:center;}
+.pt-t td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.pt-t tbody tr{cursor:pointer;} .pt-t tbody tr:hover td{background:var(--accent-bg) !important;}
+.pt-t .pt-n{text-align:right;} .pt-t .pt-num{font-weight:800;position:sticky;left:0;background:var(--surface);z-index:1;} .pt-t th:first-child{left:0;z-index:3;}
+.pt-t .pt-mois{font-weight:700;color:var(--ink-soft);} .pt-t .pt-etat{text-align:center;font-weight:700;}
+.pt-t tr.pt-payee .pt-etat{color:#15803D;} .pt-t tr.pt-impayee .pt-etat,.pt-t tr.pt-partielle .pt-etat{color:#B45309;} .pt-t tr.pt-retard .pt-etat{color:#B91C1C;}
+.pt-t tr.pt-impayee td,.pt-t tr.pt-partielle td,.pt-t tr.pt-retard td{background:#F0FAF0;} .pt-t tr.pt-retard td{background:#FEF2F2;} .pt-t tr.pt-brouillon td{color:var(--ink-faint);font-style:italic;}
+html[data-theme="dark"] .pt-t tr.pt-impayee td,html[data-theme="dark"] .pt-t tr.pt-partielle td,html[data-theme="dark"] .pt-t tr.pt-retard td{background:transparent;}
+.pt-t tfoot td{position:sticky;bottom:0;background:#FFF4E5;font-weight:800;border-top:2px solid #F59E0B;}
+html[data-theme="dark"] .pt-t tfoot td{background:var(--surface-2);}
+@media print{.pt-vues,.pt-titre button{display:none !important;} .pt-scroll{max-height:none;overflow:visible;border:none;}}`;
+document.head.appendChild(percCssT);
+
 const percRouteur = window.renderFact;
 window.renderFact = function(tab, main){ return tab === 'fact-catalogue' ? renderFactCatalogue(main) : percRouteur(tab, main); };
 
