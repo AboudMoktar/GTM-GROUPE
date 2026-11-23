@@ -39,6 +39,19 @@ td.fz:not(.fz-bas){border-bottom-style:hidden!important;}
 td.fz:not(.fz-haut){border-top-style:hidden!important;}
 td.fz-cache{color:transparent!important;}
 td.fz-cache *{visibility:hidden;}
-/* Flux, téléphone : titre du modèle au-dessus de ses tailles */
-table.flux tr.xgr td{background:#E8EEF8;color:#0B2560;text-align:left;padding:7px 8px;font-size:13px;border-top:2px solid #9DB3D6;}
-table.flux tr.xgr td small{color:#5B6B85;font-weight:600;margin-left:4px;}
+/* Flux (tableau) sur téléphone : colonnes serrées, modèle à gauche lisible */
+@media (max-width:799px){
+  table.flux.xl{font-size:13px}
+  table.flux.xl th{font-size:11px!important;padding:6px 3px!important}
+  table.flux.xl td{padding:4px 3px!important}
+  table.flux.xl tr td.xm{padding:5px 6px!important}
+  table.flux.xl td.xm b{font-size:12px;word-break:break-word}
+  table.flux.xl td.xm small{font-size:10.5px}
+  table.flux.xl td.fr input{padding:0 4px!important;font-size:15px}
+}
+/* colonne « Modèle » à gauche, issue des anciens titres de modèle (suivi-fusion.js) */
+table.gh-col td.xm{background:#DDEBF7;color:#0B1F3A;text-align:left;vertical-align:middle;padding:6px 10px;border-right:2px solid #8EA9C1;border-bottom:2px solid #B7C6D9;white-space:normal;line-height:1.25;width:190px;min-width:110px;max-width:240px}
+table.gh-col td.xm b{display:block;font-weight:800;font-size:13.5px}
+table.gh-col td.xm small{display:block;margin-top:2px;font-size:11.5px;font-weight:600;color:#3C4E68}
+table.gh-col td.xm button{margin-top:6px}
+table.gh-col tbody td.l{font-weight:700}

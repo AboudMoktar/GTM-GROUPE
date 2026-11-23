@@ -217,8 +217,8 @@ html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !im
 /* carte principale */
 .hero-card.rdh{position:relative;overflow:hidden;cursor:pointer;border-radius:16px;padding:18px 26px 16px;margin-bottom:16px;color:#fff;
   background:radial-gradient(120% 140% at 0% 0%,#0B3A8F 0%,#0A2D72 60%),#0A2D72;box-shadow:0 10px 26px rgba(11,40,110,.25);}
-.rdh-photo{position:absolute;top:0;right:0;bottom:0;width:33%;background:url('./rendement-hero.jpg') center 30% / cover no-repeat;
-  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.6) 25%,#000 45%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.6) 25%,#000 45%);opacity:.95;}
+.rdh-photo{position:absolute;top:0;right:0;bottom:0;width:64%;background:linear-gradient(rgba(8,38,104,.42),rgba(8,38,104,.42)),url('./rendement-hero.jpg') 62% 58% / cover no-repeat;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 30%,#000 60%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 30%,#000 60%);}
 .rdh-haut{position:relative;z-index:1;display:flex;align-items:center;gap:30px;}
 .rdh-anneau-zone{position:relative;width:176px;height:176px;flex:0 0 176px;}
 .rdh-anneau{width:100%;height:100%;filter:drop-shadow(0 0 10px rgba(59,240,106,.25));}
@@ -332,7 +332,7 @@ html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !im
 @media (max-width:700px){
   .rd-entete{margin-bottom:10px;} .rd-jour-ic{width:36px;height:36px;} .rd-jour h1{font-size:22px;} .rd-jour h1+div{font-size:13px;}
   .rd-heure{font-size:18px;padding:7px 14px;gap:6px;} .rd-heure svg{width:20px;height:20px;}
-  .hero-card.rdh{padding:14px 14px 12px;} .rdh-photo{width:55%;opacity:.45;}
+  .hero-card.rdh{padding:14px 14px 12px;} .rdh-photo{width:75%;opacity:.5;}
   .rdh-haut{gap:12px;} .rdh-sep{display:none;}
   .rdh-anneau-zone{width:112px;height:112px;flex-basis:112px;}
   .rdh-anneau-txt b{font-size:18px;} .rdh-anneau-txt span{font-size:10px;} .rdh-anneau-txt i{font-size:15px;}

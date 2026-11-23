@@ -15,6 +15,7 @@
      jamais au-delà d'une fusion de la colonne de gauche (une référence ne
      déborde pas sur le modèle suivant) ;
    - jamais une case avec un champ de saisie, ni une ligne de sous-total ;
+   - les titres de modèle sur toute la largeur (tr.gh) deviennent une colonne « Modèle » à gauche ;
    - les aperçus de documents (tableaux « xl » sans cmdT) ne sont pas touchés.
    ===================================================================== */
 (function(){
@@ -65,10 +66,38 @@
     Array.prototype.forEach.call(t.querySelectorAll("tfoot tr"), function(tr){ var c = tr.cells[i]; if (c) c.colSpan = (c.colSpan || 1) + 1; });
     var cg = t.querySelector("colgroup"); if (cg && cg.children[i]) { var col = document.createElement("col"); col.style.width = "56px"; cg.insertBefore(col, cg.children[i].nextSibling); }
   }
+  /* Lignes de titre de modèle (tr.gh, une case sur toute la largeur) → colonne « Modèle » à gauche, écrite une
+     fois sur toutes ses tailles, comme la commande Excel. Le contenu (nom, client, bouton « Tout ») est déplacé tel quel. */
+  function titresEnColonne(t){
+    if (/ph-t/.test(t.className) || !t.tHead || !t.tBodies.length) return;
+    var gh = t.querySelectorAll("tbody > tr.gh"); if (!gh.length) return;
+    var hr = t.tHead.rows[t.tHead.rows.length - 1], th = document.createElement("th"); th.className = "l"; th.textContent = "Modèle"; hr.insertBefore(th, hr.firstChild);
+    Array.prototype.forEach.call(t.tHead.rows, function(r){ if (r !== hr && r.cells[0]) r.cells[0].colSpan = (r.cells[0].colSpan || 1) + 1; });
+    var cg = t.querySelector("colgroup"); if (cg){ var col = document.createElement("col"); col.style.width = "180px"; cg.insertBefore(col, cg.firstChild); }
+    Array.prototype.forEach.call(t.tBodies, function(tb){
+      var cur = null;
+      Array.prototype.slice.call(tb.rows).forEach(function(tr){
+        if (tr.classList.contains("gh")){
+          var td = document.createElement("td"); td.className = "xm"; td.rowSpan = 0;
+          var cells = Array.prototype.slice.call(tr.cells), seul = cells.length === 1 && cells[0].childNodes.length === 1 && cells[0].firstChild.nodeType === 3;
+          if (seul){ var parts = cells[0].textContent.split(" · "), bb = document.createElement("b"); bb.textContent = parts[0]; td.appendChild(bb);
+            if (parts.length > 1){ var sm = document.createElement("small"); sm.textContent = parts.slice(1).join(" · "); td.appendChild(sm); } }
+          else cells.forEach(function(c){ while (c.firstChild) td.appendChild(c.firstChild); });
+          tr.parentNode.removeChild(tr); cur = td; return;
+        }
+        if (/tot/i.test(tr.className) || !cur){   /* ligne hors modèle (total…) : sur toute la largeur de gauche */
+          if (tr.cells[0]) tr.cells[0].colSpan = (tr.cells[0].colSpan || 1) + 1; if (/tot/i.test(tr.className)) cur = null; return;
+        }
+        if (!cur.parentNode) tr.insertBefore(cur, tr.firstChild);
+        cur.rowSpan = (cur.rowSpan || 0) + 1;
+      });
+    });
+    t.classList.add("gh-col");
+  }
   function fusionner(t){
     if (t.getAttribute("data-fus") === "1" || t.closest("[data-nofus]")) return;
     if (/(^|\s)xl(\s|$)/.test(t.className) && !/cmdT/.test(t.className)) return;   /* aperçu de document */
-    if (!t.getAttribute("data-tz")) { t.setAttribute("data-tz", "1"); try { separerTailles(t); } catch (e) {} }
+    if (!t.getAttribute("data-tz")) { t.setAttribute("data-tz", "1"); try { titresEnColonne(t); } catch (e) {} try { separerTailles(t); } catch (e) {} }
     var cols = colonnes(t);
     Array.prototype.forEach.call(t.querySelectorAll("td.fz"), function(c){ c.classList.remove("fz", "fz-haut", "fz-bas", "fz-cache"); });
     if (!cols.length) { t.setAttribute("data-fus", "1"); return; }
