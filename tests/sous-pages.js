@@ -25,13 +25,13 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
         return {wm: !!document.querySelector('.sidebar .gtmh-wm') && document.querySelector('.sidebar .gtmh-wm').offsetHeight > 0,
           actif: a ? getComputedStyle(a).backgroundImage.indexOf('rgb(35, 137, 245)') >= 0 : false,
           fil: (document.getElementById('tb-titre') || {}).textContent || '', maison: !!document.querySelector('.topbar .tb-maison'),
-          fond: getComputedStyle(document.body).backgroundColor, dx: de.scrollWidth - de.clientWidth,
+          fond: getComputedStyle(document.body).backgroundColor, photo: document.body.classList.contains('fond-tek') && /fond-tek\.jpg/.test(getComputedStyle(document.querySelector('.app-body'), '::before').backgroundImage), dx: de.scrollWidth - de.clientWidth,
           btn: (() => { const x = document.querySelector('main .btn-primary'); return x ? getComputedStyle(x).backgroundImage.indexOf('rgb(35, 137, 245)') >= 0 : true; })()}; });
       pages++;
-      if (!(e.wm && e.actif && (soc === 'tek' ? /^TEK-TREND/ : /^GADH TUNISIA/).test(e.fil) && e.maison && e.fond === 'rgb(245, 247, 251)' && e.dx === 0 && e.btn)) ko.push(soc + '/' + m + '/' + t + ' ' + JSON.stringify(e));
+      if (!(e.wm && e.actif && (soc === 'tek' ? /^TEK-TREND/ : /^GADH TUNISIA/).test(e.fil) && e.maison && (soc === 'tek' ? e.photo : e.fond === 'rgb(245, 247, 251)') && e.dx === 0 && e.btn)) ko.push(soc + '/' + m + '/' + t + ' ' + JSON.stringify(e));
     }
   }
-  r.push(['TEK-TREND + GADH : ' + pages + ' onglets (12 modules) — colonne GTM GROUPE, onglet actif bleu, fil d\'Ariane, fond clair, boutons bleus, sans débordement', ko.length === 0 && pages >= 45]);
+  r.push(['TEK-TREND + GADH : ' + pages + ' onglets (12 modules) — colonne GTM GROUPE, onglet actif bleu, fil d\'Ariane, fond clair (photo de l\'atelier pour TEK-TREND), boutons bleus, sans débordement', ko.length === 0 && pages >= 45]);
   if (ko.length) console.log(ko.join('\n'));
   // fil d'Ariane complet
   await p.evaluate(() => { activeSociete = 'tek'; activeModule = 'rendement'; renderShell(); nav('historique'); }); await p.waitForTimeout(300);
