@@ -31,7 +31,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 }
 /* Fond TEK-TREND (23/11/2026) : photo de l'atelier, voilée pour garder les tableaux lisibles */
 html.fond-tek body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(rgba(244,246,249,.78),rgba(244,246,249,.86)),url("./fond-tek.jpg") center / cover no-repeat;}
+  background:linear-gradient(rgba(241,245,251,.80),rgba(241,245,251,.88)),url("./fond-tek.jpg") center / cover no-repeat;}
 html.fond-tek,html.fond-tek body{background:transparent;}
 @media print{html.fond-tek body::before{display:none;}}
 /* cases « fusionnées » (modèle, référence, couleur) : pas de trait entre elles, valeur écrite une fois (suivi-fusion.js) */
@@ -39,3 +39,6 @@ td.fz:not(.fz-bas){border-bottom-style:hidden!important;}
 td.fz:not(.fz-haut){border-top-style:hidden!important;}
 td.fz-cache{color:transparent!important;}
 td.fz-cache *{visibility:hidden;}
+/* Flux, téléphone : titre du modèle au-dessus de ses tailles */
+table.flux tr.xgr td{background:#E8EEF8;color:#0B2560;text-align:left;padding:7px 8px;font-size:13px;border-top:2px solid #9DB3D6;}
+table.flux tr.xgr td small{color:#5B6B85;font-weight:600;margin-left:4px;}
