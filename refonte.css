@@ -194,3 +194,13 @@ html[data-soc] main .fact-ligne[data-st="brouillon"]{border-left-color:#94A3B8;}
   html[data-soc] main .fact-raccourci > div:first-child > div{display:none;}
   html[data-soc] main .fact-raccourci .btn{flex:1 1 auto; min-height:42px; padding:8px 10px;}
 }
+/* factures : total de l'année, reste, retards, ce mois */
+html[data-soc] main .fact-kpis{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:700px){ html[data-soc] main .fact-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} }
+html[data-soc] main .fact-kpis .kpi-mini{cursor:pointer; align-items:flex-start; text-align:left; padding:12px 14px;}
+.fact-kpis .fk-v{font-family:var(--mono); font-size:19px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums;}
+.fact-kpis .fk-l{font-size:12.5px; font-weight:700; color:var(--ink-soft);}
+.fact-kpis .fk-s{font-size:11.5px; color:var(--ink-faint);}
+.fact-kpis .fk-alerte{border-color:#FCA5A5 !important; background:#FEF2F2 !important;} .fact-kpis .fk-alerte .fk-v, .fact-kpis .fk-alerte .fk-l{color:#B91C1C;}
+.fact-kpis .fk-ok .fk-v{color:#15803D;}
+html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !important;}
