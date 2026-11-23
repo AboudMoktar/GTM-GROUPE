@@ -41,21 +41,22 @@ const JOUR = '2026-11-24'; // mardi
   const pc = await p.evaluate(() => {
     const t = (s) => [...document.querySelectorAll(s)].map(e => e.textContent.replace(/\s+/g, ' ').trim());
     const rows = [...document.querySelectorAll('.rd-op')].map(e => ({abs: e.classList.contains('rd-absente'), bar: !!e.querySelector('.rank-bar'), txt: e.textContent.replace(/\s+/g, ' ')}));
-    return {hero: document.querySelector('.hero-stat-big').textContent, kpis: t('.rd-kpis .kpi-mini'), rows, syn: t('.rd-syn'), heure: (document.getElementById('rd-heure') || {}).textContent,
-      hier: (document.querySelector('.rd-hier') || {}).textContent || '', cols: getComputedStyle(document.querySelector('.rd-grille')).gridTemplateColumns.split(' ').length,
+    return {hero: document.querySelector('.hero-stat-big').textContent, kpis: t('.rd-kpis .kpi-mini'), titres: [...document.querySelectorAll('.rd-kpis .kpi-mini')].map(e => e.title || ''), rows, syn: t('.rd-syn'), heure: (document.getElementById('rd-heure') || {}).textContent,
+      hier: (document.querySelector('.rdh-hier-l') || {}).textContent || '', bulle: (document.querySelector('.rdh-bulle') || {}).textContent || '', cols: getComputedStyle(document.querySelector('.rd-grille')).gridTemplateColumns.split(' ').length,
       lbl: Math.min(...[...document.querySelectorAll('.kpi-mini-lbl')].map(e => parseFloat(getComputedStyle(e).fontSize))), large: document.documentElement.scrollWidth <= innerWidth + 1};
   });
   r.push(['total et objectif inchangés (pièces = calcul existant)', pc.hero === String(avant.total) && avant.total === 165]);
-  r.push(['KPI présentes 2/4 (retard compté présente, absentes non)', /2\/4/.test(pc.kpis[1])]);
-  r.push(['KPI « opératrices actives » de la saisie conservé', pc.kpis[1].indexOf(avant.actives + ' active') >= 0]);
-  r.push(['KPI absentes : 2 avec les noms', /^2/.test(pc.kpis[3].replace(/^\D+/, '')) && pc.kpis[3].indexOf('Marwa Test') >= 0 && pc.kpis[3].indexOf('Mabrouka Test') >= 0]);
+  r.push(['KPI présentes 2/4 (retard compté présente, absentes non)', /2 \/ 4/.test(pc.kpis[1])]);
+  r.push(['KPI « opératrices actives » de la saisie conservé', pc.titres[1].indexOf(avant.actives + ' opératrice') === 0]);
+  r.push(['KPI absentes : 2 avec les noms', /^2/.test(pc.kpis[3].replace(/^\D+/, '')) && pc.titres[3].indexOf('Marwa Test') >= 0 && pc.titres[3].indexOf('Mabrouka Test') >= 0]);
   r.push(['absentes en fin de liste, grisées, sans barre ni 0 PC', pc.rows.length === 4 && pc.rows[2].abs && pc.rows[3].abs && !pc.rows[2].bar && !pc.rows[3].bar && !/0 PC/.test(pc.rows[2].txt + pc.rows[3].txt)]);
   r.push(['badge « Absente » / « Maladie »', /Absente/.test(pc.rows.find(x => /Marwa/.test(x.txt)).txt) && /Maladie/i.test(pc.rows.find(x => /Mabrouka/.test(x.txt)).txt)]);
-  r.push(['présentes avec barre, PC et part', !pc.rows[0].abs && pc.rows[0].bar && /85 PC/.test(pc.rows[0].txt) && /52 %/.test(pc.rows[0].txt)]);
+  r.push(['présentes avec barre, PC et part', !pc.rows[0].abs && pc.rows[0].bar && /85 PC/.test(pc.rows[0].txt) && /51,5%/.test(pc.rows[0].txt)]);
   r.push(['retard affiché sur la ligne de Hela (08:40)', /Retard · 08:40/.test(pc.rows[1].txt)]);
-  r.push(['synthèse : rythme, cadence, objectif, réalisé, écart, meilleure perf', pc.syn.length === 6 && /PC\/h/.test(pc.syn[1]) && /Awatef Test/.test(pc.syn[5])]);
+  r.push(['synthèse : rythme, cadence horaire, objectif prévu', pc.syn.length === 3 && /PC\/h/.test(pc.syn[1]) && /340 PC/.test(pc.syn[2])]);
+  r.push(['bulle : 48,5% de l\'objectif', /48,5%\s*de l'objectif/.test(pc.bulle)]);
   r.push(['heure affichée (14:25)', pc.heure === '14:25']);
-  r.push(['comparaison vs hier (+90)', /\+90/.test(pc.hier) && /hier/.test(pc.hier)]);
+  r.push(['comparaison vs hier (+90)', /\+90/.test(pc.hier) && /vs hier/.test(pc.hier)]);
   r.push(['PC : 2 colonnes (production + synthèse)', pc.cols === 2]);
   r.push(['libellés KPI lisibles (≥ 11 px)', pc.lbl >= 11]);
   r.push(['PC : pas de débordement horizontal', pc.large]);
@@ -77,7 +78,7 @@ const JOUR = '2026-11-24'; // mardi
   // présente sans production ≠ absente ; mention ABS de la saisie = absente
   await p.evaluate((J) => { const d = getDay(J); Object.values(d.hours).forEach(h => { h.op1 = ''; h.op4 = 'ABS'; }); memoryCache[CACHE_PREFIX + 'prod_' + J] = d;
     memoryCache[CACHE_PREFIX + 'absence_periods'] = {}; nav('dashboard'); }, JOUR); await p.waitForTimeout(400);
-  const z = await p.evaluate(() => [...document.querySelectorAll('.rd-op')].map(e => ({abs: e.classList.contains('rd-absente'), zero: e.classList.contains('rd-zero'), txt: e.textContent.replace(/\s+/g, ' ')})));
+  const z = await p.evaluate(() => [...document.querySelectorAll('.rd-op')].map(e => ({abs: e.classList.contains('rd-absente'), zero: e.classList.contains('rd-zero'), txt: e.textContent.replace(/\s+/g, ' ') + ' ' + [...e.querySelectorAll('[title]')].map(x => x.title).join(' ')})));
   const aw = z.find(x => /Awatef/.test(x.txt)), ma = z.find(x => /Mabrouka/.test(x.txt));
   r.push(['présente sans pièce : « Pas encore de pièces », pas absente', aw && !aw.abs && aw.zero && /Pas encore de pièces/.test(aw.txt)]);
   r.push(['mention ABS dans la saisie → absente', ma && ma.abs && /ABS dans la saisie/.test(ma.txt)]);

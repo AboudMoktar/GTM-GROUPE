@@ -1833,110 +1833,147 @@ function renderDashboard(container){
     return;
   }
 
-  // Refonte du 23/11/2026 : même calculs qu'avant (rendement, objectif, rythme, opératrices actives inchangés) ;
-  // la présence de chaque opératrice vient du pointage RH et des mentions ABS de la saisie (rdStatutsOps).
+  // Refonte du 23/11/2026 (maquette validée) : mêmes calculs qu'avant (rendement, objectif, rythme, opératrices
+  // actives inchangés) ; la présence de chaque opératrice vient du pointage RH et des mentions ABS (rdStatutsOps).
   const statuts = rdStatutsOps(getTodayISO(), data);
-  const grandTotalOps = perOpVals.reduce((s,v)=>s+v,0);
-  const postes = OP_KEYS.map((k, i) => ({name:ops[i], key:k, total:perOpVals[i], st:statuts[i]})).filter(x => x.st.code !== 'vacant');
+  const postes = OP_KEYS.map((k, i) => ({name:ops[i], key:k, st:statuts[i]})).filter(x => x.st.code !== 'vacant');
   const absentes = postes.filter(x => x.st.code === 'absente'), presentes = postes.filter(x => x.st.code !== 'absente');
-  const ordre = presentes.slice().sort((a,b) => b.total - a.total).concat(absentes);
   const hier = rdJourPrecedent(getTodayISO()), vsHier = hier ? totals.totalGeneral - hier.total : null;
-  const heuresFaites = getSlotsForDate(getTodayISO()).filter(sl => { const n = new Date(); return n.getHours()*60 + n.getMinutes() >= sl.end; }).reduce((m, sl) => m + sl.minutes, 0) / 60;
+  const slotsJ = getSlotsForDate(getTodayISO()), nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const heuresFaites = slotsJ.filter(sl => nowMin >= sl.end).reduce((m, sl) => m + sl.minutes, 0) / 60;
+  const heuresJour = slotsJ.reduce((m, sl) => m + sl.minutes, 0) / 60;
   const cadence = heuresFaites > 0 ? Math.round(totals.totalGeneral / heuresFaites) : null;
+  const cadenceCible = heuresJour > 0 ? obj / heuresJour : 0;
+  const pctObj = obj > 0 ? totals.totalGeneral / obj * 100 : 0;
+  const anneau = paceRend !== null ? paceRend : rendement; // rendement à cette heure (sinon part de l'objectif)
+  const fmt1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
   const heure = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-  const medalClass = i => i===0?'m1':(i===1?'m2':(i===2?'m3':'m4'));
-  const ICO_ABS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a7 7 0 0 1 11-5.7"/><path d="m17 15 5 5M22 15l-5 5"/></svg>';
-  const ligneOp = (r, rang) => {
-    const abs = r.st.code === 'absente', pct = maxVal > 0 ? Math.round(r.total / maxVal * 100) : 0, part = grandTotalOps > 0 ? Math.round(r.total / grandTotalOps * 100) : 0;
-    const badge = r.st.code === 'presente' ? '' : `<span class="rd-badge rd-b-${r.st.code}">${abs ? ICO_ABS : ''}${esc(r.st.label)}</span>`;
-    return `<div class="rank-row rd-op rd-${r.st.code}${!abs && !r.total ? ' rd-zero' : ''}" onclick="openOperatriceDetail('${r.key}')">
-      <div class="rank-medal ${abs ? 'rd-m-abs' : medalClass(rang)}">${abs ? '✕' : rang + 1}</div>
-      <div class="rank-body"><div class="rank-name">${esc(r.name)} ${badge}</div>
-        ${abs ? `<div class="rd-abs-txt">${esc(r.st.detail || 'Absente aujourd\'hui')} — non comptée dans le rendement</div>` : `<div class="rank-bar"><div style="width:${pct}%;${rang === 0 && r.total ? 'background:linear-gradient(90deg,#34D18C,#0E8F52);' : ''}"></div></div>`}</div>
-      <div class="rank-nums">${abs ? '' : r.total ? `<div class="rn-val">${r.total} PC</div><div class="rn-pct">${part} %</div>` : `<div class="rd-attente">Pas encore de pièces</div>`}</div>
-      <div class="rank-chevron">${ICONS.chevronRight}</div></div>`;
+  const dateLong = new Date(getTodayISO() + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'}).replace(/(^|\s)\S/g, c => c.toUpperCase());
+  const SV = (d, extra) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ${extra || ''}>${d}</svg>`;
+  const I = {
+    cal: SV('<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2M15 17h2" stroke-width="2.6"/>'),
+    horloge: SV('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    cube: SV('<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/>'),
+    info: SV('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+    cible: SV('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/><path d="m14 10 6-6M17 4h3v3"/>'),
+    roues: SV('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'),
+    lecture: '<svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 24 24"><rect x="8" y="7" width="3" height="10" rx="1" fill="currentColor"/><rect x="13" y="7" width="3" height="10" rx="1" fill="currentColor"/></svg>',
+    alerte: '<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z" fill="currentColor"/><path d="M12 10v4M12 17h.01" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    equipe: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="3.2"/><circle cx="5.5" cy="9.5" r="2.4"/><circle cx="18.5" cy="9.5" r="2.4"/><path d="M6 20a6 6 0 0 1 12 0zM0.5 19a5 5 0 0 1 6-4.6A7 7 0 0 0 4.6 19zM23.5 19a5 5 0 0 0-6-4.6 7 7 0 0 1 1.9 4.6z"/></svg>',
+    personne: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>',
+    barres: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="1.2"/><rect x="10" y="7" width="4" height="14" rx="1.2"/><rect x="17" y="3" width="4" height="18" rx="1.2"/></svg>',
+    coche: SV('<path d="m6 12 4 4 8-8"/>', 'stroke-width="3"'),
+    croix: SV('<path d="M7 7l10 10M17 7 7 17"/>', 'stroke-width="3"')
   };
-  const synth = (icone, coul, lib, val, pct, barCls) => `<div class="rd-syn"><span class="rd-syn-ic" style="background:var(--${coul}-bg);color:var(--${coul});">${icone}</span><div class="rd-syn-b"><div class="rd-syn-t"><span>${lib}</span><b>${val}</b></div>${pct === null ? '' : `<div class="rd-syn-bar"><div class="${barCls || ''}" style="width:${Math.max(0, Math.min(100, pct))}%"></div></div>`}</div></div>`;
+  // anneau de rendement
+  const R = 66, C = 2 * Math.PI * R, arc = Math.max(0, Math.min(100, anneau)) / 100 * C;
+  const coulAnneau = anneau >= 80 ? ['#3BF06A', '#12C44B'] : anneau >= 60 ? ['#FFD25A', '#F0A20C'] : ['#FF8A7A', '#E0453A'];
+  const anneauSVG = `<svg class="rdh-anneau" viewBox="0 0 168 168"><defs><linearGradient id="rdhG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${coulAnneau[0]}"/><stop offset="1" stop-color="${coulAnneau[1]}"/></linearGradient></defs>
+    <circle cx="84" cy="84" r="${R}" fill="#0A2A66" stroke="#1D5FD6" stroke-opacity=".55" stroke-width="20"/>
+    <circle cx="84" cy="84" r="${R}" fill="none" stroke="url(#rdhG)" stroke-width="20" stroke-linecap="round" stroke-dasharray="${arc} ${C}" transform="rotate(-90 84 84)"/></svg>
+    <div class="rdh-anneau-txt"><b>${isEmpty ? '—' : fmt1(anneau) + '%'}</b><span>Rendement</span>${vsHier !== null && !isEmpty ? `<i class="${vsHier < 0 ? 'bas' : ''}">${vsHier < 0 ? '↓' : '↑'}</i>` : ''}</div>`;
+
+  // liste « Production par opératrice » pour un jour donné (aujourd'hui ou le jour précédent)
+  window.rdListeOps = (dateISO) => {
+    const dJ = getDay(dateISO), tJ = computeTotals(dJ), opsJ = getOpsForDate(dateISO), stJ = rdStatutsOps(dateISO, dJ);
+    const L = OP_KEYS.map((k, i) => ({name:opsJ[i], key:k, total:tJ[k] || 0, st:stJ[i]})).filter(x => x.st.code !== 'vacant');
+    const pres = L.filter(x => x.st.code !== 'absente').sort((a, b) => b.total - a.total), abs = L.filter(x => x.st.code === 'absente');
+    const somme = pres.reduce((s, x) => s + x.total, 0), maxJ = pres.length ? pres[0].total : 0;
+    const ligne = (r, rang) => {
+      const a = r.st.code === 'absente', pct = maxJ > 0 ? Math.round(r.total / maxJ * 100) : 0, part = somme > 0 ? r.total / somme * 100 : 0, prem = rang === 0 && r.total > 0;
+      const badge = (r.st.code === 'retard' || r.st.code === 'autorisation') ? ` <span class="rd-badge rd-b-${r.st.code}">${esc(r.st.label)}</span>` : '';
+      return `<div class="rank-row rd-op rd-${r.st.code}${!a && !r.total ? ' rd-zero' : ''}${prem ? ' rd-prem' : ''}" onclick="rdDetail('${dateISO}','${r.key}')">
+        <div class="rd-num">${a ? I.croix : rang + 1}</div>
+        <div class="rd-nom">${esc(r.name)}${badge}</div>
+        ${a ? `<div class="rd-piste"></div>` : `<div class="rank-bar rd-barre"><div style="width:${pct}%"></div></div>`}
+        <div class="rd-val">${a ? `<span class="rd-badge rd-b-absente" title="${esc(r.st.detail || '')}">${I.personne}${esc(r.st.label)}</span>` : r.total ? `<b>${r.total} PC</b><span>${fmt1(part)}%</span>` : `<span class="rd-attente">Pas encore de pièces</span>`}</div></div>`;
+    };
+    const el = document.getElementById('rd-liste');
+    if(el) el.innerHTML = L.length ? pres.map(ligne).concat(abs.map(r => ligne(r, -1))).join('') : buildEmptyState('Aucune opératrice affectée ce jour-là');
+  };
+  window.rdDetail = (dateISO, opKey) => { const dJ = getDay(dateISO); renderOperatriceDetail(opKey, dJ, getOpsForDate(dateISO), getObjForDay(dJ)); };
+  const synth = (ic, coul, lib, val, pct, barre) => `<div class="rd-syn"><span class="rd-syn-ic" style="color:${coul};">${ic}</span><div class="rd-syn-b"><div class="rd-syn-t"><span>${lib}</span><b>${val}</b></div><div class="rd-syn-bar"><div style="width:${Math.max(0, Math.min(100, pct || 0))}%;background:${barre};"></div></div></div></div>`;
+  const enLigne = navigator.onLine !== false;
 
   container.innerHTML = `
-    <div class="page-date-row">
-      <div class="hero-date">
-        <div class="hero-date-icon">${ICONS.calendarCheck}</div>
-        <div><h2>Aujourd'hui</h2><div class="hd-sub">${dayLabel}</div></div>
-      </div>
-      <div class="rd-heure" title="Heure de l'affichage">${ICONS.clock}<span id="rd-heure">${heure}</span></div>
+    <div class="rd-entete">
+      <div class="rd-jour"><span class="rd-jour-ic">${I.cal}</span><div><h1>Aujourd'hui</h1><div>${dateLong}</div></div></div>
+      <div class="rd-heure" title="Heure actuelle">${I.horloge}<span id="rd-heure">${heure}</span></div>
     </div>
-    <div class="hero-card" style="cursor:pointer;" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
-      <div class="hero-main">
-        ${buildGauge(rendement, isEmpty, true, 112)}
-        <div class="hero-divider"></div>
-        <div class="hero-info">
-          <div class="hero-info-row"><div class="hero-info-icon">${ICONS.box}</div><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="hero-stat-lbl">Pièces produites</div></div></div>
-          <div class="rd-pills">
-            ${!isEmpty ? `<div class="hero-ahead-pill ${ecart<0?'behind':''}"><span class="hap-num">${ecart>=0?'+'+ecart:ecart}</span><span class="hap-txt">${ecart>=0?'d\'avance':'de retard'} sur l'objectif</span></div>` : ''}
-            ${vsHier !== null && !isEmpty ? `<div class="rd-hier ${vsHier<0?'moins':''}" title="Comparé au ${hier.date.split('-').reverse().join('/')} (${hier.total} pièces)">${vsHier>=0?'▲ +':'▼ '}${vsHier} <span>vs ${esc(hier.lib)}</span></div>` : ''}
-          </div>
-          <div class="hero-obj-line"><span style="display:inline-flex;width:15px;height:15px;vertical-align:-3px;">${ICONS.target}</span> Objectif : <b>${obj} pièces</b>${!isEmpty ? ` · <b>${rendLabel(rendement)}</b>` : ''}</div>
+    <div class="hero-card rdh" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')" title="Voir le détail du jour">
+      <div class="rdh-photo"></div>
+      <div class="rdh-haut">
+        <div class="rdh-anneau-zone">${anneauSVG}</div>
+        <div class="rdh-sep"></div>
+        <div class="rdh-info">
+          <div class="rdh-pieces"><span class="rdh-cube">${I.cube}</span><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="rdh-lbl">Pièces produites</div></div></div>
+          ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><span class="rdh-i" title="Comparé au ${hier.date.split('-').reverse().join('/')} : ${hier.total} pièces">${I.info}</span></div>` : ''}
         </div>
       </div>
-      ${!isEmpty ? `
-      <div class="hero-track-wrap">
-        <div class="hero-track"><div class="hero-track-fill ${cls}" id="pace-fill-el"></div></div>
-        <div class="hero-track-legend"><span>0</span><span><b>${totals.totalGeneral}</b> / ${obj}</span></div>
-      </div>` : ''}
-      ${paceRend !== null ? `<div style="position:relative;z-index:1;text-align:right;margin-top:8px;font-size:12.5px;color:rgba(255,255,255,.8);font-weight:600;">Rythme à cette heure : <b style="color:${paceCls==='bad'?'#FF8177':(paceCls==='warn'?'#FFC067':(paceCls==='excellent'?'#FFC72C':'#5FE0A6'))};">${Math.round(paceRend)} %</b> · ${paceLabel(paceRend)}</div>` : ''}
+      <div class="rdh-bas">
+        <div class="rdh-bas-g">
+          <div class="hero-track rdh-track"><div class="hero-track-fill" id="pace-fill-el"></div></div>
+          <div class="rdh-obj">${I.cible}<span>Objectif : ${obj} pièces</span>${paceRend !== null ? `<em>${paceLabel(paceRend)} à cette heure</em>` : ''}</div>
+        </div>
+        <div class="rdh-bulle"><b>${fmt1(pctObj)}%</b><span>de l'objectif</span></div>
+      </div>
     </div>
 
     ${alertHtml}
     ${isEmpty ? buildEmptyState("Aucune production enregistrée aujourd'hui", "La saisie du jour n'a pas encore commencé.") : ''}
 
     <div class="kpi-mini-grid rd-kpis">
-      <div onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')" class="kpi-mini tint-blue">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#4A9EFF,#0F62D6);">${ICONS.box}</div>
+      <div class="kpi-mini rd-k rd-k-bleu" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
+        <span class="rd-k-ic">${I.roues}</span>
         <div class="kpi-mini-val">${totals.totalGeneral} <span class="rd-u">PC</span></div>
         <div class="kpi-mini-lbl">Production totale</div>
-        ${!isEmpty ? `<div class="kpi-mini-sub" style="background:var(--${ecart>=0?'good':'bad'}-bg);color:var(--${ecart>=0?'good':'bad'});">${ecart>=0?'+'+ecart:ecart} / objectif</div>` : ''}
+        ${vsHier !== null ? `<div class="kpi-mini-sub rd-k-pill ${vsHier < 0 ? 'moins' : ''}" title="vs ${esc(hier.lib)}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</div>` : ''}
       </div>
-      <div class="kpi-mini tint-green" onclick="nav('rh-pointage')" title="Présence d'après le pointage RH">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#34D18C,#0E8F52);">${ICONS.team}</div>
-        <div class="kpi-mini-val">${presentes.length}/${postes.length}</div>
-        <div class="kpi-mini-lbl">Opératrices présentes</div>
-        <div class="kpi-mini-sub">${activeOpCount} active(s) dans la saisie</div>
+      <div class="kpi-mini rd-k rd-k-vert" onclick="nav('rh-pointage')" title="${activeOpCount} opératrice(s) active(s) dans la saisie à cette heure">
+        <span class="rd-k-ic">${I.lecture}</span>
+        <div class="kpi-mini-val">${presentes.length} / ${postes.length}</div>
+        <div class="kpi-mini-lbl">Opératrices actives</div>
+        <div class="kpi-mini-sub rd-k-eq">${I.equipe}</div>
       </div>
-      <div class="kpi-mini tint-red" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FF6B6B,#DC2E2E);">${ICONS.pause}</div>
+      <div class="kpi-mini rd-k rd-k-rouge" onclick="histDate=getTodayISO(); histViewMode='jour'; nav('historique')">
+        <span class="rd-k-ic">${I.pause}</span>
         <div class="kpi-mini-val">${totals.arrets}</div>
         <div class="kpi-mini-lbl">Pertes / arrêts</div>
-        <div class="kpi-mini-sub">${totals.arrets ? 'à vérifier dans l\'historique' : 'aucun aujourd\'hui'}</div>
       </div>
-      <div class="kpi-mini ${absentes.length ? 'tint-gold rd-k-abs' : 'tint-green'}" onclick="nav('rh-pointage')">
-        <div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FFCB4D,#D9930C);">${ICO_ABS}</div>
+      <div class="kpi-mini rd-k rd-k-or" onclick="nav('rh-pointage')" title="${absentes.length ? esc(absentes.map(a => a.name + ' (' + a.st.label + ')').join(', ')) : 'Équipe au complet'}">
+        <span class="rd-k-ic">${I.alerte}</span>
         <div class="kpi-mini-val">${absentes.length}</div>
-        <div class="kpi-mini-lbl">Absente(s) aujourd'hui</div>
-        <div class="kpi-mini-sub">${absentes.length ? esc(absentes.map(a => a.name).join(', ')) : 'équipe au complet'}</div>
+        <div class="kpi-mini-lbl"><span class="rd-k-pers">${I.equipe}</span>Absente${absentes.length > 1 ? 's' : ''} aujourd'hui</div>
       </div>
     </div>
 
     <div class="rd-grille">
       <div class="card rd-ops">
-        <div class="rd-titre"><h2>${ICONS.team} Production par opératrice</h2>
-          ${grandTotalOps>0 ? `<span class="rd-moy">Moy. ${Math.round(grandTotalOps/Math.max(1, presentes.length))} PC / présente</span>` : ''}</div>
-        ${ordre.length ? ordre.map((r, i) => ligneOp(r, i)).join('') : buildEmptyState('Aucune opératrice affectée aujourd\'hui')}
-        <div class="rd-legende">Présence d'après le pointage RH et les mentions ABS de la saisie. Une absente n'est pas comptée comme une production nulle.</div>
+        <div class="rd-titre"><h2>${I.barres} Production par opératrice</h2>
+          <select class="rd-choix" onchange="rdListeOps(this.value)" aria-label="Jour affiché">
+            <option value="${getTodayISO()}">Aujourd'hui</option>
+            ${hier ? `<option value="${hier.date}">${hier.lib === 'hier' ? 'Hier' : 'Le ' + hier.date.split('-').reverse().join('/')}</option>` : ''}
+          </select></div>
+        <div id="rd-liste"></div>
       </div>
       <div class="card rd-synthese">
-        <div class="rd-titre"><h2>${ICONS.stats} Synthèse</h2></div>
-        ${synth(ICONS.check, paceCls === 'bad' ? 'bad' : paceCls === 'warn' ? 'warn' : 'good', 'Rythme actuel', paceRend !== null ? Math.round(paceRend) + ' %' : '—', paceRend, paceCls ? 'rd-' + paceCls : '')}
-        ${synth(ICONS.clock, 'accent', 'Cadence horaire', cadence !== null ? cadence + ' PC/h' : '—', null)}
-        ${synth(ICONS.target, 'accent', 'Objectif prévu', obj + ' PC', null)}
-        ${synth(ICONS.box, 'good', 'Production réalisée', totals.totalGeneral + ' PC', obj > 0 ? totals.totalGeneral / obj * 100 : 0, 'rd-' + cls)}
-        ${synth(ICONS.trend, ecart >= 0 ? 'good' : 'bad', 'Écart à l\'objectif', (ecart >= 0 ? '+' : '') + ecart + ' PC', null)}
-        ${synth(ICONS.crown, 'excellent', 'Meilleure performance', bestNames.length ? esc(bestNames.join(' & ')) + ' · ' + maxVal + ' PC' : '—', null)}
+        <div class="rd-titre"><h2>${I.barres} Synthèse</h2></div>
+        ${synth(`<span class="rd-rond" style="background:#12B24A;">${I.coche}</span>`, '#12B24A', 'Rythme actuel', isEmpty ? '—' : fmt1(pctObj) + ' %', pctObj, 'linear-gradient(90deg,#12C44B,#3BE36A)')}
+        ${synth(I.horloge, '#1565E0', 'Cadence horaire', cadence !== null ? cadence + ' PC/h' : '—', cadenceCible > 0 && cadence !== null ? cadence / cadenceCible * 100 : 0, 'linear-gradient(90deg,#0F5BD8,#3A8BFF)')}
+        ${synth(I.cible, '#E23B3B', 'Objectif prévu', obj + ' PC', obj > 0 ? elapsedObj / obj * 100 : 0, '#0B2C6B')}
       </div>
+    </div>
+
+    <div class="rd-pied">
+      <span><i class="rd-point ${enLigne ? '' : 'hors'}"></i>${enLigne ? 'En ligne' : 'Hors ligne'}</span><span class="rd-pied-sep"></span>
+      <span>Dernière mise à jour : <span id="rd-maj">${heure} – ${getTodayISO().split('-').reverse().join('/')}</span></span>
+      <span class="rd-pied-d">${I.barres} GTM GROUPE</span>
     </div>
 
     <div id="operatrice-modal-zone"></div>
   `;
+  rdListeOps(getTodayISO());
   clearInterval(window.__rdHorloge); window.__rdHorloge = setInterval(() => { const e = document.getElementById('rd-heure'); if(!e){ clearInterval(window.__rdHorloge); return; } e.textContent = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 20000);
 
   if(!isEmpty){
