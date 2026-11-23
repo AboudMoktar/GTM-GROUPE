@@ -232,11 +232,17 @@ function renderFactListe(main){
     .sort(factTriListe);
   // nombre de factures par filtre, affiché sur chaque bouton (refonte 23/11/2026)
   const nb = {}; Object.values(l).forEach(f => { const st = factStatut(f, l); filtres.forEach(([fl]) => { if(fl === 'tous' || fl === st || (fl === 'apayer' && ['impayee', 'partielle', 'retard'].indexOf(st) >= 0)) nb[fl] = (nb[fl] || 0) + 1; }); });
+  // total de l'année, payé, et montant en retard (23/11/2026) ; avoirs déduits du total
+  const kt = {an:getTodayISO().slice(0, 4), total:0, paye:0, retard:0, nb:0};
+  Object.values(l).forEach(f => { if(!f || f.statut !== 'emise') return; const t = factTotaux(f, l), st = factStatut(f, l);
+    if(String(f.date || '').slice(0, 4) === kt.an){ if(f.type === 'avoir') kt.total -= t.ttc; else { kt.total += t.ttc; kt.paye += t.paye; kt.nb++; } }
+    if(st === 'retard') kt.retard += t.reste; });
   b.innerHTML = `
-    <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div onclick="factFiltre='apayer'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ à encaisser</div></div>
-      <div onclick="factFiltre='retard'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;" class="${k.retard ? 'hour-rend bad' : ''}">${k.retard}</div><div style="font-size:10.5px;color:var(--ink-soft);">en retard</div></div>
-      <div onclick="factFiltre='tous'; nav('fact-liste')" class="kpi-mini"><div style="font-family:var(--mono);font-size:17px;font-weight:800;">${fmtDT(k.caMois).replace(' €', '')}</div><div style="font-size:10.5px;color:var(--ink-soft);">€ HT facturés ce mois</div></div>
+    <div class="kpi-mini-grid fact-kpis">
+      <div onclick="factFiltre='tous'; nav('fact-liste')" class="kpi-mini"><div class="fk-v">${fmtDT(kt.total).replace(' €', '')}</div><div class="fk-l">€ facturés en ${kt.an}</div><div class="fk-s">${kt.nb} facture(s) · payé ${fmtDT(kt.paye)}</div></div>
+      <div onclick="factFiltre='apayer'; nav('fact-liste')" class="kpi-mini"><div class="fk-v">${fmtDT(k.aEncaisser).replace(' €', '')}</div><div class="fk-l">€ reste à encaisser</div><div class="fk-s">${nb.apayer || 0} facture(s)</div></div>
+      <div onclick="factFiltre='retard'; nav('fact-liste')" class="kpi-mini${k.retard ? ' fk-alerte' : ' fk-ok'}"><div class="fk-v">${k.retard ? fmtDT(kt.retard).replace(' €', '') : '✓'}</div><div class="fk-l">${k.retard ? '€ en retard' : 'aucun retard'}</div><div class="fk-s">${k.retard ? k.retard + ' facture(s) à plus de 30 jours' : 'tout est dans les délais'}</div></div>
+      <div onclick="factFiltre='tous'; nav('fact-liste')" class="kpi-mini"><div class="fk-v">${fmtDT(k.caMois).replace(' €', '')}</div><div class="fk-l">€ HT facturés ce mois</div></div>
     </div>
     <div class="card fact-filtres" style="padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;">
       ${filtres.map(([f, lb]) => `<button class="btn fact-chip ${factFiltre === f ? 'btn-primary' : 'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="factFiltre='${f}'; nav('fact-liste')">${lb}${nb[f] ? ` <span class="fact-nb">${nb[f]}</span>` : ''}</button>`).join('')}

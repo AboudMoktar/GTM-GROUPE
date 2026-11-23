@@ -45,6 +45,11 @@ const CAPTURES = process.env.CAPTURES || '';
     if (CAPTURES) await p.screenshot({path: CAPTURES + '/factures-tableau-' + w + '.png'});
     // retour à la liste
     await p.evaluate(() => percVueSet('liste')); await p.waitForTimeout(300);
+    if (!mob) {
+      const k = await p.evaluate(() => Array.from(document.querySelectorAll('.fact-kpis .kpi-mini')).map(x => x.innerText.replace(/\s+/g, ' ').trim()));
+      r.push(['en-tête : total de l\'année, reste à encaisser, retards (montant et nombre), ce mois', k.length === 4 && /^1 950,00 € facturés en 2026 3 facture\(s\) · payé 1 050,00 €$/.test(k[0]) && /^901,00 € reste à encaisser 2 facture\(s\)$/.test(k[1]) && /^901,00 € en retard 2 facture\(s\)/.test(k[2])]);
+    }
+    if (CAPTURES) await p.screenshot({path: CAPTURES + '/factures-liste-' + w + '.png'});
     if (!mob) r.push(['retour à la vue Liste', await p.evaluate(() => !document.querySelector('.pt-t') && !!document.querySelector('.fact-ligne'))]);
     await p.close();
   }
