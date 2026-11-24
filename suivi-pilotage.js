@@ -114,7 +114,9 @@ function configurer(){
  .concat([{k:"rest", t:G ? "Encore à la GADH" : "Reste à produire", w:84}, {k:"av", t:G ? "Retourné" : "Avancement", w:122}]);
 }
 /* colonnes que l'utilisateur peut saisir : TEK-TREND = la commande et toutes les étapes ; GADH = le retour */
-function saisissables(){ if (lectureSeule()) return {}; var o = {}; if (G) o.ret = 1; else { o.fr = 1; ETAPES.forEach(function(e){ o[e[0]] = 1; }); } return o; }
+/* « Reste à produire » (24/11/2026) : taper 0 (ou un autre reste) ajuste la quantité commandée de la taille
+   = pièces déjà passées + reste tapé. Pratique quand une quantité est expédiée ou passée et que le reste est abandonné. */
+function saisissables(){ if (lectureSeule()) return {}; var o = {}; if (G) o.ret = 1; else { o.fr = 1; ETAPES.forEach(function(e){ o[e[0]] = 1; }); o.rest = 1; } return o; }
 var CLE_LARG = "pk_pilotage_cols";
 function largeurs(){ var o = {}; try { o = JSON.parse(localStorage.getItem(CLE_LARG) || "{}") || {}; } catch (e) {} return o; }
 function garderLargeur(k, w){ try { var o = largeurs(); o[k] = w; localStorage.setItem(CLE_LARG, JSON.stringify(o)); } catch (e) {} }
@@ -225,7 +227,7 @@ function grilleExcel(lot, rows, portee, grp){
   gmerge(g, 1, 1, 1, nC - 2); g.rows[1].h = 18;
   var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", wrap:1, bd:"t"};
   cx.forEach(function(c, i){ gset(g, X_ENT, i, c.t, H); }); g.rows[X_ENT].h = 32;
-  var SA = saisissables(), r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
+  var SA = saisissables(); delete SA.rest; var r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
   var kFr = G ? "gadh" : "fr", kFin = G ? "ret" : "exp";
   function fRest(rr){
     if (G) return "MAX(0," + L(ci[kFr]) + rr + "-" + L(ci[kFin]) + rr + ")";
@@ -366,7 +368,7 @@ function exporterPdf(lot, rows, portee, grp, suffixe, format, ori){
    Relit la feuille « Suivi » exportée (code de ligne en colonne masquée) et propose les écarts avec le
    suivi actuel ; seules les colonnes saisissables sont reprises ; rien n'est enregistré sans validation. */
 function lireImport(lot, sheets){
-  var SA = saisissables(), sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
+  var SA = saisissables(); delete SA.rest; var sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
   if (!sh) throw new Error("Fichier vide.");
   var rows = sh.rows, hi = -1, col = {};
   var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code"; titres["modèle"] = "model"; titres["référence"] = "lib"; titres["libellé"] = "lib";   /* anciens fichiers (avant le 24/11/2026) */
@@ -676,6 +678,8 @@ window.vPilotage = function(v){
     var tb = el("tbody");
     if (!vis.length){ var tr0 = el("tr"); tr0.appendChild(el("td", {colspan:String(cols.length), class:"ph-vide", text:"Aucune ligne ne correspond à la recherche ou aux filtres."})); tb.appendChild(tr0); }
     var SA = saisissables(), ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
+    /* une case « Reste à produire » s'enregistre comme quantité commandée = déjà passé + reste */
+    function versCommande(c, f){ if (c.k === "rest"){ c.k = "fr"; c.v = (+f.getAttribute("data-fait") || 0) + c.v; } return c; }
     function cellule(rr, cc){ return zone.querySelector('.ph-in[data-r="' + rr + '"][data-c="' + cc + '"]'); }
     function plage(a, b){
       Array.prototype.forEach.call(zone.querySelectorAll("td.rg"), function(x){ x.classList.remove("rg"); });
@@ -691,14 +695,15 @@ window.vPilotage = function(v){
     }
     function remplir(R, valeur){
       var ch = [];
-      for (var rr = R.r0; rr <= R.r1; rr++) for (var cc = R.c0; cc <= R.c1; cc++){ var f = cellule(rr, cc); if (!f) continue; var n = valeur(rr, cc); if (n === null || isNaN(n)) continue; ch.push({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n}); }
+      for (var rr = R.r0; rr <= R.r1; rr++) for (var cc = R.c0; cc <= R.c1; cc++){ var f = cellule(rr, cc); if (!f) continue; var n = valeur(rr, cc); if (n === null || isNaN(n)) continue; ch.push(versCommande({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n}, f)); }
       if (!ch.length) return;
       if (ch.some(function(c){ return c.k === "fr" && c.v === 0; })){ toast("Une quantité commandée vaudrait 0 : retirez la ligne à part."); return; }
       photo(); ch.forEach(function(c){ noter(c.id, c.k, c.v); }); P.plage = null; P.ancre = null; P.fin = null; dessiner();
       toast(ch.length + " case(s) remplie(s) : en attente, Valider pour enregistrer (Ctrl+Z pour annuler).");
     }
     function cellSaisie(r, k, ri){
-      var att = P.br[r.id + "|" + k], v0 = r[k], vu = att ? att.v : v0;
+      var kk = k === "rest" ? "fr" : k, fait = r.fr - r.rest;   /* reste à produire : enregistré comme quantité commandée */
+      var att = P.br[r.id + "|" + kk], v0 = r[k], vu = att ? (k === "rest" ? Math.max(0, att.v - fait) : att.v) : v0;
       var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "") + (att ? " chg" : "")});
       var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(vu), "data-r":String(ri), "data-c":String(ecols.indexOf(k)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
       /* la saisie est notée « en attente » (case orange) : enregistrée seulement après Valider et confirmation */
@@ -706,7 +711,11 @@ window.vPilotage = function(v){
         var n = lireNombre(inp.value);
         if (n === null) n = 0;
         if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(vu); return; }
-        if (n !== vu){ photo(); noter(r.id, k, n); vu = n; td.classList.toggle("chg", !!P.br[r.id + "|" + k]); majBarre(); }
+        if (n !== vu){
+          if (k === "rest" && fait + n <= 0){ toast("Rien n'est encore passé sur cette taille : retirez plutôt la ligne de la commande."); inp.value = String(vu); return; }
+          photo(); noter(r.id, kk, k === "rest" ? fait + n : n); vu = n; td.classList.toggle("chg", !!P.br[r.id + "|" + kk]); majBarre();
+          if (k === "rest") toast("Quantité commandée " + r.size + " : " + fmt(r.fr) + " → " + fmt(fait + n) + " (en attente, Valider pour enregistrer).");
+        }
         if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } }
       }
       inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
@@ -747,7 +756,7 @@ window.vPilotage = function(v){
         lignes.forEach(function(cells, i){ cells.forEach(function(val, j){
           var f = zone.querySelector('.ph-in[data-r="' + (ri + i) + '"][data-c="' + (c0 + j) + '"]'); if (!f) return;
           var n = lireNombre(val); if (n === null) return; if (isNaN(n)){ err++; return; }
-          ch.push({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n});
+          ch.push(versCommande({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n}, f));
         }); });
         if (err){ toast(err + " case(s) collée(s) ne sont pas des nombres entiers : rien n'est collé."); return; }
         if (!ch.length){ toast("Rien à coller ici."); return; }
@@ -755,7 +764,7 @@ window.vPilotage = function(v){
         photo(); ch.forEach(function(c){ noter(c.id, c.k, c.v); });
         dessiner(); toast(ch.length + " quantité(s) collée(s) : en attente, appuyez sur Valider pour enregistrer (Ctrl+Z pour annuler).");
       });
-      inp.setAttribute("data-id", r.id); inp.setAttribute("data-k", k);
+      inp.setAttribute("data-id", r.id); inp.setAttribute("data-k", k); if (k === "rest") inp.setAttribute("data-fait", String(r.fr - r.rest));
       td.appendChild(inp);
       return td;
     }
