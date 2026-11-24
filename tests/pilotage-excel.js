@@ -40,7 +40,7 @@ async function reimporter(p, wb, nom){ const buf = XLSX.write(wb, {type: 'buffer
   r.push(['feuilles « Suivi » et « Récapitulatif »', JSON.stringify(wb.SheetNames) === '["Suivi","Récapitulatif"]']);
   const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
   const head = rows[3];
-  r.push(['titres de colonnes (sans « Qté finie »)', head.join('|') === 'Modèle|Référence|Couleur|Taille|Client|Qté commandée|Qté coupée|Passée à l\'assemblage (GADH)|Revenue de la GADH, en confection|Contrôlée|Emballée|Expédiée|Reste à produire|Avancement|Code (ne pas modifier)']);
+  r.push(['titres de colonnes (sans « Qté finie »)', head.join('|') === 'Model|LIBELLE|Couleur|Taille|Client|Qté commandée|Qté coupée|Passée à l\'assemblage (GADH)|Revenue de la GADH, en confection|Contrôlée|Emballée|Expédiée|Reste à produire|Avancement|Code (ne pas modifier)']);
   r.push(['une ligne par référence × taille × client (sans l\'autre commande)', rows.filter(x => /^(G_|R_|T_)/.test(x[14])).length === 5 && !rows.some(x => x[14] === 'Z_1')]);
   r.push(['code de ligne en colonne masquée', !!(ws['!cols'] && ws['!cols'][14] && ws['!cols'][14].hidden)]);
   r.push(['filtres automatiques', !!ws['!autofilter'] && /^A4:O\d+$/.test(ws['!autofilter'].ref)]);
@@ -106,7 +106,7 @@ async function reimporter(p, wb, nom){ const buf = XLSX.write(wb, {type: 'buffer
   // GADH : export réception / retour, réimport du retour seulement
   const g = await page(b, 'http://localhost:8790/suivi-commandes.html?vue=gadh'); g.on('pageerror', e => err.push(e.message));
   const fg = await exporter(g), wg = XLSX.read(Buffer.from(fg.d)), rg = XLSX.utils.sheet_to_json(wg.Sheets.Suivi, {header: 1, defval: ''});
-  r.push(['GADH : export réception et retour', rg[3].join('|') === 'Modèle|Référence|Couleur|Taille|Client|Qté commandée|Reçue de TEK-TREND|Retournée à TEK-TREND (assemblée)|Encore à la GADH|Retourné|Code (ne pas modifier)' && /^GADH/.test(rg[0][1])]);
+  r.push(['GADH : export réception et retour', rg[3].join('|') === 'Model|LIBELLE|Couleur|Taille|Client|Qté commandée|Reçue de TEK-TREND|Retournée à TEK-TREND (assemblée)|Encore à la GADH|Retourné|Code (ne pas modifier)' && /^GADH/.test(rg[0][1])]);
   const iX = rg.findIndex(x => x[10] === 'R_XS') + 1; wg.Sheets.Suivi['H' + iX] = {t: 'n', v: 95}; wg.Sheets.Suivi['F' + iX] = {t: 'n', v: 999};
   await reimporter(g, wg);
   r.push(['GADH : seul le retour est repris', await g.locator('.ph-imp > div').count() === 1 && /90 → 95/.test(await g.locator('.ph-imp').textContent())]);

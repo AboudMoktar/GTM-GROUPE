@@ -39,6 +39,7 @@ var CSS = [
   '.ph-t th{position:sticky;top:0;z-index:3;background:#1d3557;color:#fff;font-weight:700;font-size:12px;padding:7px 6px;text-align:center;line-height:1.2;white-space:normal;user-select:none;cursor:pointer;border-right:1px solid rgba(255,255,255,.15)}',
   '.ph-t th .rz{position:absolute;top:0;right:-3px;width:8px;height:100%;cursor:col-resize;z-index:4}.ph-t th .tri{font-size:10px;margin-left:2px}',
   '.ph-t td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--card)}',
+  '.ph-t td.lib{font-weight:700}.ph-t tr.cochee td.lib{box-shadow:inset 4px 0 0 #e8b400}',
   '.ph-t td.g{text-align:left}.ph-t td.mod{font-weight:800;white-space:normal;background:#eef4fb;color:#1d3557;text-align:center;vertical-align:middle}',
   '.ph-t td.cou{font-weight:700;font-size:12px}.ph-t td.bad{background:#fde2e1;color:#b42318;font-weight:800}.ph-t td.ok{color:#11643a;font-weight:800}',
   '.ph-t tr.st td{background:#e3edf8;font-weight:800;color:#1d3557}.ph-t tr.tg td{background:#1d3557;color:#fff;font-weight:800;font-size:14px;border-color:#1d3557}',
@@ -101,8 +102,8 @@ function configurer(){
   G = VUE === "gadh"; if (!G) libellesEtapes(); ETAPES = G ? ETAPES_GADH : ETAPES_TEK;
   COLS = [
   {k:"sel", t:"", w:34},
-  {k:"model", t:"Modèle", w:104, txt:1, cm:1},
-  {k:"lib", t:"Référence", w:200, txt:1},
+  {k:"model", t:"Model", w:104, txt:1, cm:1},
+  {k:"lib", t:"LIBELLE", w:220, txt:1},
   {k:"coul", t:"Couleur", w:80, txt:1},
   {k:"size", t:"Taille", w:56, txt:1},
   {k:"client", t:"Client", w:72, txt:1},
@@ -366,7 +367,7 @@ function lireImport(lot, sheets){
   var SA = saisissables(), sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
   if (!sh) throw new Error("Fichier vide.");
   var rows = sh.rows, hi = -1, col = {};
-  var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code";
+  var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code"; titres["modèle"] = "model"; titres["référence"] = "lib"; titres["libellé"] = "lib";   /* anciens fichiers (avant le 24/11/2026) */
   for (var i = 0; i < rows.length && i < 15; i++){
     var m = {}; rows[i].forEach(function(v, c){ var k = titres[String(v).trim().toLowerCase()]; if (k) m[k] = c; });
     if ("code" in m && "lib" in m){ hi = i; col = m; break; }
@@ -624,7 +625,8 @@ window.vPilotage = function(v){
     /* sur téléphone, la colonne Modèle devient une ligne de titre au-dessus de chaque groupe */
     /* colonne Client seulement si la commande a plusieurs clients ; téléphone (refonte 23/11/2026) : pas de colonne
        Couleur (la couleur borde la référence), référence sans le nom du modèle (déjà en titre du groupe), chiffres plus serrés */
-    var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && !(c.k === "coul" && etroit); });
+    /* comme la commande Excel (24/11/2026) : Model | LIBELLE (dans sa couleur) | Taille… — plus de colonne Couleur à l'écran */
+    var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && c.k !== "coul"; });
     if (etroit) cols = cols.map(function(c){ var d = {}; for (var k in c) d[k] = c[k]; if (!W[c.k]){ if (c.k === "lib") d.w = 138; else if (c.k === "av") d.w = 96; else if (!c.txt && c.k !== "sel") d.w = Math.min(c.w, 70); } return d; });
     var t = el("table", {class:"ph-t"}), cg = el("colgroup"), tot = 0;
     cols.forEach(function(c){ var w = W[c.k] || c.w; cg.appendChild(el("col", {style:"width:" + w + "px"})); tot += w; });
@@ -717,7 +719,7 @@ window.vPilotage = function(v){
         var td;
         if (c.k === "sel"){ td = el("td"); var cb = el("input", {type:"checkbox"}); cb.checked = !!P.sel[r.id]; cb.addEventListener("change", function(){ P.sel[r.id] = cb.checked; dessiner(); }); td.appendChild(cb); }
         else if (c.k === "model"){ if (!avecMod) return; td = el("td", {class:"mod", text:r.model}); if (rowspan > 1) td.rowSpan = rowspan; }
-        else if (c.k === "lib"){ td = el("td", {class:"g", text:etroit ? libCourt(r.lib, r.model) : r.lib, title:r.lib}); if (etroit && r.cbg && r.cbg !== "FFFFFF") td.style.boxShadow = "inset 5px 0 0 #" + r.cbg; }
+        else if (c.k === "lib"){ td = el("td", {class:"g lib", text:etroit ? libCourt(r.lib, r.model) : r.lib, title:r.lib + (r.coul ? " · " + r.coul : "")}); if (r.cbg){ td.style.background = "#" + r.cbg; td.style.color = "#" + (r.cfg || "000000"); } }
         else if (c.k === "coul"){ td = el("td", {class:"cou", text:r.coul}); td.style.background = "#" + r.cbg; td.style.color = "#" + r.cfg; }
         else if (c.k === "size") td = el("td", {text:r.size, style:"font-weight:800"});
         else if (c.k === "client") td = el("td", {text:r.client});

@@ -62,7 +62,7 @@ async function donnees(p){
   await p.locator('.ph-t tbody tr:not(.st):not(.tg) input[type=checkbox]').nth(0).check(); await p.locator('.ph-t tbody tr:not(.st):not(.tg) input[type=checkbox]').nth(2).check(); await p.waitForTimeout(150);
   r.push(['lignes cochées', /2 ligne\(s\) cochée/.test(await txt('.ph-outils')) && await p.locator('.ph-t tr.cochee').count() === 2]);
   // largeur de colonne
-  const box = await p.locator('.ph-t th[title="Référence"] .rz').boundingBox();
+  const box = await p.locator('.ph-t th[title="LIBELLE"] .rz').boundingBox();
   await p.mouse.move(box.x + 3, box.y + 10); await p.mouse.down(); await p.mouse.move(box.x + 83, box.y + 10, {steps: 4}); await p.mouse.up(); await p.waitForTimeout(200);
   r.push(['largeur de colonne changée et gardée', await p.evaluate(() => JSON.parse(localStorage.getItem('pk_pilotage_cols') || '{}').lib) >= 270]);
   // date de commande

@@ -217,7 +217,7 @@ html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !im
 /* carte principale */
 .hero-card.rdh{position:relative;overflow:hidden;cursor:pointer;border-radius:16px;padding:18px 26px 16px;margin-bottom:16px;color:#fff;
   background:radial-gradient(120% 140% at 0% 0%,#0B3A8F 0%,#0A2D72 60%),#0A2D72;box-shadow:0 10px 26px rgba(11,40,110,.25);}
-.rdh-photo{position:absolute;top:0;right:0;bottom:0;width:64%;background:linear-gradient(rgba(8,38,104,.42),rgba(8,38,104,.42)),url('./rendement-hero.jpg') 62% 58% / cover no-repeat;
+.rdh-photo{position:absolute;top:0;right:0;bottom:0;width:64%;background:linear-gradient(rgba(8,38,104,.42),rgba(8,38,104,.42)),url('./rendement-hero.jpg') 78% 45% / cover no-repeat;
   -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 30%,#000 60%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 30%,#000 60%);}
 .rdh-haut{position:relative;z-index:1;display:flex;align-items:center;gap:30px;}
 .rdh-anneau-zone{position:relative;width:176px;height:176px;flex:0 0 176px;}

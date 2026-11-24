@@ -9,7 +9,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   const err = []; p.on('pageerror', e => err.push(e.message)); p.on('dialog', d => d.accept());
   await p.goto('http://localhost:8791/suivi-commandes.html'); await p.waitForFunction(() => typeof vFlux === 'function' && typeof S === 'object');
   await p.evaluate(() => {
-    try { localStorage.removeItem('pk_fmode2'); } catch(e){}
+    try { localStorage.removeItem('pk_fmode3'); } catch(e){}
     const L = (id, sz, q) => ({id, lot:'PK202611-1', year:2026, client:'NEOLYS', model:'M', lib:'Tee-shirt Sport homme noir', size:sz, qty:q, cc:0});
     S.lines.push(L('A', 'M', 100), L('B', 'L', 100), L('C', 'XL', 50), L('D', 'S', 60));
     const pas = {A: {cp:100, gadh:100, asm:100, ret:100, ctl:100, emb:100, exp:90}, B: {cp:100, gadh:100, asm:100, ret:100, ctl:80, emb:60}, C: {cp:50, gadh:50, asm:50, ret:50, ctl:50, emb:50}, D: {cp:60, gadh:20}};
@@ -17,12 +17,12 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     S.exports = [{id:'X1', n:1, cl:'NEOLYS', d:'2026-11-21', st:'cours', cartons:[{id:'XC1', n:1, kg:null, com:'', it:[['C', 20]]}]}];
     S.moves.push({id:'MX1', date:'2026-11-21', lineId:'C', stage:'ctl', qty:20, nc:0, note:'', ct:'XC1'}, {id:'MX2', date:'2026-11-21', lineId:'C', stage:'emb', qty:20, nc:0, note:'', ct:'XC1'});
     S.lots['PK202611-1'] = {ready:'2026-11-01'};
-    ui.lot = 'PK202611-1'; ui.client = '*'; ui.tab = 'flux'; ui.fmode = null; ui.dp = null; render();
+    ui.lot = 'PK202611-1'; ui.client = '*'; ui.tab = 'flux'; ui.fmode = 'deplacer'; ui.dp = null; render();
   });
   const r = [], T = (id) => p.evaluate((id) => stageTotals()[id] || {}, id), champ = (id) => p.locator('input[data-dp="' + id + '"]');
   const de = (k) => p.click('button[data-de="' + k + '"]'), vers = (k) => p.click('button[data-vers="' + k + '"]');
   const deplacer = async () => { await p.click('button[data-dp-go]'); await p.waitForTimeout(150); const t = await p.locator('.sx-modal').textContent(); await p.click('button[data-dp-oui]'); await p.waitForTimeout(250); return t; };
-  r.push(['Flux s\'ouvre sur « Déplacer des pièces », avec les 3 onglets', /Déplacer des pièces/.test(await p.locator('#view').textContent()) && await p.locator('.dp-onglets button').count() === 3]);
+  r.push(['Flux : « Déplacer des pièces » parmi les 4 onglets (le premier : tableau de la commande)', /Déplacer des pièces/.test(await p.locator('#view').textContent()) && await p.locator('.dp-onglets button').count() === 4 && /Tableau de la commande/.test(await p.locator('.dp-onglets button').first().textContent())]);
   r.push(['statuts avec leur nombre de pièces (Confection = retour GADH)', /Confection\s*20/.test((await p.locator('button[data-de="ret"]').textContent()).replace(/\s+/g, ' ')) && /GADH\s*20/.test(await p.locator('button[data-de="gadh"]').textContent())]);
   // en avant : confection → contrôlées
   await de('ret'); await vers('ctl');
@@ -60,7 +60,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['onglet « Saisie par étape » : sans « Confection » séparée', await p.locator('.dp-onglets').count() === 1 && !/\bConfection\b(?!\s*,)/.test((await p.locator('#view').textContent()).replace('Retour GADH, confection', ''))]);
   await p.click('button[data-fmode="detail"]'); await p.waitForTimeout(150);
   r.push(['onglet « Détaillé » : plus de bouton « Renvoyer » séparé', await p.locator('button[data-renvoi-ouvrir]').count() === 0 && await p.locator('[data-corr]').count() >= 1]);
-  r.push(['choix mémorisé', await p.evaluate(() => localStorage.getItem('pk_fmode2') === 'detail')]);
+  r.push(['choix mémorisé', await p.evaluate(() => localStorage.getItem('pk_fmode3') === 'detail')]);
   // vue GADH : pas de « Déplacer »
   await p.evaluate(() => { VUE = 'gadh'; ui.fmode = 'deplacer'; render(); });
   r.push(['vue GADH : pas d\'écran « Déplacer »', await p.locator('.dp-card').count() === 0 && await p.locator('.dp-onglets').count() === 0]);
