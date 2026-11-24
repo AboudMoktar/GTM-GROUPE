@@ -72,8 +72,11 @@ function hDetailCommande(c){
   const parModele = {};
   c.lignes.forEach(l => { const m = parModele[l.model] || (parModele[l.model] = {}); const r = m[l.lib] || (m[l.lib] = {}); const z = r[l.size] || (r[l.size] = {}); const cl = l.client || '—'; z[cl] = (z[cl] || 0) + l.q; });
   const totCl = {}; let totG = 0;
-  const corps = Object.keys(parModele).sort().map(mod => {
-    const libs = Object.keys(parModele[mod]).sort();
+  /* ordre demandé (ordre-modeles.js) : PHARMA-HOMME, PHARMA-FEMME COL V, … EXOSQUELETTE, BRASSIÈRE */
+  const rg = lib => typeof rangLibelle === 'function' ? rangLibelle(lib) : 0, cmp = (a, b) => typeof compareLibelles === 'function' ? compareLibelles(a, b) : (a < b ? -1 : 1);
+  const rgMod = mod => Math.min(...Object.keys(parModele[mod]).map(rg));
+  const corps = Object.keys(parModele).sort((a, b) => (rgMod(a) - rgMod(b)) || (a < b ? -1 : 1)).map(mod => {
+    const libs = Object.keys(parModele[mod]).sort(cmp);
     const nbLignes = libs.reduce((n, lib) => n + Object.keys(parModele[mod][lib]).length, 0);
     let premiereDuModele = true;
     return libs.map(lib => {
@@ -89,7 +92,7 @@ function hDetailCommande(c){
   const mois = MOIS[c.mois - 1].charAt(0).toUpperCase() + MOIS[c.mois - 1].slice(1);
   return `<details class="card hk-det" open><summary><b>${esc(c.num)}</b> · ${mois} ${c.annee} · ${hN(totG)} pièces <span class="hk-auto">depuis le suivi</span>${c.ch2 ? ` <span class="hk-ch2">${hN(c.ch2)} en 2e choix retirées</span>` : ''}</summary>
     <div class="hk-scroll"><table class="hk-tab hk-mat"><thead><tr><th>Model</th><th>LIBELLE</th><th>Taille</th>${clients.map(cl => `<th>${esc(cl)}</th>`).join('')}<th>Total</th><th>Total</th></tr></thead>
-    <tbody>${corps}</tbody><tfoot><tr class="hk-total"><td colspan="3">TOTAL ${esc(c.num)}</td>${clients.map(cl => `<td class="hk-n">${hN(totCl[cl] || 0)}</td>`).join('')}<td class="hk-n">${hN(totG)}</td><td class="hk-n">${hN(totG)}</td></tr></tfoot></table></div></details>`;
+    <tbody>${corps}</tbody><tfoot><tr class="hk-total"><td class="hk-modf"></td><td colspan="2">TOTAL ${esc(c.num)}</td>${clients.map(cl => `<td class="hk-n">${hN(totCl[cl] || 0)}</td>`).join('')}<td class="hk-n">${hN(totG)}</td><td class="hk-n">${hN(totG)}</td></tr></tfoot></table></div></details>`;
 }
 // numéro proposé : la commande suivante (mois suivant, -1) après la dernière saisie
 function hNumSuivant(annee){
@@ -360,7 +363,12 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-mat .hk-lib{white-space:nowrap;vertical-align:middle;font-weight:600;}
 .hk-mat .hk-z{text-align:center;font-weight:700;} .hk-mat .hk-tl{font-weight:800;vertical-align:middle;text-align:center !important;font-size:14px;}
 .hk-mat tr.hk-deb td{border-top:2px solid #44546A !important;}
-.hk-mat tfoot td{font-weight:800;background:#F2F2F2;}
+.hk-mat tfoot td{font-weight:800;background:#F2F2F2;} .hk-mat .hk-modf{border-right:none !important;}
+@media (max-width:700px){
+  .hk-mat{font-size:12px;min-width:0;} .hk-mat th,.hk-mat td{padding:3px 5px !important;}
+  .hk-mat .hk-mod,.hk-mat .hk-modf,.hk-mat thead th:first-child{display:none;}
+  .hk-mat .hk-lib{white-space:normal;max-width:110px;font-size:11.5px;line-height:1.25;}
+}
 .hk-clic{cursor:pointer;} .hk-clic:hover td{background:var(--accent-bg);} .hk-obj{font-size:12px;color:var(--ink-soft);}
 @media (max-width:900px){ .hk-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (max-width:600px){ .hk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .hk-tab{font-size:12.5px;} .hk-tab .hk-q{min-width:58px;} #hk-num{min-width:130px;}

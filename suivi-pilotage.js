@@ -149,7 +149,7 @@ function lignesPilotage(lot){
     if (G){ o.rest = Math.max(0, o.gadh - o.ret); o.surplus = 0; o.av = pct(o.ret, o.gadh); }
     else { o.rest = Math.max(0, o.fr - Math.max(o.ctl, o.emb, o.exp)); o.aExp = Math.max(0, o.fr - o.exp); o.surplus = Math.max(0, o.exp - o.fr); o.av = pct(o.fr - o.rest, o.fr); }
     return o;
-  });
+  }).filter(function(o){ return o.fr > 0 || ETAPES_TEK.some(function(e){ return o[e[0]] > 0; }); });   /* seulement les tailles qui ont des quantités (24/11/2026) */
 }
 function sommer(rows){
   var t = {fr:0, rest:0, aExp:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });

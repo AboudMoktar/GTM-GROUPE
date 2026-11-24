@@ -846,7 +846,7 @@ function colisExport(e){
     var items = [], q = 0;
     /* FLÉCHÉS / VESTIAIRES : « LIBELLÉ · FLÉCHÉS » sur les documents, pour le client de l'export */
     c.it.forEach(function(x){ if (!x[1]) return; var i = infoItem(x); items.push({lineId:i.l ? i.l.id : null, lib:libAvecType(i.lib, i.sp), size:i.size, q:x[1], lot:i.lot, src:i.sp ? e.cl : (i.src || e.cl), sp:i.sp}); q += x[1]; });
-    items.sort(function(a, b){ return a.lib === b.lib ? (a.lot === b.lot ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lot < b.lot ? -1 : 1)) : (a.lib < b.lib ? -1 : 1); });
+    items.sort(function(a, b){ return a.lib === b.lib ? (a.lot === b.lot ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lot < b.lot ? -1 : 1)) : compareLibelles(a.lib, b.lib); });
     return {n:c.n, id:c.id, manuel:true, items:items, q:q, poids:Math.round(poidsDe(e, c) * 10) / 10, ouvert:false, lots:lotsDeCarton(c)};
   });
 }
@@ -879,7 +879,7 @@ function totalDonneesExport(e, colis){
   var cetExport = {}, libres = {}; colis.forEach(function(c){ c.items.forEach(function(x){ if (x.lineId) cetExport[x.lineId] = (cetExport[x.lineId] || 0) + x.q; else { var k = x.lot + "|" + x.lib + "|" + x.size; libres[k] = (libres[k] || 0) + x.q; } }); });
   var avant = {}; S.moves.forEach(function(m){ if (m.stage === "exp" && m.ct !== e.id) avant[m.lineId] = (avant[m.lineId] || 0) + m.qty; });
   var etat = lots.map(function(lot){
-    var rows = S.lines.filter(function(l){ return l.lot === lot && l.client === e.cl; }).sort(function(a, b){ return a.lib === b.lib ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lib < b.lib ? -1 : 1); })
+    var rows = S.lines.filter(function(l){ return l.lot === lot && l.client === e.cl; }).sort(function(a, b){ return a.lib === b.lib ? sizeIdx(a.size) - sizeIdx(b.size) : compareLibelles(a.lib, b.lib); })
       .map(function(l){ var av = Math.max(0, avant[l.id] || 0), ce = cetExport[l.id] || 0; return {nom:nomDoc(l.lib).toUpperCase() + " " + l.size, cde:qteCmd(l), av:av, ce:ce, reste:Math.max(0, qteCmd(l) - av - ce)}; });
     /* pièces sur une commande pas encore enregistrée */
     Object.keys(libres).filter(function(k){ return k.split("|")[0] === lot; }).sort(function(a, b){ var A = a.split("|"), B = b.split("|"); return A[1] === B[1] ? sizeIdx(A[2]) - sizeIdx(B[2]) : (A[1] < B[1] ? -1 : 1); })
