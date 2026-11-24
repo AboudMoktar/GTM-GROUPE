@@ -4058,6 +4058,10 @@ function validateLot(lot){
 function vFlux(v){
   var md = ui.fmode || (ui.fmode = fluxMode());
   if (VUE === "gadh" && md === "deplacer") md = ui.fmode = "simple";
+  if (md === "tableau" && VUE === "gadh") md = ui.fmode = "simple";
+  /* tableau de la commande : le même que Suivi → Pilotage — on tape le total arrivé à chaque étape, on corrige
+     n'importe quelle étape en retapant le bon chiffre, puis « Valider » (24/11/2026) */
+  if (md === "tableau"){ fluxOnglets(v); if (typeof window.vPilotage === "function") window.vPilotage(v); return; }
   if (md === "deplacer") return vDeplacer(v);
   if (md !== "detail") return vFluxSimple(v);
   if (VUE === "gadh") v.appendChild(el("div", {style:"text-align:right;margin-bottom:6px"}, el("button", {class:"btn sec small", text:"← Revenir au mode simple", onclick:function(){ setFluxMode("simple"); ui.sxOpen = false; render(); }})));
@@ -5795,8 +5799,9 @@ var SX_AIDE = {
   exp:"Comptez les pièces chargées pour l'expédition."
 };
 /* mode de Flux mémorisé sur l'appareil ; par défaut « Déplacer des pièces » (TEK-TREND) ou « simple » (GADH) */
-function fluxMode(){ var d = VUE === "gadh" ? "simple" : "deplacer"; try { return localStorage.getItem("pk_fmode2") || d; } catch (e) { return d; } }
-function setFluxMode(m){ try { localStorage.setItem("pk_fmode2", m); } catch (e) {} ui.fmode = m; ui.fv = {}; ui.pend = null; }
+/* 24/11/2026 : par défaut, le tableau de la commande (même tableau que Suivi → Pilotage) ; nouvelle clé pour que tout le monde y arrive */
+function fluxMode(){ var d = VUE === "gadh" ? "simple" : "tableau"; try { return localStorage.getItem("pk_fmode3") || d; } catch (e) { return d; } }
+function setFluxMode(m){ try { localStorage.setItem("pk_fmode3", m); } catch (e) {} ui.fmode = m; ui.fv = {}; ui.pend = null; }
 function sxIcon(st, col){ var s = el("span", {class:"ic", style:"background:" + (col || SX_COL[st])}); s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + SX_ICO[st] + "</svg>"; return s; }
 /* pièces disponibles à une étape, par ligne de commande */
 function sxItems(stage, rows){
@@ -5972,7 +5977,7 @@ function dpValider(lot, rows, D){
 function fluxOnglets(v){
   if (VUE === "gadh") return;
   var sc = el("div", {class:"seg dp-onglets"});
-  [["deplacer", "⇄ Déplacer des pièces"], ["simple", "Saisie par étape"], ["detail", "Détaillé (dates, défauts)"]].forEach(function(x){
+  [["tableau", "📋 Tableau de la commande"], ["deplacer", "⇄ Déplacer des pièces"], ["simple", "Saisie par étape"], ["detail", "Détaillé (dates, défauts)"]].forEach(function(x){
     sc.appendChild(el("button", {class:x[0] === ui.fmode ? "on" : "", "data-fmode":x[0], text:x[1], onclick:function(){ setFluxMode(x[0]); ui.sxOpen = false; render(); }})); });
   v.appendChild(sc);
 }
