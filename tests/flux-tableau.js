@@ -56,6 +56,13 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   const recop = await p.evaluate(() => [...document.querySelectorAll('.ph-in[data-k="emb"]')].slice(0, 3).map(i => i.value).join(','));
   ok(recop === '10,10,10', 'Ctrl+D recopie la première valeur vers le bas (' + recop + ')');
   ok(await p.evaluate(() => /Ctrl/.test((document.querySelector('.ph-aide') || {}).textContent || '')), 'aide des raccourcis affichée sous le tableau');
+  // reste à produire mis à 0 : la quantité commandée devient ce qui est déjà passé
+  const rz = await p.evaluate(() => { const i = document.querySelector('.ph-in[data-k="rest"]'); const avant = +i.value; i.focus(); i.value = '0'; i.dispatchEvent(new Event('change', {bubbles:true}));
+    const att = Object.keys(window.pkPilotageEtat ? {} : {}); return {avant, br:document.querySelectorAll('.ph-t td.chg').length}; });
+  await p.evaluate(() => [...document.querySelectorAll('.ph-attente button')].find(x => /Valider/.test(x.textContent)).click()); await p.waitForTimeout(150);
+  await p.evaluate(() => [...document.querySelectorAll('button')].find(x => /Confirmer et enregistrer/.test(x.textContent)).click()); await p.waitForTimeout(300);
+  const q = await p.evaluate(() => { const l = S.lines.find(x => x.id === 'L1'), T = stageTotals().L1; return {qty:l.qty, passe:Math.max(T.ctl || 0, T.emb || 0, T.exp || 0)}; });
+  ok(rz.avant > 0 && q.qty === q.passe, 'reste à produire mis à 0 : quantité commandée = pièces déjà passées (' + JSON.stringify([rz, q]) + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
   console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur');
   await b.close(); s.close(); process.exit(echecs ? 1 : 0);

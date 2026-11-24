@@ -801,7 +801,9 @@ function ordreParCentre(lot){
   return CENTRES_COUPE.filter(function(c){ return o[c]; }).map(function(c){ return [c, o[c]]; });
 }
 /* ordre de coupe total du lot (quantités + marges), et ce qui a déjà été envoyé au centre de coupe */
-function ordreLot(lot){ var t = 0; S.lines.forEach(function(l){ if (l.lot === lot) t += cutQty(l.qty, l.model); }); return t; }
+/* ordre envoyé au centre de coupe : sans les exosquelettes, coupés chez TEK-TREND (24/11/2026 : ils faisaient croire
+   à un « complément à envoyer au centre de coupe ») */
+function ordreLot(lot){ var t = 0; S.lines.forEach(function(l){ if (l.lot === lot && !estExo(l)) t += cutQty(l.qty, l.model); }); return t; }
 function premiereCoupe(lot){ var d = ""; S.moves.forEach(function(m){ if (m.stage !== "cp") return; var l = lineById(m.lineId); if (l && l.lot === lot && (!d || m.date < d)) d = m.date; }); return d; }
 /* commandes déjà coupées avant cette étape : l'envoi est déduit de la première coupe */
 function envoisCoupe(lot){

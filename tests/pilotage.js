@@ -55,7 +55,7 @@ async function donnees(p){
   const premier = await p.evaluate(() => { const g = [...document.querySelectorAll('.ph-t tbody tr:not(.st):not(.tg)')].map(tr => tr.querySelector('td.g').textContent); return g; });
   r.push(['tri par colonne (dans chaque modèle)', premier[0] === 'PHARMA_HOMME COL V GRIS' && premier[3] === 'PHARMA_FEMME COL V ROSE POUDRE' && await p.locator('.ph-t th .tri').count() === 1]);
   await p.click('text=Sans sous-totaux'); await p.waitForTimeout(150);
-  const plat = await p.evaluate(() => [...document.querySelectorAll('.ph-t tbody tr:not(.tg)')].map(tr => tr.children[tr.children.length - 2].textContent));
+  const plat = await p.evaluate(() => [...document.querySelectorAll('.ph-t tbody tr:not(.tg)')].map(tr => { const c = tr.children[tr.children.length - 2], i = c.querySelector('input'); return i ? i.value : c.textContent; }));
   r.push(['sans sous-totaux : tri sur toute la commande', await p.locator('.ph-t tr.st').count() === 0 && plat[0] === '270' && plat[1] === '215']);
   await p.click('text=Sous-totaux par modèle'); await p.click('text=✕ Tout afficher'); await p.waitForTimeout(150);
   // cases à cocher
@@ -75,7 +75,7 @@ async function donnees(p){
   await p.evaluate(() => { S.lots['PK202612-1'].livraison = '2099-01-31'; render(); }); await p.waitForTimeout(150);
   const cell = (id, k) => p.locator('.ph-in[data-id="' + id + '"][data-k="' + k + '"]');
   const tot = (id, k) => p.evaluate(([id, k]) => (stageTotals()[id] || {})[k] || 0, [id, k]);
-  r.push(['cases de saisie : commande et toutes les étapes sauf l\'assemblage (automatique)', await p.locator('.ph-in').count() === 6 * 6 && await p.locator('.ph-in[data-k="gadh"]').count() === 0]);
+  r.push(['cases de saisie : commande, toutes les étapes sauf l\'assemblage (automatique) et le reste à produire', await p.locator('.ph-in').count() === 6 * 7 && await p.locator('.ph-in[data-k="rest"]').count() === 6 && await p.locator('.ph-in[data-k="gadh"]').count() === 0]);
   const valider = async (pg) => { pg = pg || p; await pg.click('.ph-attente button:has-text("Valider")'); await pg.waitForTimeout(150); await pg.click('.sx-modal .sx-go'); await pg.waitForTimeout(300); };
   await cell('T_M', 'cp').fill('280'); await cell('T_M', 'cp').press('Enter'); await p.waitForTimeout(300);
   r.push(['saisie : en attente (case orange, barre « Valider »), rien d\'enregistré', await tot('T_M', 'cp') === 0 && await p.locator('.ph-t td.e.chg').count() === 1 && /1 modification\(s\) en attente/.test(await txt('.ph-attente'))]);
