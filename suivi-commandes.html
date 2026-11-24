@@ -6079,8 +6079,45 @@ function sxPoste(v, lot, rows, st){
   items.forEach(function(it){ var k = it.l.lib + "|" + it.l.client; if (!gk[k]){ gk[k] = {l:it.l, its:[]}; groups.push(gk[k]); } gk[k].its.push(it); });
   var bar = el("div", {class:"sx-bar"}), barTxt = el("div", {class:"sx-bartxt"}), go = el("button", {class:"sx-go"});
   function totaux(){ var q = 0, n = 0; items.forEach(function(it){ if (it.disp > 0 || !capped){ q += val(it); n += nc(it); } }); return {q:q, n:n}; }
-  function majBar(){ var t = totaux(); barTxt.innerHTML = ""; barTxt.appendChild(el("b", {text:fmt(t.q)})); barTxt.appendChild(document.createTextNode(" bonne(s)")); if (t.n){ barTxt.appendChild(el("br")); barTxt.appendChild(el("span", {class:"bad", text:fmt(t.n) + " défaut(s)"})); } go.textContent = "✔ Valider"; go.disabled = !(t.q || t.n); }
+  function majBar(){ sxTotG.forEach(function(g){ var q = 0; g.its.forEach(function(it){ if (it.disp > 0 || !capped) q += val(it); }); g.el.textContent = fmt(q); }); var t = totaux(); barTxt.innerHTML = ""; barTxt.appendChild(el("b", {text:fmt(t.q)})); barTxt.appendChild(document.createTextNode(" bonne(s)")); if (t.n){ barTxt.appendChild(el("br")); barTxt.appendChild(el("span", {class:"bad", text:fmt(t.n) + " défaut(s)"})); } go.textContent = "✔ Valider"; go.disabled = !(t.q || t.n); }
+  /* GADH (24/11/2026) : saisie en tableau, comme la commande Excel — le modèle écrit une fois à gauche, une ligne par
+     taille (à faire, quantité, défauts), un total par modèle. Même saisie, mêmes règles que les cartes. */
+  var sxTotG = [];
+  if (G){
+    var tb = el("tbody"), ins = [];
+    groups.forEach(function(gr){
+      var m = fmm[gr.l.lib], af = 0, td = el("td", {class:"sxt-mod", rowspan:String(gr.its.length + 1), style:m ? "background:#" + m[5] + ";color:#" + m[6] : ""}, el("b", {text:nomDoc(gr.l.lib)}), el("small", {text:gr.l.client}));
+      gr.its.forEach(function(it, k){
+        af += it.disp;
+        var tr = el("tr", {class:(it.disp === 0 && capped ? "fini" : "") + (k === 0 ? " deb" : "")});
+        if (k === 0) tr.appendChild(td);
+        tr.appendChild(el("td", {class:"sxt-z", text:it.l.size}));
+        tr.appendChild(el("td", {class:"sxt-n", text:fmt(it.disp)}));
+        if (it.disp === 0 && capped){ tr.appendChild(el("td", {class:"sxt-ok", colspan:"2", text:it.fait ? "✓ fait (" + fmt(it.fait) + ")" : "—"})); tb.appendChild(tr); return; }
+        var inp = el("input", {type:"number", inputmode:"numeric", min:"0", enterkeyhint:"next", value:String(val(it))});
+        function poser(q){ q = Math.max(0, q); if (capped && q + nc(it) > it.disp) q = Math.max(0, it.disp - nc(it)); ui.fv[it.key] = q; inp.value = String(q); majBar(); }
+        inp.addEventListener("focus", function(){ try { inp.select(); } catch (e) {} });
+        inp.addEventListener("input", function(){ ui.fv[it.key] = num(inp.value); majBar(); });
+        inp.addEventListener("change", function(){ poser(num(inp.value)); });
+        inp.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp"){ e.preventDefault(); poser(num(inp.value)); var x = ins.indexOf(inp) + (e.key === "ArrowUp" ? -1 : 1); if (ins[x]) ins[x].focus(); else inp.blur(); } });
+        ins.push(inp);
+        tr.appendChild(el("td", {class:"sxt-in"}, inp));
+        var n = nc(it);
+        tr.appendChild(el("td", {class:"sxt-def"}, el("button", {class:"sx-def" + (n ? " on" : ""), onclick:function(){ sxDefaut(it, capped); }}, el("span", {text:"⚠"}), el("span", {text:n ? String(n) : "Défaut"}))));
+        tb.appendChild(tr);
+      });
+      var tot = el("td", {class:"sxt-n"});
+      sxTotG.push({el:tot, its:gr.its});
+      tb.appendChild(el("tr", {class:"sxt-tot"}, el("td", {class:"sxt-z", text:"Total"}), el("td", {class:"sxt-n", text:fmt(af)}), tot, el("td")));
+    });
+    var tbl = el("table", {class:"sxt"});
+    tbl.appendChild(el("colgroup", null, (PC ? [240, 70, 90, 130, 110] : [96, 42, 50, 76, 52]).map(function(w){ return el("col", {style:"width:" + w + "px"}); })));
+    tbl.appendChild(el("thead", null, el("tr", null, el("th", {text:"Modèle"}), el("th", {text:"Taille"}), el("th", {text:"À faire"}), el("th", {text:st === "ret" ? "Retour" : "Quantité"}), el("th", {text:"Défauts"}))));
+    tbl.appendChild(tb);
+    v.appendChild(el("div", {class:"sxt-w"}, tbl));
+  }
   groups.forEach(function(gr){
+    if (G) return;
     var m = fmm[gr.l.lib], card = el("div", {class:"sx-art"});
     card.appendChild(el("div", {class:"hd", style:m ? "background:#" + m[5] + ";color:#" + m[6] : ""}, el("span", {text:nomDoc(gr.l.lib)}), el("span", {class:"cli", text:gr.l.client})));
     gr.its.forEach(function(it){
