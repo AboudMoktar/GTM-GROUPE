@@ -94,7 +94,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
     rs: document.querySelector('.hk-det .hk-mod') ? document.querySelector('.hk-det .hk-mod').rowSpan : 0 }));
   ok(su.lignes.some(x => x === 'PK202611-1suivi|344|30|0|374|') && su.lignes.some(x => x === 'PK202612-1suivi|0|0|12|12|') && !su.lignes.some(x => /PK202610/.test(x)), 'novembre et décembre repris du suivi (2e choix retiré), octobre laissé à la saisie (' + su.lignes.join(' ; ') + ')');
   ok(su.det.length === 2 && /PK202611-1 · Novembre 2026 · 374 pièces/.test(su.det[0]) && /6 en 2e choix/.test(su.det[0]), 'détail par commande (' + su.det.join(' ; ') + ')');
-  ok(su.mat[0] === 'BRASSIERE|BRASSIEREnoire|30||30' && su.mat[1] === 'LYNEPRO|LYNEPROhommegris||50|50' && su.mat[3] === 'TotalLYNEPRO|100|244|344' && su.rs === 1, 'tableau modèle × taille, modèle fusionné sur ses libellés (' + su.mat.join(' ; ') + ')');
+  ok(su.mat.join(' ; ') === 'BRASSIERE|BRASSIEREnoire|S|30|30|30 ; LYNEPRO|LYNEPROhommegris|M|50|50|50 ; LYNEPROhommenoir|S|100|100|294 ; M|194|194' && su.rs === 1, 'comme la commande Excel : Model et LIBELLE fusionnés, une ligne par taille, colonne client, total par libellé (' + su.mat.join(' ; ') + ')');
   // lecture seule
   await prep('viewer'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => !document.getElementById('hk-num') && !document.getElementById('hk-fact') && document.querySelectorAll('.hk-tab .hk-q').length === 0 && /PK202601-1/.test(document.body.innerText)), 'compte en lecture : consultation sans saisie');

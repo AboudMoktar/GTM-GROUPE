@@ -1770,7 +1770,7 @@ function rdStatutsOps(dateISO, data){
     const nom = getOpNameForDate(idx, dateISO);
     try {
       if(typeof getEmployees === 'function' && typeof resolveDayStatus === 'function' && nom){
-        const e = Object.entries(getEmployees()).find(([, x]) => (x.nom || '').trim().toLowerCase() === nom.trim().toLowerCase());
+        const e = typeof rhEmpPourOperatrice === 'function' ? rhEmpPourOperatrice(nom) : undefined;
         if(e){
           const r = resolveDayStatus(e[0], dateISO);
           if(r.source === 'periode'){ const t = (typeof ABSENCE_TYPES !== 'undefined' && ABSENCE_TYPES[r.type]) || {label:'Absente'}; return {code:'absente', label:t.label, detail:t.label + ' (RH)'}; }
