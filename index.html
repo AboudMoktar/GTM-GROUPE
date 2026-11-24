@@ -1767,6 +1767,13 @@ function rdStatutsOps(dateISO, data){
     if(!isOpActiveOnDate(idx, dateISO)) return {code:'vacant', label:'Poste vacant'};
     const vals = heures.map(h => data.hours && data.hours[h] ? data.hours[h][k] : '').filter(v => v !== undefined && v !== null && String(v).trim() !== '');
     if(vals.length && vals.every(isAbsentMark)) return {code:'absente', label:'Absente', detail:'Marquée ' + String(vals[0]).trim().toUpperCase() + ' dans la saisie'};
+    // A sur une partie des créneaux (24/11/2026) : en premier = arrivée en retard ; sinon = absente une partie de la journée
+    if(vals.some(isAbsentMark)){
+      const cases = heures.map(h => { const v = data.hours && data.hours[h] ? data.hours[h][k] : ''; return {h, v:(v === undefined || v === null) ? '' : String(v).trim()}; }).filter(x => x.v !== '');
+      const iNum = cases.findIndex(x => !isAbsentMark(x.v));
+      if(iNum > 0 && cases.slice(iNum).every(x => !isAbsentMark(x.v))) return {code:'retard', label:'Retard · arrivée ' + String(cases[iNum].h).split(/\s*-\s*/)[0], detail:'A sur les premières heures dans la saisie'};
+      return {code:'autorisation', label:'Absente une partie', detail:'A sur certaines heures dans la saisie'};
+    }
     const nom = getOpNameForDate(idx, dateISO);
     try {
       if(typeof getEmployees === 'function' && typeof resolveDayStatus === 'function' && nom){
@@ -1783,7 +1790,6 @@ function rdStatutsOps(dateISO, data){
           }
         }
       }
-      if(typeof getEmployees === 'function' && nom && Object.keys(getEmployees()).length && !(typeof rhEmpPourOperatrice === 'function' && rhEmpPourOperatrice(nom))) return {code:'presente', label:'Présente', nonRelie:true};
     } catch(e) { console.error('Présence', e); }
     return {code:'presente', label:'Présente'};
   });
@@ -1885,10 +1891,9 @@ function renderDashboard(container){
     const ligne = (r, rang) => {
       const a = r.st.code === 'absente', pct = maxJ > 0 ? Math.round(r.total / maxJ * 100) : 0, part = somme > 0 ? r.total / somme * 100 : 0, prem = rang === 0 && r.total > 0;
       const badge = (r.st.code === 'retard' || r.st.code === 'autorisation') ? ` <span class="rd-badge rd-b-${r.st.code}">${esc(r.st.label)}</span>` : '';
-      const lienRH = r.st.nonRelie && currentUser && (currentUser.role === 'admin' || currentUser.profil === 'sysadmin') ? ` <span class="rd-badge rd-b-retard" title="Aucun salarié RH ne correspond à ce nom : ses absences RH ne sont pas prises en compte. Vérifiez le nom dans RH → Personnel (le prénom suffit ; s'il y a plusieurs salariés de ce prénom, mettez « Contrôle » dans le poste).">pas de fiche RH</span>` : '';
       return `<div class="rank-row rd-op rd-${r.st.code}${!a && !r.total ? ' rd-zero' : ''}${prem ? ' rd-prem' : ''}" onclick="rdDetail('${dateISO}','${r.key}')">
         <div class="rd-num">${a ? I.croix : rang + 1}</div>
-        <div class="rd-nom">${esc(r.name)}${badge}${lienRH}</div>
+        <div class="rd-nom">${esc(r.name)}${badge}</div>
         ${a ? `<div class="rd-piste"></div>` : `<div class="rank-bar rd-barre"><div style="width:${pct}%"></div></div>`}
         <div class="rd-val">${a ? `<span class="rd-badge rd-b-absente" title="${esc(r.st.detail || '')}">${I.personne}${esc(r.st.label)}</span>` : r.total ? `<b>${r.total} PC</b><span>${fmt1(part)}%</span>` : `<span class="rd-attente">Pas encore de pièces</span>`}</div></div>`;
     };
@@ -2002,7 +2007,7 @@ function renderOperatriceDetail(opKey, data, ops, dayObj){
     const n = parseInt(v) || 0;
     total += n;
     const absent = isAbsentMark(v);
-    return {h, v: absent ? 'ABS' : (v===''||v==null?'—':n), absent};
+    return {h, v: absent ? String(v).trim().toUpperCase() : (v===''||v==null?'—':n), absent};
   });
   const zone = document.getElementById('operatrice-modal-zone');
   if(!zone) return;
@@ -2067,15 +2072,16 @@ function renderSaisie(container, date){
   let actionBtns = isAdmin ? (isDraft ? `<button class="btn btn-success" onclick="toggleValidation('${date}', 'validated')">Verrouiller & Valider</button>` : `<button class="btn btn-warning" onclick="toggleValidation('${date}', 'draft')">Déverrouiller pour saisie et correction</button>`) : '';
 
   window.handleInput = (h, k, val) => {
-    // Validation : on n'accepte qu'un nombre positif ou un texte d'absence (ABS, etc.)
+    // Validation : on n'accepte qu'un nombre positif ou A (absente sur ce créneau ; ABS et autres textes restent acceptés)
     const trimmed = String(val).trim();
     if(trimmed !== '' && !isAbsentMark(trimmed)){
       const n = parseInt(trimmed);
       if(isNaN(n) || n < 0 || String(n) !== trimmed){
-        showToast('Valeur invalide : entrez un nombre positif ou "ABS"');
+        showToast('Valeur invalide : entrez un nombre de pièces, ou A si elle est absente');
         return;
       }
     }
+    if(trimmed !== '' && isAbsentMark(trimmed)) val = trimmed.toUpperCase();
     data.hours[h][k] = val; saveDay(date, data);
     let newTots = computeTotals(data);
     OP_KEYS.forEach(opKey => document.getElementById(`tot_col_${opKey}`).innerText = newTots[opKey]);
@@ -2125,9 +2131,9 @@ function renderSaisie(container, date){
         let ph = '-';
         if((val===undefined||val===null||String(val).trim()==='') && typeof rhSlotExcluded==='function'){
           const slotInfo = dayHoursSlots.find(s=>s.label===h);
-          if(slotInfo && rhSlotExcluded(ops[idx], date, slotInfo.start, slotInfo.end)) ph = 'RH';
+          if(slotInfo && rhSlotExcluded(ops[idx], date, slotInfo.start, slotInfo.end)) ph = 'A';   // absente sur ce créneau (pointage RH : absence, retard, sortie)
         }
-        return `<td class="input-cell"><input type="text" value="${val}" oninput="handleInput('${h}', '${k}', this.value)" ${disabled} placeholder="${ph}" enterkeyhint="next" autocomplete="off"></td>`;
+        return `<td class="input-cell"><input type="text" value="${val}" oninput="handleInput('${h}', '${k}', this.value)" ${disabled} placeholder="${ph}" title="${ph === 'A' ? 'Absente sur ce créneau d\'après le pointage (absence ou retard) : objectif déjà réduit' : 'Nombre de pièces, ou A si absente sur ce créneau'}" enterkeyhint="next" autocomplete="off"></td>`;
       }).join('')}
       <td class="total-col" id="tot_${hId}">${rTot}<div class="hour-rend ${rendClass(hPct)}">${hPct}%</div></td>
       <td class="cumul-col" id="cumul_${hId}">${cumulGeneral}</td>
@@ -2481,7 +2487,7 @@ function renderParams(container){
       <div style="font-size:12.5px; color:var(--ink-soft); margin-top:6px; line-height:1.5;">
         Référence actuelle : <b>3 min/pièce</b> (soit ${rate} pièces/h et par opératrice).<br>
         Objectif théorique semaine type (Lun-Ven, ${OP_KEYS.length} opératrices) : <b>${obj} pièces/jour</b>.<br>
-        <b>En cas d'absence</b> : tapez <code>ABS</code> (ou tout texte) dans la case d'une opératrice au lieu d'un chiffre — l'objectif de cette heure-là est automatiquement réduit en conséquence, sur le Tableau de bord, la Saisie et l'Historique.
+        <b>En cas d'absence</b> : tapez <code>A</code> dans la case d'une opératrice au lieu d'un chiffre — l'objectif de cette heure-là est automatiquement réduit, sur le Tableau de bord, la Saisie et l'Historique. <code>A</code> sur toute la journée = absente ; <code>A</code> sur les premières heures = arrivée en retard ; <code>A</code> sur les dernières = sortie. Les absences et retards du pointage RH apparaissent déjà en <code>A</code> (en gris) dans la saisie.
       </div>
       
       <hr style="border:0; border-top:1px solid var(--border); margin:24px 0;">

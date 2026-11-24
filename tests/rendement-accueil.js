@@ -82,6 +82,16 @@ const JOUR = '2026-11-24'; // mardi
   const aw = z.find(x => /Awatef/.test(x.txt)), ma = z.find(x => /Mabrouka/.test(x.txt));
   r.push(['présente sans pièce : « Pas encore de pièces », pas absente', aw && !aw.abs && aw.zero && /Pas encore de pièces/.test(aw.txt)]);
   r.push(['mention ABS dans la saisie → absente', ma && ma.abs && /ABS dans la saisie/.test(ma.txt)]);
+  // « A » dans la saisie : A partout = absente ; A sur les premières heures = retard (objectif réduit sur ces heures) ; A au milieu = absente une partie
+  const a = await p.evaluate((J) => { const d = getDay(J), hs = Object.keys(d.hours);
+    hs.forEach((h, i) => { d.hours[h].op4 = 'A'; d.hours[h].op1 = i < 2 ? 'A' : (i < 5 ? '17' : ''); d.hours[h].op2 = i === 2 ? 'a' : (i < 5 ? '16' : ''); });
+    memoryCache[CACHE_PREFIX + 'prod_' + J] = d; memoryCache[CACHE_PREFIX + 'attendance_' + J] = {}; memoryCache[CACHE_PREFIX + 'absence_periods'] = {};
+    const st = rdStatutsOps(J, d), obj = getObjForDay(d); d.hours[hs[0]].op1 = '17'; d.hours[hs[1]].op1 = '17'; const obj2 = getObjForDay(d);
+    return {st:st.map(x => x.code + ':' + x.label), moinsObjectif:obj2 - obj}; }, JOUR);
+  r.push(['A partout → absente ; A sur les 2 premières heures → retard ; A au milieu → absente une partie (' + a.st.join(', ') + ')', /^retard:Retard · arrivée /.test(a.st[0]) && /^autorisation:Absente une partie/.test(a.st[1]) && /^absente:/.test(a.st[3])]);
+  r.push(['retard en A : objectif réduit sur les heures manquées (' + a.moinsObjectif + ' pièces)', a.moinsObjectif > 0]);
+  const sA = await p.evaluate(() => { nav('saisie'); let vu = null; window.saveDay = (d, x) => { vu = x; }; const h0 = Object.keys(getDay(saisieDate).hours)[0]; handleInput(h0, 'op3', 'a'); return vu ? vu.hours[h0].op3 : null; });
+  r.push(['saisie : « a » enregistré en « A »', sA === 'A']);
   await ctx.close();
   // ---- Android (390 px)
   ({p, ctx} = await essai(390, 844));
