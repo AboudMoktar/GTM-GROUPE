@@ -30,7 +30,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.evaluate(() => { ui.tab = 'flux'; ui.fmode = 'saisie'; ui.stage = 'emb'; ui.sxOpen = true; render(); }); await attendre();
   const def = await p.evaluate(() => { const t = [...document.querySelectorAll('table')].find(x => /Retour GADH/.test(x.tHead ? x.tHead.textContent : ''));
     if (!t) return null; return {th:[...t.tHead.rows[0].cells].map(c => c.textContent).join('|'), l1:[...t.tBodies[0].rows[0].cells].slice(0, 2).map(c => c.textContent).join('|'), tot:t.tBodies[0].rows[t.tBodies[0].rows.length - 1].cells[0].colSpan}; });
-  ok(def && /^Article\|Taille\|/.test(def.th) && /^Pharma Femme Col V Rose\|XS$/.test(def.l1) && def.tot === 2, 'pièces défectueuses : « Article XS » séparé en Article + Taille, total sur les deux colonnes (' + JSON.stringify(def) + ')');
+  ok(def && /^Article\|Taille\|/.test(def.th) && /^PHARMA FEMME COL V ROSE\|XS$/.test(def.l1) && def.tot === 2, 'pièces défectueuses : « Article XS » séparé en Article + Taille, total sur les deux colonnes (' + JSON.stringify(def) + ')');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
   console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur');
   await b.close(); s.close(); process.exit(echecs ? 1 : 0);

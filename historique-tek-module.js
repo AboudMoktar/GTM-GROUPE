@@ -356,7 +356,7 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-ch2{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(245,158,11,.15);color:#92400e;}
 .hk-ligne-auto td{background:rgba(22,119,232,.035);} .hk-n{text-align:right;font-variant-numeric:tabular-nums;}
 .hk-det summary{cursor:pointer;font-size:14px;margin-bottom:8px;}
-.hk-mat{border-collapse:collapse;width:auto;min-width:100%;font-size:13px;}
+.hk-mat{border-collapse:collapse;width:auto;min-width:100%;font-size:13px;text-transform:uppercase;}
 .hk-mat th,.hk-mat td{border:1px solid #9AA9BE !important;padding:4px 10px !important;}
 .hk-mat thead th{background:#FFFFFF !important;color:#C00000 !important;font-weight:800;text-align:center !important;text-transform:none !important;letter-spacing:0 !important;font-size:13px !important;}
 .hk-mat .hk-mod{font-weight:800;text-align:center;vertical-align:middle;background:#FFFFFF;}

@@ -4716,8 +4716,7 @@ function plages(nums){
   for (var i = 0; i < n.length; i++){ var j = i; while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++; out.push(j > i ? n[i] + "–" + n[j] : String(n[i])); i = j; }
   return out.join(", ");
 }
-function nomDoc(lib){ return String(lib).replace(/_/g, " ").toLowerCase().replace(/(^|\s)(\S)/g, function(m, a, b){ return a + b.toUpperCase(); })
-  .replace(/(^|\s)([a-z])-([a-z])(?=\s|$)/gi, function(m, a, x, y){ return a + x.toUpperCase() + "-" + y.toUpperCase(); }); }   /* bonnets « A-B », « C-D » */
+function nomDoc(lib){ return String(lib).replace(/_/g, " ").replace(/\s+/g, " ").trim().toUpperCase(); }   /* noms des modèles en MAJUSCULES partout (24/11/2026) */
 function hx(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 /* destinataire : celui du client, ou celui saisi sur l'export en cours d'impression */
 var PK_DEST_FORCE = null;

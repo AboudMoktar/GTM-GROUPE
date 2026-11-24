@@ -105,3 +105,7 @@ table.pf-t tbody tr:hover td{background:#F4F8FF}
 .pf-av{display:flex;align-items:center;gap:6px;min-width:90px}.pf-bar{flex:1;height:8px;border-radius:99px;background:#E3E8F0;overflow:hidden}.pf-bar i{display:block;height:100%;background:#2563EB;border-radius:99px}
 .pf-av b{font-size:12.5px;min-width:40px;text-align:right}
 .pill.bad{background:#FDE2E1;color:#B42318}.pill.warn{background:#FFF3CD;color:#7A4B00}
+/* Tout en MAJUSCULES dans les tableaux (modèles, libellés, couleurs, clients, titres) — 24/11/2026 */
+table th,table td,.sx-art .hd,.xp-mx td,.pf-t td{text-transform:uppercase}
+table td input,table td select,table td textarea,table td .mut,table td small.nc-mot{text-transform:none}
+table thead th{letter-spacing:-.01em}
