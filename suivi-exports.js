@@ -569,7 +569,8 @@ function confirmerValidation(e){
 
 /* ---------- éditeur de carton (saisie libre) ----------
    1. N° de commande (lot) : une commande enregistrée, ou un autre N° (commande pas encore inscrite).
-   2. Tous les modèles du catalogue (nomenclature), ceux de la commande en premier.
+   2. Tous les modèles du catalogue (nomenclature), ceux de la commande en premier, puis les exosquelettes
+      et les brassières (toujours proposés).
    3. Quantités libres par taille : les chiffres de la commande (commandé, retour GADH, déjà en carton)
       sont affichés pour information ; un dépassement est signalé, jamais bloqué. */
 function catalogueModeles(lot, cl){
@@ -578,6 +579,12 @@ function catalogueModeles(lot, cl){
   function aj(lib, size, dans, sp){ var k = lib + "|" + (sp || ""), m = par[k]; if (!m){ m = par[k] = {lib:lib, sp:sp || "", key:k, sizes:[], dans:false}; o.push(m); } if (size && m.sizes.indexOf(size) < 0) m.sizes.push(size); if (dans) m.dans = true; }
   S.lines.forEach(function(l){ if (l.lot === lot) aj(l.lib, l.size, l.client === cl || estSpecial(l.client), estSpecial(l.client) ? l.client : ""); });
   libList().forEach(function(x){ x.sizes.forEach(function(s){ aj(x.lib, s, false); }); });
+  /* exosquelettes et brassières (24/11/2026) : hors nomenclature GADH, ils sont repris de toutes les commandes du suivi
+     (avec leurs tailles) ; à défaut, les modèles de base (EXOSQUELETTE taille unique, brassières S à XXL) */
+  var hg = {exo:false, bra:false};
+  S.lines.forEach(function(l){ if (horsGadh(l)){ aj(l.lib, l.size, false); if (estExo(l)) hg.exo = true; if (estBra(l)) hg.bra = true; } });
+  if (!hg.exo) aj("EXOSQUELETTE", "TU", false);
+  if (!hg.bra && typeof BRA_COQUES === "object") Object.keys(BRA_COQUES).forEach(function(b){ ["S", "M", "L", "XL", "XXL"].forEach(function(z){ aj(b, z, false); }); });
   o.forEach(function(m){ m.sizes.sort(function(a, b){ return sizeIdx(a) - sizeIdx(b); }); });
   var ordre = libOrder();
   return o.sort(function(a, b){ return (b.dans - a.dans) || ((a.lib in ordre ? ordre[a.lib] : 999) - (b.lib in ordre ? ordre[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : 0) || (a.sp < b.sp ? -1 : a.sp > b.sp ? 1 : 0); });
@@ -620,7 +627,7 @@ function editeurCarton(v, e){
   /* 2. tableau : un modèle par ligne, une taille par colonne ; on tape les quantités directement */
   var mods = catalogueModeles(E.lot, e.cl), dansCmd = mods.some(function(m){ return m.dans; });
   var dansCarton = {}; E.it.forEach(function(x){ var i = infoItem(x); if (i.lot === E.lot) dansCarton[i.lib + "|" + (i.sp || "")] = 1; });
-  var montres = mods.filter(function(m){ return E.tous || !dansCmd || m.dans || dansCarton[m.key]; });
+  var montres = mods.filter(function(m){ return E.tous || !dansCmd || m.dans || dansCarton[m.key] || horsGadh(m.lib); });   /* exosquelettes et brassières toujours proposés */
   var groupes = [], parG = {};
   montres.forEach(function(m){ var k = m.sizes.every(function(z){ return /^H\d/.test(z); }) ? "H" : (m.sizes.length === 1 && m.sizes[0] === "TU") ? "TU" : "STD";
     var g = parG[k]; if (!g){ g = parG[k] = {k:k, mods:[], tailles:[]}; groupes.push(g); } g.mods.push(m); m.sizes.forEach(function(z){ if (g.tailles.indexOf(z) < 0) g.tailles.push(z); }); });
