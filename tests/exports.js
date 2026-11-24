@@ -31,7 +31,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['export créé (N°1, NEOLYS, en cours)', E.length === 1 && E[0].n === 1 && E[0].cl === 'NEOLYS' && E[0].st === 'cours' && E[0].d === '2026-11-07']);
   r.push(['éditeur du carton N°1 ouvert', /Carton N°1/.test(await p.locator('#view').textContent())]);
   // 2. carton en tableau : commande PK202610, modèles de la commande en lignes, tailles en colonnes
-  const cell = (lib, sz) => p.locator('.xp-mx input[title^="' + lib + ' · ' + sz + ' "]');
+  const cell = (lib, sz) => p.locator('.xp-mx input[title^="' + String(lib).toUpperCase() + ' · ' + sz + ' "]');
   r.push(['bandeau : carton en cours toujours affiché', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && /carton 1 sur 1/.test(await p.locator('.xp-sticky').textContent())]);
   r.push(['commandes enregistrées proposées', await p.locator('.xp-cmd .sx-chip').count() === 2]);
   await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202610'}).click(); await p.waitForTimeout(150);
@@ -194,7 +194,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['FLÉCHÉS : disponible pour un export NEOLYS ou ALLOGA', await p.evaluate(() => pkExports.dispoLigne(lineById('B_F'), 'NEOLYS', null) === 40 && pkExports.dispoLigne(lineById('B_F'), 'ALLOGA', null) === 40)]);
   await p.evaluate(() => { S.exports.push({id:'X3', n:3, d:'2026-11-09', cl:'NEOLYS', nat:'NEOLYS', dest:null, st:'cours', dv:'', cartons:[]}); ui.xp = {id:'X3', carton:{nouveau:true}}; render(); });
   await p.locator('.xp-cmd .sx-chip', {hasText: /PK202611$/}).click(); await p.waitForTimeout(150);
-  const cf = p.locator('.xp-mx input[data-sp="FLÉCHÉS"][title^="Pharma Homme Col V Noir · FLÉCHÉS · S "]');
+  const cf = p.locator('.xp-mx input[data-sp="FLÉCHÉS"][title^="PHARMA HOMME COL V NOIR · FLÉCHÉS · S "]');
   r.push(['carton : ligne « FLÉCHÉS » à part, sous son modèle', await cf.count() === 1 && await p.locator('.xp-mx tr.sp .xp-tag.sp', {hasText: 'FLÉCHÉS'}).count() === 1 && await cf.getAttribute('placeholder') === '40']);
   await cf.fill('10'); await cell('Lyne Pro Homme Gris', 'S').fill('5');
   await p.click('text=✔ Valider le carton N°1'); await p.waitForTimeout(300);
@@ -206,7 +206,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const g = pkExports.totalCommandeGrid(e, c, 'PK202611'), rf = g.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS');
     const et = pkExports.etatCommandeGrid(null, 'PK202611'), head = et.rows[2].cells.map(x => x ? x.v : ''), iF = head.indexOf('FLÉCHÉS'), iX = head.indexOf('Emballés,\nprêts à expédier\nle 09/11');
     const rs = et.rows.find(r => r.cells[1] && r.cells[1].v === 'PHARMA_HOMME COL V NOIR' && r.cells[2] && r.cells[2].v === 'S');
-    return {it: it && it.lib + '|' + it.src, col: /Pharma Homme Col V Noir · Fléchés/.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
+    return {it: it && it.lib + '|' + it.src, col: /PHARMA HOMME COL V NOIR · FLÉCHÉS/i.test(pkExports.colisageHtml(e, c)), tot: rf && rf.cells[3].v, fl: rs && rs.cells[iF].v, ex: rs && rs.cells[iX].v, tot2: pkExports.totalDonneesExport(e, c).parLot.PK202611.libs.map(b => b.src).join(',')}; });
   r.push(['documents : « LIBELLÉ · FLÉCHÉS » pour le client de l\'export', fd.it === 'PHARMA_HOMME COL V NOIR · FLÉCHÉS|NEOLYS' && fd.col && fd.tot === 10 && fd.tot2 === 'NEOLYS,NEOLYS']);
   r.push(['état de commande : colonne FLÉCHÉS et export suivi', fd.fl === 40 && fd.ex === 10]);
   // 12. export préparé directement (étapes vides) : Coupe → Confection remplies automatiquement

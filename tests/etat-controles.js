@@ -20,7 +20,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   ok(JSON.stringify(res.reste) === '[0,5,0]', 'reste = total − contrôlés (XS 0, S 5, M emballé 0)');
   const i = res.txt.findIndex(t => /^Contrôlés, pas encore emballés/.test(t));
   ok(i > 0 && /30 pièces/.test(res.txt[i]), 'renvoi sous le tableau : 30 pièces contrôlées non emballées');
-  ok(res.txt[i + 1] === '• Gilet Homme Noir — XS : 10 · S : 20', 'détail : Gilet Homme Noir — XS : 10 · S : 20 (le M emballé n\'y est pas)');
+  ok(res.txt[i + 1] === '• GILET HOMME NOIR — XS : 10 · S : 20', 'détail : Gilet Homme Noir — XS : 10 · S : 20 (le M emballé n\'y est pas)');
   ok(res.pdf && res.xlsx, 'PDF et Excel construits avec le renvoi');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
   console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur');

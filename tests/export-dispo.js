@@ -21,7 +21,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     return {s:dispoRetour('PK202611', 'S1', null), m:dispoRetour('PK202611', 'M1', null)};
   });
   r.push(['disponible = retour − déjà expédié', d.s === 50 && d.m === 50]);
-  const cell = (sz) => p.locator('.xp-mx input[title^="Lyne Pro Homme Gris · ' + sz + ' "]');
+  const cell = (sz) => p.locator('.xp-mx input[title^="LYNE PRO HOMME GRIS · ' + sz + ' "]');
   r.push(['chiffre gris = disponible', await cell('S').getAttribute('placeholder') === '50' && await cell('M').getAttribute('placeholder') === '50']);
   r.push(['info : déjà emballé ou expédié', /déjà emballé ou expédié 30, disponible 50/.test(await cell('S').getAttribute('title'))]);
   await cell('S').fill('70'); await cell('M').fill('20');

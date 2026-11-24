@@ -227,7 +227,7 @@ function grilleExcel(lot, rows, portee, grp){
   gmerge(g, 1, 1, 1, nC - 2); g.rows[1].h = 18;
   var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", wrap:1, bd:"t"};
   cx.forEach(function(c, i){ gset(g, X_ENT, i, c.t, H); }); g.rows[X_ENT].h = 32;
-  var SA = saisissables(), r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
+  var SA = saisissables(); delete SA.rest; var r = X_ENT + 1, deb = r, nums = cx.filter(function(c){ return !c.txt && c.k !== "code"; }).map(function(c){ return c.k; });
   var kFr = G ? "gadh" : "fr", kFin = G ? "ret" : "exp";
   function fRest(rr){
     if (G) return "MAX(0," + L(ci[kFr]) + rr + "-" + L(ci[kFin]) + rr + ")";
@@ -368,7 +368,7 @@ function exporterPdf(lot, rows, portee, grp, suffixe, format, ori){
    Relit la feuille « Suivi » exportée (code de ligne en colonne masquée) et propose les écarts avec le
    suivi actuel ; seules les colonnes saisissables sont reprises ; rien n'est enregistré sans validation. */
 function lireImport(lot, sheets){
-  var SA = saisissables(), sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
+  var SA = saisissables(); delete SA.rest; var sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
   if (!sh) throw new Error("Fichier vide.");
   var rows = sh.rows, hi = -1, col = {};
   var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code"; titres["modèle"] = "model"; titres["référence"] = "lib"; titres["libellé"] = "lib";   /* anciens fichiers (avant le 24/11/2026) */
