@@ -87,14 +87,17 @@ function getPlannedHoursForDate(dateISO){
 // des employés (RH) — s'il n'y a pas de correspondance ou pas de donnée RH
 // ce jour-là, rien ne change (comportement Saisie inchangé).
 // Salarié RH correspondant à une opératrice de Gestion Rendement (24/11/2026) : nom complet identique ; sinon
-// le prénom suffit (« Marwa » ↔ « Marwa Ben Salah »). Si plusieurs salariés ont ce prénom, on garde celui
+// le prénom suffit, placé avant ou après le nom de famille (« Marwa » ↔ « Marwa Ben Salah » ou « Ben Salah Marwa »). Si plusieurs salariés ont ce prénom, on garde celui
 // dont le poste est « Contrôle » (les opératrices du rendement sont au contrôle). Sinon : pas de lien.
 function rhNorm(x){ return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' '); }
 function rhEmpPourOperatrice(opName, emps){
   const n = rhNorm(opName); if(!n || n === '(poste vacant)') return undefined;
   const tous = Object.entries(emps || getEmployees()).filter(([, e]) => e), L = tous.filter(([, e]) => e.statut !== 'inactif');
   const exact = tous.filter(([, e]) => rhNorm(e.nom) === n); if(exact.length) return exact[0];
-  const debut = L.filter(([, e]) => { const m = rhNorm(e.nom); return m.split(' ')[0] === n.split(' ')[0] && (m.indexOf(n + ' ') === 0 || n.split(' ').length === 1); });
+  /* tous les mots du nom de l'opératrice se retrouvent dans le nom RH, dans n'importe quel ordre
+     (« Marwa » ↔ « Ben Salah Marwa » ou « Marwa Ben Salah ») */
+  const mots = n.split(' ');
+  const debut = L.filter(([, e]) => { const m = rhNorm(e.nom).split(' '); return mots.every(w => m.indexOf(w) >= 0); });
   if(debut.length === 1) return debut[0];
   const ctl = debut.filter(([, e]) => /contr[oô]le/i.test(rhNorm(e.poste)));
   return ctl.length === 1 ? ctl[0] : undefined;

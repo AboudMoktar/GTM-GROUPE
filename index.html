@@ -1783,6 +1783,7 @@ function rdStatutsOps(dateISO, data){
           }
         }
       }
+      if(typeof getEmployees === 'function' && nom && Object.keys(getEmployees()).length && !(typeof rhEmpPourOperatrice === 'function' && rhEmpPourOperatrice(nom))) return {code:'presente', label:'Présente', nonRelie:true};
     } catch(e) { console.error('Présence', e); }
     return {code:'presente', label:'Présente'};
   });
@@ -1884,9 +1885,10 @@ function renderDashboard(container){
     const ligne = (r, rang) => {
       const a = r.st.code === 'absente', pct = maxJ > 0 ? Math.round(r.total / maxJ * 100) : 0, part = somme > 0 ? r.total / somme * 100 : 0, prem = rang === 0 && r.total > 0;
       const badge = (r.st.code === 'retard' || r.st.code === 'autorisation') ? ` <span class="rd-badge rd-b-${r.st.code}">${esc(r.st.label)}</span>` : '';
+      const lienRH = r.st.nonRelie && currentUser && (currentUser.role === 'admin' || currentUser.profil === 'sysadmin') ? ` <span class="rd-badge rd-b-retard" title="Aucun salarié RH ne correspond à ce nom : ses absences RH ne sont pas prises en compte. Vérifiez le nom dans RH → Personnel (le prénom suffit ; s'il y a plusieurs salariés de ce prénom, mettez « Contrôle » dans le poste).">pas de fiche RH</span>` : '';
       return `<div class="rank-row rd-op rd-${r.st.code}${!a && !r.total ? ' rd-zero' : ''}${prem ? ' rd-prem' : ''}" onclick="rdDetail('${dateISO}','${r.key}')">
         <div class="rd-num">${a ? I.croix : rang + 1}</div>
-        <div class="rd-nom">${esc(r.name)}${badge}</div>
+        <div class="rd-nom">${esc(r.name)}${badge}${lienRH}</div>
         ${a ? `<div class="rd-piste"></div>` : `<div class="rank-bar rd-barre"><div style="width:${pct}%"></div></div>`}
         <div class="rd-val">${a ? `<span class="rd-badge rd-b-absente" title="${esc(r.st.detail || '')}">${I.personne}${esc(r.st.label)}</span>` : r.total ? `<b>${r.total} PC</b><span>${fmt1(part)}%</span>` : `<span class="rd-attente">Pas encore de pièces</span>`}</div></div>`;
     };

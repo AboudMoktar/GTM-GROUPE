@@ -55,3 +55,26 @@ table.gh-col td.xm b{display:block;font-weight:800;font-size:13.5px}
 table.gh-col td.xm small{display:block;margin-top:2px;font-size:11.5px;font-weight:600;color:#3C4E68}
 table.gh-col td.xm button{margin-top:6px}
 table.gh-col tbody td.l{font-weight:700}
+/* GADH, saisie simple en tableau (comme la commande Excel) */
+.sxt-w{background:#fff;border:1px solid #9AA9BE;border-radius:10px;overflow:hidden;margin-bottom:12px;max-width:720px!important}
+table.sxt{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
+table.sxt th{background:#1F3864;color:#fff;font-size:12.5px;font-weight:700;padding:8px 6px;text-align:center;border:1px solid #1F3864}
+table.sxt td{border:1px solid #C9D3E0;padding:4px 8px;text-align:center;height:46px}
+table.sxt td.sxt-mod{text-align:left;vertical-align:middle;background:#DDEBF7;color:#0B1F3A;width:240px;white-space:normal;overflow-wrap:anywhere;line-height:1.25;border-right:2px solid #8EA9C1}
+table.sxt td.sxt-mod b{display:block;font-weight:800;font-size:14px}
+table.sxt td.sxt-mod small{display:block;font-size:11.5px;font-weight:600;opacity:.8;margin-top:2px}
+table.sxt td.sxt-z{font-weight:800;width:56px}
+table.sxt td.sxt-n{font-variant-numeric:tabular-nums;width:76px;color:#334155}
+table.sxt td.sxt-in{width:110px;background:#FFF8D6}
+table.sxt td.sxt-in input{width:100%;max-width:110px;height:38px;font-size:18px;font-weight:800;text-align:center;border:1.5px solid #E6C75A;border-radius:8px;background:#FFFDF0;padding:0 4px}
+table.sxt td.sxt-def{width:84px} table.sxt td.sxt-def .sx-def{width:100%;min-width:0!important;min-height:38px;flex-direction:row;gap:4px;padding:4px 6px}
+table.sxt tr.deb td{border-top:2px solid #44546A}
+table.sxt tr.sxt-tot td{background:#EEF2F7;font-weight:800;height:36px}
+table.sxt tr.fini td{color:#94A3B8} table.sxt td.sxt-ok{color:#15803D;font-weight:700}
+@media (max-width:520px){
+  table.sxt{font-size:14px} table.sxt th{font-size:11px;padding:6px 3px}
+  table.sxt td{padding:3px 4px;height:44px}
+  table.sxt td.sxt-mod{width:96px;padding:4px 6px} table.sxt td.sxt-mod b{font-size:12.5px;word-break:break-word}
+  table.sxt td.sxt-z{width:38px} table.sxt td.sxt-n{width:48px} table.sxt td.sxt-in{width:76px} table.sxt td.sxt-in input{font-size:17px}
+  table.sxt td.sxt-def{width:52px} table.sxt td.sxt-def .sx-def span:last-child{display:none}
+}
