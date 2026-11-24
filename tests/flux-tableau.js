@@ -38,6 +38,24 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   await p.evaluate(() => [...document.querySelectorAll('button')].find(x => /Confirmer et enregistrer/.test(x.textContent)).click()); await p.waitForTimeout(300);
   const tot = await p.evaluate(() => { const T = stageTotals(); return {embXS:T.L1.emb || 0, ctlS:T.L2.ctl || 0}; });
   ok(tot.embXS === 10 && tot.ctlS === 75, 'passage (10 emballées) et correction (contrôle 80 → 75) enregistrés (' + JSON.stringify(tot) + ')');
+  // comme Excel : Maj+↓ sélection, Ctrl+Entrée même chiffre, Ctrl+Z annuler, Ctrl+D recopier
+  const cle = (sel, opts) => p.evaluate(([sel, o]) => { const i = document.querySelector(sel); i.focus(); i.dispatchEvent(new KeyboardEvent('keydown', Object.assign({bubbles:true, cancelable:true}, o))); return true; }, [sel, opts]);
+  const colEmb = await p.evaluate(() => { const ths = [...document.querySelectorAll('.ph-t thead th')].map(x => x.textContent.trim()); const i = document.querySelector('.ph-in[data-k="emb"]'); return i.getAttribute('data-c'); });
+  const r0 = await p.evaluate(() => document.querySelector('.ph-in[data-k="emb"]').getAttribute('data-r'));
+  const S0 = '.ph-in[data-r="' + r0 + '"][data-c="' + colEmb + '"]';
+  await p.evaluate((S0) => { const i = document.querySelector(S0); i.value = '20'; }, S0);
+  await cle(S0, {key:'ArrowDown', shiftKey:true}); await cle(S0, {key:'ArrowDown', shiftKey:true});
+  const nSel = await p.evaluate(() => document.querySelectorAll('.ph-t td.rg').length);
+  await cle(S0, {key:'Enter', ctrlKey:true}); await p.waitForTimeout(150);
+  const rempli = await p.evaluate(() => [...document.querySelectorAll('.ph-in[data-k="emb"]')].slice(0, 3).map(i => i.value).join(','));
+  ok(nSel === 3 && rempli === '20,20,20', 'Maj+↓ sélectionne 3 cases, Ctrl+Entrée y met 20 (' + nSel + ' · ' + rempli + ')');
+  await cle(S0, {key:'z', ctrlKey:true}); await p.waitForTimeout(150);
+  const annule = await p.evaluate(() => [...document.querySelectorAll('.ph-in[data-k="emb"]')].slice(0, 3).map(i => i.value).join(','));
+  ok(annule === '10,0,0', 'Ctrl+Z annule le remplissage (' + annule + ')');
+  await cle(S0, {key:'ArrowDown', shiftKey:true}); await cle(S0, {key:'ArrowDown', shiftKey:true}); await cle(S0, {key:'d', ctrlKey:true}); await p.waitForTimeout(150);
+  const recop = await p.evaluate(() => [...document.querySelectorAll('.ph-in[data-k="emb"]')].slice(0, 3).map(i => i.value).join(','));
+  ok(recop === '10,10,10', 'Ctrl+D recopie la première valeur vers le bas (' + recop + ')');
+  ok(await p.evaluate(() => /Ctrl/.test((document.querySelector('.ph-aide') || {}).textContent || '')), 'aide des raccourcis affichée sous le tableau');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
   console.log(echecs ? echecs + ' échec(s)' : 'ok   aucune erreur');
   await b.close(); s.close(); process.exit(echecs ? 1 : 0);

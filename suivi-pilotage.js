@@ -54,6 +54,8 @@ var CSS = [
   '.ph-in:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#fff!important}.ph-t td.e.bad{background:#fde2e1}',
   /* saisie en attente de validation */
   '.ph-t td.e.chg{background:#ffd8a8!important;box-shadow:inset 0 0 0 2px #e8590c}',
+  '.ph-t td.e.rg{background:#cfe2ff!important;box-shadow:inset 0 0 0 2px #2563eb}',
+  '.ph-aide{font-size:12px;color:var(--mut);margin:6px 2px 0}.ph-aide kbd{font:inherit;font-weight:700;background:var(--sub);border:1px solid var(--line);border-radius:5px;padding:0 5px}',
   '.ph-attente{position:sticky;top:0;z-index:7;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 8px;padding:10px 12px;border:2px solid #e8590c;border-radius:12px;background:#fff4e6}',
   '.ph-attente b{flex:1 1 200px;color:#5c2b00}',
   '.ph-chg{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:8px 0}.ph-chg>div{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px}.ph-chg>div:last-child{border-bottom:0}.ph-chg b{white-space:nowrap}',
@@ -401,7 +403,7 @@ window.vPilotage = function(v){
   var toutes = lignesPilotage(lot);
   if (!toutes.length){ v.appendChild(el("div", {class:"card"}, el("div", {class:"ph-vide", text:"Aucune ligne pour ce lot. Ajoutez la commande dans l'onglet Commandes."}))); return; }
   var P = filtres();
-  if (P.lot !== lot){ P.lot = lot; P.f = {}; P.q = ""; P.sel = {}; P.br = {}; }
+  if (P.lot !== lot){ P.lot = lot; P.f = {}; P.q = ""; P.sel = {}; P.br = {}; P.hist = []; P.plage = null; P.ancre = null; }
   P.br = P.br || {};
   if (!P.init && ui.client && ui.client !== "*"){ P.f.client = ui.client; } P.init = true;
   var Tall = sommer(toutes), L = S.lots[lot] || {};
@@ -436,8 +438,14 @@ window.vPilotage = function(v){
     var n = nbAttente(); barre.innerHTML = ""; barre.style.display = n ? "" : "none"; if (!n) return;
     barre.appendChild(el("b", {text:"✏️ " + n + " modification(s) en attente, pas encore enregistrée(s)"}));
     barre.appendChild(el("button", {class:"btn small", text:"✔ Valider", onclick:confirmerAttente}));
-    barre.appendChild(el("button", {class:"btn small sec", text:"Annuler", onclick:function(){ if (!confirm("Abandonner " + nbAttente() + " modification(s) ?")) return; P.br = {}; dessiner(); }}));
+    if (P.hist.length) barre.appendChild(el("button", {class:"btn small sec", text:"↶ Annuler la dernière", title:"Ctrl+Z", onclick:annuler}));
+    barre.appendChild(el("button", {class:"btn small sec", text:"Annuler", onclick:function(){ if (!confirm("Abandonner " + nbAttente() + " modification(s) ?")) return; P.br = {}; P.hist = []; dessiner(); }}));
   }
+  /* annuler (Ctrl+Z) : une photo des saisies en attente avant chaque changement (24/11/2026) */
+  P.hist = P.hist || [];
+  function photo(){ var o = {}; Object.keys(P.br).forEach(function(c){ o[c] = P.br[c]; }); P.hist.push(o); if (P.hist.length > 50) P.hist.shift(); }
+  function annuler(){ if (!P.hist.length){ toast("Rien à annuler."); return; } P.br = P.hist.pop(); P.plage = null; P.ancre = null; P.fin = null; dessiner(); toast("Dernière saisie annulée."); }
+  window.pkPilotageAnnuler = annuler;
   function noter(id, k, v){
     var l = lineById(id); if (!l) return;
     var cur = k === "fr" ? qteCmd(l) : ((stageTotals()[id] || {})[k] || 0), cle = id + "|" + k;
@@ -460,7 +468,7 @@ window.vPilotage = function(v){
     var lireDates = blocDates(box, ch);
     box.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-bottom:8px", text:"Tout ou rien : si une quantité ne suit pas l'étape précédente, rien n'est enregistré et vos saisies restent en attente pour être corrigées."}));
     box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Confirmer et enregistrer", onclick:function(){
-      sxClose(); var garde = P.br; P.br = {};
+      sxClose(); var garde = P.br; P.br = {}; P.hist = [];
       if (!appliquer(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), ch.length + " modification(s) enregistrée(s)", lireDates())){ P.br = garde; render(true); }
     }}));
     box.appendChild(el("button", {class:"sx-annul", text:"Revenir à la saisie", onclick:sxClose}));
@@ -546,6 +554,10 @@ window.vPilotage = function(v){
     if (!G && window.etatCommandeBoutons) (pli || zone).appendChild(window.etatCommandeBoutons(lot));
     zone.appendChild(barre);
     zone.appendChild(tableau(vis, T));
+    if (!lectureSeule() && !(window.matchMedia && window.matchMedia("(max-width:700px)").matches)){
+      var ai = el("div", {class:"ph-aide"}); ai.innerHTML = "Comme dans Excel : <kbd>Entrée</kbd>/<kbd>↓</kbd> ligne suivante · <kbd>Tab</kbd> colonne suivante · <kbd>Maj</kbd>+flèches sélectionner · <kbd>Ctrl</kbd>+<kbd>C</kbd> copier · <kbd>Ctrl</kbd>+<kbd>V</kbd> coller un bloc d'Excel · <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> même chiffre dans la sélection · <kbd>Ctrl</kbd>+<kbd>D</kbd> recopier vers le bas · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler · <kbd>Échap</kbd> abandonner la case.";
+      zone.appendChild(ai);
+    }
     majBarre();
     var aide = Object.keys(saisissables()).length ? "Cases jaunes : tapez la quantité totale passée à l'étape, puis Entrée (case du dessous) ou Tab (case à droite). Vous pouvez coller un bloc copié depuis Excel. « Tout » passe d'un coup toutes les pièces disponibles du modèle à l'étape. Les cases modifiées passent en orange : rien n'est enregistré avant « ✔ Valider » et la confirmation. " : "";
     zone.appendChild(el("p", {class:"mut", style:"font-size:12.5px;margin:6px 0 0", text:aide + (G ? "Encore à la GADH = reçue − retournée. " : "Quantités = cumul des pièces passées à chaque étape. Reste à produire = commandée − pièces déjà contrôlées, emballées ou expédiées. Avancement = pièces contrôlées conformes ÷ commandée (les pièces emballées ou expédiées ont été contrôlées). ") + "Case rouge : quantité plus grande que l'étape précédente. Touchez un titre de colonne pour trier ; faites glisser son bord pour la largeur."}));
@@ -616,7 +628,7 @@ window.vPilotage = function(v){
   function toutPasser(k, rows, nom){
     var D = dispoTout(k, rows), et = ETAPES.filter(function(e){ return e[0] === k; })[0];
     if (!D.n){ toast("Rien à passer : l'étape précédente est déjà entièrement passée."); return; }
-    Object.keys(D.vals).forEach(function(id){ noter(id, k, D.vals[id]); });
+    photo(); Object.keys(D.vals).forEach(function(id){ noter(id, k, D.vals[id]); });
     dessiner(); toast(fmt(D.n) + " pièce(s) de " + nom + " à « " + et[1] + " » : en attente, appuyez sur Valider pour enregistrer.");
   }
 
@@ -664,6 +676,27 @@ window.vPilotage = function(v){
     var tb = el("tbody");
     if (!vis.length){ var tr0 = el("tr"); tr0.appendChild(el("td", {colspan:String(cols.length), class:"ph-vide", text:"Aucune ligne ne correspond à la recherche ou aux filtres."})); tb.appendChild(tr0); }
     var SA = saisissables(), ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
+    function cellule(rr, cc){ return zone.querySelector('.ph-in[data-r="' + rr + '"][data-c="' + cc + '"]'); }
+    function plage(a, b){
+      Array.prototype.forEach.call(zone.querySelectorAll("td.rg"), function(x){ x.classList.remove("rg"); });
+      if (!a || !b){ P.plage = null; P.fin = null; return; }
+      var R = {r0:Math.min(a[0], b[0]), r1:Math.max(a[0], b[0]), c0:Math.min(a[1], b[1]), c1:Math.max(a[1], b[1])}; P.plage = R; P.fin = b;
+      for (var rr = R.r0; rr <= R.r1; rr++) for (var cc = R.c0; cc <= R.c1; cc++){ var f = cellule(rr, cc); if (f) f.parentNode.classList.add("rg"); }
+      var nb = (R.r1 - R.r0 + 1) * (R.c1 - R.c0 + 1); if (nb > 1) toast(nb + " case(s) sélectionnée(s) : Ctrl+C copier · Ctrl+Entrée mettre le même chiffre · Ctrl+D recopier vers le bas");
+    }
+    function copier(R){
+      var L = []; for (var rr = R.r0; rr <= R.r1; rr++){ var c = []; for (var cc = R.c0; cc <= R.c1; cc++){ var f = cellule(rr, cc); c.push(f ? f.value : ""); } L.push(c.join("\t")); }
+      var t = L.join("\n");
+      try { navigator.clipboard.writeText(t).then(function(){ toast("Copié : collez-le dans Excel."); }, function(){ toast("Copie impossible sur cet appareil."); }); } catch (e) { toast("Copie impossible sur cet appareil."); }
+    }
+    function remplir(R, valeur){
+      var ch = [];
+      for (var rr = R.r0; rr <= R.r1; rr++) for (var cc = R.c0; cc <= R.c1; cc++){ var f = cellule(rr, cc); if (!f) continue; var n = valeur(rr, cc); if (n === null || isNaN(n)) continue; ch.push({id:f.getAttribute("data-id"), k:f.getAttribute("data-k"), v:n}); }
+      if (!ch.length) return;
+      if (ch.some(function(c){ return c.k === "fr" && c.v === 0; })){ toast("Une quantité commandée vaudrait 0 : retirez la ligne à part."); return; }
+      photo(); ch.forEach(function(c){ noter(c.id, c.k, c.v); }); P.plage = null; P.ancre = null; P.fin = null; dessiner();
+      toast(ch.length + " case(s) remplie(s) : en attente, Valider pour enregistrer (Ctrl+Z pour annuler).");
+    }
     function cellSaisie(r, k, ri){
       var att = P.br[r.id + "|" + k], v0 = r[k], vu = att ? att.v : v0;
       var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "") + (att ? " chg" : "")});
@@ -673,13 +706,28 @@ window.vPilotage = function(v){
         var n = lireNombre(inp.value);
         if (n === null) n = 0;
         if (isNaN(n)){ toast("Tapez un nombre entier."); inp.value = String(vu); return; }
-        if (n !== vu){ noter(r.id, k, n); vu = n; td.classList.toggle("chg", !!P.br[r.id + "|" + k]); majBarre(); }
+        if (n !== vu){ photo(); noter(r.id, k, n); vu = n; td.classList.toggle("chg", !!P.br[r.id + "|" + k]); majBarre(); }
         if (cible){ var f = zone.querySelector('.ph-in[data-r="' + cible[0] + '"][data-c="' + cible[1] + '"]'); if (f){ f.focus(); try { f.select(); } catch (er) {} } }
       }
       inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
       inp.addEventListener("change", function(){ valider(null); });
+      inp.addEventListener("mousedown", function(ev){ if (ev.shiftKey && P.ancre){ ev.preventDefault(); plage(P.ancre, [ri, ecols.indexOf(k)]); inp.focus(); } else { P.ancre = [ri, ecols.indexOf(k)]; plage(null); } });
       inp.addEventListener("keydown", function(ev){
-        var c = ecols.indexOf(k), to = null;
+        var c = ecols.indexOf(k), to = null, mod = ev.ctrlKey || ev.metaKey;
+        /* comme Excel (24/11/2026) : Ctrl+Z annuler · Maj+flèches sélectionner une plage · Ctrl+C copier ·
+           Ctrl+Entrée mettre ce chiffre dans toute la plage · Ctrl+D recopier vers le bas */
+        if (mod && (ev.key === "z" || ev.key === "Z")){ ev.preventDefault(); annuler(); return; }
+        if (ev.shiftKey && /^Arrow/.test(ev.key)){
+          ev.preventDefault(); if (!P.plage){ P.ancre = [ri, c]; P.fin = [ri, c]; } var a = P.ancre, f0 = P.fin;
+          var d = {ArrowDown:[1, 0], ArrowUp:[-1, 0], ArrowRight:[0, 1], ArrowLeft:[0, -1]}[ev.key], nf = [f0[0] + d[0], f0[1] + d[1]];
+          if (zone.querySelector('.ph-in[data-r="' + nf[0] + '"][data-c="' + nf[1] + '"]')){ P.ancre = a; plage(a, nf); }
+          return;
+        }
+        var R = P.plage;
+        if (mod && (ev.key === "c" || ev.key === "C") && R){ ev.preventDefault(); copier(R); return; }
+        if (mod && ev.key === "Enter" && R){ ev.preventDefault(); var n0 = lireNombre(inp.value); if (n0 === null || isNaN(n0)){ toast("Tapez un nombre entier."); return; } remplir(R, function(){ return n0; }); return; }
+        if (mod && (ev.key === "d" || ev.key === "D") && R){ ev.preventDefault(); remplir(R, function(rr, cc){ var f = cellule(R.r0, cc); return f ? lireNombre(f.value) : null; }); return; }
+        if (!ev.shiftKey && /^(Arrow|Enter|Tab)/.test(ev.key)) { P.ancre = null; plage(null); }
         if (ev.key === "Enter" || ev.key === "ArrowDown") to = [ri + (ev.shiftKey ? -1 : 1), c];
         else if (ev.key === "ArrowUp") to = [ri - 1, c];
         else if (ev.key === "Tab") to = ev.shiftKey ? (c > 0 ? [ri, c - 1] : [ri - 1, ecols.length - 1]) : (c < ecols.length - 1 ? [ri, c + 1] : [ri + 1, 0]);
@@ -704,8 +752,8 @@ window.vPilotage = function(v){
         if (err){ toast(err + " case(s) collée(s) ne sont pas des nombres entiers : rien n'est collé."); return; }
         if (!ch.length){ toast("Rien à coller ici."); return; }
         if (ch.some(function(c){ return c.k === "fr" && c.v === 0; })){ toast("Une quantité commandée collée vaut 0 : retirez la ligne à part."); return; }
-        ch.forEach(function(c){ noter(c.id, c.k, c.v); });
-        dessiner(); toast(ch.length + " quantité(s) collée(s) : en attente, appuyez sur Valider pour enregistrer.");
+        photo(); ch.forEach(function(c){ noter(c.id, c.k, c.v); });
+        dessiner(); toast(ch.length + " quantité(s) collée(s) : en attente, appuyez sur Valider pour enregistrer (Ctrl+Z pour annuler).");
       });
       inp.setAttribute("data-id", r.id); inp.setAttribute("data-k", k);
       td.appendChild(inp);
