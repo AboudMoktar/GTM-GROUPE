@@ -1460,6 +1460,7 @@ function renderShell(){
   // Libellé court (court) dans la barre du bas du téléphone, libellé complet dans le menu latéral.
   const navBtn = (i, cls, bas) => `<button class="${cls}" data-tab="${i.tab}" onclick="${i.onclick || `nav('${i.tab}')`}"><span class="nav-icon-wrap">${i.icon}</span><span>${bas && i.court ? i.court : i.label}</span></button>`;
 
+  document.body.classList.toggle('fond-tek', activeSociete === 'tek');   // fond photo du module TEK-TREND (refonte.css)
   document.getElementById('app').innerHTML = `
     <div class="sidebar no-print">
       ${typeof gtmhNomGroupe === 'function' ? gtmhNomGroupe(true, 'gtmhArcSide') : ''}
@@ -1471,7 +1472,7 @@ function renderShell(){
         <button onclick="logout()" style="color:var(--bad);">${ICONS.logout}<span>Déconnexion</span></button>
       </nav>
     </div>
-    <div class="app-body">
+    <div class="app-body${activeSociete === 'tek' ? ' fond-tek' : ''}">
       <div class="topbar no-print">
         ${appBrandingHTML()}
         ${peutChangerDeModule() && typeof GTMH_ICO !== 'undefined' ? `<button class="tb-maison" onclick="switchModule()" title="Accueil : choix du module" aria-label="Accueil">${GTMH_ICO.maison}</button>` : ''}
