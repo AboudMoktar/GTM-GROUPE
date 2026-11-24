@@ -86,9 +86,22 @@ function getPlannedHoursForDate(dateISO){
 // casse/aux espaces) entre la liste des opératrices (Rendement) et la liste
 // des employés (RH) — s'il n'y a pas de correspondance ou pas de donnée RH
 // ce jour-là, rien ne change (comportement Saisie inchangé).
+// Salarié RH correspondant à une opératrice de Gestion Rendement (24/11/2026) : nom complet identique ; sinon
+// le prénom suffit (« Marwa » ↔ « Marwa Ben Salah »). Si plusieurs salariés ont ce prénom, on garde celui
+// dont le poste est « Contrôle » (les opératrices du rendement sont au contrôle). Sinon : pas de lien.
+function rhNorm(x){ return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function rhEmpPourOperatrice(opName, emps){
+  const n = rhNorm(opName); if(!n || n === '(poste vacant)') return undefined;
+  const tous = Object.entries(emps || getEmployees()).filter(([, e]) => e), L = tous.filter(([, e]) => e.statut !== 'inactif');
+  const exact = tous.filter(([, e]) => rhNorm(e.nom) === n); if(exact.length) return exact[0];
+  const debut = L.filter(([, e]) => { const m = rhNorm(e.nom); return m.split(' ')[0] === n.split(' ')[0] && (m.indexOf(n + ' ') === 0 || n.split(' ').length === 1); });
+  if(debut.length === 1) return debut[0];
+  const ctl = debut.filter(([, e]) => /contr[oô]le/i.test(rhNorm(e.poste)));
+  return ctl.length === 1 ? ctl[0] : undefined;
+}
 function rhSlotExcluded(opName, dateISO, slotStartMin, slotEndMin){
   const emps = getEmployees();
-  const entry = Object.entries(emps).find(([id,e]) => (e.nom||'').trim().toLowerCase() === (opName||'').trim().toLowerCase());
+  const entry = rhEmpPourOperatrice(opName, emps);
   if(!entry) return false;
   const [empId] = entry;
   const r = resolveDayStatus(empId, dateISO);
@@ -118,7 +131,7 @@ function rhSlotExcluded(opName, dateISO, slotStartMin, slotEndMin){
 // 08:00-09:00 -> 15 min perdues sur 60 -> fraction 0,75 -> objectif 15 pièces.
 function rhSlotFraction(opName, dateISO, slotStartMin, slotEndMin){
   const emps = getEmployees();
-  const entry = Object.entries(emps).find(([id,e]) => (e.nom||'').trim().toLowerCase() === (opName||'').trim().toLowerCase());
+  const entry = rhEmpPourOperatrice(opName, emps);
   if(!entry) return 1; // pas de correspondance RH -> comportement inchangé
   const [empId] = entry;
   const r = resolveDayStatus(empId, dateISO);
@@ -156,7 +169,7 @@ function rhDaySummaryForOps(opNames, dateISO){
   const emps = getEmployees();
   const out = [];
   opNames.forEach(opName => {
-    const entry = Object.entries(emps).find(([id,e]) => (e.nom||'').trim().toLowerCase() === (opName||'').trim().toLowerCase());
+    const entry = rhEmpPourOperatrice(opName, emps);
     if(!entry) return;
     const [empId] = entry;
     const r = resolveDayStatus(empId, dateISO);

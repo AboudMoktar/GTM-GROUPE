@@ -49,7 +49,7 @@ function hCommandesSuivi(annee){
     const q = Math.max(0, (Number(l.qty) || 0) - (ch2[id] || 0)); if(!q) return;
     const c = parLot[x.num] || (parLot[x.num] = Object.assign({id:'suivi-' + x.num, auto:true, sv:0, br:0, exo:0, ch2:0, lignes:[]}, x));
     c[hCategorie(l.model, l.lib)] += q; c.ch2 += ch2[id] || 0;
-    c.lignes.push({model:l.model || l.lib, lib:l.lib, size:String(l.size || '').toUpperCase(), q});
+    c.lignes.push({model:l.model || l.lib, lib:l.lib, client:l.client || '', size:String(l.size || '').toUpperCase(), q});
   });
   return Object.values(parLot);
 }
@@ -57,25 +57,39 @@ function hCommandes(annee){
   const saisies = hCommandesSaisies(annee), nums = new Set(saisies.map(c => c.num));
   return saisies.concat(hCommandesSuivi(annee).filter(c => !nums.has(c.num))).sort((a, b) => a.mois - b.mois || a.rang - b.rang);
 }
-// détail d'une commande du suivi, au format de la commande Excel : modèle et libellé fusionnés, une colonne par taille
+// couleur de la case LIBELLÉ, comme dans la commande Excel (noir, gris, sable, rose…)
+function hCouleurLib(lib){
+  const t = String(lib || '').toLowerCase();
+  if(/noir/.test(t)) return ['#595959', '#fff']; if(/sable|beige/.test(t)) return ['#DEDC86', '#000']; if(/rose/.test(t)) return ['#FFC0CB', '#000'];
+  if(/gris/.test(t)) return ['#D9D9D9', '#000']; if(/blanc/.test(t)) return ['#FFFFFF', '#000']; if(/bleu|marine/.test(t)) return ['#BDD7EE', '#000'];
+  return ['#FFFFFF', '#000'];
+}
+// détail d'une commande du suivi, au format de la commande Excel : Model et LIBELLE fusionnés, une ligne par taille,
+// une colonne par client, total par taille et total par libellé (fusionné), total général en bas.
 function hDetailCommande(c){
-  const tailles = [...new Set(c.lignes.map(l => l.size))].sort((a, b) => { const i = H_TAILLES.indexOf(a), j = H_TAILLES.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || (a < b ? -1 : 1); });
+  const ordreT = (a, b) => { const i = H_TAILLES.indexOf(a), j = H_TAILLES.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || (a < b ? -1 : 1); };
+  const clients = [...new Set(c.lignes.map(l => l.client || '—'))].sort();
   const parModele = {};
-  c.lignes.forEach(l => { const m = parModele[l.model] || (parModele[l.model] = {}); const r = m[l.lib] || (m[l.lib] = {}); r[l.size] = (r[l.size] || 0) + l.q; });
-  const totT = {}; let totG = 0;
+  c.lignes.forEach(l => { const m = parModele[l.model] || (parModele[l.model] = {}); const r = m[l.lib] || (m[l.lib] = {}); const z = r[l.size] || (r[l.size] = {}); const cl = l.client || '—'; z[cl] = (z[cl] || 0) + l.q; });
+  const totCl = {}; let totG = 0;
   const corps = Object.keys(parModele).sort().map(mod => {
-    const libs = Object.keys(parModele[mod]).sort(); let totM = 0;
-    const lignes = libs.map((lib, i) => {
-      const r = parModele[mod][lib], t = tailles.reduce((s, z) => s + (r[z] || 0), 0); totM += t; totG += t;
-      tailles.forEach(z => { totT[z] = (totT[z] || 0) + (r[z] || 0); });
-      return `<tr>${i === 0 ? `<td class="hk-mod" rowspan="${libs.length + (libs.length > 1 ? 1 : 0)}">${esc(mod)}</td>` : ''}<td class="hk-lib">${esc(lib)}</td>${tailles.map(z => `<td class="hk-n">${r[z] ? hN(r[z]) : ''}</td>`).join('')}<td class="hk-n hk-t">${hN(t)}</td></tr>`;
+    const libs = Object.keys(parModele[mod]).sort();
+    const nbLignes = libs.reduce((n, lib) => n + Object.keys(parModele[mod][lib]).length, 0);
+    let premiereDuModele = true;
+    return libs.map(lib => {
+      const r = parModele[mod][lib], tailles = Object.keys(r).sort(ordreT), [bg, fg] = hCouleurLib(lib);
+      const totLib = tailles.reduce((s, z) => s + clients.reduce((t, cl) => t + (r[z][cl] || 0), 0), 0); totG += totLib;
+      return tailles.map((z, k) => {
+        const tz = clients.reduce((t, cl) => t + (r[z][cl] || 0), 0); clients.forEach(cl => { totCl[cl] = (totCl[cl] || 0) + (r[z][cl] || 0); });
+        const tdMod = premiereDuModele ? `<td class="hk-mod" rowspan="${nbLignes}">${esc(mod)}</td>` : ''; premiereDuModele = false;
+        return `<tr${k === 0 ? ' class="hk-deb"' : ''}>${tdMod}${k === 0 ? `<td class="hk-lib" rowspan="${tailles.length}" style="background:${bg};color:${fg};">${esc(lib)}</td>` : ''}<td class="hk-z">${esc(z)}</td>${clients.map(cl => `<td class="hk-n">${r[z][cl] ? hN(r[z][cl]) : ''}</td>`).join('')}<td class="hk-n hk-t">${hN(tz)}</td>${k === 0 ? `<td class="hk-n hk-tl" rowspan="${tailles.length}">${hN(totLib)}</td>` : ''}</tr>`;
+      }).join('');
     }).join('');
-    return lignes + (libs.length > 1 ? `<tr class="hk-stot"><td class="hk-lib">Total ${esc(mod)}</td>${tailles.map(z => { const v = libs.reduce((s, lib) => s + (parModele[mod][lib][z] || 0), 0); return `<td class="hk-n">${v ? hN(v) : ''}</td>`; }).join('')}<td class="hk-n hk-t">${hN(totM)}</td></tr>` : '');
   }).join('');
   const mois = MOIS[c.mois - 1].charAt(0).toUpperCase() + MOIS[c.mois - 1].slice(1);
   return `<details class="card hk-det" open><summary><b>${esc(c.num)}</b> · ${mois} ${c.annee} · ${hN(totG)} pièces <span class="hk-auto">depuis le suivi</span>${c.ch2 ? ` <span class="hk-ch2">${hN(c.ch2)} en 2e choix retirées</span>` : ''}</summary>
-    <div class="hk-scroll"><table class="hk-tab hk-mat"><thead><tr><th>Modèle</th><th>Libellé</th>${tailles.map(z => `<th class="hk-n">${esc(z)}</th>`).join('')}<th class="hk-n">Total</th></tr></thead>
-    <tbody>${corps}<tr class="hk-total"><td colspan="2">Total ${esc(c.num)}</td>${tailles.map(z => `<td class="hk-n">${hN(totT[z] || 0)}</td>`).join('')}<td class="hk-n hk-t">${hN(totG)}</td></tr></tbody></table></div></details>`;
+    <div class="hk-scroll"><table class="hk-tab hk-mat"><thead><tr><th>Model</th><th>LIBELLE</th><th>Taille</th>${clients.map(cl => `<th>${esc(cl)}</th>`).join('')}<th>Total</th><th>Total</th></tr></thead>
+    <tbody>${corps}</tbody><tfoot><tr class="hk-total"><td colspan="3">TOTAL ${esc(c.num)}</td>${clients.map(cl => `<td class="hk-n">${hN(totCl[cl] || 0)}</td>`).join('')}<td class="hk-n">${hN(totG)}</td><td class="hk-n">${hN(totG)}</td></tr></tfoot></table></div></details>`;
 }
 // numéro proposé : la commande suivante (mois suivant, -1) après la dernière saisie
 function hNumSuivant(annee){
@@ -124,7 +138,7 @@ function renderHistorique(main){
   const parMois = {}; cmds.forEach(c => { (parMois[c.mois] = parMois[c.mois] || []).push(c); });
   const ligneCmd = (c) => c.auto ? `<tr data-id="${c.id}" class="hk-ligne-auto" title="Quantités reprises du suivi des commandes (2e choix retiré)">
       <td><b>${esc(c.num)}</b> <span class="hk-auto">suivi</span></td>
-      ${['sv', 'br', 'exo'].map(k => `<td class="hk-n">${hN(c[k])}</td>`).join('')}
+      ${['sv', 'br', 'exo'].map(k => `<td>${hN(c[k])}</td>`).join('')}
       <td class="hk-t">${hN((+c.sv || 0) + (+c.br || 0) + (+c.exo || 0))}</td><td></td></tr>` : `<tr data-id="${c.id}">
       <td><b>${esc(c.num)}</b></td>
       ${['sv', 'br', 'exo'].map(k => `<td>${ed ? `<input class="mgt-in hk-q" type="number" min="0" step="1" inputmode="numeric" value="${+c[k] || ''}" onchange="histMajCmd('${c.id}', '${k}', this.value)">` : hN(c[k])}</td>`).join('')}
@@ -338,9 +352,15 @@ css.textContent = `.hk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0
 .hk-auto{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);vertical-align:1px;}
 .hk-ch2{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(245,158,11,.15);color:#92400e;}
 .hk-ligne-auto td{background:rgba(22,119,232,.035);} .hk-n{text-align:right;font-variant-numeric:tabular-nums;}
-.hk-det summary{cursor:pointer;font-size:14px;margin-bottom:8px;} .hk-mat th,.hk-mat td{border:1px solid var(--border-soft);}
-.hk-mat thead th{background:#1F3864;color:#fff;text-align:center;} .hk-mat .hk-mod{font-weight:800;text-align:center;background:var(--surface-2,#f4f6f9);}
-.hk-mat .hk-lib{white-space:nowrap;} .hk-stot td{font-weight:700;background:var(--accent-bg);}
+.hk-det summary{cursor:pointer;font-size:14px;margin-bottom:8px;}
+.hk-mat{border-collapse:collapse;width:auto;min-width:100%;font-size:13px;}
+.hk-mat th,.hk-mat td{border:1px solid #9AA9BE !important;padding:4px 10px !important;}
+.hk-mat thead th{background:#FFFFFF !important;color:#C00000 !important;font-weight:800;text-align:center !important;text-transform:none !important;letter-spacing:0 !important;font-size:13px !important;}
+.hk-mat .hk-mod{font-weight:800;text-align:center;vertical-align:middle;background:#FFFFFF;}
+.hk-mat .hk-lib{white-space:nowrap;vertical-align:middle;font-weight:600;}
+.hk-mat .hk-z{text-align:center;font-weight:700;} .hk-mat .hk-tl{font-weight:800;vertical-align:middle;text-align:center !important;font-size:14px;}
+.hk-mat tr.hk-deb td{border-top:2px solid #44546A !important;}
+.hk-mat tfoot td{font-weight:800;background:#F2F2F2;}
 .hk-clic{cursor:pointer;} .hk-clic:hover td{background:var(--accent-bg);} .hk-obj{font-size:12px;color:var(--ink-soft);}
 @media (max-width:900px){ .hk-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (max-width:600px){ .hk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .hk-tab{font-size:12.5px;} .hk-tab .hk-q{min-width:58px;} #hk-num{min-width:130px;}

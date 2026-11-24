@@ -23,7 +23,7 @@ const JOUR = '2026-11-24'; // mardi
     const set = (k, v) => localStorage.setItem(CACHE_PREFIX + k, JSON.stringify(v));
     set('ops_history', {op1:[{nom:'Awatef Test', dateDebut:'2000-01-01', actif:true}], op2:[{nom:'Hela Test', dateDebut:'2000-01-01', actif:true}],
       op3:[{nom:'Marwa Test', dateDebut:'2000-01-01', actif:true}], op4:[{nom:'Mabrouka Test', dateDebut:'2000-01-01', actif:true}]});
-    set('employees', {e1:{nom:'Awatef Test'}, e2:{nom:'Hela Test'}, e3:{nom:'Marwa Test'}, e4:{nom:'Mabrouka Test'}});
+    set('employees', {e1:{nom:'Awatef Test'}, e2:{nom:'Hela Test'}, e3:{nom:'Marwa Test Ben Salah', poste:'Contrôle'}, e5:{nom:'Marwa Test Trabelsi', poste:'Magasin'}, e4:{nom:'Mabrouka Test'}});
     set('attendance_' + JOUR, {e1:{status:'present', in:'08:00'}, e2:{status:'present', in:'08:40'}, e3:{status:'absent'}});
     set('absence_periods', {p1:{empId:'e4', type:'maladie', dateStart:JOUR, dateEnd:JOUR}});
     const h = getHoursForDate(JOUR), d = {date:JOUR, status:'draft', hours:{}};
@@ -36,7 +36,7 @@ const JOUR = '2026-11-24'; // mardi
   let {p, ctx} = await essai(1440, 900);
   await p.evaluate(prep, JOUR);
   const avant = await p.evaluate((J) => { const d = getDay(J), t = computeTotals(d); return {total:t.totalGeneral, obj:getObjForDay(d), actives:getHoursForDate(J).reduce((m, h) => Math.max(m, getActiveOpCount(h, d)), 0), st:rdStatutsOps(J, d).map(x => x.code)}; }, JOUR);
-  r.push(['statuts : présente, retard, absente (pointage), absente (maladie RH)', avant.st.join() === 'presente,retard,absente,absente']);
+  r.push(['statuts : présente, retard, absente (pointage, salariée trouvée par prénom + poste Contrôle), absente (maladie RH)', avant.st.join() === 'presente,retard,absente,absente']);
   await p.evaluate(() => { renderShell(); nav('dashboard'); }); await p.waitForTimeout(600);
   const pc = await p.evaluate(() => {
     const t = (s) => [...document.querySelectorAll(s)].map(e => e.textContent.replace(/\s+/g, ' ').trim());
