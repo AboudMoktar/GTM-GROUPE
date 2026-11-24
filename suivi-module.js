@@ -54,6 +54,17 @@ window.grpSuiviStore = {
   facturerExport: (x, forcer) => (activeModule !== 'gadh' && typeof percFacturerExport === 'function') ? percFacturerExport(x, forcer) : {ok:false, message:'Facturation indisponible ici.'},
   apercuFactureModele: (x, mode) => (activeModule !== 'gadh' && typeof percApercuFactureExport === 'function') ? percApercuFactureExport(x, mode) : false,
   apercuFacture: (x) => (activeModule !== 'gadh' && typeof percApercuFacture === 'function') ? percApercuFacture(x) : null,
+  // Cycle de la commande (24/11/2026) : factures TEK-TREND liées aux exports, avec leur statut de paiement (lecture seule)
+  facturesExports: () => {
+    if(activeModule === 'gadh' || typeof factListe !== 'function' || typeof factStatut !== 'function') return [];
+    try {
+      const l = factListe('tek');
+      return Object.values(l).filter(f => f && f.origine && f.origine.type === 'export' && f.type !== 'avoir').map(f => {
+        const t = typeof factTotaux === 'function' ? factTotaux(f, l) : {ttc:0, reste:0};
+        return {id:f._id, exportId:f.origine.exportId, numero:f.numero || '', date:f.date || '', statut:factStatut(f, l), ttc:t.ttc || 0, reste:t.reste || 0};
+      });
+    } catch(e) { console.error(e); return []; }
+  },
   ouvrirFacture: (id, r) => {
     if(typeof percOuvrirFacture !== 'function') return;
     percOuvrirFacture(id);

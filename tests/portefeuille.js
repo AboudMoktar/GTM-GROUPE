@@ -21,11 +21,24 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   let v = await vis();
   ok(v.length === 1 && /^PKA-1:En retard/.test(v[0]), 'En cours : la commande en retard, avec son retard (' + v.join(' ; ') + ')');
   const cy = await p.evaluate(() => [...document.querySelectorAll('table.pf-t tbody tr')[0].querySelectorAll('.pf-et')].map(e => e.className.replace('pf-et', '').trim() || '-').join(','));
-  ok(cy === 'fait,fait,fait,fait,-,-', 'cycle : coupe → contrôle faits, emballage et expédition à faire (' + cy + ')');
+  ok(cy === 'fait,fait,fait,fait,fait,-,-,-,-', 'cycle : confirmée, coupe → contrôle faits ; emballage, expédition, facture, paiement à faire (' + cy + ')');
   await p.evaluate(() => [...document.querySelectorAll('.pf .seg button')].find(x => x.textContent === 'Toutes').click()); await p.waitForTimeout(150);
   v = await vis(); ok(v.length === 2, 'Toutes : 2 commandes (' + v.join(' ; ') + ')');
   await p.evaluate(() => { const i = document.querySelector('.pf input[type=search]'); i.value = 'alloga'; i.dispatchEvent(new Event('input')); });
-  v = await vis(); ok(v.length === 1 && /^PKB-1:✔ Terminée/.test(v[0]), 'recherche par client (' + v.join(' ; ') + ')');
+  v = await vis(); ok(v.length === 1 && /^PKB-1:Expédiée · à facturer/.test(v[0]), 'recherche par client ; expédiée sans facture : « à facturer » (' + v.join(' ; ') + ')');
+  // facture émise puis payée (lue dans la facturation)
+  const etat = (statut, reste) => p.evaluate(([statut, reste]) => {
+    S.exports = [{id:'E1', n:1, d:'2026-11-12', cl:'ALLOGA', st:'fini', cartons:[{id:'C1', n:1, it:[['B1', 50, 'PKB-1', 'Modèle gris', 'S']]}]}];
+    window.HOST = {facturesExports:() => [{id:'F1', exportId:'E1', numero:'FA26/031', statut, ttc:1000, reste}]};
+    ui.pf = {f:'tout', q:'alloga'}; render();
+    const tr = [...document.querySelectorAll('table.pf-t tbody tr')].find(t => t.style.display !== 'none');
+    return tr.cells[8].textContent.trim() + '|' + [...tr.querySelectorAll('.pf-et')].slice(-2).map(e => e.className.replace('pf-et', '').trim() || '-').join(',');
+  }, [statut, reste]);
+  const e1 = await etat('impayee', 1000), e2 = await etat('retard', 1000), e3 = await etat('payee', 0);
+  ok(/^Facturée · à encaisser\|fait,-$/.test(e1) && /^Paiement en retard\|fait,-? ?retard$|^Paiement en retard\|fait,retard$/.test(e2) && /^✔ Payée\|fait,fait$/.test(e3), 'facturée → paiement en retard → payée (' + [e1, e2, e3].join(' ; ') + ')');
+  await p.evaluate(() => { ui.pf = {f:'fini', q:''}; render(); });
+  v = await vis(); ok(v.length === 1 && /^PKB-1/.test(v[0]), 'Terminées = expédiées et payées (' + v.join(' ; ') + ')');
+  await p.evaluate(() => { ui.pf = {f:'tout', q:'alloga'}; render(); });
   await p.evaluate(() => [...document.querySelectorAll('table.pf-t tbody tr')].find(t => t.style.display !== 'none').querySelector('button').click()); await p.waitForTimeout(150);
   ok(await p.evaluate(() => ui.tab === 'flux' && ui.lot === 'PKB-1'), 'Ouvrir ▸ mène au tableau de la commande');
   ok(err.length === 0, 'aucune erreur JavaScript' + (err.length ? ' : ' + err[0] : ''));
