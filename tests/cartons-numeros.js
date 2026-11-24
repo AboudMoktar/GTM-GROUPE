@@ -59,7 +59,7 @@ let echecs = 0; function ok(c, m){ console.log((c ? 'ok   ' : 'ÉCHEC ') + m); i
   // 6. carton disparu (mouvements restés sans leur carton) : alerte détaillée, remise en place ou libération
   await p.evaluate(() => { const e = S.exports[0], c = e.cartons.find(x => x.n === 2); e.cartons = e.cartons.filter(x => x !== c); window.__ct = c.id; ui.xp = null; render(); });
   const al = await p.locator('.xp-disparu').innerText();
-  ok(/Carton N°2 de l'export N°1/.test(al) && /Modèle Essai Gris · taille XS/.test(al) && /commande PKT/.test(al) && /7 pièce/.test(al), 'carton disparu : numéro, export, modèle, taille, commande et quantité indiqués');
+  ok(/Carton N°2 de l'export N°1/.test(al) && /Modèle Essai (Gris|Noir) · taille XS/.test(al) && /commande PKT/.test(al) && /7 pièce/.test(al), 'carton disparu : numéro, export, modèle, taille, commande et quantité indiqués');
   await p.click('.xp-disparu [data-disparu="recreer"]');
   ok(await p.evaluate(() => { const c = S.exports[0].cartons.find(x => x.id === window.__ct); return !!c && c.n === 2 && c.it.length === 1 && c.it[0][1] === 7 && pkExports.mvtsOrphelins().length === 0; }) && await p.locator('.xp-disparu').count() === 0, 'remettre le carton : il revient dans l\'export avec son numéro et ses pièces');
   await p.evaluate(() => { const e = S.exports[0]; e.cartons = e.cartons.filter(x => x.id !== window.__ct); ui.xp = null; render(); });

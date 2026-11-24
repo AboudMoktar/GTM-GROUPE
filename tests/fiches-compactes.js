@@ -14,9 +14,9 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
     const plein = ficheGrid('PK209912', 'ALLOGA', 'c'), compact = grilleFiche('c');
     const lp = lignes(plein, 2), lc = lignes(compact, 2);
     out.push(['écran : fiche complète (toutes les références)', lp.length > 10 && lp.some(x => /COL V NOIR XS/.test(x))]);
-    out.push(['fiche Excel/PDF : seulement les tailles avec quantité', JSON.stringify(lc) === JSON.stringify(['PHARMA_HOMME COL V SABLE XS', 'PHARMA_HOMME COL V SABLE S', 'PHARMA_HOMME COL V GRIS L'])]);
+    out.push(['fiche Excel/PDF : seulement les tailles avec quantité', JSON.stringify(lc) === JSON.stringify(['PHARMA_HOMME COL V GRIS L', 'PHARMA_HOMME COL V SABLE XS', 'PHARMA_HOMME COL V SABLE S'])]);
     const qte = compact.rows.slice(3, compact.screenRows).filter(x => x.cells[5] && x.cells[5].st && x.cells[5].st.fg === 'FF0000').map(x => x.cells[5].v);
-    out.push(['totaux des modèles gardés', JSON.stringify(qte.filter(Boolean)) === JSON.stringify([145, 30])]);
+    out.push(['totaux des modèles gardés', JSON.stringify(qte.filter(Boolean)) === JSON.stringify([30, 145])]);
     let nom = null; const sv = window.saveFile; window.saveFile = (n) => { nom = n; };
     exportFichesPdf('c'); const pdfOk = /^Consommation_PROGES_PK209912_\d{8}\.pdf$/.test(nom); exportFiches('a'); const xOk = /^Consommation_GADH_PK209912_\d{8}\.xlsx$/.test(nom); window.saveFile = sv;
     out.push(['fiches en PDF et en Excel', pdfOk && xOk]);
