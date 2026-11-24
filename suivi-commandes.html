@@ -28,7 +28,8 @@ table.flux.xl td.xm b{display:block;font-size:14px;font-weight:800;color:#0B1F3A
 table.flux.xl td.xm small{display:block;margin-top:3px;font-size:12px;font-weight:600;color:#3C4E68;letter-spacing:.03em}
 table.flux.xl tr.x1 td{border-top:2px solid #8EA9C1}
 @media (max-width:640px){ table.flux.xl{font-size:13.5px} table.flux.xl th{font-size:11px!important;padding:6px 4px!important} table.flux.xl td{padding:0 6px!important} }
-</style><script src="./affichage-module.js"></script></head><body>
+</style><script src="./ordre-modeles.js"></script>
+<script src="./affichage-module.js"></script></head><body>
 <title>Suivi des commandes</title>
 <!-- GTM-GROUPE : reprise de l'application « Suivi PERCKO », affichée dans un cadre par suivi-module.js.
      Les données passent par window.parent.grpSuiviStore (getJSON/setJSON du groupe, dossier Firebase liaison/).
@@ -692,7 +693,11 @@ function giletRenewCult(){
   try { assurerTissus(); bomJournal("Gilet noir (homme, femme) : tissu « " + GILET_RENEW.tissu + " » pour la coupe et l'assemblage" + (figes.length ? " ; commande(s) déjà coupée(s) gardée(s) en tissu d'avant : " + figes.sort().join(", ") : "")); } catch (e) {}
   return true;
 }
-function libOrder(){ var m = {}, k = 0; S.nomen.forEach(function(n){ if (!(n.lib in m)) m[n.lib] = k++; }); return m; }
+function libOrder(){
+  /* ordre demandé (ordre-modeles.js), puis ordre de la nomenclature pour les autres (24/11/2026) */
+  var m = {}, k = 0, vus = {}; S.nomen.forEach(function(n){ if (!(n.lib in vus)) vus[n.lib] = k++; });
+  S.lines.forEach(function(l){ if (!(l.lib in vus)) vus[l.lib] = k++; });
+  Object.keys(vus).forEach(function(lib){ m[lib] = rangLibelle(lib) * 1000 + vus[lib]; }); return m; }
 function modelOf(lib){ lib = libBase(lib); for (var i = 0; i < S.nomen.length; i++) if (S.nomen[i].lib === lib) return S.nomen[i].model; return ""; }
 function libList(){ var seen = {}, out = []; S.nomen.forEach(function(n){ if (!seen[n.lib]){ seen[n.lib] = {lib:n.lib, model:n.model, sizes:[]}; out.push(seen[n.lib]); } seen[n.lib].sizes.push(n.size); }); return out; }
 function cutQty(q, model){
@@ -1239,7 +1244,7 @@ function fluxGrid(lot, mode){
    Page 2 : situation actuelle des pièces, avancement par étape avec les dates, non-conformités par motif.
    (Remplace l'ancien export de 4 à 5 tableaux ligne par ligne, qui dépassait 20 pages.) */
 function rapportDonnees(lot){
-  var rows = suivi(lot, "*"), dts = stageDates(lot), fmm = {}, groupes = {}, ordre = [], year = 0;
+  var rows = suivi(lot, "*").filter(function(x){ return x.fr > 0 || STG_KEYS.some(function(k){ return (x.s[k] || 0) > 0; }); }), dts = stageDates(lot), fmm = {}, groupes = {}, ordre = [], year = 0;   /* tailles sans quantité masquées */
   FM.forEach(function(m, i){ fmm[m[0]] = {m:m, i:i}; });
   S.lines.forEach(function(l){ if (l.lot === lot && l.year) year = l.year; });
   var tailles = SZ.filter(function(z){ return rows.some(function(x){ return x.size === z; }); });
@@ -1252,8 +1257,8 @@ function rapportDonnees(lot){
     stateVals(x.cutE, x.s, x.n).forEach(function(v, i){ g.etat[i] = (g.etat[i] || 0) + v; });
   });
   /* ordre de la nomenclature (FM), modèle par modèle */
-  var rangModele = {}; ordre.forEach(function(k){ var g = groupes[k], i = fmm[g.lib] ? fmm[g.lib].i : 999; if (!(g.model in rangModele) || i < rangModele[g.model]) rangModele[g.model] = i; });
-  ordre.sort(function(a, b){ var A = groupes[a], B = groupes[b], ia = fmm[A.lib] ? fmm[A.lib].i : 999, ib = fmm[B.lib] ? fmm[B.lib].i : 999;
+  var rangModele = {}; ordre.forEach(function(k){ var g = groupes[k], i = rangLibelle(g.lib); if (!(g.model in rangModele) || i < rangModele[g.model]) rangModele[g.model] = i; });
+  ordre.sort(function(a, b){ var A = groupes[a], B = groupes[b], ia = rangLibelle(A.lib), ib = rangLibelle(B.lib);
     return (rangModele[A.model] - rangModele[B.model]) || (A.model < B.model ? -1 : A.model > B.model ? 1 : 0) || ia - ib || (A.client < B.client ? -1 : A.client > B.client ? 1 : 0); });
   return {lot:lot, year:year, tailles:tailles, groupes:ordre.map(function(k){ return groupes[k]; }), fmm:fmm, info:S.lots[lot] || {}};
 }
@@ -1397,8 +1402,8 @@ function exportCommande(year, pdf){
 /* clé nomenclature, code patronage, model, nom (fiche), couleur, fond nom, texte nom, fond couleur, texte couleur, groupe fusion A/B, groupe fusion Tissu */
 var FM = [
  ["PHARMA_HOMME COL V NOIR","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V NOIR","Noir","595959","FFFFFF","000000","FFFFFF",0,0],
- ["PHARMA_HOMME COL V SABLE","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V SABLE","BEIGE","DEDC86","000000","DEDC86","000000",0,1],
  ["PHARMA_HOMME COL V GRIS","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V GRIS","GRIS","D9D9D9","000000","D9D9D9","000000",0,2],
+ ["PHARMA_HOMME COL V SABLE","PHARMA_HOMME","PHARMA_HOMME","PHARMA_HOMME COL V SABLE","BEIGE","DEDC86","000000","DEDC86","000000",0,1],
  ["PHARMA_FEMME COL V NOIR","PHARMA_FEMME COL V","PHARMA_FEMME COL V","PHARMA_FEMME COL_V NOIR","Noir","595959","FFFFFF","000000","FFFFFF",1,3],
  ["PHARMA_FEMME COL V ROSE POUDRE","PHARMA_FEMME COL V","PHARMA_FEMME COL V","PHARMA_FEMME COL_V ROSE","ROSE","FFC0CB","000000","FFC0CB","000000",1,4],
  ["PHARMA_FEMME COL ROND NOIR","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND","PHARMA_FEMME COL ROND NOIR","Noir","595959","FFFFFF","000000","FFFFFF",2,5],
@@ -4674,7 +4679,7 @@ function cartonsLot(lot, client){
     return man.map(function(c){
       var items = [], q = 0;
       (c.it || []).forEach(function(x){ var l = lineById(x[0]); if (!l || !x[1]) return; items.push({lineId:l.id, lib:l.lib, size:l.size, q:x[1]}); q += x[1]; });
-      items.sort(function(a, b){ return a.lib === b.lib ? sizeIdx(a.size) - sizeIdx(b.size) : (a.lib < b.lib ? -1 : 1); });
+      items.sort(function(a, b){ return a.lib === b.lib ? sizeIdx(a.size) - sizeIdx(b.size) : compareLibelles(a.lib, b.lib); });
       var kg = (c.kg === null || c.kg === undefined || c.kg === "") ? (r ? poidsCarton(r, q) : 0) : +c.kg;
       return {n:c.n, id:c.id, manuel:true, items:items, q:q, poids:Math.round(kg * 10) / 10, ouvert:false, d:c.d};
     });
