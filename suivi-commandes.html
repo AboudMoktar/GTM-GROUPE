@@ -4278,6 +4278,62 @@ function dashData(){
     return {lot:L.lot, year:L.year, ready:ready, received:info.received, clients:cl, all:all, st:statusOf(all)};
   });
 }
+/* ---------- Portefeuille des commandes, comme un ERP (24/11/2026) ----------
+   Une ligne par commande : client, pièces, dates (commande, livraison prévue), cycle de la commande
+   (coupe → assemblage → confection → contrôle → emballage → expédition, avec la date de début de chaque
+   étape), avancement, reste à expédier, retard. Filtres En cours / Terminées / Toutes et recherche. */
+function cycleLot(d){
+  var lot = d.lot, deb = {}, q = d.all.q || 0, t = d.all.t, lineLot = {};
+  S.lines.forEach(function(l){ if (l.lot === lot) lineLot[l.id] = 1; });
+  S.moves.forEach(function(m){ if (!lineLot[m.lineId] || !(m.qty > 0)) return; var k = m.stage === "asm" ? "gadh" : m.stage; if (!deb[k] || m.date < deb[k]) deb[k] = m.date; });
+  return [["cp", "Coupe"], ["gadh", "Assemblage"], ["ret", "Confection"], ["ctl", "Contrôle"], ["emb", "Emballage"], ["exp", "Expédition"]].map(function(e){
+    var k = e[0], v = k === "gadh" ? Math.max(t.gadh || 0, t.asm || 0) : (t[k] || 0), cible = q;   /* coupe faite dès que la quantité commandée est coupée */
+    return {k:k, nom:e[1], v:v, pct:cible ? Math.min(100, Math.round(v / cible * 100)) : 0, fait:cible > 0 && v >= cible, deb:deb[k] || ""};
+  });
+}
+function portefeuille(data){
+  ui.pf = ui.pf || {f:"cours", q:""};
+  var box = el("div", {class:"card pf"});
+  var head = el("div", {class:"pf-head"}, el("h2", {style:"margin:0", text:"Portefeuille des commandes"}));
+  var seg = el("div", {class:"seg", style:"margin:0"});
+  [["cours", "En cours"], ["fini", "Terminées"], ["tout", "Toutes"]].forEach(function(x){ seg.appendChild(el("button", {class:ui.pf.f === x[0] ? "on" : "", text:x[1], onclick:function(){ ui.pf.f = x[0]; render(); }})); });
+  var rq = el("input", {type:"search", placeholder:"🔍 N° de commande, client…", value:ui.pf.q || "", style:"max-width:240px;height:36px"});
+  rq.addEventListener("input", function(){ ui.pf.q = rq.value; filtrer(); });
+  head.appendChild(seg); head.appendChild(rq); box.appendChild(head);
+  var auj = today(), tw = el("div", {class:"pf-tw"}), t = el("table", {class:"pf-t"});
+  t.appendChild(el("thead", null, el("tr", null, ["Commande", "Client", "Pièces", "Commandée le", "Livraison prévue", "Cycle de la commande", "Avancement", "Reste à expédier", "État", ""].map(function(x){ return el("th", {text:x}); }))));
+  var tb = el("tbody"), lignes = [];
+  data.slice().sort(function(a, b){ var la = (S.lots[a.lot] || {}).livraison || "9999", lb = (S.lots[b.lot] || {}).livraison || "9999"; return (a.st.done - b.st.done) || (la < lb ? -1 : la > lb ? 1 : 0) || (a.lot < b.lot ? 1 : -1); }).forEach(function(d){
+    var L = S.lots[d.lot] || {}, q = d.all.q || 0, cy = cycleLot(d), t2 = d.all.t;
+    var av = q ? Math.min(100, Math.round(Math.max(t2.ctl || 0, t2.emb || 0, t2.exp || 0) / q * 100)) : 0;
+    var retard = !d.st.done && L.livraison && L.livraison < auj ? Math.round((new Date(auj) - new Date(L.livraison)) / 864e5) : 0;
+    var proche = !d.st.done && !retard && L.livraison ? Math.round((new Date(L.livraison) - new Date(auj)) / 864e5) : null;
+    var etat = d.st.done ? {t:"✔ " + d.st.txt, c:"ok"} : retard ? {t:"En retard de " + retard + " j", c:"bad"} : (proche !== null && proche <= 7) ? {t:"Livraison dans " + proche + " j", c:"warn"} : {t:d.st.txt, c:"wip"};
+    var cyc = el("div", {class:"pf-cy"});
+    cy.forEach(function(e){ cyc.appendChild(el("span", {class:"pf-et " + (e.fait ? "fait" : e.v > 0 ? "cours" : ""), title:e.nom + " : " + fmt(e.v) + " pièce(s), " + e.pct + " %" + (e.deb ? " · commencée le " + dmy(e.deb) : ""), style:e.fait || !e.v ? "" : "--p:" + e.pct + "%"}, el("i", null), el("small", {text:e.nom}))); });
+    var tr = el("tr", {class:"pf-" + (d.st.done ? "fini" : "cours"), "data-q":(d.lot + " " + d.clients.map(function(c){ return c.client; }).join(" ")).toLowerCase()});
+    tr.appendChild(el("td", {class:"pf-n"}, el("b", {text:d.lot}), typeof libelleCommande === "function" && libelleCommande(d.lot) ? el("small", {text:libelleCommande(d.lot)}) : null));
+    tr.appendChild(el("td", {text:d.clients.map(function(c){ return c.client; }).join(" + ")}));
+    tr.appendChild(el("td", {class:"num", text:fmt(q)}));
+    tr.appendChild(el("td", {text:L.dc ? dmy(L.dc) : (L.received ? dmy(String(L.received).slice(0, 10)) : "—")}));
+    tr.appendChild(el("td", {class:retard ? "pf-rouge" : "", text:L.livraison ? dmy(L.livraison) : "—"}));
+    tr.appendChild(el("td", null, cyc));
+    tr.appendChild(el("td", null, el("div", {class:"pf-av"}, el("div", {class:"pf-bar"}, el("i", {style:"width:" + av + "%"})), el("b", {text:av + " %"}))));
+    tr.appendChild(el("td", {class:"num", text:fmt(d.all.rest)}));
+    tr.appendChild(el("td", null, el("span", {class:"pill " + etat.c, text:etat.t})));
+    tr.appendChild(el("td", null, el("button", {class:"btn small", text:"Ouvrir ▸", onclick:function(){ ui.lot = d.lot; ui.tab = "flux"; ui.fv = {}; render(); }})));
+    tb.appendChild(tr); lignes.push({tr:tr, d:d});
+  });
+  var vide = el("tr", null, el("td", {colspan:"10", class:"mut", style:"text-align:center;padding:16px", text:"Aucune commande ne correspond."}));
+  tb.appendChild(vide);
+  function filtrer(){
+    var qq = String(ui.pf.q || "").trim().toLowerCase(), n = 0;
+    lignes.forEach(function(x){ var ok = (ui.pf.f === "tout" || (ui.pf.f === "fini") === !!x.d.st.done) && (!qq || x.tr.getAttribute("data-q").indexOf(qq) >= 0); x.tr.style.display = ok ? "" : "none"; if (ok) n++; });
+    vide.style.display = n ? "none" : "";
+  }
+  t.appendChild(tb); tw.appendChild(t); box.appendChild(tw); filtrer();
+  return box;
+}
 function vDash(v){
   var data = dashData();
   if (!data.length){
@@ -4290,6 +4346,7 @@ function vDash(v){
   var run = data.filter(function(d){ return G ? !gOk(d) : !d.st.done; }), fin = data.filter(function(d){ return G ? gOk(d) : d.st.done; });
   var rest = 0; run.forEach(function(d){ rest += G ? Math.max(0, (d.all.t.gadh || 0) - (d.all.t.ret || 0)) : d.all.rest; });
   v.appendChild(el("div", {class:"stat"}, el("div", null, el("b", {text:String(run.length)}), el("span", {text:"commande(s) en cours"})), el("div", null, el("b", {text:fmt(rest)}), el("span", {text:G ? "pièces encore à la GADH" : "pièces restant à expédier"}))));
+  if (!G) v.appendChild(portefeuille(data));
   var act = lotActivite(), alerts = [];
   run.forEach(function(d){ d.alertes = lotAlertes(d, act[d.lot] || {}); d.alertes.forEach(function(a){ alerts.push({d:d, a:a}); }); });
   if (alerts.length){
