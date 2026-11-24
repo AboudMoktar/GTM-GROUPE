@@ -35,7 +35,7 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   r.push(['bandeau : carton en cours toujours affiché', /Carton N°1/.test(await p.locator('.xp-sticky').textContent()) && /carton 1 sur 1/.test(await p.locator('.xp-sticky').textContent())]);
   r.push(['commandes enregistrées proposées', await p.locator('.xp-cmd .sx-chip').count() === 2]);
   await p.locator('.xp-cmd .sx-chip', {hasText: 'PK202610'}).click(); await p.waitForTimeout(150);
-  r.push(['tableau : les modèles de la commande', await p.locator('.xp-mx tbody tr').count() === 1 && await cell('Lyne Pro Homme Gris', 'S').count() === 1 && await p.locator('text=Afficher tous les modèles').count() === 1]);
+  r.push(['tableau : les modèles de la commande (+ exosquelettes et brassières, toujours proposés)', await p.evaluate(() => [...document.querySelectorAll('.xp-mx tbody tr')].filter(tr => !/exosquelette|brassi/i.test(tr.textContent)).length) === 1 && await cell('Lyne Pro Homme Gris', 'S').count() === 1 && await p.locator('text=Afficher tous les modèles').count() === 1]);
   r.push(['reste du retour GADH en gris dans la case', await cell('Lyne Pro Homme Gris', 'S').getAttribute('placeholder') === '8']);
   await cell('Lyne Pro Homme Gris', 'S').fill('12'); await cell('Lyne Pro Homme Gris', 'M').fill('5');
   r.push(['saisie libre, dépassement en rouge, total à jour', await cell('Lyne Pro Homme Gris', 'S').getAttribute('class') === 'trop' && (await p.locator('.xp-sticky .xp-tot').textContent()) === '17']);
