@@ -1055,19 +1055,22 @@ function etatCommandeGrid(e, lot, opt){
   var statuts = ((S.lots[lot] || {}).statuts) || {};
   var refs = Object.keys(R).map(function(k){ return R[k]; }).sort(function(a, b){ return ((a.lib in lo ? lo[a.lib] : 999) - (b.lib in lo ? lo[b.lib] : 999)) || (a.lib < b.lib ? -1 : a.lib > b.lib ? 1 : sizeIdx(a.size) - sizeIdx(b.size)); });
   /* colonnes */
-  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = cTL + 1, cE = cSt + 1, cEmb = cE + cols.length, cR = cEmb + 1, L = colName;
-  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(CM ? [] : [14]).concat(cols.map(function(){ return 12; })).concat(CM ? [] : [15, 9]), rows:[], merges:[], plein:true, onePage:true};
+  /* colonnes Statut et « Emballés, prêts à expédier » masquées quand elles sont vides (25/11/2026) */
+  var hSt = !CM && refs.some(function(x){ return statuts[x.lib]; }), hEmb = !CM && refs.some(function(x){ return SV.chiffres(x.lib, x.size, x.tot).emballe > 0; });
+  var cC = 3, cT = cC + cls.length, cTL = cT + 1, cSt = hSt ? cTL + 1 : -1, cE = cTL + 1 + (hSt ? 1 : 0), cEmb = hEmb ? cE + cols.length : -1, cR = cE + cols.length + (hEmb ? 1 : 0), L = colName;
+  var cS0 = hSt ? cSt : cE;   /* première colonne du SUIVI */
+  var g = {cols:[22, 34, 11].concat(cls.map(function(){ return 9; })).concat([9, 9]).concat(hSt ? [14] : []).concat(cols.map(function(){ return 12; })).concat(CM ? [] : (hEmb ? [15, 9] : [9])), rows:[], merges:[], plein:true, onePage:true};
   var Tt = {b:1, sz:11, al:"c", bd:"m", bg:"DDEBF7"}, H = {b:1, sz:10, al:"c", bd:"m", bg:"1F3864", fg:"FFFFFF", wrap:1};
   var dRef = e ? e.d : today(), lm = lotMonth(lot), mois = MOIS[lm ? lm.m - 1 : +dRef.slice(5, 7) - 1], annee = opt.annee || (lignes[0] || {}).year || (lm ? lm.y : dRef.slice(0, 4));
   gset(g, 0, 0, "Commande: " + (typeof libelleCommande === "function" && libelleCommande(lot) ? libelleCommande(lot) : mois), Tt); gset(g, 0, 1, "", Tt); gset(g, 1, 0, "", Tt); gset(g, 1, 1, "", Tt); gmerge(g, 0, 0, 1, 1);
   gset(g, 0, 2, "LOT", {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7", fg:"C00000"}); gset(g, 1, 2, lot, {b:1, sz:10, al:"c", bd:"m", bg:"DDEBF7"});
   for (var k = cC; k <= cTL; k++){ gset(g, 0, k, k === cC ? "ANNEE" : "", Tt); gset(g, 1, k, k === cC ? String(annee) : "", Tt); }
   gmerge(g, 0, cC, 0, cTL); gmerge(g, 1, cC, 1, cTL);
-  if (!CM){ for (k = cSt; k <= cR; k++){ gset(g, 0, k, k === cSt ? "SUIVI" : "", Tt); gset(g, 1, k, "", Tt); }
-    gmerge(g, 0, cSt, 1, cR); }
+  if (!CM){ for (k = cS0; k <= cR; k++){ gset(g, 0, k, k === cS0 ? "SUIVI" : "", Tt); gset(g, 1, k, "", Tt); }
+    gmerge(g, 0, cS0, 1, cR); }
   g.rows[0].h = 18; g.rows[1].h = 16;
-  ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(CM ? [] : ["Statut"])
-    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : [SV.titreEmb, "Reste"])
+  ["Model", "LIBELLE", "Taille"].concat(cls).concat(["Total", "Total"]).concat(hSt ? ["Statut"] : [])
+    .concat(cols.map(function(c){ return SV.titreCol(c); })).concat(CM ? [] : (hEmb ? [SV.titreEmb, "Reste"] : ["Reste"]))
     .forEach(function(h, i){ gset(g, 2, i, h, H); });
   g.rows[2].h = CM ? 28 : 40;
   var r = 3, deb = 4, pm = null, tm = {}, pl = null, tl = {}, mt = 3, lt = 3, C = {sz:10, al:"c", bd:"t"}, tCtl = 0, ctlNote = [];
@@ -1083,20 +1086,21 @@ function etatCommandeGrid(e, lot, opt){
     gset(g, r, cTL, "", {b:1, sz:12, al:"c", bd:"t"});
     if (!CM){
       var ch = SV.chiffres(x.lib, x.size, x.tot), rx = SV.R[x.lib + "|" + x.size] || {ex:{}, av:0};
-      gset(g, r, cSt, "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
+      if (hSt) gset(g, r, cSt, "", {b:1, sz:10, al:"c", bd:"t", wrap:1});
       cols.forEach(function(c, i){ var v = rx.ex[c.id] || 0; gset(g, r, cE + i, v || "", c.av ? C : {b:1, sz:10, al:"c", bd:"t"}); });
-      gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
+      if (hEmb) gset(g, r, cEmb, ch.emballe || "", {b:1, sz:10, al:"c", bd:"t"});
       var s1 = cE; tCtl += ch.controle; if (ch.controle) ctlNote.push({lib:x.lib, size:x.size, q:ch.controle});
       /* les pièces contrôlées (pas encore emballées) n'ont pas de colonne : elles sont retirées du reste (16/11/2026) */
       gset(g, r, cR, ch.reste, {b:1, sz:10, al:"c", bd:"t"});
-      g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + "-SUM(" + L(s1) + rr + ":" + L(cEmb) + rr + ")" + (ch.controle ? "-" + ch.controle : "") + ")";
+      var cFin = cR - 1;   /* dernière colonne déduite (expéditions, puis emballés s'ils sont affichés) */
+      g.rows[r].cells[cR].f = "MAX(0," + L(cT) + rr + (cFin >= s1 ? "-SUM(" + L(s1) + rr + ":" + L(cFin) + rr + ")" : "") + (ch.controle ? "-" + ch.controle : "") + ")";
     }
     g.rows[r].h = 15; r++;
   });
   Object.keys(tm).forEach(function(t){ if (tm[t] > +t) gmerge(g, +t, 0, tm[t], 0); });
   Object.keys(tl).forEach(function(t){ var a = +t, b = tl[t], s2 = 0; refs.slice(a - 3, b - 2).forEach(function(x){ s2 += x.tot; });
     g.rows[a].cells[cTL].v = s2 || ""; g.rows[a].cells[cTL].f = "SUM(" + L(cT) + (a + 1) + ":" + L(cT) + (b + 1) + ")"; if (b > a) gmerge(g, a, cTL, b, cTL);
-    if (!CM){ g.rows[a].cells[cSt].v = statuts[g.rows[a].cells[1].v] || ""; if (b > a) gmerge(g, a, cSt, b, cSt); } });
+    if (hSt){ g.rows[a].cells[cSt].v = statuts[g.rows[a].cells[1].v] || ""; if (b > a) gmerge(g, a, cSt, b, cSt); } });
   var fin = r, TT = {b:1, sz:11, al:"c", bd:"m", bg:"EEEEEE"};
   gset(g, r, 0, "TOTAL", {b:1, sz:11, al:"l", bd:"m", bg:"EEEEEE"}); gset(g, r, 1, "", TT); gset(g, r, 2, "", TT); gmerge(g, r, 0, r, 2);
   for (k = cC; k <= (CM ? cTL : cR); k++){
