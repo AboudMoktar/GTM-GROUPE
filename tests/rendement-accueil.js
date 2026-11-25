@@ -57,6 +57,9 @@ const JOUR = '2026-11-24'; // mardi
   r.push(['bulle : 48,5% de l\'objectif', /48,5%\s*de l'objectif/.test(pc.bulle)]);
   r.push(['heure affichée (14:25)', pc.heure === '14:25']);
   r.push(['comparaison vs hier (+90)', /\+90/.test(pc.hier) && /vs hier/.test(pc.hier)]);
+  // le « i » ouvre une bulle (et ne mène pas à l'historique) : même heure hier, journée complète
+  const bi = await p.evaluate(() => { activeTab = 'dashboard'; document.querySelector('.rdh-i').click(); const z = document.getElementById('rdh-info'); return {tab:activeTab, vis:!z.hidden, txt:z.textContent.replace(/\s+/g, ' ')}; });
+  r.push(['bouton i : bulle sur place, pas d\'historique (' + bi.txt.slice(0, 120) + ')', bi.tab === 'dashboard' && bi.vis && /Hier à la même heure : 75 pièces \(\+90\)/.test(bi.txt) && /journée complète : 75 pièces/.test(bi.txt)]);
   r.push(['PC : 2 colonnes (production + synthèse)', pc.cols === 2]);
   r.push(['libellés KPI lisibles (≥ 11 px)', pc.lbl >= 11]);
   r.push(['PC : pas de débordement horizontal', pc.large]);
