@@ -358,3 +358,10 @@ html[data-theme="dark"] .fact-kpis .fk-alerte{background:rgba(220,38,38,.12) !im
 body.fond-tek{background:transparent!important;}
 html[data-theme="dark"] .app-body.fond-tek::before{background:linear-gradient(rgba(11,18,32,.86),rgba(11,18,32,.92)),url('./fond-tek.jpg') center / cover no-repeat;}
 @media print{.app-body.fond-tek::before{display:none;}}
+/* bulle d'information « Pièces vs hier » (bouton i) */
+.rdh-i{cursor:pointer;display:inline-flex;padding:4px;margin:-4px;border-radius:50%}
+.rdh-i:hover{background:rgba(255,255,255,.15)}
+.rdh-info-bulle{position:relative;z-index:2;margin-top:8px;background:#fff;color:#0B1F4A;border-radius:12px;padding:10px 14px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:default;max-width:420px}
+.rdh-info-bulle .moins{color:#C62828;font-weight:800}.rdh-info-bulle .plus{color:#15803D;font-weight:800}
+.rdh-info-n{font-size:12px;color:#5B6B85;margin-top:4px}
+.rdh-info-bulle button{margin-top:8px;border:0;background:#1565E0;color:#fff;font-weight:700;border-radius:8px;padding:6px 12px;cursor:pointer}

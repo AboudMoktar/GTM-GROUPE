@@ -1794,6 +1794,19 @@ function rdStatutsOps(dateISO, data){
     return {code:'presente', label:'Présente'};
   });
 }
+// « i » de « Pièces vs hier » (25/11/2026) : explique la comparaison sans quitter l'accueil (la carte mène à l'historique)
+function rdInfoHier(){
+  const z = document.getElementById('rdh-info'); if(!z) return;
+  if(!z.hidden){ z.hidden = true; return; }
+  const auj = getTodayISO(), h = rdJourPrecedent(auj); if(!h) return;
+  const tAuj = computeTotals(getDay(auj)).totalGeneral, d = getDay(h.date), now = new Date(), min = now.getHours() * 60 + now.getMinutes();
+  const faits = getSlotsForDate(h.date).filter(sl => sl.end <= min).map(sl => sl.label);
+  const aMeme = faits.reduce((t, lab) => t + OP_KEYS.reduce((u, k) => { const v = parseInt(d.hours && d.hours[lab] ? d.hours[lab][k] : '', 10); return u + (isNaN(v) ? 0 : v); }, 0), 0);
+  const jour = h.date.split('-').reverse().join('/'), heure = now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  const e = tAuj - aMeme;
+  z.innerHTML = `<b>Aujourd'hui à ${heure} :</b> ${tAuj} pièces<br><b>${h.lib === 'hier' ? 'Hier' : 'Le ' + jour} à la même heure :</b> ${aMeme} pièces <span class="${e < 0 ? 'moins' : 'plus'}">(${e >= 0 ? '+' : ''}${e})</span><br><b>${h.lib === 'hier' ? 'Hier' : 'Le ' + jour}, journée complète :</b> ${h.total} pièces<div class="rdh-info-n">Le chiffre affiché compare à la journée complète.</div><button type="button" onclick="histDate='${h.date}'; histViewMode='jour'; nav('historique')">Voir le ${jour} ▸</button>`;
+  z.hidden = false;
+}
 // Dernier jour précédent avec une production enregistrée (comparaison « vs hier »)
 function rdJourPrecedent(dateISO){
   const d = listProdDates().filter(x => x < dateISO).reverse().find(x => computeTotals(getDay(x)).totalGeneral > 0);
@@ -1916,7 +1929,7 @@ function renderDashboard(container){
         <div class="rdh-sep"></div>
         <div class="rdh-info">
           <div class="rdh-pieces"><span class="rdh-cube">${I.cube}</span><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="rdh-lbl">Pièces produites</div></div></div>
-          ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><span class="rdh-i" title="Comparé au ${hier.date.split('-').reverse().join('/')} : ${hier.total} pièces">${I.info}</span></div>` : ''}
+          ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><span class="rdh-i" role="button" tabindex="0" title="Détail de la comparaison" onclick="event.stopPropagation(); rdInfoHier()">${I.info}</span></div><div id="rdh-info" class="rdh-info-bulle" hidden onclick="event.stopPropagation()"></div>` : ''}
         </div>
       </div>
       <div class="rdh-bas">
