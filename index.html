@@ -1102,10 +1102,10 @@ window.saisieTouche = (e) => {
   if(n){ e.preventDefault(); n.focus(); n.select(); }
 };
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function showToast(msg){ 
+function showToast(msg, duree){ 
   clearTimeout(toastTimer); let t=document.getElementById('toast'); if(t) t.remove(); 
   t=document.createElement('div'); t.id='toast'; t.className='toast'; t.textContent=msg; 
-  document.body.appendChild(t); toastTimer=setTimeout(()=>t.remove(),2500); 
+  document.body.appendChild(t); toastTimer=setTimeout(()=>t.remove(),duree||2500); 
 }
 
 // --- INIT & ROUTING ---
@@ -1847,6 +1847,7 @@ function renderDashboard(container){
   const postes = OP_KEYS.map((k, i) => ({name:ops[i], key:k, st:statuts[i]})).filter(x => x.st.code !== 'vacant');
   const absentes = postes.filter(x => x.st.code === 'absente'), presentes = postes.filter(x => x.st.code !== 'absente');
   const hier = rdJourPrecedent(getTodayISO()), vsHier = hier ? totals.totalGeneral - hier.total : null;
+  const infoHier = hier ? `Comparaison avec le dernier jour de production (${hier.lib === 'hier' ? 'hier, ' : ''}${hier.date.split('-').reverse().join('/')}) : ${hier.total} pièces ce jour-là, ${totals.totalGeneral} aujourd'hui, soit ${vsHier < 0 ? '' : '+'}${vsHier} pièces.` : '';
   const slotsJ = getSlotsForDate(getTodayISO()), nowMin = new Date().getHours()*60 + new Date().getMinutes();
   const heuresFaites = slotsJ.filter(sl => nowMin >= sl.end).reduce((m, sl) => m + sl.minutes, 0) / 60;
   const heuresJour = slotsJ.reduce((m, sl) => m + sl.minutes, 0) / 60;
@@ -1916,7 +1917,7 @@ function renderDashboard(container){
         <div class="rdh-sep"></div>
         <div class="rdh-info">
           <div class="rdh-pieces"><span class="rdh-cube">${I.cube}</span><div><div class="hero-stat-big">${totals.totalGeneral}</div><div class="rdh-lbl">Pièces produites</div></div></div>
-          ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><span class="rdh-i" title="Comparé au ${hier.date.split('-').reverse().join('/')} : ${hier.total} pièces">${I.info}</span></div>` : ''}
+          ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><button type="button" class="rdh-i" aria-label="Explication de la comparaison" title="${esc(infoHier)}" onclick="event.stopPropagation(); showToast(this.title, 6000)">${I.info}</button></div>` : ''}
         </div>
       </div>
       <div class="rdh-bas">
