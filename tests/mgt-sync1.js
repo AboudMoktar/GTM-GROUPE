@@ -19,7 +19,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const ligne = {reference: 'M-100', designation: 'MACHINE ESSAI A', quantite: 2, prixVente: 1100, remise: 10, prixAchat: 600, articleId: 'ART-0001'};
   await admin.database().ref('/groupe1').set({mgt: {
     mgt_crm_clients: {'1': J({ID: '1', Societe: 'Client Essai', _version: 1, Planning: [],
-      Offres: [{id: 'OF-1', number: 'OF026-001', type: 'devis', groupe: 'MACPI', sentDate: '2026-11-20', status: 'En attente', amount: 1980, lignes: [ligne]}]})},
+      Offres: [{id: 'OF-1', number: 'OF026-001', type: 'devis', groupe: 'MACPI', marque: 'MACPI', probabilite: 60, sentDate: '2026-11-20', status: 'En attente', amount: 1980, lignes: [ligne]}]})},
     mgt_crm_listing: {'ART-0001': J({id: 'ART-0001', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-100', designation: 'MACHINE ESSAI A', prixCatalogue: 1000, prixAchat: 600, prixVente: 1000, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'}),
       'ART-0002': J({id: 'ART-0002', groupe: 'AUTRES', marque: 'ESSAI', categorie: 'SERVICES', reference: 'SERVM02', designation: 'SERVICE ESSAI', prixVente: 900, prixAchat: 0, prixCatalogue: 900, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'}),
       'ART-0003': J({id: 'ART-0003', groupe: 'AUTRES', marque: 'ESSAI', categorie: 'SERVICES', reference: 'servm02', designation: 'SERVICE ESSAI', prixVente: 750, prixAchat: 0, prixCatalogue: 750, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'})}},
@@ -41,7 +41,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   }
   const r = [], base = async () => (await admin.database().ref('/groupe1/mgt').once('value')).val();
   const {p, fr} = await session('sysadmin');
-  r.push(['modules V4.6.9_SYNC1 chargés (aperçus, évaluation, statistiques, import d\'offres, commandes fournisseurs)', await fr.evaluate(() => !!(window.MGT_DOCS && window.MGT_OFFRES_EVAL && window.MGT_OFFRES_STATS && window.MGT_OFFRES_IMPORT && window.MGT_OF_PARSE && window.MGT_CF && window.MGT_LP_PARSE && window.GTM_CF_SB && /SYNC1/.test(MGT_V469.version)))]);
+  r.push(['modules V4.6.9_SYNC1 chargés (aperçus, évaluation, statistiques, import d\'offres, commandes fournisseurs)', await fr.evaluate(() => !!(window.MGT_DOCS && window.MGT_OFFRES_EVAL && window.MGT_OFFRES_STATS && window.MGT_OFFRES_IMPORT && window.MGT_OF_PARSE && window.MGT_CF && window.MGT_LP_PARSE && window.GTM_CF_SB && /CL1/.test(MGT_V469.version)))]);
   r.push(['proforma V14 : ni coordonnées ni cachet de MGT dans le code', await fr.evaluate(() => { const t = document.getElementById('mgt-v469v7-proforma').textContent; return MGT_PROFORMA.version === 'V4.6.9V14' && !/BIAT|0708048Y|orange\.tn|iVBORw0KGgo/.test(t) && MGT_PROFORMA.DEFAULT.societe.rib === ''; })]);
   r.push(['aucune bibliothèque chargée depuis Internet (CDN) dans les nouveaux modules', await fr.evaluate(() => !/cdn\.jsdelivr|SyncManager\._client/.test(['cf2-commandes', 'mgt-of1-import'].map(i => document.getElementById(i).textContent.replace(/\/\*[\s\S]*?\*\//g, '')).join(' ')))]);
   await fr.evaluate(() => openModule('stock')).catch(() => {}); await p.waitForTimeout(4000);
@@ -107,6 +107,7 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   await fr.locator('text=Offres Macpi').first().click().catch(() => {}); await p.waitForTimeout(900);
   await fr.evaluate(() => MGT_OFFRES_STATS.open()); await p.waitForTimeout(1200);
   if(process.env.CAPTURES) await p.screenshot({path: process.env.CAPTURES + '/offres-stats.png'});
+  r.push(['CL1 : bloc « Classement des projets » en tête des statistiques', await fr.evaluate(() => { const b = document.querySelector('#ostBody .cl1Stats'); return !!b && b === document.querySelector('#ostBody').firstElementChild; })]);
   r.push(['V11 : fenêtre Statistiques des offres', await fr.evaluate(() => { const m = document.getElementById('ostModal'); return !!m && !m.hidden && /Statistiques/i.test(m.textContent); })]);
   const dlx = p.waitForEvent('download', {timeout: 20000}).catch(() => null);
   await fr.evaluate(() => Promise.resolve(MGT_OFFRES_STATS.exportX('xlsx')).catch(() => {})); const fx = await dlx;
@@ -123,6 +124,23 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   await fr.click('#ofpModal [data-ofp="pdf"]').catch(() => {}); const f3 = await dl3;
   r.push(['V14 : proforma exportée en PDF', !!f3 && /\.pdf$/i.test(f3.suggestedFilename())]);
   await fr.click('#ofpModal [data-ofp="close"]').catch(() => {}); await p.waitForTimeout(400);
+  await fr.evaluate(() => openModule('offres')); await p.waitForTimeout(1500);
+  for(let i = 0; i < 2 && !(await fr.evaluate(() => !!document.querySelector('#offresCardsWrap article.offresCard'))); i++){ await fr.evaluate(() => { const b = [...document.querySelectorAll('[data-offres-family]')].find(x => /macpi/i.test(x.getAttribute('data-offres-family') + x.textContent)); if(b) b.click(); }); await p.waitForTimeout(1500); }
+  if(process.env.CAPTURES) await p.screenshot({path: process.env.CAPTURES + '/cl1-cartes.png'});
+  r.push(['CL1 : cartes classées (rang, probabilité) et résumé en tête', await fr.evaluate(() => !!window.MGT_CL1 && !!document.querySelector('#offresCardsWrap > .cl1Sum') && !!document.querySelector('#offresCardsWrap article.offresCard > .cl1Bar'))]);
+  // ---------- TI1 : tâche interne non terminée = rappel au calendrier ; terminée = heure demandée, archivée au calendrier ----------
+  const ti = await fr.evaluate(async () => { const hier = new Date(Date.now() - 86400000), iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const ok = await window.__tkInt.add({id: 'ti-essai-1', type: 'rapport', priority: 'Moyenne', status: 'En attente', date: iso(hier), objective: 'RAPPORT ESSAI TI1'});
+    MGT_TI1.rafraichir(); const E = MGT_TI1.elements().filter(a => /RAPPORT ESSAI TI1/.test(a.objective));
+    const t = (JSON.parse(JSON.stringify(parent.getJSON('mgt_crm_taches_internes', []))).find(x => x.objective === 'RAPPORT ESSAI TI1') || {});
+    await window.__tkInt.patch({_int: {id: t.id}}, {status: 'Termine'}); const boite = !!document.getElementById('tiModal');
+    document.getElementById('tiHeure').value = '09:30'; document.querySelector('#tiModal [data-ti="ok"]').click(); await new Promise(r => setTimeout(r, 2500));
+    const t2 = parent.getJSON('mgt_crm_taches_internes', []).find(x => x.id === t.id) || {}, E2 = MGT_TI1.elements().filter(a => a._int && a._int.id === t.id);
+    return {cree: ok !== false, rappels: E.filter(a => a._ti === 'rappel').length, boite, statut: t2.status, heure: t2.heureFin, fait: E2.length === 1 && E2[0]._ti === 'fait', horsTaches: !window.__tkIntActions().some(a => a._int && a._int.id === t.id)}; }).catch(e => ({err: e.message}));
+  r.push(['TI1 : tâche interne en retard = rappels au calendrier (hier et aujourd\'hui)', ti.rappels >= 1 && ti.cree]);
+  r.push(['TI1 : « Terminée » demande la date et l\'heure, enregistrée dans GTM (Termine, 09:30)', ti.boite && ti.statut === 'Termine' && ti.heure === '09:30']);
+  r.push(['TI1 : tâche terminée une seule fois au calendrier et retirée du module Tâches', ti.fait && ti.horsTaches]);
+  if(ti.err) console.log('TI1', ti.err);
   // ---------- droits ----------
   const D = await session('direction');
   const dd = await D.fr.evaluate(async () => { const a = await GTM_CF_SB.from('mgt_cf_commandes').select('id,numero'), b = await GTM_CF_SB.from('mgt_cf_commandes').insert({numero: 'CD026.009'}).select('*'), c = await GTM_CF_SB.rpc('mgt_cf_set_prix_achat', {p_ligne_id: 'x', p_pu_achat: 1});
