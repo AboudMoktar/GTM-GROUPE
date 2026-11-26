@@ -141,6 +141,15 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['TI1 : « Terminée » demande la date et l\'heure, enregistrée dans GTM (Termine, 09:30)', ti.boite && ti.statut === 'Termine' && ti.heure === '09:30']);
   r.push(['TI1 : tâche terminée une seule fois au calendrier et retirée du module Tâches', ti.fait && ti.horsTaches]);
   if(ti.err) console.log('TI1', ti.err);
+  // ---------- liste des clients au toucher (« Importer des notes ») ----------
+  await fr.evaluate(() => openModule('dashboard')); await p.waitForTimeout(800);
+  await fr.click('[data-ni-home]'); await p.waitForTimeout(800);
+  await fr.click('#niClient'); await p.waitForTimeout(500);
+  const lc = await fr.evaluate(() => { const pan = document.querySelector('.lc-panneau'); return {vis: !!pan && !pan.hidden, txt: pan ? pan.textContent : '', list: document.getElementById('niClient').hasAttribute('list')}; });
+  r.push(['« Importer des notes » : toucher le champ Client affiche la liste des clients', lc.vis && /Client Essai/.test(lc.txt) && !lc.list]);
+  await fr.locator('.lc-panneau .lc-opt', {hasText: 'Client Essai'}).first().click(); await p.waitForTimeout(300);
+  r.push(['client choisi dans la liste', (await fr.inputValue('#niClient')) === 'Client Essai' && await fr.evaluate(() => document.querySelector('.lc-panneau').hidden)]);
+  await fr.evaluate(() => { const m = document.getElementById('niModal') || document.querySelector('.niBox'); const x = document.querySelector('[data-ni="close"], .niClose, #niClose'); if(x) x.click(); else if(m) m.remove(); }); await p.waitForTimeout(300);
   // ---------- droits ----------
   const D = await session('direction');
   const dd = await D.fr.evaluate(async () => { const a = await GTM_CF_SB.from('mgt_cf_commandes').select('id,numero'), b = await GTM_CF_SB.from('mgt_cf_commandes').insert({numero: 'CD026.009'}).select('*'), c = await GTM_CF_SB.rpc('mgt_cf_set_prix_achat', {p_ligne_id: 'x', p_pu_achat: 1});
