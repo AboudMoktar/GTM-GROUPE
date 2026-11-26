@@ -20,7 +20,9 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   await admin.database().ref('/groupe1').set({mgt: {
     mgt_crm_clients: {'1': J({ID: '1', Societe: 'Client Essai', _version: 1, Planning: [],
       Offres: [{id: 'OF-1', number: 'OF026-001', type: 'devis', groupe: 'MACPI', sentDate: '2026-11-20', status: 'En attente', amount: 1980, lignes: [ligne]}]})},
-    mgt_crm_listing: {'ART-0001': J({id: 'ART-0001', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-100', designation: 'MACHINE ESSAI A', prixCatalogue: 1000, prixAchat: 600, prixVente: 1000, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'})}},
+    mgt_crm_listing: {'ART-0001': J({id: 'ART-0001', groupe: 'MACPI', marque: 'MACPI', categorie: 'MACHINES', reference: 'M-100', designation: 'MACHINE ESSAI A', prixCatalogue: 1000, prixAchat: 600, prixVente: 1000, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'}),
+      'ART-0002': J({id: 'ART-0002', groupe: 'AUTRES', marque: 'ESSAI', categorie: 'SERVICES', reference: 'SERVM02', designation: 'SERVICE ESSAI', prixVente: 900, prixAchat: 0, prixCatalogue: 900, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'}),
+      'ART-0003': J({id: 'ART-0003', groupe: 'AUTRES', marque: 'ESSAI', categorie: 'SERVICES', reference: 'servm02', designation: 'SERVICE ESSAI', prixVente: 750, prixAchat: 0, prixCatalogue: 750, _created_at: '2026-11-08T10:00:00Z', _updated_at: '2026-11-08T10:00:00Z'})}},
     users_v2: comptes});
   await fetch('http://127.0.0.1:9000/.settings/rules.json?ns=demo-gtm-groupe', {method: 'PUT', headers: {Authorization: 'Bearer owner'}, body: fs.readFileSync(path.join(__dirname, '..', 'database.rules.v2.json'), 'utf8')});
   const s = serveur.demarrer(8791), b = await chromium.launch(), err = [], cons = [], reseau = [];
@@ -42,6 +44,9 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   r.push(['modules V4.6.9_SYNC1 chargés (aperçus, évaluation, statistiques, import d\'offres, commandes fournisseurs)', await fr.evaluate(() => !!(window.MGT_DOCS && window.MGT_OFFRES_EVAL && window.MGT_OFFRES_STATS && window.MGT_OFFRES_IMPORT && window.MGT_OF_PARSE && window.MGT_CF && window.MGT_LP_PARSE && window.GTM_CF_SB && /SYNC1/.test(MGT_V469.version)))]);
   r.push(['proforma V14 : ni coordonnées ni cachet de MGT dans le code', await fr.evaluate(() => { const t = document.getElementById('mgt-v469v7-proforma').textContent; return MGT_PROFORMA.version === 'V4.6.9V14' && !/BIAT|0708048Y|orange\.tn|iVBORw0KGgo/.test(t) && MGT_PROFORMA.DEFAULT.societe.rib === ''; })]);
   r.push(['aucune bibliothèque chargée depuis Internet (CDN) dans les nouveaux modules', await fr.evaluate(() => !/cdn\.jsdelivr|SyncManager\._client/.test(['cf2-commandes', 'mgt-of1-import'].map(i => document.getElementById(i).textContent.replace(/\/\*[\s\S]*?\*\//g, '')).join(' ')))]);
+  await fr.evaluate(() => openModule('stock')).catch(() => {}); await p.waitForTimeout(4000);
+  { const L = (await admin.database().ref('/groupe1/mgt/mgt_crm_listing').once('value')).val() || {}, a2 = lire(L['ART-0002']) || {}, a3 = lire(L['ART-0003']) || {};
+    r.push(['LS1 : doublon « servm02 » mis à la corbeille (restaurable), « SERVM02 » 900 € gardé', !!a3._deleted_at && /Doublon/.test(JSON.stringify(a3.journal || [])) && !a2._deleted_at]); }
   // ---------- tuile et module Commandes fournisseurs ----------
   await fr.evaluate(() => openModule('dashboard')); await p.waitForTimeout(1200);
   r.push(['accueil : tuile « Commandes fournisseurs »', await fr.evaluate(() => { const t = document.querySelector('[data-cf-home]'); return !!t && !t.hidden; })]);
