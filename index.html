@@ -1932,6 +1932,7 @@ function renderDashboard(container){
           ${vsHier !== null ? `<div class="rdh-hier-l"><span class="rd-hier ${vsHier < 0 ? 'moins' : ''}">${vsHier < 0 ? '▼ ' : '▲ +'}${vsHier}</span><span>Pièces vs ${esc(hier.lib)}</span><span class="rdh-i" role="button" tabindex="0" title="Détail de la comparaison" onclick="event.stopPropagation(); rdInfoHier()">${I.info}</span></div><div id="rdh-info" class="rdh-info-bulle" hidden onclick="event.stopPropagation()"></div>` : ''}
         </div>
       </div>
+      <div class="rdh-devise">Ensemble pour la performance<span aria-hidden="true">✦</span></div>
       <div class="rdh-bas">
         <div class="rdh-bas-g">
           <div class="hero-track rdh-track"><div class="hero-track-fill" id="pace-fill-el"></div></div>

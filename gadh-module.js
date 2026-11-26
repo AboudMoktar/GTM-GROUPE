@@ -817,7 +817,7 @@ function renderGadhDashboard(container){
           <div style="font-size:10px;color:#FFC72C;font-weight:700;font-style:italic;margin-top:5px;max-width:96px;line-height:1.3;">Qualité et performance au quotidien</div>
         </div>
       </div>
-      <div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.15);font-size:10.5px;color:rgba(255,255,255,.65);font-style:italic;">Ensemble pour une meilleure performance</div>
+      <div class="rdh-devise gadh-devise">Ensemble pour la performance<span aria-hidden="true">✦</span></div>
     </div>
 
     <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
