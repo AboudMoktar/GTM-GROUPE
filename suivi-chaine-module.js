@@ -1,5 +1,5 @@
 // Module « Suivi chaîne » (TEK-TREND) : Tableau, Fiche (saisie), Historique, Stats, Rapports, Params.
-// Logique : pièces de la chaîne = dernier poste ; objectif de la chaîne = poste goulot (voir fcTotaux dans fiche-chaine-module.js).
+// Logique : pour le moment, pièces, objectif et goulot de la chaîne = poste CONTRÔLE (s'il est saisi) ; sinon pièces = dernier poste, objectif = poste goulot (voir fcTotaux dans fiche-chaine-module.js).
 (function(){
 let scMode = '7j', scDu = null, scAu = null, scRType = 'chaine-jours';
 const iso = (d) => toISODateLocal(d);

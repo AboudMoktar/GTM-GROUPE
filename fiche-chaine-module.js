@@ -52,6 +52,10 @@ function fcEntries(date){
   const A = fcAff(date); if(A) return A.entries;
   return fcOuvrieres().map(([id, e]) => ({key:id, id, e, mid:null, mnom:'', i:0, cle:null, poste:fcPoste(id, e), cad:fcObjH(id), poly:false, segs:null}));
 }
+// Pour le moment (26/11/2026) : la chaîne se mesure au poste CONTRÔLE (comme la Gestion Rendement) — objectif, goulot
+// et pièces de la chaîne = ceux du contrôle. Sans poste « Contrôle » saisi : règle générale ci-dessous.
+const FC_POSTE_REF = /contr[oô]le/i;
+const fcEstRef = (nom) => FC_POSTE_REF.test(String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
 // Totaux : par modèle, pièces de la chaîne = DERNIER poste, objectif = poste GOULOT (jamais la somme des postes).
 // Plusieurs modèles en cours = plusieurs chaînes parallèles : on additionne les chaînes.
 function fcTotaux(date, jour){
@@ -60,6 +64,8 @@ function fcTotaux(date, jour){
   const groupes = defs.map(d => {
     const par = d.ops.map((n, i) => { const l = calc.filter(x => A ? (x.mid === d.id && x.i === i) : x.poste === n), q = l.reduce((t, x) => t + x.c.qty, 0), o = l.reduce((t, x) => t + x.c.obj, 0); return {nom:n, n:l.length, q, o, rend:o > 0 ? q / o * 100 : null}; });
     const garni = par.filter(x => x.n > 0), dernier = garni.length ? garni[garni.length - 1] : {nom:'', n:0, q:0, o:0, rend:null};
+    const ref = garni.find(x => fcEstRef(x.nom) && x.o > 0) || null;
+    if(ref) return {id:d.id, nom:d.nom, par, dernier:ref, goulot:ref, ref:true, q:ref.q, o:ref.o, rend:ref.o > 0 ? ref.q / ref.o * 100 : null};
     const act = garni.filter(x => x.o > 0), goulot = act.length ? act.reduce((m, x) => x.o < m.o ? x : m, act[0]) : null, o = goulot ? goulot.o : 0;
     return {id:d.id, nom:d.nom, par, dernier, goulot, q:dernier.q, o, rend:o > 0 ? dernier.q / o * 100 : null};
   });
@@ -77,8 +83,8 @@ function fcKpi(label, valeur, sous, ton, ico, pct){
 }
 function fcKpisHTML(T){
   const r = T.rend === null ? null : Math.round(T.rend), tr = r === null ? 'nul' : (r >= 90 ? 'ok' : r >= 70 ? 'warn' : 'bad');
-  return `<div class="kp-grid">${fcKpi('Pièces chaîne', T.q, T.groupes.length > 1 ? T.groupes.length + ' modèles en cours' : (T.dernier.nom ? 'sortie · ' + esc(T.dernier.nom) : ''), 'info', 'box')}${fcKpi('Objectif chaîne', T.o, T.groupes.length > 1 ? 'goulot de chaque modèle' : (T.goulot ? 'goulot · ' + esc(T.goulot.nom) : 'ajusté selon la présence'), 'nul', 'target')}${fcKpi('Rendement', r === null ? '—' : r + ' %', 'pièces / objectif', tr, 'trend', r === null ? 0 : r)}${fcKpi('Pertes', T.p + ' min', T.p ? 'arrêts du jour' : 'aucun arrêt', T.p ? 'warn' : 'nul', 'clock')}${fcKpi('Présentes', T.pres + '/' + T.n, 'ouvrières', 'ok', 'users')}</div>
-    ${T.groupes.length > 1 ? `<div class="kp-postes">${T.groupes.map(g => `<span class="kp-chip"><b>${esc(g.nom)}</b> ${g.q}/${g.o} <i class="hour-rend ${fcCls(g.rend)}">${fcPct(g.rend)}</i></span>`).join('')}</div>` : (T.par.length > 1 ? `<div class="kp-postes">${T.par.map((x, i) => `<span class="kp-chip${i === T.par.length - 1 ? ' last' : ''}"><b>${esc(x.nom)}</b> ${x.q}/${x.o} <i class="hour-rend ${fcCls(x.rend)}">${fcPct(x.rend)}</i></span>`).join('<span class="kp-arrow">›</span>')}</div>` : '')}`
+  return `<div class="kp-grid">${fcKpi('Pièces chaîne', T.q, T.groupes.length > 1 ? T.groupes.length + ' modèles en cours' : (T.dernier.nom ? (T.groupes[0] && T.groupes[0].ref ? 'contrôle · ' : 'sortie · ') + esc(T.dernier.nom) : ''), 'info', 'box')}${fcKpi('Objectif chaîne', T.o, T.groupes.length > 1 ? 'goulot de chaque modèle' : (T.goulot ? 'goulot · ' + esc(T.goulot.nom) : 'ajusté selon la présence'), 'nul', 'target')}${fcKpi('Rendement', r === null ? '—' : r + ' %', 'pièces / objectif', tr, 'trend', r === null ? 0 : r)}${fcKpi('Pertes', T.p + ' min', T.p ? 'arrêts du jour' : 'aucun arrêt', T.p ? 'warn' : 'nul', 'clock')}${fcKpi('Présentes', T.pres + '/' + T.n, 'ouvrières', 'ok', 'users')}</div>
+    ${T.groupes.length > 1 ? `<div class="kp-postes">${T.groupes.map(g => `<span class="kp-chip"><b>${esc(g.nom)}</b> ${g.q}/${g.o} <i class="hour-rend ${fcCls(g.rend)}">${fcPct(g.rend)}</i></span>`).join('')}</div>` : (T.par.length > 1 ? `<div class="kp-postes">${T.par.map((x, i) => `<span class="kp-chip${(T.groupes[0] && T.groupes[0].ref ? x.nom === T.dernier.nom : i === T.par.length - 1) ? ' last' : ''}"><b>${esc(x.nom)}</b> ${x.q}/${x.o} <i class="hour-rend ${fcCls(x.rend)}">${fcPct(x.rend)}</i></span>`).join('<span class="kp-arrow">›</span>')}</div>` : '')}`
 }
 function fcEtat(id, date){
   const r = resolveDayStatus(id, date);
