@@ -1050,6 +1050,8 @@ function etatCommandeGrid(e, lot, opt){
   function ref(lib, z){ var k = cle(lib, z); return R[k] || (R[k] = {lib:lib, size:z, q:{}, tot:0}); }
   var c2 = ch2Totals(); /* 2e choix retiré de la commande */
   lignes.forEach(function(l){ var q = qteCmd(l, c2); if (!(q > 0)) return; var x = ref(l.lib, l.size); x.q[l.client] = (x.q[l.client] || 0) + q; x.tot += q; });
+  /* seulement les clients qui ont des quantités dans cette commande (FLÉCHÉS, VESTIAIRES… vides : colonne retirée) (26/11/2026) */
+  var clsQ = cls.filter(function(c){ return Object.keys(R).some(function(k){ return R[k].q[c] > 0; }); }); if (clsQ.length) cls = clsQ;
   var SV = CM ? null : suiviCommande(e, lot), cols = SV ? SV.cols : [];
   if (SV) Object.keys(SV.R).forEach(function(k){ var p = k.split("|"), r = SV.R[k]; if (Object.keys(r.ex).some(function(id){ return r.ex[id]; }) || r.av) ref(p[0], p[1]); });
   var statuts = ((S.lots[lot] || {}).statuts) || {};

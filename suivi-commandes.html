@@ -2002,6 +2002,8 @@ function vCmdSaisie(v, clients, cli, libs){
      Model | LIBELLE | Taille | NEOLYS | ALLOGA | FLÉCHÉS | VESTIAIRES | Total | Total du libellé
      | SUIVI (automatique) : Statut | exporté (une colonne par export) | Emballés | Reste ---- */
   var lotT = E && E.nouveau ? "" : ui.lot, CL = clientsCommande(lotT), libsT = libsCommande(lotT);
+  /* consultation : seulement les clients qui ont des quantités (ex. pas de FLÉCHÉS ni VESTIAIRES vides) ; saisie : tous (26/11/2026) */
+  if (!E){ var CLq = CL.filter(function(c){ return libsT.some(function(li){ return li.sizes.some(function(z){ return qVue(c, li.lib, z) > 0; }); }); }); if (CLq.length) CL = CLq; }
   var SV = lotT && window.pkExports && pkExports.suiviCommande ? pkExports.suiviCommande(null, lotT) : null;
   var statuts = (S.lots[lotT] || {}).statuts || {};
   function stVue(lib){ return E && E.st && lib in E.st ? E.st[lib] : (statuts[lib] || ""); }
