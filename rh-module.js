@@ -473,7 +473,7 @@ function renderRHDashboard(container){
   // 26/11/2026 : présentation modernisée (maquette « Tableau de bord RH ») — mêmes données, mêmes listes et actions.
   try { const h = container.previousElementSibling; if(h && h.classList.contains('flex-header')) h.style.display = 'none'; } catch(e) {}
   const nbAutorises = autorisees.length, nbAbsHorsAut = totalAbsents - nbAutorises, pctOf = (n) => effectif > 0 ? Math.round(n / effectif * 100) : 0;
-  const parts = [['Présents', presents.length, '#1565E0'], ['Absents', nbAbsHorsAut, '#F59E0B'], ['Autorisés', nbAutorises, '#9CA3AF']].concat(nonRenseignes.length ? [['Non renseignés', nonRenseignes.length, '#CBD5E1']] : []);
+  const parts = [['Présents', presents.length, '#0B4AB0'], ['Absents', nbAbsHorsAut, '#F59E0B'], ['Autorisés', nbAutorises, '#9CA3AF']].concat(nonRenseignes.length ? [['Non renseignés', nonRenseignes.length, '#CBD5E1']] : []);
   let acc = 0; const conic = effectif > 0 ? parts.filter(x => x[1] > 0).map(x => { const a = acc; acc += x[1] / effectif * 100; return `${x[2]} ${a}% ${acc}%`; }).join(',') : '#E5E7EB 0 100%';
   const IC = {
     team:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="3.6"/><circle cx="5.2" cy="9" r="2.6"/><circle cx="18.8" cy="9" r="2.6"/><path d="M5.5 20c0-3.7 2.9-6.4 6.5-6.4s6.5 2.7 6.5 6.4z"/><path d="M.8 19.2c0-2.8 1.9-4.8 4.4-4.8 1 0 1.9.3 2.6.8-1.3 1.3-2.1 3-2.3 4zM23.2 19.2c0-2.8-1.9-4.8-4.4-4.8-1 0-1.9.3-2.6.8 1.3 1.3 2.1 3 2.3 4z"/></svg>',
@@ -489,7 +489,7 @@ function renderRHDashboard(container){
     eclair:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2L4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>',
     valise:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.5 7V5a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 15.5 5v2M3 12.5h18"/></svg>',
     rapports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="5" y="13" width="3" height="5"/><rect x="10.5" y="10" width="3" height="8"/><rect x="16" y="11.5" width="3" height="6.5"/><path d="M4.5 9.5l5-4 4 3 6-5.5"/><path d="M16 3h3.5v3.5"/></svg>',
-    info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1565E0"/><path d="M12 11v6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.4" fill="#fff"/></svg>'
+    info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#0B4AB0"/><path d="M12 11v6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.4" fill="#fff"/></svg>'
   };
   const kpi = (cls, ic, val, lib, sous, clic) => `<button type="button" class="rh2-k ${cls}" onclick="${clic}"><span class="rh2-k-ic">${ic}</span><span class="rh2-k-tx"><b class="kpi-mini-val">${val}</b><span class="kpi-mini-lbl">${lib}</span>${sous ? `<em>${sous}</em>` : ''}</span><span class="rh2-k-go">${IC.fleche}</span></button>`;
   const action = (ic, lib, clic) => `<button type="button" class="rh2-act" onclick="${clic}"><span>${ic}</span>${lib}</button>`;
