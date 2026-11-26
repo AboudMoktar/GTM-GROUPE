@@ -470,52 +470,99 @@ function renderRHDashboard(container){
     maladie: maladies, conges, sorties: enSortie
   }[rhDashFilter] || resolved;
 
+  // 26/11/2026 : présentation modernisée (maquette « Tableau de bord RH ») — mêmes données, mêmes listes et actions.
+  try { const h = container.previousElementSibling; if(h && h.classList.contains('flex-header')) h.style.display = 'none'; } catch(e) {}
+  const nbAutorises = autorisees.length, nbAbsHorsAut = totalAbsents - nbAutorises, pctOf = (n) => effectif > 0 ? Math.round(n / effectif * 100) : 0;
+  const parts = [['Présents', presents.length, '#1565E0'], ['Absents', nbAbsHorsAut, '#F59E0B'], ['Autorisés', nbAutorises, '#9CA3AF']].concat(nonRenseignes.length ? [['Non renseignés', nonRenseignes.length, '#CBD5E1']] : []);
+  let acc = 0; const conic = effectif > 0 ? parts.filter(x => x[1] > 0).map(x => { const a = acc; acc += x[1] / effectif * 100; return `${x[2]} ${a}% ${acc}%`; }).join(',') : '#E5E7EB 0 100%';
+  const IC = {
+    team:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="3.6"/><circle cx="5.2" cy="9" r="2.6"/><circle cx="18.8" cy="9" r="2.6"/><path d="M5.5 20c0-3.7 2.9-6.4 6.5-6.4s6.5 2.7 6.5 6.4z"/><path d="M.8 19.2c0-2.8 1.9-4.8 4.4-4.8 1 0 1.9.3 2.6.8-1.3 1.3-2.1 3-2.3 4zM23.2 19.2c0-2.8-1.9-4.8-4.4-4.8-1 0-1.9.3-2.6.8 1.3 1.3 2.1 3 2.3 4z"/></svg>',
+    ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    horloge:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    sortie:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h5v18h-5"/><circle cx="9" cy="5" r="1.8"/><path d="M8 9l-2.5 4H9l-1 7M8 9l3 3 2.5-1M6.5 21l2-5"/></svg>',
+    fleche:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"/></svg>',
+    cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/></svg>',
+    maj:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-14.3 4.9M4 12A8 8 0 0 1 18.3 7.1"/><path d="M18.5 3v4.3h-4.3M5.5 21v-4.3h4.3"/></svg>',
+    barres:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>',
+    alerte:'<svg viewBox="0 0 24 24"><path d="M12 2.8L1.8 20.5h20.4z" fill="#E03131"/><path d="M12 9v5.2" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.4" fill="#fff"/></svg>',
+    lit:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6h2v7h18v6h-2v-2H4v2H2z"/><circle cx="7.5" cy="10" r="2"/><path d="M11 8.5h7a3 3 0 0 1 3 3V12H11z"/></svg>',
+    eclair:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2L4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>',
+    valise:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.5 7V5a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 15.5 5v2M3 12.5h18"/></svg>',
+    rapports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="5" y="13" width="3" height="5"/><rect x="10.5" y="10" width="3" height="8"/><rect x="16" y="11.5" width="3" height="6.5"/><path d="M4.5 9.5l5-4 4 3 6-5.5"/><path d="M16 3h3.5v3.5"/></svg>',
+    info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1565E0"/><path d="M12 11v6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.4" fill="#fff"/></svg>'
+  };
+  const kpi = (cls, ic, val, lib, sous, clic) => `<button type="button" class="rh2-k ${cls}" onclick="${clic}"><span class="rh2-k-ic">${ic}</span><span class="rh2-k-tx"><b class="kpi-mini-val">${val}</b><span class="kpi-mini-lbl">${lib}</span>${sous ? `<em>${sous}</em>` : ''}</span><span class="rh2-k-go">${IC.fleche}</span></button>`;
+  const action = (ic, lib, clic) => `<button type="button" class="rh2-act" onclick="${clic}"><span>${ic}</span>${lib}</button>`;
+  const anomalies = [
+    ...anomOubli.map(x => [x, 'bad', 'Oubli de pointage']), ...anomSortiePasse.map(x => [x, 'bad', 'Oubli de sortie (non clôturée)']),
+    ...anomDepassement.map(x => [x, 'warn', 'Autorisation dépassée (prévu ' + x.a.prevue + ')']), ...anomIncoherent.map(x => [x, 'bad', 'Pointage incohérent'])];
+  const majTxt = new Date().toLocaleDateString('fr-FR') + ' à ' + heureActuelle;
+
   container.innerHTML = `
-    <div class="card" style="padding:10px 12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="text-transform:capitalize;font-size:12.5px;color:var(--ink-soft);font-weight:700;">${jourNom} · ${heureActuelle}</div>
-        <button class="btn btn-ghost" style="padding:5px 9px;font-size:11px;" onclick="nav('rh-dashboard')">${ICONS.clock} Actualiser</button>
+    <section class="rh2-hero">
+      <div class="rh2-hero-photo" aria-hidden="true"></div>
+      <div class="rh2-hero-tx">
+        <h1>Tableau de bord RH</h1>
+        <p class="rh2-devise">GTM GROUPE <span>·</span> <i>Ensemble plus loin</i></p>
+        <div class="rh2-outils">
+          <div class="rh2-date">
+            <button type="button" class="rh2-nav" title="Jour précédent" onclick="rhAttDate='${dateNav(-1)}'; nav('rh-dashboard')">‹</button>
+            <label class="rh2-date-champ">${IC.cal}<input type="date" value="${date}" max="${getTodayISO()}" aria-label="Date affichée" onchange="rhAttDate=this.value; nav('rh-dashboard')"></label>
+            <button type="button" class="rh2-nav" title="Jour suivant" onclick="rhAttDate='${dateNav(1)}'; nav('rh-dashboard')" ${date>=getTodayISO()?'disabled':''}>›</button>
+          </div>
+          ${!isToday ? `<button type="button" class="rh2-btn" onclick="rhAttDate=getTodayISO(); nav('rh-dashboard')">Aujourd'hui</button>` : ''}
+          <button type="button" class="rh2-btn" onclick="nav('rh-dashboard')">${IC.maj} Actualiser</button>
+          <span class="rh2-jour">${jourNom} · ${heureActuelle}</span>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn btn-ghost" style="padding:9px 11px;" onclick="rhAttDate='${dateNav(-1)}'; nav('rh-dashboard')">‹</button>
-        <div class="field" style="margin:0;flex:1;"><input type="date" value="${date}" max="${getTodayISO()}" onchange="rhAttDate=this.value; nav('rh-dashboard')"></div>
-        <button class="btn btn-ghost" style="padding:9px 11px;" onclick="rhAttDate='${dateNav(1)}'; nav('rh-dashboard')" ${date>=getTodayISO()?'disabled':''}>›</button>
-        ${!isToday ? `<button class="btn btn-ghost" style="padding:9px 10px;font-size:11px;flex-shrink:0;" onclick="rhAttDate=getTodayISO(); nav('rh-dashboard')">Aujourd'hui</button>` : ''}
+    </section>
+
+    <div class="rh2-kpis">
+      ${kpi('bleu', IC.team, effectif, 'Effectif', '', 'rhShowEffectif()')}
+      ${kpi('vert', IC.ok, presents.length, 'Présents', effectif ? tauxPresence + ' % de l\'effectif' : '', 'rhShowPresents()')}
+      ${kpi('orange', IC.horloge, retards.length, 'Retards', enSortie.length ? enSortie.length + ' en sortie' : '', 'rhShowRetards()')}
+      ${kpi('violet', IC.sortie, totalAbsents, 'Absents', totalAbsents ? pctOf(totalAbsents) + ' % de l\'effectif' : '', 'rhShowAbsents()')}
+    </div>
+
+    <div class="rh2-grille">
+      <div class="rh2-carte rh2-repart">
+        <div class="rh2-tete bleue">${IC.barres}<h3>Répartition du personnel</h3></div>
+        <div class="rh2-repart-corps">
+          <div class="rh2-donut" style="background:conic-gradient(${conic});" role="img" aria-label="Présents ${presents.length}, absents ${nbAbsHorsAut}, autorisés ${nbAutorises}"><div><b>${effectif}</b><span>Total</span></div></div>
+          <ul class="rh2-legende">${parts.map(x => `<li><i style="background:${x[2]}"></i><span>${x[0]}<b>${x[1]} (${pctOf(x[1])} %)</b></span></li>`).join('')}</ul>
+        </div>
+      </div>
+
+      <div class="rh2-col">
+        <div class="rh2-carte rh2-traiter ${anomalies.length ? 'alerte' : ''}">
+          <div class="rh2-tete">${IC.alerte}<h3>À traiter</h3>${anomalies.length ? `<span class="badge red">${anomalies.length}</span>` : ''}</div>
+          ${anomalies.length === 0 ? `<div class="rh2-rien"><span>Aucune anomalie à traiter</span><i>${IC.ok}</i></div>`
+            : `<div class="rh2-anoms">${anomalies.map(([x, c, l]) => `<div class="session-row" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b>${esc(x.e.nom)}</b><span class="hour-rend ${c}">${l}</span></div>`).join('')}</div>`}
+        </div>
+        <div class="rh2-carte">
+          <div class="rh2-tete">${IC.lit}<h3>Absences</h3></div>
+          <div class="rh2-abs">
+            <button type="button" class="t-bleu" onclick="rhShowMaladies()"><b>${maladies.length}</b>Maladie</button>
+            <button type="button" class="t-vert" onclick="rhShowConges()"><b>${conges.length}</b>Congés</button>
+            <button type="button" class="t-violet" onclick="rhShowAutorisees()"><b>${autorisees.length}</b>Autorisée</button>
+            <button type="button" class="t-orange" onclick="rhShowAbsents()"><b>${nonJustifiees.length}</b>Non justifiée</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rh2-carte rh2-actions">
+        <div class="rh2-tete bleue">${IC.eclair}<h3>Actions rapides</h3></div>
+        <div class="rh2-act-grille">
+          ${action(IC.cal, 'Pointage', "nav('rh-pointage')")}
+          ${action(IC.valise, 'Congés', 'rhShowConges()')}
+          ${action(IC.team, 'Gestion effectif', "nav('rh-personnel')")}
+          ${action(IC.rapports, 'Rapports', "nav('rh-rapports')")}
+        </div>
+        ${currentUser.role==='admin' ? `<button type="button" class="rh2-nouv" onclick="showAbsenceForm()">+ Nouvelle absence ${IC.fleche}</button>` : ''}
       </div>
     </div>
 
-    <div style="font-size:11px;color:var(--ink-faint);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:10px 2px 6px;">① Situation du jour</div>
-    <div class="kpi-mini-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi-mini tint-blue" style="cursor:pointer;" onclick="rhShowEffectif()"><div class="kpi-mini-icon" style="background:linear-gradient(145deg,#4A9EFF,#0F62D6);">${ICONS.idBadge}</div><div class="kpi-mini-val">${effectif}</div><div class="kpi-mini-lbl">Effectif</div></div>
-      <div class="kpi-mini tint-green" style="cursor:pointer;" onclick="rhShowPresents()"><div class="kpi-mini-icon" style="background:linear-gradient(145deg,#34D18C,#0E8F52);">${ICONS.check}</div><div class="kpi-mini-val">${presents.length}</div><div class="kpi-mini-lbl">Présents</div></div>
-      <div class="kpi-mini" style="cursor:pointer;" onclick="rhShowRetards()"><div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FFC067,#D9822B);">${ICONS.clock}</div><div class="kpi-mini-val">${retards.length}</div><div class="kpi-mini-lbl">Retards</div></div>
-    </div>
-    <div class="kpi-mini-grid" style="grid-template-columns:repeat(2,1fr);">
-      <div class="kpi-mini tint-red" style="cursor:pointer;" onclick="rhShowAbsents()"><div class="kpi-mini-icon" style="background:linear-gradient(145deg,#FF6B6B,#DC2E2E);">${ICONS.pause}</div><div class="kpi-mini-val">${totalAbsents}</div><div class="kpi-mini-lbl">Absents</div></div>
-      <div class="kpi-mini" style="cursor:pointer;" onclick="document.getElementById('rh-sorties-zone').scrollIntoView({behavior:'smooth'})"><div class="kpi-mini-icon" style="background:linear-gradient(145deg,#B08CFF,#6C3FD4);">${ICONS.clock}</div><div class="kpi-mini-val">${enSortie.length}</div><div class="kpi-mini-lbl">En sortie</div></div>
-    </div>
-
-    <div class="card" style="border:1.5px solid ${nbAnomalies>0?'var(--bad)':'var(--border)'};">
-      <h3 style="margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:6px;">À traiter ${nbAnomalies>0?`<span class="badge red" style="font-size:9.5px;">${nbAnomalies}</span>`:''}</h3>
-      ${nbAnomalies===0 ? `<p style="font-size:12px;color:var(--good);font-weight:700;margin:0;">✓ Aucune anomalie à traiter</p>` : `
-        ${anomOubli.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend bad" style="font-size:10.5px;">Oubli de pointage</span></div>`).join('')}
-        ${anomSortiePasse.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend bad" style="font-size:10.5px;">Oubli de sortie (non clôturée)</span></div>`).join('')}
-        ${anomDepassement.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend warn" style="font-size:10.5px;">Autorisation dépassée (prévu ${x.a.prevue})</span></div>`).join('')}
-        ${anomIncoherent.map(x=>`<div class="session-row" style="cursor:pointer;padding:6px 0;" onclick="rhFicheEmpId='${x.id}'; nav('rh-pointage')"><b style="font-size:12.5px;">${esc(x.e.nom)}</b><span class="hour-rend bad" style="font-size:10.5px;">Pointage incohérent</span></div>`).join('')}
-      `}
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px;font-size:13px;">Absences</h3>
-      <div class="kpi-mini-grid" style="grid-template-columns:repeat(4,1fr);">
-        <div class="kpi-mini tint-red" style="cursor:pointer;padding:8px 2px;" onclick="rhShowMaladies()"><div class="kpi-mini-val" style="font-size:15px;">${maladies.length}</div><div class="kpi-mini-lbl">Maladie</div></div>
-        <div class="kpi-mini tint-gold" style="cursor:pointer;padding:8px 2px;" onclick="rhShowConges()"><div class="kpi-mini-val" style="font-size:15px;">${conges.length}</div><div class="kpi-mini-lbl">Congés</div></div>
-        <div class="kpi-mini" style="cursor:pointer;padding:8px 2px;" onclick="rhShowAutorisees()"><div class="kpi-mini-val" style="font-size:15px;">${autorisees.length}</div><div class="kpi-mini-lbl">Autorisée</div></div>
-        <div class="kpi-mini tint-red" style="cursor:pointer;padding:8px 2px;" onclick="rhShowAbsents()"><div class="kpi-mini-val" style="font-size:15px;">${nonJustifiees.length}</div><div class="kpi-mini-lbl">Non justif.</div></div>
-      </div>
-      ${currentUser.role==='admin' ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:9px;font-size:12.5px;" onclick="showAbsenceForm()">+ Nouvelle absence</button>` : ''}
-    </div>
-
+    <div class="rh2-suite">
     <div class="card" id="rh-sorties-zone">
       <h3 style="margin:0 0 8px;font-size:13px;">Sorties en cours</h3>
       ${sortiesEnCours.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);margin:0;">Personne en sortie actuellement</p>` : sortiesEnCours.map(s => `
@@ -563,6 +610,8 @@ function renderRHDashboard(container){
         Heures travaillées (mois, total) : <b>${totalHeuresMois.toFixed(1)} h</b>
       </p>
     </div>
+    </div>
+    <div class="rh2-pied"><span>${IC.info} Dernière mise à jour : ${majTxt}</span><b>TEK-TREND <span>·</span> GTM GROUPE</b></div>
     <div id="rh-modal-zone"></div>
   `;
 
