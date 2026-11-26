@@ -51,7 +51,10 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   // tout cocher => proposition de terminer
   for(const n of [1, 2]){ await fr.locator('#tkSubSheet .tsChk').nth(n).click(); await p.waitForTimeout(1200); }
   r.push(['tout coché : proposition de terminer', await fr.locator('#tsFinish').count() === 1]);
-  await fr.click('#tsFinish'); await p.waitForTimeout(1500);
+  await fr.click('#tsFinish'); await p.waitForTimeout(800);
+  // V4.6.9_TI1 : la date et l'heure de fin sont demandées (proposé : maintenant)
+  r.push(['« Terminée » : date et heure demandées', await fr.locator('#tiModal #tiHeure').count() === 1]);
+  await fr.click('#tiModal [data-ti="ok"]'); await p.waitForTimeout(1500);
   t = await tache('I1'); r.push(['tâche marquée terminée', t.status === 'Termine']);
   // 3. Nouvelle tâche à partir d'un modèle
   await fr.evaluate(() => window.__tkInt.chooser()); await p.waitForTimeout(300);
@@ -86,7 +89,10 @@ const lire = (v) => typeof v === 'string' && v.startsWith('__gtm_json_v1:') ? JS
   const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
   const fichiers = async () => (await admin.database().ref('/groupe1/fichiers').once('value')).val() || {};
   await fr.evaluate(() => renderTaskReminders()); await p.waitForTimeout(500);
-  await fr.click('[data-tk-tab="done"]'); await p.waitForTimeout(500); // I1 est terminée
+  // V4.6.9_TI1 : une tâche interne terminée quitte le module Tâches (archivée au calendrier) ; on la rouvre pour les pièces jointes
+  r.push(['tâche terminée retirée du module Tâches', await fr.evaluate(() => !window.__tkIntActions().some(a => a._int.id === 'I1'))]);
+  await fr.evaluate(() => window.__tkInt.patch({_int: {id: 'I1'}}, {status: 'En attente'})); await p.waitForTimeout(1500);
+  await fr.evaluate(() => renderTaskReminders()); await p.waitForTimeout(500);
   const pj = fr.locator('[data-tk-files="int-I1"]');
   r.push(['bouton pièces jointes sur la carte', await pj.count() === 1 && (await pj.textContent()).trim() === '📎']);
   await pj.click(); await p.waitForTimeout(300);

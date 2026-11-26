@@ -13790,7 +13790,7 @@ var isoMemo=new Map();
 function isoOfStr(s){ var r=isoMemo.get(s); if(r===undefined){ var d=parseDateValue(s); r=d?dateIso(d):''; if(isoMemo.size>50000) isoMemo.clear(); isoMemo.set(s,r);} return r; }
 function query(){ return ((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr'); }
 function bucket(daySet){
-  var q=query(), f=MGT_CALF.values(), pil=!!(f.city||f.commercial), L=allPlanningActions(), out=new Map(), n=0;
+  var q=query(), f=MGT_CALF.values(), pil=!!(f.city||f.commercial), L=(window.MGT_TI1?MGT_TI1.calAvec(allPlanningActions()):allPlanningActions()), out=new Map(), n=0;
   for(var i=0;i<L.length;i++){ var a=L[i], iso=isoOfStr(actionMainDate(a)); if(!iso||!daySet.has(iso)) continue;
     if(pil&&!MGT_CALF.match(a.client,a)) continue;
     if(norm(a.status).includes('archive')) continue;
@@ -14010,7 +14010,7 @@ function statusOf(a){var s=norm(a.status||'');
 var isoMemo=new Map();
 function isoOfStr(s){var r=isoMemo.get(s);if(r===undefined){var d=parseDateValue(s);r=d?dateIso(d):'';if(isoMemo.size>50000)isoMemo.clear();isoMemo.set(s,r);}return r;}
 function query(){return((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr');}
-function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=MGT_CALF.values(),pil=!!(f.city||f.commercial),L=allPlanningActions(),out=new Map();
+function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=MGT_CALF.values(),pil=!!(f.city||f.commercial),L=(window.MGT_TI1?MGT_TI1.calAvec(allPlanningActions()):allPlanningActions()),out=new Map();
   for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||!set.has(iso))continue;
     if(pil&&!MGT_CALF.match(a.client,a))continue; if(norm(a.status).includes('archive'))continue;
     if(q&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q))continue;
@@ -14204,7 +14204,7 @@ function isMobile(){return window.innerWidth<=MOBILE_MAX;}
 var isoMemo=new Map();
 function isoOfStr(s){var r=isoMemo.get(s);if(r===undefined){var d=parseDateValue(s);r=d?dateIso(d):'';if(isoMemo.size>50000)isoMemo.clear();isoMemo.set(s,r);}return r;}
 function query(){return((document.getElementById('calendarQuickSearch')||{}).value||'').trim().toLocaleLowerCase('fr');}
-function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=MGT_CALF.values(),pil=!!(f.city||f.commercial),L=allPlanningActions(),out=new Map();
+function bucket(days){var set=new Set(days.map(dateIso)),q=query(),f=MGT_CALF.values(),pil=!!(f.city||f.commercial),L=(window.MGT_TI1?MGT_TI1.calAvec(allPlanningActions()):allPlanningActions()),out=new Map();
   for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||!set.has(iso))continue;
     if(pil&&!MGT_CALF.match(a.client,a))continue; if(norm(a.status).includes('archive'))continue;
     if(q&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(q))continue;
@@ -14279,7 +14279,7 @@ function bind(el){if(el.__moBound)return;el.__moBound=true;
 
 /* ---------- vue Annee : meme contenu, calcule une fois par annee ---------- */
 var yCache={key:null,map:null};
-function yearMap(){var L=allPlanningActions(),key=annualYear+'|'+(window.MGT_CAL?MGT_CAL.state().ver:0)+'|'+L.length;
+function yearMap(){var L=(window.MGT_TI1?MGT_TI1.calAvec(allPlanningActions(),{rappels:false}):allPlanningActions()),key=annualYear+'|'+(window.MGT_CAL?MGT_CAL.state().ver:0)+'|'+L.length;
   if(yCache.key===key&&yCache.list===L)return yCache.map;var m=new Map();
   for(var i=0;i<L.length;i++){var a=L[i],iso=isoOfStr(actionMainDate(a));if(!iso||+iso.slice(0,4)!==annualYear)continue;var arr=m.get(iso);if(!arr){arr=[];m.set(iso,arr);}arr.push(a);}
   m.forEach(function(arr){arr.sort(function(a,b){return String(a.type).localeCompare(String(b.type),'fr');});});
@@ -14473,7 +14473,7 @@ function period(){var m=pilotCalendarMode||'week',d=new Date(pilotCalendarDate);
   return {mode:m,days:days,label:label};}
 function mins(v){var r=/^(\d{1,2}):(\d{2})/.exec(String(v||'').trim());return r?(+r[1])*60+(+r[2]):null;}
 function model(){var P=period(),set=new Set(P.days.map(dateIso)),q=(($('calendarQuickSearch')||{}).value||'').trim(),ql=q.toLocaleLowerCase('fr'),f=MGT_CALF.values(),pil=!!(f.city||f.commercial);
-  window.__p7cal=1;var L;try{L=allPlanningActions();}finally{window.__p7cal=0;}
+  window.__p7cal=1;var L;try{L=(window.MGT_TI1?MGT_TI1.calAvec(allPlanningActions(),{rappels:false}):allPlanningActions());}finally{window.__p7cal=0;}
   var list=[];L.forEach(function(a,i){var d=parseDateValue(actionMainDate(a));if(!d)return;var iso=dateIso(d);if(!set.has(iso))return;if(norm(a.status).includes('archive'))return;if(pil&&!MGT_CALF.match(a.client,a))return;
     if(ql&&![a.client&&a.client[fields.name],a.type,a.objective,a.priority,a.status,actionCommercial(a)].join(' ').toLocaleLowerCase('fr').includes(ql))return;var s=mins(a.startTime||a.start_time||a.time||a.heure||a.heureDebut||a.debut);list.push({a:a,iso:iso,s:s,i:i});});
   list.sort(function(x,y){return x.iso<y.iso?-1:x.iso>y.iso?1:((x.s===null?-1:x.s)-(y.s===null?-1:y.s))||x.i-y.i;});
@@ -19022,6 +19022,7 @@ function render(){if(!S.fam)return;var all=rowsOf(S.fam),L=all.filter(match),a=a
   $('ostFilters').innerHTML=filtersHtml(all);
   $('ostBody').innerHTML=kpis(a,mg)+'<div class="ostRow">'+chart(L)+donut(a)+'</div><div class="ostRow ostRow1">'+split(L,function(r){return r.type;},TYP,'Répartition par type d’offre',mg)+split(L,function(r){return r.brand;},null,'Répartition par marque',mg)+'</div>'+table(L,mg)
    +(mg?'<p class="ostNote">Taux de réussite = gagnées / (gagnées + perdues). Montant pondéré = total HT des offres en cours × probabilité. Marge calculée sur les offres ayant des lignes d’articles (* : prix d’achat manquant sur une ligne).</p>':'<p class="ostNote">Taux de réussite = gagnées / (gagnées + perdues). Montant pondéré = total HT des offres en cours × probabilité.</p>');
+  try{if(window.MGT_CL1)$('ostBody').insertAdjacentHTML('afterbegin',MGT_CL1.statsHtml(L,S.fam));}catch(e){console.warn('[CL1]',e);}
   $('ostCount').textContent=L.length+' offre(s) sur '+all.length;}
 
 /* ---------- documents (etape 3) ---------- */
@@ -19065,6 +19066,7 @@ function statsDoc(withM){if(!S.fam)throw new Error('aucun onglet');withM=!!withM
         {type:'h',text:'Répartition par marque'},{type:'table',cols:splitCols('Marque',mg,true),rows:splitRows(L,function(r){return r.brand;},null,mg,true)},
         {type:'h',text:'Montants par '+per+' d’investissement'},{type:'table',cols:['Période','Gagné (€)','En cours pondéré (€)','Total (€)'],rows:periodRows(L,true)},{type:'text',text:note}]},
     {title:d.title+' — liste des offres',subtitle:filtersLabel(),banner:banner,generated:stamp,user:who,sheet:'Offres',blocks:[{type:'table',main:true,cols:ocols,rows:orows,empty:'Aucune offre.'}]}];
+  try{if(window.MGT_CL1)MGT_CL1.doc(d,L,mg);}catch(e){console.warn('[CL1] document',e);}
   return d;}
 function mode(){var m=$('ostMode');return m&&m.value==='int'&&canMarge();}
 async function exportX(fmt){try{if(!window.MGT_DOCS)throw new Error('module d’export indisponible');var d=statsDoc(mode());
@@ -19498,7 +19500,7 @@ body.cfDlgOpen{overflow:hidden}
    ===================================================================== */
 (function(){
 'use strict';
-var VERSION='V4.6.9_SYNC1';
+var VERSION='V4.6.9_CL1';
 function $(id){return document.getElementById(id);}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 function can(a){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('commandes',a);}catch(e){return false;}}
@@ -20548,8 +20550,261 @@ window.addEventListener('click',function(e){
 },true);
 })();
 </script>
+<style id="mgt-ti1-css">
+/* TI1 — tâches internes au calendrier : rappels 🔁 en violet ; fenêtre « Tâche terminée » */
+#calendarModule #planningCalendar [data-event-id^="ti-r-"][data-mc-ev],body #planningCalendar [data-event-id^="ti-r-"][data-mc-ev]{background:#ddd6fe!important;border:1px dashed #7c3aed!important;border-left:4px solid #6d28d9!important;color:#3b0764!important}
+#calendarModule #planningCalendar [data-event-id^="ti-r-"][data-mc-ev] *,body #planningCalendar [data-event-id^="ti-r-"][data-mc-ev] *{color:#3b0764!important}
+html[data-mgt-theme="dark"] #calendarModule #planningCalendar [data-event-id^="ti-r-"][data-mc-ev],html[data-mgt-theme="dark"] body #planningCalendar [data-event-id^="ti-r-"][data-mc-ev]{background:#2e1065!important;border:1px dashed #a78bfa!important;border-left:4px solid #a78bfa!important;color:#ede9fe!important}
+html[data-mgt-theme="dark"] #calendarModule #planningCalendar [data-event-id^="ti-r-"][data-mc-ev] *,html[data-mgt-theme="dark"] body #planningCalendar [data-event-id^="ti-r-"][data-mc-ev] *{color:#ede9fe!important}
+#tiModal{position:fixed;inset:0;z-index:99080;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:12px;--tib:#fff;--tif:#1b2433;--tim:#566377;--til:#d3dae4;--tis:#eef2f7}
+html[data-mgt-theme="dark"] #tiModal{--tib:#171c24;--tif:#eef2f8;--tim:#a6b1c2;--til:#303947;--tis:#232b37}
+#tiModal *{box-sizing:border-box}
+#tiModal .tiBox{width:100%;max-width:460px;background:var(--tib);color:var(--tif);border-radius:16px;padding:14px 16px;font:15px/1.4 system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+#tiModal .tiHead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:17px}
+#tiModal .tiNom{font-weight:800;margin:10px 0 2px}
+#tiModal .tiMeta,#tiModal .tiAide{color:var(--tim);font-size:13px;margin:2px 0 8px}
+#tiModal .tiFait{color:#15803d;font-weight:800}
+html[data-mgt-theme="dark"] #tiModal .tiFait{color:#86efac}
+#tiModal .tiRetard{color:#b45309;font-weight:700}
+html[data-mgt-theme="dark"] #tiModal .tiRetard{color:#fcd34d}
+#tiModal .tiRow{display:flex;gap:10px}
+#tiModal label{flex:1;display:block;font-size:12px;font-weight:700;color:var(--tim)}
+#tiModal input{display:block;width:100%;margin-top:4px;min-height:44px;padding:8px 10px;font-size:15px;border-radius:10px;border:1px solid var(--til)!important;background:var(--tis)!important;color:var(--tif)!important}
+#tiModal .tiErr{color:#b91c1c;font-weight:700;font-size:13px;min-height:18px}
+html[data-mgt-theme="dark"] #tiModal .tiErr{color:#fca5a5}
+#tiModal .tiAct{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#tiModal button{all:unset;box-sizing:border-box;cursor:pointer;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;border-radius:12px;font-weight:800;font-size:14px;background:var(--tis)!important;color:var(--tif)!important;border:1px solid var(--til)!important}
+#tiModal button.ok{background:#c93200!important;color:#fff!important;border-color:#c93200!important}
+#tiModal button:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
+
+/* pas d'icône « aperçu de l'action » sur les éléments TI1 (la fenêtre TI1 s'ouvre au clic) */
+#planningCalendar [data-event-id^="ti-"] > .dpvCalEye,#planningCalendar [data-event-id^="ti-"] > .niCalEye{display:none!important}
+</style>
+<script id="mgt-ti1-js">
+/* =====================================================================
+   MGT CRM V4.6.9_TI1 — TÂCHES INTERNES DANS LE CALENDRIER (maquette validée le 26/11/2026)
+   - Tâche interne NON terminée : rappel 🔁 chaque jour du lundi au samedi (jamais le dimanche), de sa date prévue (ou de sa création
+     si elle n'a pas de date) jusqu'à aujourd'hui ; ⚠️ après la date prévue. Violet. Clic : fenêtre avec « ✓ Marquer terminée ».
+   - « Terminée » (module Tâches ou calendrier) : la date et l'heure de réalisation sont DEMANDÉES (proposé : maintenant) ; la tâche
+     apparaît une seule fois au calendrier à ce moment, barrée, et DISPARAÎT du module Tâches (le calendrier sert d'archive).
+     Depuis Telegram (« ✓ Fait », AG1) : heure de l'appui, sans question. Rien n'est supprimé : statut « Termine », doneAt, heureFin.
+   - « Rouvrir » depuis le calendrier : la tâche revient dans le module Tâches, les rappels reprennent.
+   - Uniquement dans les vues du calendrier (semaine, jour, mois, année, impression) : les autres modules ne changent pas.
+     Impression / PDF : tâches terminées oui, rappels non. Vue Année : tâches terminées seulement.
+   - Enregistrement par le module des tâches internes lui-même (window.__tkInt) : synchronisation inchangée.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9_TI1',API=window.__tkInt,KEY='mgt_crm_taches_internes',LOCAL='mgtcrm_local_taches_internes'; /* GTM : tâches internes rangées dans GTM Groupe (Firebase) */
+if(!API||typeof API.patch!=='function'){console.error('[TI1] module des tâches internes absent');return;}
+var CATS={rapport:'Rapport',presentation:'Présentation',mailing:'Mailing',email:'Email',offre:'Offre',administrative:'Administratif',appel:'Appel',rappel:'Rappel',autre:'Autre'};
+function h(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function load(){var v=[];try{var hh=window.parent;if(hh&&hh!==window&&typeof hh.getJSON==='function')v=hh.getJSON(KEY,[]);else v=JSON.parse(localStorage.getItem(LOCAL)||'[]');}catch(e){v=[];}return Array.isArray(v)?v:[];}
+function signature(){return load().map(function(t){return [t&&t.id,t&&t.status,t&&t.date,t&&t.doneAt,t&&t.heureFin,t&&t.deleted,t&&t.updated].join('~');}).join('|');}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function isoDe(v){if(!v)return '';try{var d=parseDateValue(v);return d?iso(d):'';}catch(e){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));return m?m[0]:'';}}
+function fr(i){return i?i.slice(8,10)+'/'+i.slice(5,7)+'/'+i.slice(0,4):'';}
+function hhmm(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function termine(t){return /termin/i.test(String(t.status||'').normalize('NFD').replace(/[̀-ͯ]/g,''));}
+function annule(t){return /archiv/i.test(String(t.status||''));}
+function visibles(){return load().filter(function(t){return t&&!t.deleted&&t.kind!=='template';});}
+function lib(t){return CATS[t.type]||t.type||'Tâche';}
+function peut(){try{return typeof window.CRM_CAN!=='function'||window.CRM_CAN('communication','edit');}catch(e){return true;}}
+function court(v){v=String(v||'');return v.length>48?v.slice(0,47)+'…':v;}
+function client(nom){var c={};c[fields.id]='__INTERNE__';c[fields.name]=nom||'Interne MGT';return c;}
+/* ---------- éléments du calendrier ---------- */
+var memo={k:null,L:null};
+function elements(){var T=visibles(),k=signature()+'|'+iso(new Date());if(memo.k===k)return memo.L;var out=[],auj=iso(new Date());
+  T.forEach(function(t){var base={client:client(),_from:'internal',_int:t,_ti:1,source:'interne',type:t.type,priority:t.priority,commercial:t.commercial||'',endTime:''};
+    if(annule(t))return;
+    if(termine(t)){var d=isoDe(t.doneAt)||isoDe(t.date);if(!d)return;out.push(Object.assign({},base,{client:client('✓ '+court(t.objective||lib(t))),eventId:'ti-f-'+t.id,_ti:'fait',date:d,startTime:t.heureFin||'',status:'Termine',objective:'✓ '+(t.objective||lib(t))}));return;}
+    var debut=isoDe(t.date)||isoDe(t.created)||auj,fin=debut>auj?debut:auj,j=new Date(debut+'T12:00:00'),n=0;
+    while(iso(j)<=fin&&n<400){var i=iso(j);if(j.getDay()!==0)out.push(Object.assign({},base,{client:client((i>debut?'⚠️ ':'')+'🔁 '+court(t.objective||lib(t))),eventId:'ti-r-'+t.id+'-'+i,_ti:'rappel',date:i,startTime:'',status:'En attente',objective:(i>debut?'⚠️ ':'')+'🔁 '+(t.objective||lib(t))}));j.setDate(j.getDate()+1);n++;}});
+  memo={k:k,L:out};return out;}
+function calAvec(L,opt){opt=opt||{};var E=elements();if(opt.rappels===false)E=E.filter(function(a){return a._ti==='fait';});return E.length?(L||[]).concat(E):(L||[]);}
+/* ---------- module Tâches : une tâche interne TERMINÉE n'y apparaît plus (archivée au calendrier) ---------- */
+var prevActions=window.__tkIntActions;
+if(typeof prevActions==='function')window.__tkIntActions=function(){return prevActions.apply(this,arguments).filter(function(a){return !(a._int&&termine(a._int));});};
+/* ---------- « Terminée » : date et heure demandées ---------- */
+var basePatch=API.patch.bind(API);
+function rafraichir(){memo.k=null;try{if(window.MGT_CAL)MGT_CAL.invalidate();}catch(e){}try{var m=document.getElementById('calendarModule');if(m&&m.offsetParent&&typeof renderCalendar==='function')renderCalendar();}catch(e){}
+  try{if(typeof renderTaskReminders==='function')renderTaskReminders();}catch(e){}}
+async function finir(id,d,hr){await basePatch({_int:{id:id}},{status:'Termine'});await basePatch({_int:{id:id}},{date:d,doneAt:d,heureFin:hr||''});rafraichir();} /* GTM : enregistrements l'un après l'autre */
+API.patch=async function(a,f){var id=a&&a._int&&a._int.id,t=id&&API.get(id);f=Object.assign({},f||{});var auto=f.__tiAuto;delete f.__tiAuto;
+  if(t&&f.status==='Termine'&&!termine(t)){
+    if(auto){var dt=new Date(auto);if(isNaN(dt))dt=new Date();finir(id,iso(dt),hhmm(dt));return;}
+    demander(t);return;}
+  var r=await basePatch(a,f);if(t&&f.status&&f.status!=='Termine'&&termine(t)){var x=API.get(id);if(x&&x.heureFin)await basePatch({_int:{id:id}},{heureFin:''});}rafraichir();return r;};
+function fermer(){var m=document.getElementById('tiModal');if(m)m.remove();}
+function boite(titre,corps,actions){fermer();var m=document.createElement('div');m.id='tiModal';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label',titre);
+  m.innerHTML='<div class="tiBox"><div class="tiHead"><strong>'+h(titre)+'</strong><button type="button" data-ti="x" aria-label="Fermer">✕</button></div><div class="tiCorps">'+corps+'</div><div class="tiErr" id="tiErr" role="alert"></div><div class="tiAct">'+actions+'</div></div>';
+  m.addEventListener('click',function(e){if(e.target===m||e.target.closest('[data-ti="x"]'))fermer();});document.body.appendChild(m);return m;}
+function infos(t){return '<p class="tiNom">'+h(t.objective||lib(t))+'</p><p class="tiMeta">Tâche interne · '+h(lib(t))+(t.priority?' · priorité '+h(t.priority):'')+(t.date&&!termine(t)?' · prévue le '+fr(isoDe(t.date)):'')+'</p>';}
+function demander(t){if(!peut()){try{toast('Droit insuffisant.');}catch(e){}return;}var n=new Date();
+  var m=boite('Tâche terminée',infos(t)+'<div class="tiRow"><label>Faite le<input type="date" id="tiDate" value="'+iso(n)+'" max="'+iso(n)+'"></label><label>à<input type="time" id="tiHeure" value="'+hhmm(n)+'"></label></div><p class="tiAide">Proposé : maintenant — modifiable. La tâche sera rangée au calendrier à ce moment et retirée du module Tâches.</p>',
+    '<button type="button" data-ti="x">Annuler</button><button type="button" class="ok" data-ti="ok">✓ Confirmer</button>');
+  m.querySelector('[data-ti="ok"]').onclick=function(){var d=m.querySelector('#tiDate').value,hr=m.querySelector('#tiHeure').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){m.querySelector('#tiErr').textContent='Indiquez la date.';return;}
+    if(d>iso(new Date())){m.querySelector('#tiErr').textContent='La date ne peut pas être dans le futur.';return;}
+    if(!/^\d{2}:\d{2}$/.test(hr)){m.querySelector('#tiErr').textContent='Indiquez l’heure.';return;}
+    fermer();finir(t.id,d,hr);try{toast('Tâche terminée le '+fr(d)+' à '+hr+' : rangée au calendrier.');}catch(e){}};
+  setTimeout(function(){var x=m.querySelector('#tiDate');if(x)x.focus();},30);}
+function ouvrir(a){var t=API.get(a._int&&a._int.id);if(!t)return;
+  if(termine(t)){boite('Tâche interne terminée',infos(t)+'<p class="tiFait">✓ Faite le '+fr(isoDe(t.doneAt)||isoDe(t.date))+(t.heureFin?' à '+h(t.heureFin):'')+'</p>',
+      (peut()?'<button type="button" data-ti="rouvrir">Rouvrir</button>':'')+'<button type="button" class="ok" data-ti="x">Fermer</button>');
+    var b=document.querySelector('#tiModal [data-ti="rouvrir"]');if(b)b.onclick=function(){if(!confirm('Rouvrir cette tâche ? Elle revient dans le module Tâches et ses rappels reprennent.'))return;fermer();API.patch({_int:{id:t.id}},{status:'En attente'});try{toast('Tâche rouverte.');}catch(e){}};return;}
+  boite('Rappel · tâche interne',infos(t)+(a.date>isoDe(t.date)&&isoDe(t.date)?'<p class="tiRetard">⚠️ En retard depuis le '+fr(isoDe(t.date))+'</p>':''),
+    '<button type="button" data-ti="x">Fermer</button>'+(peut()?'<button type="button" class="ok" data-ti="fini">✓ Marquer terminée</button>':''));
+  var f=document.querySelector('#tiModal [data-ti="fini"]');if(f)f.onclick=function(){demander(t);};}
+/* clics sur un élément TI1 du calendrier : notre fenêtre (pas la fiche client / l'éditeur d'événement) */
+function cible(e){var el=e.target&&e.target.closest&&e.target.closest('[data-event-id^="ti-"]');if(!el)return null;var id=el.getAttribute('data-event-id'),a=null;
+  try{a=calendarActionMap[id];}catch(x){}if(!a){var L=elements();for(var i=0;i<L.length;i++)if(L[i].eventId===id){a=L[i];break;}}return a;}
+['click','dblclick','contextmenu'].forEach(function(ev){document.addEventListener(ev,function(e){var a=cible(e);if(!a)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();if(ev!=='dblclick'||!document.getElementById('tiModal'))ouvrir(a);},true);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('tiModal'))fermer();if(e.key==='Enter'){var a=cible(e);if(a){e.preventDefault();e.stopPropagation();ouvrir(a);}}},true);
+/* toutes les entrées du calendrier (clic, double-clic, appui tactile, clavier, aperçu) : un élément TI1 ouvre TOUJOURS la fenêtre TI1 */
+function estTI(a){return !!(a&&(a._ti||/^ti-/.test(String(a.eventId||''))));}
+function aTI(id){var L=elements();for(var i=0;i<L.length;i++)if(L[i].eventId===id)return L[i];return null;}
+[['openTaskDetail',0],['openEventEditor',0],['showEventContext',1]].forEach(function(x){var nom=x[0],f=window[nom];if(typeof f!=='function')return;
+  window[nom]=function(a){if(estTI(a)){if(!x[1]&&!document.getElementById('tiModal'))ouvrir(a);try{var tm=document.getElementById('taskDetailModal');if(tm)tm.hidden=true;}catch(e){}return;}return f.apply(this,arguments);};});
+if(typeof window.openTaskById==='function'){var oTB=window.openTaskById;window.openTaskById=function(id){if(/^ti-/.test(String(id||''))){var a=aTI(String(id));if(a)ouvrir(a);return;}return oTB.apply(this,arguments);};}
+window.addEventListener('storage',function(e){if(e.key===LOCAL)rafraichir();});
+window.MGT_TI1={version:VERSION,calAvec:calAvec,elements:elements,ouvrir:ouvrir,demander:demander,rafraichir:rafraichir};
+})();
+</script>
+<style id="mgt-cl1-css">
+/* CL1 — classement des offres : bandeau des cartes, synthèse, bloc des statistiques (thèmes clair et sombre) */
+.cl1Bar,.cl1Sum,.cl1Stats{--cb:#f8fafc;--cf:#1b2433;--cm:#566377;--cl:#d3dae4;--hi:#15803d;--mid:#b45309;--lo:#64748b}
+html[data-mgt-theme="dark"] .cl1Bar,html[data-mgt-theme="dark"] .cl1Sum,html[data-mgt-theme="dark"] .cl1Stats{--cb:#1b2230;--cf:#eef2f8;--cm:#a6b1c2;--cl:#303947;--hi:#4ade80;--mid:#fbbf24;--lo:#94a3b8}
+.cl1Bar{background:var(--cb);color:var(--cf);border:1px solid var(--cl);border-left:5px solid var(--lo);border-radius:12px;padding:8px 10px;margin:0 0 10px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.cl1Bar.cl1Hi{border-left-color:var(--hi)}.cl1Bar.cl1Mid{border-left-color:var(--mid)}
+.cl1L1,.cl1L2{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.cl1Rang{font-size:18px;font-weight:900;min-width:34px}
+.cl1Prob{display:inline-flex;align-items:center;gap:6px}
+.cl1Track{display:inline-block;width:90px;height:8px;border-radius:4px;background:var(--cl);overflow:hidden}
+.cl1Track span{display:block;height:100%;background:var(--lo)}
+.cl1Hi .cl1Track span{background:var(--hi)}.cl1Mid .cl1Track span{background:var(--mid)}
+.cl1Manque{color:var(--mid);font-weight:700}
+.cl1Sum{background:var(--cb);color:var(--cf);border:1px solid var(--cl);border-radius:12px;padding:10px 12px;margin:0 0 12px;grid-column:1/-1}
+.cl1SumT{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--cm)}
+.cl1SumK{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;margin-top:4px}
+.cl1Tr{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.cl1TrI{font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid var(--cl)}
+.cl1TrI.cl1Hi{color:var(--hi)}.cl1TrI.cl1Mid{color:var(--mid)}.cl1TrI.cl1Lo,.cl1TrI.cl1Nd{color:var(--cm)}
+.cl1Stats{background:var(--cb);color:var(--cf);border:1px solid var(--cl);border-radius:14px;padding:12px;margin:0 0 14px}
+.cl1StH{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.cl1StH h3{margin:0;font-size:16px}
+.cl1StH label{font-size:13px;font-weight:700;color:var(--cm)}
+.cl1StH select{margin-left:6px;min-height:40px;border-radius:8px;border:1px solid var(--cl);background:var(--cb);color:var(--cf);padding:0 8px}
+.cl1TW{overflow-x:auto;margin-top:8px}
+.cl1T{width:100%;border-collapse:collapse;font-size:13px}
+.cl1T th{text-align:left;font-size:12px;color:var(--cm);border-bottom:2px solid var(--cl);padding:6px 8px;white-space:nowrap}
+.cl1T td{border-bottom:1px solid var(--cl);padding:6px 8px;vertical-align:middle}
+.cl1T tr[data-cl1-ouvrir]{cursor:pointer}
+.cl1T tr[data-cl1-ouvrir]:hover,.cl1T tr[data-cl1-ouvrir]:focus{background:rgba(201,50,0,.08);outline:none}
+.cl1T small{color:var(--cm)}
+.cl1N{text-align:right;white-space:nowrap}.cl1C{text-align:center;font-weight:800}
+.cl1Pill{display:inline-block;min-width:46px;text-align:center;font-weight:800;border-radius:10px;padding:1px 6px;border:1px solid var(--cl)}
+.cl1Pill.cl1Hi{color:var(--hi)}.cl1Pill.cl1Mid{color:var(--mid)}.cl1Pill.cl1Lo,.cl1Pill.cl1Nd{color:var(--cm)}
+.cl1Note,.cl1Vide{color:var(--cm);font-size:12px}
+@media(max-width:700px){.cl1Track{width:60px}.cl1T{font-size:12px}}
+</style>
+<script id="mgt-cl1-js">
+/* =====================================================================
+   MGT CRM V4.6.9_CL1 — CLASSEMENT DES OFFRES / PROJETS (maquette validée le 26/11/2026)
+   Offres EN COURS classées : 1) probabilité de réussite (%)  2) évaluation = progression du projet (0–200 %, module Projets)
+   3) valeur de l'offre (€ HT)  4) importance du client (A, B, C ; « Importance pour les offres »). Critère manquant : après,
+   « à compléter ». Gagnées / perdues : après les offres en cours, sans rang.
+   - Cartes (onglets Morgan / Macpi / Autres) : tri « Classement » par défaut, rang #, barre de probabilité, évaluation,
+     valeur, valeur pondérée (valeur × probabilité), client A/B/C ; résumé en tête (valeur totale, pondérée, tranches).
+   - Statistiques : bloc « Classement des projets » (cet onglet, ou Morgan + Macpi), clic = aperçu de l'offre ;
+     même classement dans l'aperçu / PDF / Word / Excel (feuille « Classement »). Aucun prix d'achat ni marge dans ce bloc.
+   - Lecture seule : aucune donnée n'est modifiée.
+   ===================================================================== */
+(function(){
+'use strict';
+var VERSION='V4.6.9_CL1',E=window.MGT_OFFRES_EVAL;
+if(!E){console.error('[CL1] module évaluation des offres absent');return;}
+var LV={A:3,B:2,C:1};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function F(k){try{return fields[k];}catch(e){return k;}}
+function clients(){try{return Array.isArray(CLIENTS)?CLIENTS:[];}catch(e){return [];}}
+function eur(n){return n==null?'—':Math.round(n).toLocaleString('fr-FR').replace(/[  ]/g,' ')+' €';}
+function valeur(o){try{if(Array.isArray(o.lignes)&&o.lignes.length&&window.MGT_LINES){var t=MGT_LINES.calcTotals(o.lignes);if(t&&Number.isFinite(+t.totalHT))return +t.totalHT;}}catch(e){}try{return quoteAmount(o)||0;}catch(e){return 0;}}
+/* évaluation = progression du projet associé (0–200 %) ; null si aucun projet */
+var projIdx=null;
+function indexProjets(){projIdx=new Map();try{projetEntries().forEach(function(r){var k=String(r&&r.projet&&r.projet.id);if(r&&r.projet&&!projIdx.has(k))projIdx.set(k,r.projet);});}catch(e){}}
+function evaluation(c,o,i){try{var info=offerProjetInfo(c,o,i);if(!info)return null;if(!projIdx)indexProjets();var p=projIdx.get(String(info.id));if(!p)return null;var v=Number(projetAvP(p));return Number.isFinite(v)?Math.max(0,Math.min(200,v)):null;}catch(e){return null;}}
+function info(c,o,i){var k=E.result(o),p=E.prob(o),im=E.importance(c)||{},v=valeur(o),ev=evaluation(c,o,i),d=0;try{d=+(parseDateValue(o.sentDate||o.date||'')||0);}catch(e){}
+  return {c:c,o:o,i:i,cid:String(c[F('id')]),k:k,run:k==='run',p:p,ev:ev,v:v,niv:im.level||'',lv:LV[im.level]||0,d:d,pond:p==null?null:v*p/100,
+    manque:[p==null?'probabilité':null,ev==null?'évaluation (projet)':null].filter(Boolean)};}
+function cmp(a,b){if(a.run!==b.run)return a.run?-1:1;
+  if(a.run){if((a.p==null)!==(b.p==null))return a.p==null?1:-1;if(a.p!==b.p)return b.p-a.p;
+    if((a.ev==null)!==(b.ev==null))return a.ev==null?1:-1;if(a.ev!==b.ev)return b.ev-a.ev;}
+  if(a.v!==b.v)return b.v-a.v;if(a.lv!==b.lv)return b.lv-a.lv;return b.d-a.d;}
+function classer(L){indexProjets();var R=L.map(function(x){return info(x.c||x.client,x.o||x.offer,x.i!=null?x.i:x.index);}).sort(cmp),n=0;R.forEach(function(r){r.rang=r.run?++n:null;});projIdx=null;return R;}
+function couleur(p){return p==null?'cl1Nd':p>=75?'cl1Hi':p>=50?'cl1Mid':'cl1Lo';}
+function synthese(R){var run=R.filter(function(r){return r.run;}),s={n:run.length,v:0,pond:0,t:[{l:'≥ 75 %',n:0,v:0},{l:'50–74 %',n:0,v:0},{l:'< 50 %',n:0,v:0},{l:'non renseignée',n:0,v:0}]};
+  run.forEach(function(r){s.v+=r.v;if(r.pond!=null)s.pond+=r.pond;var k=r.p==null?3:r.p>=75?0:r.p>=50?1:2;s.t[k].n++;s.t[k].v+=r.v;});return s;}
+function syntheseHtml(s,titre){return '<div class="cl1Sum" role="group" aria-label="'+esc(titre)+'"><div class="cl1SumT">'+esc(titre)+'</div><div class="cl1SumK"><span><b>'+s.n+'</b> projet(s) en cours</span><span>Valeur totale <b>'+eur(s.v)+'</b></span><span>Valeur pondérée <b>'+eur(s.pond)+'</b></span></div>'
+  +'<div class="cl1Tr">'+s.t.filter(function(t){return t.n;}).map(function(t,i){return '<span class="cl1TrI '+['cl1Hi','cl1Mid','cl1Lo','cl1Nd'][s.t.indexOf(t)]+'">'+esc(t.l)+' : '+t.n+' · '+eur(t.v)+'</span>';}).join('')+'</div></div>';}
+/* ---------------- cartes ---------------- */
+function bandeau(r){var p=r.p==null?0:r.p;
+  return '<div class="cl1Bar '+couleur(r.p)+'" data-cl1="1"><div class="cl1L1"><span class="cl1Rang">'+(r.rang?'#'+r.rang:esc({win:'Gagnée',lost:'Perdue'}[r.k]||''))+'</span>'
+    +'<span class="cl1Prob"><span class="cl1Track" aria-hidden="true"><span style="width:'+p+'%"></span></span><b>'+(r.p==null?'— %':r.p+' %')+'</b> réussite</span>'
+    +'<span>Évaluation <b>'+(r.ev==null?'—':Math.round(r.ev)+' %')+'</b></span><span class="cl1Niv">Client <b>'+esc(r.niv||'—')+'</b></span></div>'
+    +'<div class="cl1L2"><span>Valeur <b>'+eur(r.v)+'</b></span><span>Pondérée <b>'+(r.pond==null?'—':eur(r.pond))+'</b></span>'+(r.run&&r.manque.length?'<span class="cl1Manque">à compléter : '+esc(r.manque.join(', '))+'</span>':'')+'</div></div>';}
+function cleCarte(a){var b=a.querySelector('[data-ofp-open],[data-conv-open],[data-offre-edit],[data-ofx-open]');if(!b)return null;var v=b.getAttribute('data-ofp-open')||b.getAttribute('data-conv-open')||b.getAttribute('data-offre-edit')||b.getAttribute('data-ofx-open');
+  var m=/^(.*)\|(\d+)$/.exec(String(v||''));return m?{cid:m[1],i:+m[2]}:null;}
+var occupe=false;
+function decorer(){var wrap=document.getElementById('offresCardsWrap');if(!wrap||occupe)return;var st;try{st=offresUIState;}catch(e){return;}
+  var sel=document.getElementById('offresSort');if(sel&&!sel.querySelector('option[value="classement"]')){var op=document.createElement('option');op.value='classement';op.textContent='Classement (probabilité, évaluation, valeur, client)';sel.insertBefore(op,sel.firstChild);}
+  if(sel&&st.sort==='classement'&&sel.value!=='classement')sel.value='classement';
+  var cards=[].slice.call(wrap.querySelectorAll(':scope > article.offresCard'));if(!cards.length||cards.every(function(a){return a.querySelector(':scope > .cl1Bar');})&&wrap.querySelector(':scope > .cl1Sum'))return;
+  occupe=true;try{var C={};clients().forEach(function(c){C[String(c[F('id')])]=c;});
+    var L=[];cards.forEach(function(a){var k=cleCarte(a),c=k&&C[k.cid],o=c&&(c.Offres||[])[k.i];if(o)L.push({el:a,c:c,o:o,i:k.i});});
+    var R=classer(L),by=new Map();R.forEach(function(r){by.set(r.cid+'|'+r.i,r);});
+    L.forEach(function(x){var r=by.get(String(x.c[F('id')])+'|'+x.i),old=x.el.querySelector(':scope > .cl1Bar');if(old)old.remove();if(r)x.el.insertAdjacentHTML('afterbegin',bandeau(r));x.el.classList.add('cl1Card');});
+    var sum=wrap.querySelector(':scope > .cl1Sum');if(sum)sum.remove();
+    if(st.sort==='classement'){var ord=R.map(function(r){var x=L.find(function(y){return String(y.c[F('id')])===r.cid&&y.i===r.i;});return x&&x.el;}).filter(Boolean);ord.forEach(function(el){wrap.appendChild(el);});}
+    wrap.insertAdjacentHTML('afterbegin',syntheseHtml(synthese(R),'Classement de cet onglet'));}
+  finally{occupe=false;}}
+try{if(!offresUIState.sort||offresUIState.sort==='avancement-desc')offresUIState.sort='classement';}catch(e){}
+(function(){var tm=null,obs=new MutationObserver(function(){if(occupe)return;clearTimeout(tm);tm=setTimeout(decorer,30);});
+  function brancher(){var w=document.getElementById('offresCardsWrap');if(w&&!w.__cl1){w.__cl1=1;obs.observe(w,{childList:true});decorer();}}
+  new MutationObserver(brancher).observe(document.body,{childList:true,subtree:true});brancher();})();
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='offresSort'){try{offresUIState.sort=e.target.value;}catch(x){}setTimeout(decorer,60);}},true);
+/* ---------------- statistiques ---------------- */
+var portee='onglet',dernierL=null;
+function lignesStats(Lfiltre,fam){if(portee==='mm'){var T=[];try{offerEntries().forEach(function(x){var f=E.family(x.offer);if(f==='MORGAN'||f==='MACPI')T.push({c:x.client,o:x.offer,i:x.index});});}catch(e){}return classer(T);}
+  return classer((Lfiltre||[]).map(function(r){return {c:r.c,o:r.o,i:r.x?r.x.index:r.i};}));}
+function ref(r){var s='';try{s=offerReference(r.c,r.o,r.i);}catch(e){}return String(r.o.offerId||s||'');}
+function statsHtml(L,fam){dernierL=L;var R=lignesStats(L,fam),run=R.filter(function(r){return r.run;}),s=synthese(R);
+  var rows=run.map(function(r){return '<tr data-cl1-ouvrir="'+esc(r.cid)+'|'+r.i+'" tabindex="0" title="Ouvrir l’aperçu de l’offre"><td class="cl1C">'+r.rang+'</td><td><b>'+esc(r.c[F('name')]||'')+'</b><br><small>'+esc(ref(r))+(r.o.marque?' · '+esc(r.o.marque):'')+'</small></td>'
+    +'<td class="cl1N"><span class="cl1Pill '+couleur(r.p)+'">'+(r.p==null?'—':r.p+' %')+'</span></td><td class="cl1N">'+(r.ev==null?'—':Math.round(r.ev)+' %')+'</td><td class="cl1N">'+eur(r.v)+'</td><td class="cl1N">'+(r.pond==null?'—':eur(r.pond))+'</td><td class="cl1C">'+esc(r.niv||'—')+'</td></tr>';}).join('');
+  return '<section class="cl1Stats" id="cl1Stats"><div class="cl1StH"><h3>Classement des projets — du plus important au moins important</h3><label>Portée <select id="cl1Portee"><option value="onglet"'+(portee==='onglet'?' selected':'')+'>Cet onglet (filtres appliqués)</option><option value="mm"'+(portee==='mm'?' selected':'')+'>Morgan + Macpi (toutes les offres)</option></select></label></div>'
+    +syntheseHtml(s,portee==='mm'?'Morgan + Macpi':'Cet onglet')
+    +'<div class="cl1TW"><table class="cl1T"><thead><tr><th>#</th><th>Client · offre</th><th>Probabilité</th><th>Évaluation</th><th>Valeur HT</th><th>Pondérée</th><th>Client</th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="cl1Vide">Aucune offre en cours.</td></tr>')+'</tbody></table></div>'
+    +'<p class="cl1Note">Ordre : probabilité de réussite, puis évaluation (progression du projet), puis valeur, puis importance du client. Valeur pondérée = valeur × probabilité. Offres en cours uniquement.</p></section>';}
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='cl1Portee'){portee=e.target.value;try{var st=MGT_OFFRES_STATS.state(),b=document.getElementById('cl1Stats');var L=dernierL||(MGT_OFFRES_STATS.rows(st.fam)||[]);if(b)b.outerHTML=statsHtml(L,st.fam);}catch(x){console.warn('[CL1]',x);}}});
+function ouvrirLigne(t){var tr=t&&t.closest&&t.closest('[data-cl1-ouvrir]');if(!tr)return false;var m=/^(.*)\|(\d+)$/.exec(tr.getAttribute('data-cl1-ouvrir'));if(!m)return false;
+  try{if(window.MGT_OFFER_PREVIEW&&MGT_OFFER_PREVIEW.openCard){MGT_OFFER_PREVIEW.openCard(m[1],+m[2]);return true;}}catch(e){}try{openOffreEdit(m[1],+m[2]);}catch(e){}return true;}
+document.addEventListener('click',function(e){if(ouvrirLigne(e.target))e.preventDefault();});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&ouvrirLigne(e.target))e.preventDefault();});
+/* documents : même classement, SANS prix d'achat ni marge */
+function doc(d,L,mg){var R=lignesStats(L,null).filter(function(r){return r.run;}),s=synthese(R);
+  var rows=R.map(function(r){return [String(r.rang),String(r.c[F('name')]||'')+' · '+ref(r),r.p==null?'—':r.p+' %',r.ev==null?'—':Math.round(r.ev)+' %',eur(r.v),r.pond==null?'—':eur(r.pond),r.niv||'—'];});
+  var bl=[{type:'h',text:'Classement des projets — '+(portee==='mm'?'Morgan + Macpi':'cet onglet')+' : '+s.n+' en cours · valeur '+eur(s.v)+' · pondérée '+eur(s.pond)},
+    {type:'table',cols:['#','Client · offre','Probabilité','Évaluation','Valeur HT','Pondérée','Client'],rows:rows,right:[0,2,3,4,5],empty:'Aucune offre en cours.'}];
+  if(Array.isArray(d.blocks))d.blocks.splice(1,0,bl[0],bl[1]);
+  if(Array.isArray(d.xlsxSheets))d.xlsxSheets.splice(1,0,{title:'Classement des projets',subtitle:(portee==='mm'?'Morgan + Macpi':'Cet onglet')+' · probabilité, évaluation, valeur, client',banner:d.banner||'',generated:d.generated,user:d.user,sheet:'Classement',
+    blocks:[{type:'table',main:true,cols:['Rang','Client','N° offre','Marque','Probabilité (%)','Évaluation (%)','Valeur HT (€)','Pondérée (€)','Importance client'],
+      rows:R.map(function(r){return [r.rang,String(r.c[F('name')]||''),ref(r),String(r.o.marque||''),r.p==null?'':r.p,r.ev==null?'':Math.round(r.ev),Math.round(r.v*100)/100,r.pond==null?'':Math.round(r.pond*100)/100,r.niv||''];}),empty:'Aucune offre en cours.'}]});
+  if(Array.isArray(d.meta))d.meta.push(['Classement des projets','probabilité, puis évaluation (progression du projet), puis valeur, puis importance du client']);return d;}
+window.MGT_CL1={version:VERSION,classer:classer,statsHtml:statsHtml,doc:doc,decorer:decorer,portee:function(v){if(v)portee=v;return portee;}};
+})();
+</script>
 <script id="mgt-v469-marker">
-window.MGT_V469={version:"V4.6.9_SYNC1 (GTM)",date:'2026-11-08',base:"V4.6.9F (6b48c011f946be9b)",chantier:["V4.6.9A Audit calendrier","V4.6.9B Moteur","V4.6.9C Rendu et interactions","V4.6.9D Vues Jour et Semaine, Agenda mobile","V4.6.9E Vues Mois et Annee","V4.6.9F Harmonisation et ergonomie","V4.6.9G Tests et validation finale","V4.6.9G1 Vue Mois sur telephone : nom des actions","V4.6.9G2 Actions terminees : repere ✓ au lieu du texte barre","V4.6.9H Listing : prix de vente standard = prix catalogue","V4.6.9I Export PDF / Excel des offres (client et interne avec marges)","V4.6.9J Validation finale (prix standard + export des offres)","V4.6.9K Demarrage : premier affichage apres chargement complet (blocage sur telephone)","V4.6.9L Synchronisation : curseur des evenements toujours avance (sans perte)","V4.6.9M Parc machines : vue d'ensemble (lecture seule)","V4.6.9N Fiche machine et identifiant unique","V4.6.9O Module SAV / Interventions","V4.6.9P SAV : pieces, bon d'intervention, facture","V4.6.9Q Historique de la machine","V4.6.9R Validation finale Parc machines et SAV","V4.6.9S Services hors marge, SAV multi-machines, diagnostic, forfait sur devis","V4.6.9S1 Valeur de reference hors services, cibles tactiles 40 px","V4.6.9S2 Suppression valeur au prix de reference et ecart negocie","V4.6.9S3 Suppression de la colonne Prix de reference des exports d offres","V4.6.9T Filtres Commercial, Ville et Mes actions du calendrier","V4.6.9U Ouverture rapide du module Offres","V4.6.9V Actions sans commercial = personne connectee","V4.6.9V1 Offres : apercu client / interne, POS des offres machine","V4.6.9V2 Regles de prix Morgan","V4.6.9V3 Import de notes manuscrites et rapports de visite","V4.6.9V4 Tuile Importer des notes sur l accueil","V4.6.9V5 Apercu et PDF du rapport de visite depuis le calendrier","V4.6.9V6 Correction placement des actions du calendrier","V4.6.9V7 Offres : apercu facture proforma","V4.6.9V8 Apercu et export PDF Word Excel des taches et notes","V4.6.9V9 Boutons A faire et Notes dans la barre des filtres","V4.6.9V10 Offres : evaluation du projet, importance client, apercu sans marges","V4.6.9V11 Offres : statistiques par type, marque et client","V4.6.9V12 Offres : apercu et exports des statistiques","V4.6.9V13 Offres : listes avec ou sans marges au choix","V4.6.9V14 Proforma identique a l origine, cachet, disponibilite par article","V4.6.9_CF2 Commandes fournisseurs : liste, fiche, fournisseurs, historique","V4.6.9_CF3 Commandes fournisseurs : lignes, prix du Listing, calculs et totaux","V4.6.9_CF4 Commandes fournisseurs : affectations par client","V4.6.9_CF5 Commandes fournisseurs : import et export Excel","V4.6.9_CF6 Commandes fournisseurs : statuts, reception, pieces jointes","V4.6.9_CF7 Commandes fournisseurs : stock par article et vue par client","V4.6.9_CF8 Commandes fournisseurs : documents fournisseurs (lecture des PDF, confirmations, factures, livraisons)","V4.6.9_CF9 Commandes fournisseurs : lisibilite en theme clair","V4.6.9_CF10 Commandes fournisseurs : trois fenetres (Commandes, Confirmations, Livraisons-Factures)","V4.6.9_OF1 Offres : import d'une offre (PDF, scan, Word), création ou mise à jour ligne par ligne","V4.6.9_OF1B Offres : import — type Machine proposé pour une offre à rubriques (affichage par POS)","V4.6.9_LS1 Listing : doublon servm02 placé dans la corbeille (SERVM02 900 € conservé)","V4.6.9_AG1 Agent Telegram : actions Fait / Reporter appliquées par le CRM","V4.6.9_AG3 Agent Telegram : tâches ajoutées depuis Telegram, créées par le CRM (client ou interne)","V4.6.9_OF2 Offres : import — POS des offres Morgan bilingues (une machine et ses accessoires par POS), marque déduite du Listing","V4.6.9_CHAT1 Chat interne de l'équipe : salons, messages privés, direct, non-lus, lien fiche client","V4.6.9_CHAT2 Chat : pièces jointes (photos, PDF, Word, Excel ; 10 Mo ; plafond 500 Mo)","V4.6.9_SYNC1 Synchronisation : une modification enregistrée pendant un envoi (ex. articles d'une offre) n'est plus effacée"],corrections:["boutons d'ajout soumis au droit calendar/edit","pas de confirmation de suppression sans le droit calendar/delete","date de relance de nouveau enregistree","double-clic : ouverture de l'editeur","barre mobile des petits ecrans"]};
+window.MGT_V469={version:"V4.6.9_CL1 (GTM)",date:'2026-11-08',base:"V4.6.9F (6b48c011f946be9b)",chantier:["V4.6.9A Audit calendrier","V4.6.9B Moteur","V4.6.9C Rendu et interactions","V4.6.9D Vues Jour et Semaine, Agenda mobile","V4.6.9E Vues Mois et Annee","V4.6.9F Harmonisation et ergonomie","V4.6.9G Tests et validation finale","V4.6.9G1 Vue Mois sur telephone : nom des actions","V4.6.9G2 Actions terminees : repere ✓ au lieu du texte barre","V4.6.9H Listing : prix de vente standard = prix catalogue","V4.6.9I Export PDF / Excel des offres (client et interne avec marges)","V4.6.9J Validation finale (prix standard + export des offres)","V4.6.9K Demarrage : premier affichage apres chargement complet (blocage sur telephone)","V4.6.9L Synchronisation : curseur des evenements toujours avance (sans perte)","V4.6.9M Parc machines : vue d'ensemble (lecture seule)","V4.6.9N Fiche machine et identifiant unique","V4.6.9O Module SAV / Interventions","V4.6.9P SAV : pieces, bon d'intervention, facture","V4.6.9Q Historique de la machine","V4.6.9R Validation finale Parc machines et SAV","V4.6.9S Services hors marge, SAV multi-machines, diagnostic, forfait sur devis","V4.6.9S1 Valeur de reference hors services, cibles tactiles 40 px","V4.6.9S2 Suppression valeur au prix de reference et ecart negocie","V4.6.9S3 Suppression de la colonne Prix de reference des exports d offres","V4.6.9T Filtres Commercial, Ville et Mes actions du calendrier","V4.6.9U Ouverture rapide du module Offres","V4.6.9V Actions sans commercial = personne connectee","V4.6.9V1 Offres : apercu client / interne, POS des offres machine","V4.6.9V2 Regles de prix Morgan","V4.6.9V3 Import de notes manuscrites et rapports de visite","V4.6.9V4 Tuile Importer des notes sur l accueil","V4.6.9V5 Apercu et PDF du rapport de visite depuis le calendrier","V4.6.9V6 Correction placement des actions du calendrier","V4.6.9V7 Offres : apercu facture proforma","V4.6.9V8 Apercu et export PDF Word Excel des taches et notes","V4.6.9V9 Boutons A faire et Notes dans la barre des filtres","V4.6.9V10 Offres : evaluation du projet, importance client, apercu sans marges","V4.6.9V11 Offres : statistiques par type, marque et client","V4.6.9V12 Offres : apercu et exports des statistiques","V4.6.9V13 Offres : listes avec ou sans marges au choix","V4.6.9V14 Proforma identique a l origine, cachet, disponibilite par article","V4.6.9_CF2 Commandes fournisseurs : liste, fiche, fournisseurs, historique","V4.6.9_CF3 Commandes fournisseurs : lignes, prix du Listing, calculs et totaux","V4.6.9_CF4 Commandes fournisseurs : affectations par client","V4.6.9_CF5 Commandes fournisseurs : import et export Excel","V4.6.9_CF6 Commandes fournisseurs : statuts, reception, pieces jointes","V4.6.9_CF7 Commandes fournisseurs : stock par article et vue par client","V4.6.9_CF8 Commandes fournisseurs : documents fournisseurs (lecture des PDF, confirmations, factures, livraisons)","V4.6.9_CF9 Commandes fournisseurs : lisibilite en theme clair","V4.6.9_CF10 Commandes fournisseurs : trois fenetres (Commandes, Confirmations, Livraisons-Factures)","V4.6.9_OF1 Offres : import d'une offre (PDF, scan, Word), création ou mise à jour ligne par ligne","V4.6.9_OF1B Offres : import — type Machine proposé pour une offre à rubriques (affichage par POS)","V4.6.9_LS1 Listing : doublon servm02 placé dans la corbeille (SERVM02 900 € conservé)","V4.6.9_AG1 Agent Telegram : actions Fait / Reporter appliquées par le CRM","V4.6.9_AG3 Agent Telegram : tâches ajoutées depuis Telegram, créées par le CRM (client ou interne)","V4.6.9_OF2 Offres : import — POS des offres Morgan bilingues (une machine et ses accessoires par POS), marque déduite du Listing","V4.6.9_CHAT1 Chat interne de l'équipe : salons, messages privés, direct, non-lus, lien fiche client","V4.6.9_CHAT2 Chat : pièces jointes (photos, PDF, Word, Excel ; 10 Mo ; plafond 500 Mo)","V4.6.9_SYNC1 Synchronisation : une modification enregistrée pendant un envoi (ex. articles d'une offre) n'est plus effacée","V4.6.9_TI1 Tâches internes au calendrier : rappels quotidiens (lun–sam), heure de fin demandée, archivées au calendrier","V4.6.9_CL1 Offres : classement (probabilité, évaluation, valeur, client) sur les cartes et dans les statistiques"],corrections:["boutons d'ajout soumis au droit calendar/edit","pas de confirmation de suppression sans le droit calendar/delete","date de relance de nouveau enregistree","double-clic : ouverture de l'editeur","barre mobile des petits ecrans"]};
 try{console.info("[CRM] "+window.MGT_V469.version+" chargé");}catch(e){}
 </script>
 <script id="mgt-ls1-doublon-servm02">
