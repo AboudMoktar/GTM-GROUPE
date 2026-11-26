@@ -20624,7 +20624,7 @@ function elements(){var T=visibles(),k=signature()+'|'+iso(new Date());if(memo.k
 function calAvec(L,opt){opt=opt||{};var E=elements();if(opt.rappels===false)E=E.filter(function(a){return a._ti==='fait';});return E.length?(L||[]).concat(E):(L||[]);}
 /* ---------- module Tâches : une tâche interne TERMINÉE n'y apparaît plus (archivée au calendrier) ---------- */
 var prevActions=window.__tkIntActions;
-if(typeof prevActions==='function')window.__tkIntActions=function(){return prevActions.apply(this,arguments).filter(function(a){return !(a._int&&termine(a._int));});};
+if(typeof prevActions==='function')window.__tkIntActions=function(){return prevActions.apply(this,arguments).filter(function(a){return !(a._int&&termine(a._int)&&!a._int.repeat);});}; /* GTM : une tâche répétée (chaque jour) reste visible pour être recréée */
 /* ---------- « Terminée » : date et heure demandées ---------- */
 var basePatch=API.patch.bind(API);
 function rafraichir(){memo.k=null;try{if(window.MGT_CAL)MGT_CAL.invalidate();}catch(e){}try{var m=document.getElementById('calendarModule');if(m&&m.offsetParent&&typeof renderCalendar==='function')renderCalendar();}catch(e){}
