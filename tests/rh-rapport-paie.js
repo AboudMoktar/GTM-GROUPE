@@ -44,6 +44,14 @@ const {chromium} = require('playwright'); const serveur = require(__dirname + '/
   });
   r.push(['Excel : synthèse + une feuille par employé', noms.length === 3 && noms[0] === 'Rapport RH' && noms.indexOf('Amal Test') >= 0 && noms.indexOf('Sami Test') >= 0]);
   r.push(['aucune erreur JavaScript', err.length === 0]); if (err.length) console.log(err.slice(0, 5));
+  // PDF : vrai fichier A4 paysage (pas l'impression du navigateur), présence jour par jour puis totaux
+  const dl = p.waitForEvent('download', {timeout: 20000}).catch(() => null);
+  await p.evaluate(() => rrPdf('paie', '2026-11-01', '2026-11-30')); const f = await dl;
+  let pdf = ''; if (f) pdf = require('fs').readFileSync(await f.path()).toString('latin1');
+  const boites = (pdf.match(/\/MediaBox\s*\[([^\]]+)\]/g) || []).map(x => x.replace(/[^\d. ]/g, ' ').trim().split(/\s+/).map(Number));
+  r.push(['PDF de la paie : fichier PDF téléchargé', !!f && /\.pdf$/.test(f.suggestedFilename()) && pdf.startsWith('%PDF')]);
+  r.push(['PDF de la paie : A4 paysage (842 × 595)', boites.length >= 1 && boites.every(b => Math.round(b[2]) === 842 && Math.round(b[3]) === 595)]);
+  r.push(['PDF de la paie : tableau jour par jour puis totaux pour la paie', /Pr\S*sence jour par jour/.test(pdf) && /Totaux pour la paie/.test(pdf)]);
   let n = 0; r.forEach(x => { if (!x[1]) n++; console.log((x[1] ? 'ok   ' : 'ÉCHEC ') + x[0]); });
   console.log(n ? n + ' échec(s)' : 'ok   aucune erreur');
   await b.close(); s.close(); process.exit(n ? 1 : 0);

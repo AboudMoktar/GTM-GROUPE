@@ -186,9 +186,56 @@ window.rrCorrigerAut = function(empId, date, i, champ, v){
   a[empId] = {...cur, autorisations:l, src:'manuel'}; saveAttendance(date, a); rrApres(); setTimeout(() => rrCorriger(empId, date), 50);
 };
 
-// ---------- PDF (impression : « Enregistrer au format PDF ») ----------
-window.rrPdf = function(type, debut, fin, empId){
+// ---------- PDF : vrai fichier PDF A4 PAYSAGE (jsPDF, servi par le site), lisible sur téléphone ----------
+// 26/11/2026 : l'impression du navigateur (Android) ignorait le paysage et réduisait tout sur une page portrait.
+// Avec le tableau jour par jour : 1er tableau = présence jour par jour, 2e tableau = totaux pour la paie (police lisible).
+let rrPdfPret = null;
+function rrChargerPdf(){
+  if(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+  const script = (src) => new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ko(new Error('Moteur PDF indisponible')); document.head.appendChild(s); });
+  if(!rrPdfPret) rrPdfPret = script('./mgt-pdf-jspdf.js').then(() => script('./mgt-pdf-autotable.js')).catch(e => { rrPdfPret = null; throw e; });
+  return rrPdfPret;
+}
+const rrTxt = (v) => String(v == null ? '' : v).replace(/[   ]/g, ' ').replace(/[−–—]/g, '-').replace(/[‹›]/g, '');
+const rrRgb = (argb) => { const h = String(argb || '').slice(-6); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+window.rrPdf = async function(type, debut, fin, empId){
   const D = rrDonnees(type, debut, fin, empId); if(!D) return;
+  try { await rrChargerPdf(); } catch(e) { return rrPdfImpression(D); }
+  try {
+    const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'landscape'}), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    const mat = D.matrice, fixes = mat ? mat.debut : 0, titre = 'TEK-TREND - ' + rrTxt(D.titre);
+    const sous = D.resume.map(r => rrTxt(r[0]) + ' : ' + rrTxt(r[1])).join('   ·   ') + '   ·   Édité le ' + new Date().toLocaleDateString('fr-FR');
+    let y = 14;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(15, 61, 102); doc.text(titre, 10, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90); doc.text(doc.splitTextToSize(sous, W - 20), 10, y + 6); y += 12;
+    const couleur = (k, i, data) => {   // couleur des codes (P, A, M…) et jours non travaillés
+      const dm = mat && i >= mat.debut && i <= mat.fin, cd = D.codes && dm ? D.codes[k][i - mat.debut] : (D.colCode === i ? data : null);
+      if(!cd || cd === '?' || data === '' || data == null) return null; return RR_COULEURS[cd] ? rrRgb(RR_COULEURS[cd]) : null;
+    };
+    const tableau = (cols, police, titreBloc) => {
+      if(titreBloc){ if(y > H - 30){ doc.addPage(); y = 14; } doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(15, 61, 102); doc.text(titreBloc, 10, y); y += 3; }
+      const cs = {}; cols.forEach((i, j) => { cs[j] = i === 1 ? {halign:'left', fontStyle:'bold', cellWidth:'wrap'} : i === 2 ? {halign:'left', cellWidth:'wrap'} : i === 0 ? {halign:'left', cellWidth:'wrap'} : {halign:'center'}; });
+      doc.autoTable({startY:y, head:[cols.map(i => rrTxt(D.entetes[i]))], body:D.lignes.map(l => cols.map(i => rrTxt(l[i]))),
+        theme:'grid', styles:{fontSize:police, cellPadding:mat && cols.length > 20 ? 0.9 : 1.6, lineColor:[190, 190, 190], lineWidth:0.15, textColor:20, valign:'middle', overflow:'linebreak'},
+        headStyles:{fillColor:[15, 61, 102], textColor:255, fontStyle:'bold', halign:'center', fontSize:police}, columnStyles:cs, margin:{left:8, right:8, top:12, bottom:12},
+        didParseCell:(d) => { if(d.section !== 'body') return; const i = cols[d.column.index], c = couleur(d.row.index, i, d.cell.raw); if(c){ d.cell.styles.fillColor = c; d.cell.styles.fontStyle = 'bold'; }
+          if(mat && i >= mat.debut && i <= mat.fin && D.jours && !getSlotsForDate(D.jours[i - mat.debut]).length) d.cell.styles.fillColor = [238, 238, 238]; },
+        didDrawPage:() => { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(titre, 8, H - 5); doc.text('Page ' + doc.internal.getNumberOfPages(), W - 8, H - 5, {align:'right'}); }});
+      y = doc.lastAutoTable.finalY + 6;
+    };
+    const tous = D.entetes.map((h, i) => i);
+    if(mat){
+      const nJ = mat.fin - mat.debut + 1;
+      tableau(tous.filter(i => i <= mat.fin), nJ > 31 ? 5.5 : 7.5, 'Présence jour par jour');
+      tableau(tous.filter(i => i < fixes || i > mat.fin), 9, D.paie ? 'Totaux pour la paie' : 'Totaux');
+    } else tableau(tous, D.entetes.length > 14 ? 8 : 9.5, '');
+    if(mat || D.colCode != null){ if(y > H - 16){ doc.addPage(); y = 14; } doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(90);
+      doc.text(doc.splitTextToSize('Légende : ' + Object.entries(RR_CODES).map(([k, v]) => k + ' ' + rrTxt(v)).join(' · '), W - 16), 8, y); }
+    doc.save('TEK-TREND_' + D.fichier + '.pdf'); showToast('PDF enregistré (A4 paysage)');
+  } catch(e) { console.error('PDF RH', e); rrPdfImpression(D); }
+};
+// secours : impression du navigateur (ancienne méthode)
+function rrPdfImpression(D){
   const mat = D.matrice, tr = D.lignes.map((l, k) => '<tr>' + l.map((v, i) => {
     const dm = mat && i >= mat.debut && i <= mat.fin, cd = D.codes && dm ? D.codes[k][i - mat.debut] : v;
     const code = (D.colCode === i || dm) && v !== '' && v != null && cd && cd !== '—' ? String(cd) : '';
