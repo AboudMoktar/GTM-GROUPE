@@ -723,6 +723,7 @@ function onFirebaseDataMaintenant(){
   }
   if(document.querySelector('.modal-backdrop')){ /* une fenêtre est ouverte (ex: affectations) : ne pas la fermer */ }
   else if(activeTab === 'commandes-home'){ fbFirstLoad = false; suiviNotifier(); }
+  else if(String(activeTab).indexOf('stock-') === 0){ fbFirstLoad = false; stockNotifier(); }
   else if(fbFirstLoad){ fbFirstLoad = false; nav(activeTab); }
   else if(activeTab === 'saisie' || activeTab === 'sessions'){ /* ne pas interrompre une saisie en cours */ }
   else if(activeTab === 'messages'){
@@ -1196,6 +1197,7 @@ function renderModuleSelect(){
             ['gadh-rh', 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
             ['gadh-commandes', 'Gestion des commandes', 'Offres, commandes, approvisionnement, stock, livraisons, rentabilité'],
             ['commandes', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
+            ['stock', 'Gestion de stock', 'Matières PERCKO et TEK-TREND, mouvements, machines'],
             ['machines', 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
             ['factures', 'Facturation', 'Factures, avoirs, paiements, relances']
           ].filter(m => mods.indexOf(m[0]) >= 0).map(m => { const v = GTMH_MOD[m[0]] || ['#3B8DF0', '#1565D8', 'barres']; return `<button class="gtmh-mcarte" data-module="${m[0]}" style="--m1:${v[0]};--m2:${v[1]};" onclick="chooseModule('${m[0]}')">
@@ -1385,6 +1387,7 @@ function navItems(){
   if(activeModule === 'commandes'){
     return [{tab:'commandes-home', label:'Commandes', icon:ICONS.prodchain, show:true}];
   }
+  if(activeModule === 'stock') return stockNavItems();
   if(activeModule === 'rh'){
     const items = [
       {tab:'rh-dashboard', label:'Accueil', icon:ICONS.dashboard, show:true},
@@ -1504,7 +1507,7 @@ function renderShell(){
     </div>
   `;
   setSyncBadge(firebaseConfigured() ? (firebaseReady ? 'ok' : 'connecting') : 'off');
-  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : activeModule === 'gadh-commandes' ? 'gc-accueil' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : 'dashboard')));
+  nav(activeModule === 'factures' ? 'fact-liste' : activeModule === 'machines' ? 'arr-dashboard' : activeModule === 'mgt' ? 'mgt-dashboard' : activeModule === 'rh' ? 'rh-dashboard' : activeModule === 'chaine' ? 'chaine-tableau' : activeModule === 'tek-dashboard' ? 'tek-dash-vue' : activeModule === 'gadh-tableau' ? 'gadh-tableau-vue' : activeModule === 'gadh-rh' ? 'gadh-rh-pointage' : activeModule === 'gadh-commandes' ? 'gc-accueil' : (activeModule === 'gadh' ? 'gadh-dashboard' : (activeModule === 'commandes' ? 'commandes-home' : activeModule === 'stock' ? 'stock-tb' : 'dashboard')));
 }
 
 // Barre du bas du téléphone (refonte 23/11/2026) : au plus 5 boutons ; au-delà, les 4 premiers
@@ -1573,6 +1576,7 @@ function nav(tab){
   else if(tab === 'gadh-stats'){ renderGadhStats(gadhSectionContainer(main,'Statistiques')); }
   else if(tab === 'gadh-prodchain'){ renderProdChainGadh(main); }
   else if(tab === 'commandes-home'){ renderSuiviFrame(main); }
+  else if(tab.indexOf('stock-') === 0){ renderStockFrame(main, tab.slice(6)); }
   else if(tab === 'cmd-historique'){ renderHistoriqueTek(main); }
   else if(tab.indexOf('gc-') === 0){ renderGC(tab, main); }
   else if(tab.indexOf('mgt-') === 0){ renderMgt(tab, main); }
