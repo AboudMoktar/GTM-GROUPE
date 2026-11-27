@@ -45,9 +45,9 @@ async function donnees(p){
   r.push(['recherche d\'une référence', await p.locator('.ph-t tbody tr:not(.st):not(.tg)').count() === 2 && /\(filtre\)/.test(await txt('.ph-kpi')) && await p.evaluate(() => document.activeElement && document.activeElement.type === 'search')]);
   await p.fill('.ph-outils input[type=search]', ''); await p.waitForTimeout(150);
   // filtres
-  await p.selectOption('.ph-outils select[title=Client]', 'ALLOGA'); await p.waitForTimeout(150);
+  await p.selectOption('.ph-outils select[title=Destination]', 'ALLOGA'); await p.waitForTimeout(150);
   r.push(['filtre par client', await p.locator('.ph-t tbody tr:not(.st):not(.tg)').count() === 1 && /40/.test(await txt('.ph-kpi'))]);
-  await p.selectOption('.ph-outils select[title=Client]', ''); await p.selectOption('.ph-outils select[title="État"]', 'rien'); await p.waitForTimeout(150);
+  await p.selectOption('.ph-outils select[title=Destination]', ''); await p.selectOption('.ph-outils select[title="État"]', 'rien'); await p.waitForTimeout(150);
   r.push(['filtre « pas commencé »', await p.locator('.ph-t tbody tr:not(.st):not(.tg)').count() === 1 && /Tee-shirt Sport/.test(await txt('.ph-t tbody'))]);
   await p.click('text=✕ Tout afficher'); await p.waitForTimeout(150);
   // tri
@@ -146,7 +146,7 @@ async function donnees(p){
   await q.evaluate(() => { ui.pil = null; render(); }); await q.waitForTimeout(250);
   const pv = await q.evaluate(() => ({head: [...document.querySelectorAll('.ph-t thead th')].map(t => t.textContent.trim()), n: document.querySelectorAll('.ph-t tbody tr:not(.st):not(.tg):not(.gh)').length,
     gm: [...[...document.querySelectorAll('.ph-t tbody tr')].find(tr => /GRIS/.test(tr.textContent) && [...tr.children].some(td => td.textContent.trim() === 'M')).children].map(td => (td.querySelector('input') || td).value || td.textContent.trim())}));
-  r.push(['colonnes NEOLYS, ALLOGA puis Total (pas de colonne Client)', pv.head.join('|').includes('NEOLYS|ALLOGA|Total') && !pv.head.includes('Client')]);
+  r.push(['colonnes NEOLYS, ALLOGA puis Total (pas de colonne Destination)', pv.head.join('|').includes('NEOLYS|ALLOGA|Total') && !pv.head.includes('Destination')]);
   r.push(['une ligne par référence × taille (GRIS M : 130 + 40 = 170)', pv.n === 5 && pv.gm.includes('130') && pv.gm.includes('40') && pv.gm.includes('170')]);
   await q.fill('.ph-in[data-id="agg:PHARMA_HOMME COL V GRIS|M"][data-k="ctl"]', '150'); await q.keyboard.press('Enter'); await q.waitForTimeout(150);
   await q.click('text=✔ Valider'); await q.waitForTimeout(150); await q.click('text=✔ Confirmer et enregistrer'); await q.waitForTimeout(400);
@@ -155,8 +155,8 @@ async function donnees(p){
   await q.fill('.ph-in[data-id="G_MA"][data-k="fr"]', '45'); await q.keyboard.press('Enter'); await q.waitForTimeout(150);
   await q.click('text=✔ Valider'); await q.waitForTimeout(150); await q.click('text=✔ Confirmer et enregistrer'); await q.waitForTimeout(400);
   r.push(['quantité d\'un client modifiable dans sa colonne (ALLOGA M 40 → 45)', await q.evaluate(() => lineById('G_MA').qty) === 45]);
-  await q.click('text=Une ligne par client'); await q.waitForTimeout(200);
-  r.push(['bouton « Une ligne par client » : retour à la vue par client', await q.locator('.ph-t thead th', {hasText: 'Client'}).count() === 1]);
+  await q.click('text=Une ligne par destination'); await q.waitForTimeout(200);
+  r.push(['bouton « Une ligne par destination » : retour à la vue par destination ; client PERCKO dans l\'en-tête', await q.locator('.ph-t thead th', {hasText: 'Destination'}).count() === 1 && /PERCKO · NEOLYS \+ ALLOGA/.test(await q.locator('.ph-titre').textContent())]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if (err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
