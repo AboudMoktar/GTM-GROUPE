@@ -577,7 +577,7 @@ function catalogueModeles(lot, cl){
   var o = [], par = {};
   /* FLÉCHÉS / VESTIAIRES : une ligne à part par modèle (« LIBELLÉ · FLÉCHÉS »), pour l'export choisi */
   function aj(lib, size, dans, sp){ var k = lib + "|" + (sp || ""), m = par[k]; if (!m){ m = par[k] = {lib:lib, sp:sp || "", key:k, sizes:[], dans:false}; o.push(m); } if (size && m.sizes.indexOf(size) < 0) m.sizes.push(size); if (dans) m.dans = true; }
-  S.lines.forEach(function(l){ if (l.lot === lot) aj(l.lib, l.size, l.client === cl || estSpecial(l.client), estSpecial(l.client) ? l.client : ""); });
+  S.lines.forEach(function(l){ if (l.lot === lot) aj(l.lib, l.size, l.client === cl || (estSpecial(l.client) && cl === (typeof DEST_SPECIAUX === "string" ? DEST_SPECIAUX : "NEOLYS")), estSpecial(l.client) ? l.client : "");   /* FLÉCHÉS / VESTIAIRES en tête sur un export NEOLYS ; proposés plus bas sur ALLOGA */ });
   libList().forEach(function(x){ x.sizes.forEach(function(s){ aj(x.lib, s, false); }); });
   /* exosquelettes et brassières (24/11/2026) : hors nomenclature GADH, ils sont repris de toutes les commandes du suivi
      (avec leurs tailles) ; à défaut, les modèles de base (EXOSQUELETTE taille unique, brassières S à XXL) */

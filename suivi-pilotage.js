@@ -156,6 +156,8 @@ function lignesPilotage(lot){
 /* comme la commande (27/11/2026) : une ligne par référence × taille, une colonne par client (seulement les clients
    de la commande : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES… s'ils ont des quantités) et un Total ; les étapes = somme des clients */
 var ORDRE_CLIENTS = ["NEOLYS", "ALLOGA", "FLÉCHÉS", "VESTIAIRES"];
+/* destinations (NEOLYS, ALLOGA) ; FLÉCHÉS / VESTIAIRES = pièces livrées presque toujours chez NEOLYS */
+function destTxt(cl){ var sp = typeof estSpecial === "function" ? cl.filter(estSpecial) : [], d = cl.filter(function(c){ return sp.indexOf(c) < 0; }); return d.join(" + ") + (sp.length ? " (" + sp.join(", ") + " chez " + (typeof DEST_SPECIAUX === "string" ? DEST_SPECIAUX : "NEOLYS") + ")" : ""); }
 function clientsOrdonnes(rows){
   var u = sortedUnique(rows.map(function(r){ return r.client; }).filter(Boolean));
   return u.sort(function(a, b){ var ia = ORDRE_CLIENTS.indexOf(a), ib = ORDRE_CLIENTS.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : a > b ? 1 : 0); });
@@ -470,7 +472,7 @@ window.vPilotage = function(v){
   } else dc = el("b", {text:L.dc ? dmyL(L.dc) : "—"});
   var E = etatLot(lot, Tall), maj = derniereMaj(lot);
   v.appendChild(el("div", {class:"ph-head"},
-    el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · PERCKO · " + clients.join(" + ")}))),
+    el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · PERCKO · " + destTxt(clients)}))),
     el("div", {class:"ph-info"}, el("small", {text:"Date commande"}), dc),
     el("div", {class:"ph-info"}, el("small", {text:"Lot"}), el("b", {text:lot})),
     typeof libelleCommande === "function" && libelleCommande(lot) ? el("div", {class:"ph-info"}, el("small", {text:"Commande"}), el("b", {text:libelleCommande(lot)})) : null,
@@ -698,7 +700,7 @@ window.vPilotage = function(v){
     var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && c.k !== "coul"; });
     var PV = pivot(), SA = saisissables();
     if (PV){   /* une colonne par client puis le Total (comme la commande) */
-      var cc = clients.map(function(cl){ return {k:"q:" + cl, t:cl, w:72, cli:cl, titre:"PERCKO chez " + cl}; });
+      var cc = clients.map(function(cl){ return {k:"q:" + cl, t:cl, w:72, cli:cl, titre:typeof estSpecial === "function" && estSpecial(cl) ? "Pièces " + cl + " : livrées presque toujours chez " + (typeof DEST_SPECIAUX === "string" ? DEST_SPECIAUX : "NEOLYS") : "PERCKO chez " + cl}; });
       cols = cols.reduce(function(o, c){ if (c.k === "client") return o; if (c.k === "fr") return o.concat(cc).concat([{k:"fr", t:"Total", w:74, tot:1}]); return o.concat([c]); }, []);
       var SA2 = {}; Object.keys(SA).forEach(function(k){ if (k !== "fr" && k !== "rest") SA2[k] = 1; }); if (SA.fr) clients.forEach(function(cl){ SA2["q:" + cl] = 1; }); SA = SA2;
     }
