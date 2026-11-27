@@ -153,6 +153,52 @@ function lignesPilotage(lot){
     return o;
   }).filter(function(o){ return o.fr > 0 || ETAPES_TEK.some(function(e){ return o[e[0]] > 0; }); });   /* seulement les tailles qui ont des quantités (24/11/2026) */
 }
+/* comme la commande (27/11/2026) : une ligne par référence × taille, une colonne par client (seulement les clients
+   de la commande : NEOLYS, ALLOGA, FLÉCHÉS, VESTIAIRES… s'ils ont des quantités) et un Total ; les étapes = somme des clients */
+var ORDRE_CLIENTS = ["NEOLYS", "ALLOGA", "FLÉCHÉS", "VESTIAIRES"];
+function clientsOrdonnes(rows){
+  var u = sortedUnique(rows.map(function(r){ return r.client; }).filter(Boolean));
+  return u.sort(function(a, b){ var ia = ORDRE_CLIENTS.indexOf(a), ib = ORDRE_CLIENTS.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : a > b ? 1 : 0); });
+}
+function agreger(rows, clients){
+  var par = {}, out = [];
+  rows.forEach(function(r){
+    var k = r.lib + "|" + r.size, a = par[k];
+    if (!a){ a = par[k] = {id:"agg:" + k, agg:true, ids:[], par:{}, qc:{}, model:r.model, lib:r.lib, coul:r.coul, cbg:r.cbg, cfg:r.cfg, size:r.size, client:"", ord:r.ord, fr:0, rest:0, aExp:0, surplus:0};
+      ETAPES_TEK.forEach(function(e){ a[e[0]] = 0; }); out.push(a); }
+    a.ids.push(r.id); a.par[r.client] = r; a.qc[r.client] = (a.qc[r.client] || 0) + r.fr; a.client = a.client ? a.client + " " + r.client : r.client;
+    a.fr += r.fr; a.rest += r.rest; a.aExp += (r.aExp === undefined ? r.rest : r.aExp); a.surplus += r.surplus || 0;
+    ETAPES_TEK.forEach(function(e){ a[e[0]] += r[e[0]]; });
+  });
+  out.forEach(function(a){ a.ids.sort(function(x, y){ var cx = (rows.filter(function(r){ return r.id === x; })[0] || {}).client, cy = (rows.filter(function(r){ return r.id === y; })[0] || {}).client; return clients.indexOf(cx) - clients.indexOf(cy); });
+    a.av = G ? pct(a.ret, a.gadh) : pct(a.fr - a.rest, a.fr); });
+  return out;
+}
+/* une saisie sur une ligne agrégée (étape) est répartie entre les lignes des clients : hausse = d'abord ce qui est
+   disponible à l'étape précédente de chaque client (dans l'ordre des clients), le reste sur le client le plus commandé ;
+   baisse = d'abord ce qui n'est pas encore passé à l'étape suivante, en partant du dernier client */
+function repartir(changes){
+  var tot = stageTotals(), ks = ETAPES.map(function(e){ return e[0]; }), cur = {}, out = [];
+  function val(id, k){ var key = id + "|" + k; if (key in cur) return cur[key]; if (k === "fr"){ var l = lineById(id); return l ? qteCmd(l) : 0; } return (tot[id] || {})[k] || 0; }
+  changes.filter(function(c){ return !/^agg:/.test(c.id); }).forEach(function(c){ cur[c.id + "|" + c.k] = c.v; out.push(c); });
+  var agg = changes.filter(function(c){ return /^agg:/.test(c.id); });
+  agg.sort(function(a, b){ return ks.indexOf(a.k) - ks.indexOf(b.k); });
+  agg.forEach(function(c){
+    var ids = c.ids || [], i = ks.indexOf(c.k), avant = ids.reduce(function(t, id){ return t + val(id, c.k); }, 0), d = c.v - avant;
+    if (!d || !ids.length) return;
+    var nv = {}; ids.forEach(function(id){ nv[id] = val(id, c.k); });
+    if (d > 0){
+      ids.forEach(function(id){ if (d <= 0) return; var prev = i <= 0 ? val(id, "fr") : val(id, ks[i - 1]), dispo = Math.max(0, prev - nv[id]), m = Math.min(dispo, d); nv[id] += m; d -= m; });
+      if (d > 0){ var big = ids.slice().sort(function(x, y){ return val(y, "fr") - val(x, "fr"); })[0]; nv[big] += d; }
+    } else {
+      d = -d; var inv = ids.slice().reverse();
+      inv.forEach(function(id){ if (d <= 0) return; var nxt = i >= 0 && i < ks.length - 1 ? val(id, ks[i + 1]) : 0, libre = Math.max(0, nv[id] - nxt), m = Math.min(libre, d); nv[id] -= m; d -= m; });
+      inv.forEach(function(id){ if (d <= 0) return; var m = Math.min(nv[id], d); nv[id] -= m; d -= m; });
+    }
+    ids.forEach(function(id){ if (nv[id] !== val(id, c.k)){ cur[id + "|" + c.k] = nv[id]; out.push({id:id, k:c.k, v:nv[id]}); } });
+  });
+  return out;
+}
 function sommer(rows){
   var t = {fr:0, rest:0, aExp:0, surplus:0, n:rows.length}; ETAPES_TEK.forEach(function(e){ t[e[0]] = 0; });
   rows.forEach(function(r){ t.fr += r.fr; t.rest += r.rest; t.aExp += (r.aExp === undefined ? r.rest : r.aExp); t.surplus += r.surplus; ETAPES_TEK.forEach(function(e){ t[e[0]] += r[e[0]]; }); });
@@ -410,7 +456,11 @@ window.vPilotage = function(v){
   if (!P.init && ui.client && ui.client !== "*"){ P.f.client = ui.client; } P.init = true;
   var Tall = sommer(toutes), L = S.lots[lot] || {};
   var annee = (S.lines.filter(function(l){ return l.lot === lot; })[0] || {}).year || "";
-  var clients = sortedUnique(toutes.map(function(r){ return r.client; }));
+  var clients = clientsOrdonnes(toutes), AGG = {};
+  function pivot(){ return clients.length > 1 && !P.f.client && !P.parClient; }
+  function vue(rows){ if (!pivot()) return rows; var a = agreger(rows, clients); AGG = {}; a.forEach(function(x){ AGG[x.id] = x; }); return a; }
+  /* lignes réelles (exports, coches) derrière les lignes agrégées */
+  function aplatir(rows){ var o = []; rows.forEach(function(r){ if (r.agg) r.ids.forEach(function(id){ var x = toutes.filter(function(t){ return t.id === id; })[0]; if (x) o.push(x); }); else o.push(r); }); return o; }
   /* en-tête */
   var modif = !lectureSeule() && VUE !== "gadh";
   var dc;
@@ -449,40 +499,44 @@ window.vPilotage = function(v){
   function annuler(){ if (!P.hist.length){ toast("Rien à annuler."); return; } P.br = P.hist.pop(); P.plage = null; P.ancre = null; P.fin = null; dessiner(); toast("Dernière saisie annulée."); }
   window.pkPilotageAnnuler = annuler;
   function noter(id, k, v){
+    var cle = id + "|" + k;
+    if (/^agg:/.test(id)){ var a = AGG[id]; if (!a) return; var st = stageTotals(), cu = a.ids.reduce(function(t, x){ return t + ((st[x] || {})[k] || 0); }, 0);
+      if (v === cu) delete P.br[cle]; else P.br[cle] = {id:id, k:k, v:v, avant:cu, ids:a.ids.slice(), lib:a.lib, size:a.size}; return; }
     var l = lineById(id); if (!l) return;
-    var cur = k === "fr" ? qteCmd(l) : ((stageTotals()[id] || {})[k] || 0), cle = id + "|" + k;
+    var cur = k === "fr" ? qteCmd(l) : ((stageTotals()[id] || {})[k] || 0);
     if (v === cur) delete P.br[cle]; else P.br[cle] = {id:id, k:k, v:v, avant:cur};
   }
   function confirmerAttente(){
     var ch = Object.keys(P.br).map(function(c){ return P.br[c]; }), noms = {}; COLS.forEach(function(c){ noms[c.k] = c.t; });
     if (!ch.length) return;
     var ordre = {fr:-1}; ETAPES.forEach(function(e, i){ ordre[e[0]] = i; });
-    ch.sort(function(a, b){ var la = lineById(a.id) || {}, lb = lineById(b.id) || {}; return (la.lib < lb.lib ? -1 : la.lib > lb.lib ? 1 : sizeIdx(la.size) - sizeIdx(lb.size)) || (la.client < lb.client ? -1 : la.client > lb.client ? 1 : 0) || ordre[a.k] - ordre[b.k]; });
+    ch.sort(function(a, b){ var la = lineById(a.id) || a, lb = lineById(b.id) || b; return (la.lib < lb.lib ? -1 : la.lib > lb.lib ? 1 : sizeIdx(la.size) - sizeIdx(lb.size)) || (la.client < lb.client ? -1 : la.client > lb.client ? 1 : 0) || ordre[a.k] - ordre[b.k]; });
     ui.pend = {modal:true};
     var box = sxModal();
     box.appendChild(el("div", {class:"sx-cnum", style:"text-align:center", text:"✏️ Enregistrer " + ch.length + " modification(s) ?"}));
     box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:"Commande " + lot + " · date de saisie " + dmy(P.date || today())}));
     if (ch.some(function(c){ return c.k === "fr"; })) box.appendChild(el("div", {class:"ph-alerte", text:"Les quantités commandées changent : l'ordre de coupe et les consommations seront recalculés" + (ch.some(function(c){ return c.k === "fr" && c.v === 0; }) ? " ; une taille à 0 sort de la commande (elle reste affichée à 0 si elle a déjà été traitée)." : ".")}));
     var lst = el("div", {class:"ph-chg"});
-    ch.forEach(function(c){ var l = lineById(c.id) || {}, d = c.v - c.avant;
-      lst.appendChild(el("div", null, el("span", {text:l.lib + " " + l.size + (clients.length > 1 ? " · " + l.client : "") + " — " + (noms[c.k] || c.k)}), el("b", {style:"color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(c.avant) + " → " + fmt(c.v) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
+    ch.forEach(function(c){ var l = lineById(c.id) || {lib:c.lib, size:c.size, client:c.ids ? "tous clients" : ""}, d = c.v - c.avant;
+      lst.appendChild(el("div", null, el("span", {text:l.lib + " " + l.size + (clients.length > 1 ? " · " + l.client : "") + " — " + (c.k === "fr" && clients.length > 1 ? "Qté " + l.client : (noms[c.k] || c.k))}), el("b", {style:"color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(c.avant) + " → " + fmt(c.v) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
     box.appendChild(lst);
     var lireDates = blocDates(box, ch);
     box.appendChild(el("div", {class:"mut", style:"font-size:12.5px;margin-bottom:8px", text:"Tout ou rien : si une quantité ne suit pas l'étape précédente, rien n'est enregistré et vos saisies restent en attente pour être corrigées."}));
     box.appendChild(el("button", {class:"sx-go", style:"width:100%", text:"✔ Confirmer et enregistrer", onclick:function(){
       sxClose(); var garde = P.br; P.br = {}; P.hist = [];
-      if (!appliquer(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v}; }), ch.length + " modification(s) enregistrée(s)", lireDates())){ P.br = garde; render(true); }
+      var reel; try { reel = repartir(ch.map(function(c){ return {id:c.id, k:c.k, v:c.v, ids:c.ids}; })); } catch (e) { reel = null; }
+      if (!reel || !appliquer(reel, ch.length + " modification(s) enregistrée(s)", lireDates())){ P.br = garde; render(true); }
     }}));
     box.appendChild(el("button", {class:"sx-annul", text:"Revenir à la saisie", onclick:sxClose}));
   }
 
   function dessiner(){
     zone.innerHTML = "";
-    var vis = trier(appliquerFiltres(toutes)), T = sommer(vis), filtre = vis.length !== toutes.length;
+    var visL = appliquerFiltres(toutes), vis = trier(vue(visL)), T = sommer(visL), filtre = visL.length !== toutes.length;
     /* chiffres clés (sur les lignes affichées) */
     var kp = el("div", {class:"ph-kpis"});
     function carte(titre, val, p, coul, sous){ return el("div", {class:"ph-kpi", style:"--c:" + coul}, el("small", {text:titre}), el("b", {text:val}), p === null ? (sous ? el("div", {class:"p", text:sous}) : null) : el("div", {class:"p", text:fmtPct(p)}), p === null ? null : el("div", {class:"ph-bar"}, el("i", {style:"width:" + Math.min(100, p) + "%"}))); }
-    kp.appendChild(carte("Qté commandée" + (filtre ? " (filtre)" : ""), fmt(T.fr) + " pcs", null, "#1d3557", vis.length + " ligne(s)"));
+    kp.appendChild(carte("Qté commandée" + (filtre ? " (filtre)" : ""), fmt(T.fr) + " pcs", null, "#1d3557", vis.length + " ligne(s)" + (pivot() ? " · " + clients.join(" + ") : "")));
     ETAPES.forEach(function(e){ kp.appendChild(carte(e[1], fmt(T[e[0]]) + " pcs", pct(T[e[0]], T.fr), e[3])); });
     if (G) kp.appendChild(carte("Encore à la GADH", fmt(T.rest) + " pcs", null, "#b42318", "reçue − retournée"));
     else kp.appendChild(carte("Reste à produire", fmt(T.rest) + " pcs", null, "#b42318", T.surplus ? "+ " + fmt(T.surplus) + " en surplus" : "commandée − (contrôlée, emballée ou expédiée)"));
@@ -518,6 +572,7 @@ window.vPilotage = function(v){
     if (clients.length > 1) o.appendChild(choix("client", "Client", uniq("client")));
     o.appendChild(choix("etat", "État", [["reste", "Reste à produire"], ["cours", "En cours"], ["rien", "Pas commencé"], ["fini", "Terminé (expédié)"]]));
     o.appendChild(el("button", {class:"btn small sec", text:P.grp ? "Sans sous-totaux" : "Sous-totaux par modèle", onclick:function(){ P.grp = !P.grp; dessiner(); }}));
+    if (clients.length > 1 && !P.f.client) o.appendChild(el("button", {class:"btn small sec", text:P.parClient ? "Une colonne par client" : "Une ligne par client", title:"Comme la commande : une colonne par client et un total ; ou une ligne par client", onclick:function(){ P.parClient = !P.parClient; P.br = {}; P.hist = []; dessiner(); }}));
     if (filtre || P.tri) o.appendChild(el("button", {class:"btn small sec", text:"✕ Tout afficher", onclick:function(){ P.f = {}; P.q = ""; P.tri = ""; P.sens = ""; dessiner(); }}));
     var nSel = Object.keys(P.sel).filter(function(id){ return P.sel[id]; }).length;
     if (nSel) o.appendChild(el("span", {class:"ph-sel"}, nSel + " ligne(s) cochée(s) ", el("button", {class:"btn small sec", text:"Décocher", onclick:function(){ P.sel = {}; dessiner(); }})));
@@ -531,9 +586,9 @@ window.vPilotage = function(v){
       pli.appendChild(o); zone.appendChild(pli);
     } else zone.appendChild(o);
     /* export Excel (toute la commande, lignes affichées ou cochées) et réimport */
-    var coches = toutes.filter(function(r){ return P.sel[r.id]; });
+    var coches = aplatir(vis.filter(function(r){ return P.sel[r.id]; })).concat(pivot() ? [] : []).filter(function(r, i, a){ return a.indexOf(r) === i; });
     var portees = [["tout", "Toute la commande (" + toutes.length + " lignes)"]];
-    if (filtre) portees.push(["filtre", "Lignes affichées (" + vis.length + ")"]);
+    if (filtre) portees.push(["filtre", "Lignes affichées (" + visL.length + ")"]);
     if (coches.length) portees.push(["coche", "Lignes cochées (" + coches.length + ")"]);
     /* par défaut : les lignes cochées s'il y en a, sinon les lignes affichées, sinon toute la commande */
     if (!P.porteeChoisie || !portees.some(function(x){ return x[0] === P.portee; })){ P.portee = coches.length ? "coche" : filtre ? "filtre" : "tout"; P.porteeChoisie = false; }
@@ -541,7 +596,7 @@ window.vPilotage = function(v){
     sp.addEventListener("change", function(){ P.portee = sp.value; P.porteeChoisie = true; });
     var bx = el("div", {class:"ph-outils ph-exp"}, el("span", {class:"ph-dsai", text:"Exporter :"}), sp,
       el("button", {class:"btn small", text:"📗 Excel", onclick:function(){ var a = argsExport(); exporterExcel(lot, a.rows, a.portee, P.grp, a.suf); }}));
-    function argsExport(){ var q = P.portee; return {rows:q === "coche" ? trier(coches) : q === "filtre" ? vis : trier(toutes), portee:(portees.filter(function(x){ return x[0] === q; })[0] || portees[0])[1], suf:q === "coche" ? "_selection" : q === "filtre" ? "_filtre" : ""}; }
+    function argsExport(){ var q = P.portee; return {rows:q === "coche" ? trier(coches) : q === "filtre" ? trier(visL) : trier(toutes), portee:(portees.filter(function(x){ return x[0] === q; })[0] || portees[0])[1], suf:q === "coche" ? "_selection" : q === "filtre" ? "_filtre" : ""}; }
     var sf = el("select", {title:"Format du PDF"}); [["A4", "PDF A4 paysage"], ["A3", "PDF A3 paysage"]].forEach(function(x){ sf.appendChild(el("option", {value:x[0], text:x[1]})); });
     sf.value = P.format || "A4"; sf.addEventListener("change", function(){ P.format = sf.value; });
     bx.appendChild(sf);
@@ -555,7 +610,7 @@ window.vPilotage = function(v){
     (pli || zone).appendChild(bx);
     if (!G && window.etatCommandeBoutons) (pli || zone).appendChild(window.etatCommandeBoutons(lot));
     zone.appendChild(barre);
-    zone.appendChild(tableau(vis, T));
+    zone.appendChild(tableau(vis, T, visL));
     if (!lectureSeule() && !(window.matchMedia && window.matchMedia("(max-width:700px)").matches)){
       var ai = el("div", {class:"ph-aide"}); ai.innerHTML = "Comme dans Excel : <kbd>Entrée</kbd>/<kbd>↓</kbd> ligne suivante · <kbd>Tab</kbd> colonne suivante · <kbd>Maj</kbd>+flèches sélectionner · <kbd>Ctrl</kbd>+<kbd>C</kbd> copier · <kbd>Ctrl</kbd>+<kbd>V</kbd> coller un bloc d'Excel · <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> même chiffre dans la sélection · <kbd>Ctrl</kbd>+<kbd>D</kbd> recopier vers le bas · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler · <kbd>Échap</kbd> abandonner la case.";
       zone.appendChild(ai);
@@ -623,7 +678,7 @@ window.vPilotage = function(v){
   }
   /* « Tout » : toutes les pièces disponibles (étape précédente − déjà passées) des lignes données */
   function dispoTout(k, rows){
-    var lines = rows.map(function(r){ return lineById(r.id); }).filter(Boolean), out = {}, n = 0;
+    var lines = aplatir(rows).map(function(r){ return lineById(r.id); }).filter(Boolean), out = {}, n = 0;
     sxItems(k, lines).forEach(function(it){ if (it.disp > 0){ out[it.l.id] = it.fait + it.disp; n += it.disp; } });
     return {vals:out, n:n};
   }
@@ -634,14 +689,20 @@ window.vPilotage = function(v){
     dessiner(); toast(fmt(D.n) + " pièce(s) de " + nom + " à « " + et[1] + " » : en attente, appuyez sur Valider pour enregistrer.");
   }
 
-  function tableau(vis, T){
+  function tableau(vis, T, visL){
     var W = largeurs(), etroit = window.matchMedia && window.matchMedia("(max-width:700px)").matches;
     /* sur téléphone, la colonne Modèle devient une ligne de titre au-dessus de chaque groupe */
     /* colonne Client seulement si la commande a plusieurs clients ; téléphone (refonte 23/11/2026) : pas de colonne
        Couleur (la couleur borde la référence), référence sans le nom du modèle (déjà en titre du groupe), chiffres plus serrés */
     /* comme la commande Excel (24/11/2026) : Model | LIBELLE (dans sa couleur) | Taille… — plus de colonne Couleur à l'écran */
     var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && c.k !== "coul"; });
-    if (etroit) cols = cols.map(function(c){ var d = {}; for (var k in c) d[k] = c[k]; if (!W[c.k]){ if (c.k === "lib") d.w = 138; else if (c.k === "av") d.w = 96; else if (!c.txt && c.k !== "sel") d.w = Math.min(c.w, 70); } return d; });
+    var PV = pivot(), SA = saisissables();
+    if (PV){   /* une colonne par client puis le Total (comme la commande) */
+      var cc = clients.map(function(cl){ return {k:"q:" + cl, t:cl, w:72, cli:cl}; });
+      cols = cols.reduce(function(o, c){ if (c.k === "client") return o; if (c.k === "fr") return o.concat(cc).concat([{k:"fr", t:"Total", w:74, tot:1}]); return o.concat([c]); }, []);
+      var SA2 = {}; Object.keys(SA).forEach(function(k){ if (k !== "fr" && k !== "rest") SA2[k] = 1; }); if (SA.fr) clients.forEach(function(cl){ SA2["q:" + cl] = 1; }); SA = SA2;
+    }
+    if (etroit) cols = cols.map(function(c){ var d = {}; for (var k in c) d[k] = c[k]; if (!W[c.k]){ if (c.k === "lib") d.w = 138; else if (c.k === "av") d.w = 96; else if (c.cli) d.w = 64; else if (!c.txt && c.k !== "sel") d.w = Math.min(c.w, 70); } return d; });
     var t = el("table", {class:"ph-t"}), cg = el("colgroup"), tot = 0;
     cols.forEach(function(c){ var w = W[c.k] || c.w; cg.appendChild(el("col", {style:"width:" + w + "px"})); tot += w; });
     t.appendChild(cg); t.style.width = tot + "px";
@@ -677,7 +738,7 @@ window.vPilotage = function(v){
     t.appendChild(el("thead", null, hr));
     var tb = el("tbody");
     if (!vis.length){ var tr0 = el("tr"); tr0.appendChild(el("td", {colspan:String(cols.length), class:"ph-vide", text:"Aucune ligne ne correspond à la recherche ou aux filtres."})); tb.appendChild(tr0); }
-    var SA = saisissables(), ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
+    var ecols = cols.filter(function(c){ return SA[c.k]; }).map(function(c){ return c.k; }), nl = 0;
     /* une case « Reste à produire » s'enregistre comme quantité commandée = déjà passé + reste */
     function versCommande(c, f){ if (c.k === "rest"){ c.k = "fr"; c.v = (+f.getAttribute("data-fait") || 0) + c.v; } return c; }
     function cellule(rr, cc){ return zone.querySelector('.ph-in[data-r="' + rr + '"][data-c="' + cc + '"]'); }
@@ -701,11 +762,11 @@ window.vPilotage = function(v){
       photo(); ch.forEach(function(c){ noter(c.id, c.k, c.v); }); P.plage = null; P.ancre = null; P.fin = null; dessiner();
       toast(ch.length + " case(s) remplie(s) : en attente, Valider pour enregistrer (Ctrl+Z pour annuler).");
     }
-    function cellSaisie(r, k, ri){
+    function cellSaisie(r, k, ri, kc){ kc = kc || k;
       var kk = k === "rest" ? "fr" : k, fait = r.fr - r.rest;   /* reste à produire : enregistré comme quantité commandée */
       var att = P.br[r.id + "|" + kk], v0 = r[k], vu = att ? (k === "rest" ? Math.max(0, att.v - fait) : att.v) : v0;
       var td = el("td", {class:"e" + (incoherent(r, k) ? " bad" : "") + (att ? " chg" : "")});
-      var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(vu), "data-r":String(ri), "data-c":String(ecols.indexOf(k)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
+      var inp = el("input", {type:"text", inputmode:"numeric", class:"ph-in", value:String(vu), "data-r":String(ri), "data-c":String(ecols.indexOf(kc)), title:r.lib + " · " + r.size + " — " + (COLS.filter(function(c){ return c.k === k; })[0] || {}).t});
       /* la saisie est notée « en attente » (case orange) : enregistrée seulement après Valider et confirmation */
       function valider(cible){
         var n = lireNombre(inp.value);
@@ -720,9 +781,9 @@ window.vPilotage = function(v){
       }
       inp.addEventListener("focus", function(){ try { inp.select(); } catch (er) {} });
       inp.addEventListener("change", function(){ valider(null); });
-      inp.addEventListener("mousedown", function(ev){ if (ev.shiftKey && P.ancre){ ev.preventDefault(); plage(P.ancre, [ri, ecols.indexOf(k)]); inp.focus(); } else { P.ancre = [ri, ecols.indexOf(k)]; plage(null); } });
+      inp.addEventListener("mousedown", function(ev){ if (ev.shiftKey && P.ancre){ ev.preventDefault(); plage(P.ancre, [ri, ecols.indexOf(kc)]); inp.focus(); } else { P.ancre = [ri, ecols.indexOf(kc)]; plage(null); } });
       inp.addEventListener("keydown", function(ev){
-        var c = ecols.indexOf(k), to = null, mod = ev.ctrlKey || ev.metaKey;
+        var c = ecols.indexOf(kc), to = null, mod = ev.ctrlKey || ev.metaKey;
         /* comme Excel (24/11/2026) : Ctrl+Z annuler · Maj+flèches sélectionner une plage · Ctrl+C copier ·
            Ctrl+Entrée mettre ce chiffre dans toute la plage · Ctrl+D recopier vers le bas */
         if (mod && (ev.key === "z" || ev.key === "Z")){ ev.preventDefault(); annuler(); return; }
@@ -752,7 +813,7 @@ window.vPilotage = function(v){
         if (!/[\t\n]/.test(t.replace(/\r?\n$/, ""))) return;
         ev.preventDefault();
         var lignes = t.replace(/\r/g, "").replace(/\n$/, "").split("\n").map(function(x){ return x.split("\t"); });
-        var ch = [], err = 0, c0 = ecols.indexOf(k);
+        var ch = [], err = 0, c0 = ecols.indexOf(kc);
         lignes.forEach(function(cells, i){ cells.forEach(function(val, j){
           var f = zone.querySelector('.ph-in[data-r="' + (ri + i) + '"][data-c="' + (c0 + j) + '"]'); if (!f) return;
           var n = lireNombre(val); if (n === null) return; if (isNaN(n)){ err++; return; }
@@ -780,8 +841,9 @@ window.vPilotage = function(v){
         else if (c.k === "coul"){ td = el("td", {class:"cou", text:r.coul}); td.style.background = "#" + r.cbg; td.style.color = "#" + r.cfg; }
         else if (c.k === "size") td = el("td", {text:r.size, style:"font-weight:800"});
         else if (c.k === "client") td = el("td", {text:r.client});
+        else if (c.cli){ var sub = r.par && r.par[c.cli]; if (!sub) td = el("td", {text:"", class:"vide"}); else if (SA[c.k]) td = cellSaisie(sub, "fr", ri, c.k); else { td = el("td", {text:fmt(sub.fr)}); } }
         else if (c.k === "av"){ td = el("td"); td.appendChild(avance(r.av)); }
-        else if (SA[c.k] && !(c.k === "gadh" && !G && typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(r.id)))) td = cellSaisie(r, c.k, ri);   /* assemblage automatique */
+        else if (SA[c.k] && !(c.k === "gadh" && !G && typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(r.agg ? r.ids[0] : r.id)))) td = cellSaisie(r, c.k, ri);   /* assemblage automatique */
         else td = cellNum(r, c.k);
         tr.appendChild(sk(td, c.k));
       });
@@ -793,9 +855,10 @@ window.vPilotage = function(v){
       var lab = el("td", {class:"g", colspan:String(nTxt)}, el("span", {class:"ph-lab", text:lib})); if ("model" in gauche){ lab.classList.add("sk"); lab.style.left = gauche.model + "px"; } tr.appendChild(lab);
       cols.forEach(function(c){ if (c.k === "sel" || c.txt) return; var td;
         if (c.k === "av"){ td = el("td"); td.appendChild(avance(S2.av)); }
+        else if (c.cli){ var sc = 0; (rowsT || []).forEach(function(x){ sc += x.qc ? (x.qc[c.cli] || 0) : (x.client === c.cli ? x.fr : 0); }); td = el("td", null, el("span", {class:"v", text:fmt(sc)})); }
         else { td = el("td", null, el("span", {class:"v", text:fmt(S2[c.k])}));
           /* « Tout » : passer d'un coup toutes les pièces disponibles du modèle (ou de la commande) */
-          if (SA[c.k] && c.k !== "fr" && rowsT && !(c.k === "gadh" && !G && rowsT.every(function(x){ return typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(x.id)); }))){ var D = dispoTout(c.k, rowsT); if (D.n) td.appendChild(el("button", {class:"ph-tout", text:"Tout +" + fmt(D.n), title:"Passer les " + fmt(D.n) + " pièce(s) disponibles de " + nomT + " à cette étape", onclick:function(){ toutPasser(c.k, rowsT, nomT); }})); } }
+          if (SA[c.k] && c.k !== "fr" && rowsT && !(c.k === "gadh" && !G && aplatir(rowsT).every(function(x){ return typeof coupeAutoAssemblage === "function" && coupeAutoAssemblage(lineById(x.id)); }))){ var D = dispoTout(c.k, rowsT); if (D.n) td.appendChild(el("button", {class:"ph-tout", text:"Tout +" + fmt(D.n), title:"Passer les " + fmt(D.n) + " pièce(s) disponibles de " + nomT + " à cette étape", onclick:function(){ toutPasser(c.k, rowsT, nomT); }})); } }
         tr.appendChild(td); });
       return tr;
     }
@@ -806,7 +869,7 @@ window.vPilotage = function(v){
         tb.appendChild(totalLigne("Sous-total " + g.model, sommer(g.rows), "st", g.rows, "« " + g.model + " »"));
       });
     } else vis.forEach(function(r){ tb.appendChild(ligne(r, 1, true)); });
-    if (vis.length) tb.appendChild(totalLigne("TOTAL GÉNÉRAL" + (vis.length !== toutes.length ? " (lignes affichées)" : ""), T, "tg", vis, vis.length !== toutes.length ? "toutes les lignes affichées" : "toute la commande"));
+    if (vis.length) tb.appendChild(totalLigne("TOTAL GÉNÉRAL" + (visL.length !== toutes.length ? " (lignes affichées)" : ""), T, "tg", vis, visL.length !== toutes.length ? "toutes les lignes affichées" : "toute la commande"));
     t.appendChild(tb);
     return el("div", {class:"ph-tw"}, t);
   }
