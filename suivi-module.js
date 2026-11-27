@@ -80,10 +80,10 @@ window.grpSuiviStore = {
 //  - stk_params/<ref>: seuil minimum, fournisseur, emplacement, conditionnement, délai.
 // Écrire fiche par fiche évite qu'une saisie faite en même temps sur un autre
 // téléphone en écrase une autre.
-const STK_CLES = {mv:'stk_mv', cf:'stk_cf', sp:'stk_params'};
+const STK_CLES = {mv:'stk_mv', cf:'stk_cf', sp:'stk_params', scfg:'stk_cfg'};
 window.grpStockStore = {
   dispo: () => !!currentUser && activeModule !== 'gadh' && (typeof userSocietes !== 'function' || userSocietes().indexOf('tek') >= 0),
-  lire: () => ({mv: getJSON('stk_mv', {}) || {}, cf: getJSON('stk_cf', {}) || {}, sp: getJSON('stk_params', {}) || {}}),
+  lire: () => ({mv: getJSON('stk_mv', {}) || {}, cf: getJSON('stk_cf', {}) || {}, sp: getJSON('stk_params', {}) || {}, scfg: getJSON('stk_cfg', {}) || {}}),
   utilisateur: () => (currentUser && (currentUser.nom || currentUser.username)) || '',
   ecrire: (coll, id, rec) => {
     const cle = STK_CLES[coll]; if(!cle || !id) return false;
@@ -168,6 +168,26 @@ function suiviApercu(full, titre, format, marge){
 function renderSuiviFrame(main){
   const vue = activeModule === 'gadh' ? 'gadh' : 'tek';
   main.innerHTML = `<iframe id="suivi-frame" class="suivi-frame suivi-${vue}" src="./suivi-commandes.html?vue=${vue}" title="Suivi des commandes"></iframe>`;
+}
+// --- Gestion de stock TEK-TREND (27/11/2026) ---
+// Même page que le suivi (suivi-commandes.html?vue=stock) : mêmes articles, nomenclatures et mouvements.
+// La barre latérale de GTM choisit la section ; l'iframe reste ouverte d'une section à l'autre.
+const STOCK_SECTIONS = [
+  ['tb', 'Tableau de bord', 'dashboard'], ['art', 'Articles', 'box'], ['etat', 'Stock actuel', 'stats'], ['mv', 'Mouvements', 'historique'],
+  ['rec', 'Réceptions', 'export'], ['sor', 'Sorties', 'saisie'], ['inv', 'Inventaires', 'check'], ['prod', 'Stock production', 'prodchain'],
+  ['mach', 'Machines et matériels', 'factory'], ['maint', 'Maintenance', 'wrench'], ['rap', 'Rapports', 'invoice'], ['par', 'Paramètres', 'params']
+];
+function stockNavItems(){
+  return STOCK_SECTIONS.map(s => ({tab:'stock-' + s[0], label:s[1], court:s[0] === 'mach' ? 'Machines' : s[0] === 'prod' ? 'Production' : undefined, icon:(typeof ICONS !== 'undefined' && ICONS[s[2]]) || '', show:true}));
+}
+function renderStockFrame(main, sec){
+  const f = document.getElementById('stock-frame');
+  if(f && main.contains(f)){ try { f.contentWindow.stockAller(sec); return; } catch(e) {} }
+  main.innerHTML = `<iframe id="stock-frame" class="suivi-frame suivi-tek stock-frame" src="./suivi-commandes.html?vue=stock#${sec}" title="Gestion de stock"></iframe>`;
+}
+function stockNotifier(){
+  const f = document.getElementById('stock-frame');
+  try { if(f && f.contentWindow && typeof f.contentWindow.stockRecharger === 'function') f.contentWindow.stockRecharger(); } catch(e) {}
 }
 // Appelé à chaque mise à jour Firebase quand le suivi est ouvert.
 function suiviNotifier(){

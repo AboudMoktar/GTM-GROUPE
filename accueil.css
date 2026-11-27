@@ -187,6 +187,13 @@ button.gtmh-maison:hover{background:#EEF4FC !important;}
   .gtmh-modules{gap:12px 16px; grid-auto-rows:minmax(86px,1fr);}
   .gtmh-mod-ico{width:66px; height:66px;} .gtmh-mod-ico svg{width:33px; height:33px;}
   .gtmh-mod .gtmh-pied{margin-top:12px;} .gtmh-pill{min-height:42px;}
+  /* 7 modules ou plus (Gestion de stock, 27/11/2026) : trois rangées qui tiennent sans défilement */
+  .gtmh-modules[data-n="7"],.gtmh-modules[data-n="8"],.gtmh-modules[data-n="9"]{grid-auto-rows:minmax(64px,1fr); gap:10px 16px;}
+  .gtmh-modules[data-n="7"] .gtmh-mod-ico,.gtmh-modules[data-n="8"] .gtmh-mod-ico,.gtmh-modules[data-n="9"] .gtmh-mod-ico{width:52px; height:52px;}
+  .gtmh-modules[data-n="7"] .gtmh-mod-ico svg,.gtmh-modules[data-n="8"] .gtmh-mod-ico svg,.gtmh-modules[data-n="9"] .gtmh-mod-ico svg{width:27px; height:27px;}
+  .gtmh-modules[data-n="7"] .gtmh-nom,.gtmh-modules[data-n="8"] .gtmh-nom,.gtmh-modules[data-n="9"] .gtmh-nom{font-size:18px;}
+  .gtmh-modules[data-n="7"] .gtmh-sous,.gtmh-modules[data-n="8"] .gtmh-sous,.gtmh-modules[data-n="9"] .gtmh-sous{font-size:13.5px; margin-top:2px;}
+  .gtmh-modules[data-n="7"] .gtmh-mcarte,.gtmh-modules[data-n="8"] .gtmh-mcarte,.gtmh-modules[data-n="9"] .gtmh-mcarte{padding:8px 14px !important; gap:12px;}
 }
 /* ---------- Ordinateurs étroits (1024 à 1279 px) ---------- */
 @media (min-width:900px) and (max-width:1279px){
