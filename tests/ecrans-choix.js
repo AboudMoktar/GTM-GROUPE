@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Écrans d'accueil (société, module) — maquette GTM GROUPE (accueil.css).
-// Vérifie : les trois logos officiels entiers et non déformés, les six modules TEK-TREND, la colonne de navigation,
+// Vérifie : les trois logos officiels entiers et non déformés, les sept modules TEK-TREND, la colonne de navigation,
 // les droits (Vue direction / Administration / Changer de société masqués pour un compte simple), les actions inchangées,
 // l'absence de défilement sur ordinateur et l'empilement sur téléphone. Lancement (dans tests/) : npm run ecrans-choix
 'use strict';
@@ -43,9 +43,9 @@ const ADMIN = {username:'admin', nom:'Administrateur', role:'admin', profil:'sys
   }
   // ---------- écran des modules TEK-TREND ----------
   await p.evaluate(u => { currentUser = u; activeSociete = 'tek'; activeModule = null; renderModuleSelect(); }, ADMIN); await p.waitForTimeout(400);
-  r.push(['modules TEK-TREND : exactement les six modules, dans l\'ordre', await p.evaluate(() => [...document.querySelectorAll('.gtmh-mcarte .gtmh-nom')].map(x => x.textContent).join('|') === 'Tableau de bord|Gestion Rendement|Suivi chaîne|Gestion Ressources Humaines|Suivi des Commandes|Facturation')]);
-  r.push(['modules : cartes sur 3 colonnes, pastille ronde colorée (6 couleurs), description et chevron', await p.evaluate(() => { const t = [...document.querySelectorAll('.gtmh-mcarte')];
-    return new Set(t.map(x => Math.round(x.getBoundingClientRect().left))).size === 3 && new Set(t.map(x => x.style.getPropertyValue('--m1'))).size === 6 && t.every(x => x.querySelector('.gtmh-mod-ico svg') && getComputedStyle(x.querySelector('.gtmh-mod-ico')).borderRadius === '50%' && x.querySelector('.gtmh-sous').textContent.trim() && x.querySelector('.gtmh-chevron svg') && x.getBoundingClientRect().height >= 90 && parseFloat(getComputedStyle(x.querySelector('.gtmh-sous')).fontSize) >= 13); })]);
+  r.push(['modules TEK-TREND : exactement les sept modules, dans l\'ordre', await p.evaluate(() => [...document.querySelectorAll('.gtmh-mcarte .gtmh-nom')].map(x => x.textContent).join('|') === 'Tableau de bord|Gestion Rendement|Suivi chaîne|Gestion Ressources Humaines|Suivi des Commandes|Gestion de stock|Facturation')]);
+  r.push(['modules : cartes sur 3 colonnes, pastille ronde colorée (7 couleurs), description et chevron', await p.evaluate(() => { const t = [...document.querySelectorAll('.gtmh-mcarte')];
+    return new Set(t.map(x => Math.round(x.getBoundingClientRect().left))).size === 3 && new Set(t.map(x => x.style.getPropertyValue('--m1'))).size === 7 && t.every(x => x.querySelector('.gtmh-mod-ico svg') && getComputedStyle(x.querySelector('.gtmh-mod-ico')).borderRadius === '50%' && x.querySelector('.gtmh-sous').textContent.trim() && x.querySelector('.gtmh-chevron svg') && x.getBoundingClientRect().height >= 90 && parseFloat(getComputedStyle(x.querySelector('.gtmh-sous')).fontSize) >= 13); })]);
   l = await logos(p);
   r.push(['modules : logo officiel de la société, entier et non déformé', l.length === 1 && l[0].src === './logo-tek.png' && logosIntacts(l)]);
   r.push(['colonne : sociétés (active repérée), Vue direction, Administration ; en bas : Changer de société, Déconnexion ; en haut : fil, cloche, compte', await p.evaluate(() => { const t = [...document.querySelectorAll('.gtmh-cote .gtmh-lien')].map(x => x.textContent.trim());
@@ -54,8 +54,8 @@ const ADMIN = {username:'admin', nom:'Administrateur', role:'admin', profil:'sys
       && /TEK-TREND/.test(document.querySelector('.gtmh-fil').textContent) && document.querySelectorAll('.gtmh-barre .notif-btn').length === 1 && /Administrateur/.test(document.querySelector('.gtmh-compte').textContent); })]);
   d = await deborde(p);
   r.push(['modules : tient sur 1366 × 768 sans défilement', d.dx === 0 && d.dy === 0]);
-  // les six modules s'ouvrent
-  for (const m of ['tek-dashboard', 'rendement', 'chaine', 'rh', 'commandes', 'factures']) {
+  // les sept modules s'ouvrent
+  for (const m of ['tek-dashboard', 'rendement', 'chaine', 'rh', 'commandes', 'stock', 'factures']) {
     await p.evaluate(u => { currentUser = u; activeSociete = 'tek'; activeModule = null; renderModuleSelect(); }, ADMIN);
     await p.click('.gtmh-mcarte[data-module="' + m + '"]'); await p.waitForTimeout(400);
     r.push(['module ' + m + ' : la carte ouvre le module', await p.evaluate(m => activeModule === m && !document.querySelector('.gtmh-mod'), m)]);
@@ -78,7 +78,7 @@ const ADMIN = {username:'admin', nom:'Administrateur', role:'admin', profil:'sys
   r.push(['droits : compte simple → ses 2 sociétés seulement, ni Vue direction ni Administration', await p.evaluate(() => document.querySelectorAll('.gtmh-scarte').length === 2 && !document.querySelector('.gtmh-scarte[data-soc="mgt"]') && document.querySelectorAll('.gtmh-actions .gtmh-pill').length === 0 && !/Vue direction|Administration/.test(document.querySelector('.gtmh').textContent))]);
   await p.evaluate(() => { activeSociete = 'tek'; renderModuleSelect(); }); await p.waitForTimeout(300);
   r.push(['droits : modules affichés = modules autorisés (modulesDeSociete), colonne sans Vue direction ni Administration', await p.evaluate(() => { const aff = [...document.querySelectorAll('.gtmh-mcarte')].map(x => x.getAttribute('data-module')), dr = modulesDeSociete('tek');
-    return aff.length > 0 && aff.every(m => dr.indexOf(m) >= 0) && aff.length === dr.filter(m => ['tek-dashboard','rendement','chaine','rh','commandes','factures'].indexOf(m) >= 0).length && [...document.querySelectorAll('.gtmh-cote .gtmh-lien')].map(x => x.textContent.trim()).join('|') === 'TEK-TREND|GADH TUNISIA' && /Changer de société/.test(document.querySelector('.gtmh-pied').textContent); })]);
+    return aff.length > 0 && aff.every(m => dr.indexOf(m) >= 0) && aff.length === dr.filter(m => ['tek-dashboard','rendement','chaine','rh','commandes','stock','factures'].indexOf(m) >= 0).length && [...document.querySelectorAll('.gtmh-cote .gtmh-lien')].map(x => x.textContent.trim()).join('|') === 'TEK-TREND|GADH TUNISIA' && /Changer de société/.test(document.querySelector('.gtmh-pied').textContent); })]);
   await p.evaluate(() => { currentUser = {username:'u2', nom:'Ouvrière', role:'saisie', groupe:false, societes:{tek:true}}; activeSociete = 'tek'; renderModuleSelect(); }); await p.waitForTimeout(300);
   r.push(['droits : une seule société → pas de « Changer de société »', await p.evaluate(() => !/Changer de société/.test(document.querySelector('.gtmh').textContent) && document.querySelectorAll('.gtmh [onclick="switchSociete()"]').length === 0 && document.querySelectorAll('.gtmh [onclick="logout()"]').length >= 1)]);
   await p.close();
@@ -99,7 +99,7 @@ const ADMIN = {username:'admin', nom:'Administrateur', role:'admin', profil:'sys
     await p.evaluate(() => { activeSociete = 'tek'; renderModuleSelect(); }); await p.waitForTimeout(350); const d2 = await deborde(p);
     const etat = await p.evaluate(() => ({col: new Set([...document.querySelectorAll('.gtmh-mcarte')].map(x => Math.round(x.getBoundingClientRect().left))).size,
       bas: [...document.querySelectorAll('.gtmh-pied .gtmh-pill')].filter(x => x.offsetHeight >= 44).map(x => x.textContent.trim()).join('|'), n: document.querySelectorAll('.gtmh-mcarte').length}));
-    r.push([w + ' × ' + h + ' : aucun débordement horizontal, modules sur ' + colonnes + ' colonne(s), « Changer de société » et « Déconnexion » en bas, logos intacts', d1.dx === 0 && d2.dx === 0 && etat.col === colonnes && etat.n === 6 && etat.bas === 'Changer de société|Déconnexion' && logosIntacts(l1)]);
+    r.push([w + ' × ' + h + ' : aucun débordement horizontal, modules sur ' + colonnes + ' colonne(s), « Changer de société » et « Déconnexion » en bas, logos intacts', d1.dx === 0 && d2.dx === 0 && etat.col === colonnes && etat.n === 7 && etat.bas === 'Changer de société|Déconnexion' && logosIntacts(l1)]);
     await p.close();
   }
   // compatibilité anciens navigateurs : rien de récent dans la feuille de style

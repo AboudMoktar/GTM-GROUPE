@@ -1197,7 +1197,7 @@ function renderModuleSelect(){
             ['gadh-rh', 'Gestion Ressources Humaines', 'Personnel, pointage, congés, horaires'],
             ['gadh-commandes', 'Gestion des commandes', 'Offres, commandes, approvisionnement, stock, livraisons, rentabilité'],
             ['commandes', 'Suivi des Commandes', 'Suivi PERCKO : lots, coupe, GADH, expédition'],
-            ['stock', 'Gestion de stock', 'Matières PERCKO et TEK-TREND, mouvements, machines'],
+            ['stock', 'Gestion de stock', 'Matières, mouvements, machines'],
             ['machines', 'Machines et arrêts', 'Presses, découpe laser : pannes et disponibilité'],
             ['factures', 'Facturation', 'Factures, avoirs, paiements, relances']
           ].filter(m => mods.indexOf(m[0]) >= 0).map(m => { const v = GTMH_MOD[m[0]] || ['#3B8DF0', '#1565D8', 'barres']; return `<button class="gtmh-mcarte" data-module="${m[0]}" style="--m1:${v[0]};--m2:${v[1]};" onclick="chooseModule('${m[0]}')">
