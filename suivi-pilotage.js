@@ -108,7 +108,7 @@ function configurer(){
   {k:"lib", t:"LIBELLE", w:220, txt:1},
   {k:"coul", t:"Couleur", w:80, txt:1},
   {k:"size", t:"Taille", w:56, txt:1},
-  {k:"client", t:"Client", w:72, txt:1},
+  {k:"client", t:"Destination", w:84, txt:1},   /* un seul client, PERCKO ; NEOLYS et ALLOGA = destinations (27/11/2026) */
   {k:"fr", t:"Qté commandée", w:78}
 ].concat(ETAPES.map(function(e){ return {k:e[0], t:e[1], w:e[0] === "gadh" || e[0] === "ret" ? 96 : 80}; }))
  .concat([{k:"rest", t:G ? "Encore à la GADH" : "Reste à produire", w:84}, {k:"av", t:G ? "Retourné" : "Avancement", w:122}]);
@@ -269,7 +269,7 @@ function grilleExcel(lot, rows, portee, grp){
   var L = colName, nC = cx.length, g = {cols:cx.map(function(c){ return c.k === "lib" ? 34 : c.k === "model" ? 20 : c.k === "coul" ? 13 : c.k === "size" ? 8 : c.k === "client" ? 11 : c.k === "code" ? 12 : c.k === "av" ? 12 : 13; }), rows:[], merges:[], landscape:true, plein:true, sticky:X_ENT + 1, hide:[ci.code], printTitles:[X_ENT, X_ENT]};
   var info = S.lots[lot] || {}, annee = (S.lines.filter(function(l){ return l.lot === lot; })[0] || {}).year || "", T0 = sommer(rows);
   gset(g, 0, 1, (G ? "GADH — " : "TEK-TREND — ") + "Suivi de commande N° " + lot, {b:1, sz:15, fg:"1D3557", al:"l"}); gmerge(g, 0, 1, 0, Math.min(nC - 2, 5)); g.rows[0].h = 34;
-  gset(g, 1, 1, ["Lot : " + lot, "Client(s) : " + clients.join(" + "), "Année : " + (annee || "—"), "Date commande : " + (info.dc ? dmyL(info.dc) : "—"), info.livraison ? "Livraison prévue : " + dmyL(info.livraison) : "", "Export : " + portee, "Édité le " + dmyL(today())].filter(Boolean).join("   ·   "), {sz:10, al:"l"});
+  gset(g, 1, 1, ["Lot : " + lot, "Client : PERCKO · Destination(s) : " + clients.join(" + "), "Année : " + (annee || "—"), "Date commande : " + (info.dc ? dmyL(info.dc) : "—"), info.livraison ? "Livraison prévue : " + dmyL(info.livraison) : "", "Export : " + portee, "Édité le " + dmyL(today())].filter(Boolean).join("   ·   "), {sz:10, al:"l"});
   gmerge(g, 1, 1, 1, nC - 2); g.rows[1].h = 18;
   var H = {b:1, sz:10, fg:"FFFFFF", bg:"1D3557", al:"c", wrap:1, bd:"t"};
   cx.forEach(function(c, i){ gset(g, X_ENT, i, c.t, H); }); g.rows[X_ENT].h = 32;
@@ -417,7 +417,7 @@ function lireImport(lot, sheets){
   var SA = saisissables(); delete SA.rest; var sh = sheets.filter(function(x){ return x.name === "Suivi"; })[0] || sheets[0];
   if (!sh) throw new Error("Fichier vide.");
   var rows = sh.rows, hi = -1, col = {};
-  var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code"; titres["modèle"] = "model"; titres["référence"] = "lib"; titres["libellé"] = "lib";   /* anciens fichiers (avant le 24/11/2026) */
+  var titres = {}; COLS.forEach(function(c){ titres[String(c.t).toLowerCase()] = c.k; }); titres["code (ne pas modifier)"] = "code"; titres["modèle"] = "model"; titres["référence"] = "lib"; titres["libellé"] = "lib"; titres["client"] = "client";   /* anciens fichiers (avant le 24/11/2026) */
   for (var i = 0; i < rows.length && i < 15; i++){
     var m = {}; rows[i].forEach(function(v, c){ var k = titres[String(v).trim().toLowerCase()]; if (k) m[k] = c; });
     if ("code" in m && "lib" in m){ hi = i; col = m; break; }
@@ -470,7 +470,7 @@ window.vPilotage = function(v){
   } else dc = el("b", {text:L.dc ? dmyL(L.dc) : "—"});
   var E = etatLot(lot, Tall), maj = derniereMaj(lot);
   v.appendChild(el("div", {class:"ph-head"},
-    el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · " + clients.join(" + ")}))),
+    el("div", {class:"ph-titre"}, el("img", {src:G ? "./logo-gadh.png" : "./logo-tek.png", alt:G ? "GADH" : "TEK-TREND"}), el("div", null, el("b", {text:"Suivi de commande"}), el("span", {text:"N° : " + lot + " · PERCKO · " + clients.join(" + ")}))),
     el("div", {class:"ph-info"}, el("small", {text:"Date commande"}), dc),
     el("div", {class:"ph-info"}, el("small", {text:"Lot"}), el("b", {text:lot})),
     typeof libelleCommande === "function" && libelleCommande(lot) ? el("div", {class:"ph-info"}, el("small", {text:"Commande"}), el("b", {text:libelleCommande(lot)})) : null,
@@ -517,7 +517,7 @@ window.vPilotage = function(v){
     box.appendChild(el("div", {class:"mut", style:"text-align:center;margin:4px 0 8px", text:"Commande " + lot + " · date de saisie " + dmy(P.date || today())}));
     if (ch.some(function(c){ return c.k === "fr"; })) box.appendChild(el("div", {class:"ph-alerte", text:"Les quantités commandées changent : l'ordre de coupe et les consommations seront recalculés" + (ch.some(function(c){ return c.k === "fr" && c.v === 0; }) ? " ; une taille à 0 sort de la commande (elle reste affichée à 0 si elle a déjà été traitée)." : ".")}));
     var lst = el("div", {class:"ph-chg"});
-    ch.forEach(function(c){ var l = lineById(c.id) || {lib:c.lib, size:c.size, client:c.ids ? "tous clients" : ""}, d = c.v - c.avant;
+    ch.forEach(function(c){ var l = lineById(c.id) || {lib:c.lib, size:c.size, client:c.ids ? "toutes destinations" : ""}, d = c.v - c.avant;
       lst.appendChild(el("div", null, el("span", {text:l.lib + " " + l.size + (clients.length > 1 ? " · " + l.client : "") + " — " + (c.k === "fr" && clients.length > 1 ? "Qté " + l.client : (noms[c.k] || c.k))}), el("b", {style:"color:" + (d > 0 ? "var(--ok)" : "var(--bad)"), text:fmt(c.avant) + " → " + fmt(c.v) + " (" + (d > 0 ? "+" : "") + fmt(d) + ")"}))); });
     box.appendChild(lst);
     var lireDates = blocDates(box, ch);
@@ -569,10 +569,10 @@ window.vPilotage = function(v){
     o.appendChild(choix("model", "Modèle", uniq("model")));
     o.appendChild(choix("coul", "Couleur", uniq("coul")));
     o.appendChild(choix("size", "Taille", uniq("size", function(a, b){ return sizeIdx(a) - sizeIdx(b); })));
-    if (clients.length > 1) o.appendChild(choix("client", "Client", uniq("client")));
+    if (clients.length > 1) o.appendChild(choix("client", "Destination", uniq("client")));
     o.appendChild(choix("etat", "État", [["reste", "Reste à produire"], ["cours", "En cours"], ["rien", "Pas commencé"], ["fini", "Terminé (expédié)"]]));
     o.appendChild(el("button", {class:"btn small sec", text:P.grp ? "Sans sous-totaux" : "Sous-totaux par modèle", onclick:function(){ P.grp = !P.grp; dessiner(); }}));
-    if (clients.length > 1 && !P.f.client) o.appendChild(el("button", {class:"btn small sec", text:P.parClient ? "Une colonne par client" : "Une ligne par client", title:"Comme la commande : une colonne par client et un total ; ou une ligne par client", onclick:function(){ P.parClient = !P.parClient; P.br = {}; P.hist = []; dessiner(); }}));
+    if (clients.length > 1 && !P.f.client) o.appendChild(el("button", {class:"btn small sec", text:P.parClient ? "Une colonne par destination" : "Une ligne par destination", title:"Comme la commande : une colonne par destination (PERCKO chez NEOLYS, chez ALLOGA…) et un total ; ou une ligne par destination", onclick:function(){ P.parClient = !P.parClient; P.br = {}; P.hist = []; dessiner(); }}));
     if (filtre || P.tri) o.appendChild(el("button", {class:"btn small sec", text:"✕ Tout afficher", onclick:function(){ P.f = {}; P.q = ""; P.tri = ""; P.sens = ""; dessiner(); }}));
     var nSel = Object.keys(P.sel).filter(function(id){ return P.sel[id]; }).length;
     if (nSel) o.appendChild(el("span", {class:"ph-sel"}, nSel + " ligne(s) cochée(s) ", el("button", {class:"btn small sec", text:"Décocher", onclick:function(){ P.sel = {}; dessiner(); }})));
@@ -698,7 +698,7 @@ window.vPilotage = function(v){
     var cols = COLS.filter(function(c){ return !(c.cm && etroit) && !(c.k === "client" && clients.length < 2) && c.k !== "coul"; });
     var PV = pivot(), SA = saisissables();
     if (PV){   /* une colonne par client puis le Total (comme la commande) */
-      var cc = clients.map(function(cl){ return {k:"q:" + cl, t:cl, w:72, cli:cl}; });
+      var cc = clients.map(function(cl){ return {k:"q:" + cl, t:cl, w:72, cli:cl, titre:"PERCKO chez " + cl}; });
       cols = cols.reduce(function(o, c){ if (c.k === "client") return o; if (c.k === "fr") return o.concat(cc).concat([{k:"fr", t:"Total", w:74, tot:1}]); return o.concat([c]); }, []);
       var SA2 = {}; Object.keys(SA).forEach(function(k){ if (k !== "fr" && k !== "rest") SA2[k] = 1; }); if (SA.fr) clients.forEach(function(cl){ SA2["q:" + cl] = 1; }); SA = SA2;
     }
@@ -711,7 +711,7 @@ window.vPilotage = function(v){
     function sk(td, k){ if (k in gauche){ td.classList.add("sk"); td.style.left = gauche[k] + "px"; } return td; }
     var hr = el("tr");
     cols.forEach(function(c, i){
-      var th = sk(el("th", {title:c.t}), c.k);
+      var th = sk(el("th", {title:c.titre || c.t}), c.k);
       if (c.k === "sel"){
         var tous = vis.length && vis.every(function(r){ return P.sel[r.id]; });
         var cb = el("input", {type:"checkbox", title:"Cocher toutes les lignes affichées"}); cb.checked = !!tous;
