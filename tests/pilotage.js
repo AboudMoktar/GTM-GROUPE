@@ -16,7 +16,7 @@ async function donnees(p){
     const st = ['cp', 'gadh', 'asm', 'ret', 'conf', 'ctl', 'emb', 'exp'];
     Object.keys(mv).forEach((id, i) => mv[id].forEach((q, k) => { if (q) S.moves.push({id:'M' + i + '_' + k, date:'2026-12-0' + (1 + k), lineId:id, stage:st[k], qty:q, nc:0, note:''}); }));
     S.lots['PK202612-1'] = {ready:'2026-12-01', livraison:'2099-01-31'};
-    ui.lot = 'PK202612-1'; ui.client = '*'; ui.tab = 'suivi'; ui.smode = null; ui.pil = null; render();
+    ui.lot = 'PK202612-1'; ui.client = '*'; ui.tab = 'suivi'; ui.smode = null; ui.pil = {parClient: true}; render();   /* une ligne par client (la vue par colonnes client est testée à la fin) */
   });
 }
 (async () => {
@@ -140,6 +140,23 @@ async function donnees(p){
   const gt = g.locator('.ph-t tr.st', {hasText: 'PHARMA-FEMME'}).locator('.ph-tout');
   r.push(['GADH : « Tout » pour retourner tout le modèle', await gt.count() === 0 || /Tout/.test(await gt.first().textContent())]);
   if (DOSSIER) await g.screenshot({path: DOSSIER + '/gadh.png', fullPage: false});
+  // ---------- comme la commande (27/11/2026) : une colonne par client + Total ; saisie répartie entre les clients ----------
+  const q = await b.newPage(); q.on('pageerror', e => err.push(e.message)); q.on('dialog', d => d.accept());
+  await q.setViewportSize({width: 1366, height: 900}); await q.goto('http://localhost:8790/suivi-commandes.html'); await q.waitForFunction(() => typeof vPilotage === 'function'); await donnees(q);
+  await q.evaluate(() => { ui.pil = null; render(); }); await q.waitForTimeout(250);
+  const pv = await q.evaluate(() => ({head: [...document.querySelectorAll('.ph-t thead th')].map(t => t.textContent.trim()), n: document.querySelectorAll('.ph-t tbody tr:not(.st):not(.tg):not(.gh)').length,
+    gm: [...[...document.querySelectorAll('.ph-t tbody tr')].find(tr => /GRIS/.test(tr.textContent) && [...tr.children].some(td => td.textContent.trim() === 'M')).children].map(td => (td.querySelector('input') || td).value || td.textContent.trim())}));
+  r.push(['colonnes NEOLYS, ALLOGA puis Total (pas de colonne Client)', pv.head.join('|').includes('NEOLYS|ALLOGA|Total') && !pv.head.includes('Client')]);
+  r.push(['une ligne par référence × taille (GRIS M : 130 + 40 = 170)', pv.n === 5 && pv.gm.includes('130') && pv.gm.includes('40') && pv.gm.includes('170')]);
+  await q.fill('.ph-in[data-id="agg:PHARMA_HOMME COL V GRIS|M"][data-k="ctl"]', '150'); await q.keyboard.press('Enter'); await q.waitForTimeout(150);
+  await q.click('text=✔ Valider'); await q.waitForTimeout(150); await q.click('text=✔ Confirmer et enregistrer'); await q.waitForTimeout(400);
+  const rep = await q.evaluate(() => { const t = stageTotals(); return [t.G_M.ctl, t.G_MA.ctl]; });
+  r.push(['contrôlée 140 → 150 sur la ligne GRIS M : +10 réparti sur NEOLYS (pièces disponibles), ALLOGA inchangé', rep[0] === 110 && rep[1] === 40]);
+  await q.fill('.ph-in[data-id="G_MA"][data-k="fr"]', '45'); await q.keyboard.press('Enter'); await q.waitForTimeout(150);
+  await q.click('text=✔ Valider'); await q.waitForTimeout(150); await q.click('text=✔ Confirmer et enregistrer'); await q.waitForTimeout(400);
+  r.push(['quantité d\'un client modifiable dans sa colonne (ALLOGA M 40 → 45)', await q.evaluate(() => lineById('G_MA').qty) === 45]);
+  await q.click('text=Une ligne par client'); await q.waitForTimeout(200);
+  r.push(['bouton « Une ligne par client » : retour à la vue par client', await q.locator('.ph-t thead th', {hasText: 'Client'}).count() === 1]);
   r.push(['aucune erreur', err.length === 0]);
   r.forEach(([l, ok]) => console.log((ok ? 'ok   ' : 'ÉCHEC ') + l)); if (err.length) console.log(err);
   await b.close(); s.close(); process.exit(r.every(x => x[1]) ? 0 : 1);
