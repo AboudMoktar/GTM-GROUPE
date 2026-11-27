@@ -1873,6 +1873,8 @@ function confirmBtn(label, cls, action){
    par la nature de l'export. */
 var CLIENTS_CMD = ["NEOLYS", "ALLOGA", "FLÉCHÉS", "VESTIAIRES"];
 var PRODUITS_SPECIAUX = ["FLÉCHÉS", "VESTIAIRES"];
+/* FLÉCHÉS et VESTIAIRES : des pièces comme les autres (avec flèches / vestiaires), livrées presque toujours chez NEOLYS (27/11/2026) */
+var DEST_SPECIAUX = "NEOLYS";
 function estSpecial(c){ return PRODUITS_SPECIAUX.indexOf(c) >= 0; }
 /* libellé d'une pièce FLÉCHÉS / VESTIAIRES sur les documents d'export : « LIBELLÉ · FLÉCHÉS » */
 function libAvecType(lib, sp){ return sp ? lib + " · " + sp : lib; }
